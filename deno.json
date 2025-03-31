@@ -3,6 +3,13 @@
     "dev": "deno run --watch main.ts"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1"
+    "@rhds/tokens": "npm:@rhds/tokens@^3.0.0",
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/fs": "jsr:@std/fs@^1.0.15",
+    "@std/path": "jsr:@std/path@^1.0.8",
+    "@types/node": "npm:@types/node@^22.13.14",
+    "fuse.js": "npm:fuse.js@^7.1.0",
+    "style-dictionary": "npm:style-dictionary@^4.3.3",
+    "vscode-languageserver-protocol": "npm:vscode-languageserver-protocol@^3.17.5"
   }
 }
