@@ -1,3 +1,3 @@
-import { Server } from "./lib/server.ts";
+import { Server } from "./server/server.ts";
 
 Server.serve();
