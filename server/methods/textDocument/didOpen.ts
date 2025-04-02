@@ -1,12 +1,7 @@
-import type { DidOpenTextDocumentParams, RequestMessage } from "vscode-languageserver-protocol";
+import type { DidOpenTextDocumentParams } from "vscode-languageserver-protocol";
 
 import { documentTextCache } from "../../documents.ts";
 
-export interface DidOpenRequestMessage extends RequestMessage {
-  params: DidOpenTextDocumentParams;
-}
-
-export function didOpen(message: DidOpenRequestMessage): void {
-  const { params } = message;
+export function didOpen(params: DidOpenTextDocumentParams): void {
   documentTextCache.set(params.textDocument.uri, params.textDocument.text);
 }

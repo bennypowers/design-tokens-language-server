@@ -2,7 +2,6 @@ import type { Token } from "style-dictionary";
 
 import type {
   CompletionItem,
-  RequestMessage ,
   CompletionParams,
   InsertTextMode,
   InsertTextFormat,
@@ -16,10 +15,6 @@ import { all } from "../../storage.ts";
 import { getCSSWordAtPosition } from "../../css/css.ts";
 import { getTokenMarkdown } from "../../token.ts";
 import { Logger } from "../../logger.ts";
-
-export interface CompletionRequestMessage extends RequestMessage {
-  params: CompletionParams;
-}
 
 let tokens: CompletionItem[];
 
@@ -42,7 +37,7 @@ const matchesWord = (word: string) =>
     x.name &&
     x.name.replaceAll('-','').startsWith(word.replaceAll('-',''))
 
-export function completion({ params }: CompletionRequestMessage): null | CompletionList {
+export function completion(params: CompletionParams): null | CompletionList {
   tokens ??= getAllSnippets();
   const { word } = getCSSWordAtPosition(params.textDocument.uri, params.position);
   Logger.write(`completion word: ${word}`);

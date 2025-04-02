@@ -1,12 +1,22 @@
-import type { RequestMessage, ResponseError } from "vscode-languageserver-protocol";
+import type {
+  CompletionParams,
+  DidChangeTextDocumentParams,
+  DidOpenTextDocumentParams,
+  DocumentColorParams,
+  HoverParams,
+  InitializeParams,
+  RequestMessage,
+  ResponseError,
+} from "vscode-languageserver-protocol";
 
 import { Logger } from "./logger.ts";
 
-import { initialize, type InitializeRequestMessage } from "./methods/initialize.ts";
-import { completion, type CompletionRequestMessage } from "./methods/textDocument/completion.ts";
-import { didChange, type DidChangeRequestMessage } from "./methods/textDocument/didChange.ts";
-import { hover, type HoverRequestMessage } from "./methods/textDocument/hover.ts";
-import { didOpen, type DidOpenRequestMessage } from "./methods/textDocument/didOpen.ts";
+import { initialize } from "./methods/initialize.ts";
+import { completion } from "./methods/textDocument/completion.ts";
+import { didChange } from "./methods/textDocument/didChange.ts";
+import { hover } from "./methods/textDocument/hover.ts";
+import { didOpen } from "./methods/textDocument/didOpen.ts";
+import { documentColor } from "./methods/textDocument/documentColor.ts";
 
 export class Server {
   static messageCollector = "";
@@ -60,15 +70,17 @@ export class Server {
   static #handle(request: RequestMessage): unknown | Promise<unknown> {
     switch (request.method) {
       case "initialize":
-        return initialize(request as InitializeRequestMessage);
+        return initialize(request.params as InitializeParams);
+      case "textDocument/documentColor":
+        return documentColor(request.params as DocumentColorParams);
       case "textDocument/completion":
-        return completion(request as CompletionRequestMessage);
+        return completion(request.params as CompletionParams);
       case "textDocument/didOpen":
-        return didOpen(request as DidOpenRequestMessage);
+        return didOpen(request.params as DidOpenTextDocumentParams);
       case "textDocument/didChange":
-        return didChange(request as DidChangeRequestMessage);
+        return didChange(request.params as DidChangeTextDocumentParams);
       case "textDocument/hover":
-        return hover(request as HoverRequestMessage);
+        return hover(request.params as HoverParams);
       default:
         return null;
     }

@@ -3,8 +3,10 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.12",
     "jsr:@std/internal@^1.0.6": "1.0.6",
+    "npm:@types/tinycolor2@^1.4.6": "1.4.6",
     "npm:style-dictionary@*": "4.3.3",
     "npm:style-dictionary@^4.3.3": "4.3.3",
+    "npm:tinycolor2@^1.6.0": "1.6.0",
     "npm:vscode-languageserver-protocol@*": "3.17.5",
     "npm:vscode-languageserver-protocol@^3.17.5": "3.17.5"
   },
@@ -86,6 +88,9 @@
     },
     "@pkgjs/parseargs@0.11.0": {
       "integrity": "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="
+    },
+    "@types/tinycolor2@1.4.6": {
+      "integrity": "sha512-iEN8J0BoMnsWBqjVbWH/c0G0Hh7O21lpR2/+PrvAVgWdzL7eexIFm4JN/Wn10PTcmNdtS6U67r499mlWMXOxNw=="
     },
     "@yarnpkg/lockfile@1.1.0": {
       "integrity": "sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ=="
@@ -917,6 +922,12 @@
       "jsr:@std/assert@1",
       "npm:style-dictionary@^4.3.3",
       "npm:vscode-languageserver-protocol@^3.17.5"
-    ]
+    ],
+    "packageJson": {
+      "dependencies": [
+        "npm:@types/tinycolor2@^1.4.6",
+        "npm:tinycolor2@^1.6.0"
+      ]
+    }
   }
 }

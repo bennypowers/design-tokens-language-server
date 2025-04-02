@@ -1,1 +1,4 @@
-a { color: var(--rh-color-black); }
+a {
+    color: var(--rh-color-black);
+    background: blue;
+}
