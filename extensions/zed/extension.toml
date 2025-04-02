@@ -1,0 +1,12 @@
+id = "design-tokens"
+name = "Design Tokens"
+description = "Design Tokens Language Support"
+version = "0.0.1"
+schema_version = 1
+authors = ["Benny Powers <web@bennypowers.com>"]
+repository = "https://github.com/bennypowers/design-tokens-language-server"
+
+[language_servers.design-tokens-language-server]
+name = "Design Tokens Language Server"
+language = "CSS"
+

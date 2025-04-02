@@ -1,0 +1,11 @@
+[package]
+name = "zed_design_tokens"
+version = "0.0.1"
+license = "GPL-2.0"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.1.0"

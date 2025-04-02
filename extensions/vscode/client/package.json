@@ -1,0 +1,22 @@
+{
+  "name": "design-tokens-language-server-vscode",
+  "author": "Benny Powers <web@bennypowers.com>",
+  "license": "GPL-3.0-only",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "configuration": {
+    "title": "Design Tokens Language Server",
+    "type": "object",
+    "properties": {
+      "design-tokens-language-server.trace.server": "verbose"
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.81.0"
+  }
+}

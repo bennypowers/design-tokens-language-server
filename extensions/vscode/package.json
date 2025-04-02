@@ -1,0 +1,39 @@
+{
+  "name": "design-tokens-language-server-vscode",
+  "displayName": "Design Tokens Language Server",
+  "description": "Design Tokens Language Server for Visual Studio Code",
+  "author": "Benny Powers <web@bennypowers.com>",
+  "publisher": "pwrs",
+  "license": "GPL-3.0-only",
+  "version": "1.0.0",
+  "categories": [],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bennypowers/design-tokens-language-server",
+    "directory": "extensions/vscode"
+  },
+  "activationEvents": [
+    "onLanguage:css",
+    "onLanguage:json",
+    "onLanguage:yaml"
+  ],
+  "main": "./client/out/extension",
+  "contributes": {
+    "configuration": {}
+  },
+  "scripts": {
+    "vscode:prepublish": "node build.js",
+    "compile": "tsc -b",
+    "build": "npx @vscode/vsce package",
+    "watch": "tsc -b -w",
+    "postinstall": "cd client && npm install && cd .."
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.7",
+    "esbuild": "^0.25.2",
+    "typescript": "^5.2.2"
+  }
+}
