@@ -11,7 +11,10 @@ export function hover(params: HoverParams): null | Hover {
   if (token) {
     Logger.write(`Hover word: ${word}`);
     return {
-      contents: getTokenMarkdown(token),
+      contents: {
+        value: getTokenMarkdown(token),
+        kind: 'markdown',
+      },
       range,
     }
   }
