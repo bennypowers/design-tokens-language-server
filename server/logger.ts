@@ -2,8 +2,10 @@ import type { RequestMessage, ResponseMessage } from "vscode-languageserver-prot
 
 import * as path from 'jsr:@std/path';
 
+const STATE = Deno.env.get('XDG_STATE_HOME') ?? `${Deno.env.get('HOME')}/.local/state`;
+
 export class Logger {
-  static #path = `${Deno.env.get('XDG_STATE_HOME')}/design-tokens-language-server/dtls.log`;
+  static #path = `${STATE}/design-tokens-language-server/dtls.log`;
 
   static #stream: Deno.FsFile;
 
