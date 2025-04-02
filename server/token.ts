@@ -1,10 +1,26 @@
 import type { Token } from "style-dictionary";
 
-export function getTokenMarkdown(token: Token) {
+import { parse, stringify } from './css/value-parser.ts';
+
+export function getTokenMarkdown({ name, $description, $value, $type }: Token) {
+  const desc = $description ? `: ${$description}` : '';
+  const type = $type ? ` *<\`${$type}\`>*` : '';
+  let value = $value;
+  // 'cause why parse when you can .replace?
+  if ($value.startsWith('light-dark\(') && $value.split('\n').length === 1) {
+    const [light, , dark] = parse($value)?.pop()?.nodes ?? [];
+    value =
+`light-dark(
+  ${stringify(light)},
+  ${stringify(dark)}
+)`;
+
+  }
   return [
-    `\`--${token.name}\` *<\`${token.$type}\`>*:`,
-    `  **${token.$value}**`,
-    token.$description,
-    token.comment,
-  ].filter(Boolean).join('\n\n')
+    `\`--${name}\`${type}${desc}`,
+    '',
+    '```css',
+    value,
+    '```',
+  ].join('\n');
 }
