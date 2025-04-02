@@ -1,14 +1,16 @@
 import type { RequestMessage, ResponseMessage } from "vscode-languageserver-protocol";
 
+import * as path from 'jsr:@std/path';
+
 export class Logger {
-  static #path = '/tmp/dt_ls.log';
+  static #path = `${Deno.env.get('XDG_STATE_HOME')}/design-tokens-language-server/dtls.log`;
 
   static #stream: Deno.FsFile;
 
   static async #init() {
     if (!this.#stream) {
-      await Deno.create(this.#path);
-      this.#stream = await Deno.open(this.#path, { write: true });
+      await Deno.mkdir(path.dirname(this.#path), { recursive: true });
+      this.#stream = await Deno.open(this.#path, { write: true, create: true });
     }
   }
 
