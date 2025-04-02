@@ -4,12 +4,15 @@ import { documentTextCache } from "../../documents.ts";
 import { get } from "../../storage.ts";
 
 import Color from "npm:tinycolor2"
+import { Logger } from "../../logger.ts";
 
 interface Match {
   name: string;
   start: number;
   end: number;
 }
+
+const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
 
 export function documentColor(params: DocumentColorParams): ColorInformation[] {
   const text = documentTextCache.get(params.textDocument.uri) ?? '';
@@ -30,22 +33,23 @@ export function documentColor(params: DocumentColorParams): ColorInformation[] {
       if (!token || token.$type !== 'color')
         return [];
       else {
-        const [hex] = `${token.$value}`.match(/#(.{3}|.{4}|.{6}|.{8})/) ?? [];
-        const color = Color(hex!);
-        const prgb = color.toPercentageRgb();
-        const info: ColorInformation = {
-          color: {
-            red: parseInt(prgb.r) * .01,
-            green: parseInt(prgb.g) * .01,
-            blue: parseInt(prgb.b) * .01,
-            alpha: color.getAlpha(),
-          },
-          range: {
-            start: { line, character: start },
-            end: { line, character: end },
-          }
-        };
-        return [info];
+        return (`${token.$value}`.match(HEX_RE) ?? []).map(hex => {
+          Logger.write(`${token.name}: ${hex}`);
+          const color = Color(hex);
+          const prgb = color.toPercentageRgb();
+          return {
+            color: {
+              red: parseInt(prgb.r) * .01,
+              green: parseInt(prgb.g) * .01,
+              blue: parseInt(prgb.b) * .01,
+              alpha: color.getAlpha(),
+            },
+            range: {
+              start: { line, character: start },
+              end: { line, character: end },
+            }
+          } satisfies ColorInformation;
+        });
       }
     })
   });
