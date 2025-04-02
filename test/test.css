@@ -1,4 +1,5 @@
 a {
     color: var(--rh-color-black);
-    background: var(--rh-color-blue-40);
+    background: var(--rh-color-surface-lighter);
 }
+ 
