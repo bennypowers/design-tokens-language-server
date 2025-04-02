@@ -1,4 +1,4 @@
 a {
     color: var(--rh-color-black);
-    background: blue;
+    background: var(--rh-color-blue-40);
 }
