@@ -25,7 +25,6 @@ export class Server {
   static #encoder = new TextEncoder();
 
   static async serve() {
-    Logger.write("Now serving");
     for await (const chunk of Deno.stdin.readable) {
       this.#handleChunk(chunk);
     }
@@ -44,7 +43,10 @@ export class Server {
 
     if (this.messageCollector.length < messageStart + contentLength) return;
 
-    const slice = this.messageCollector.slice(messageStart, messageStart + contentLength);
+    const slice = this.messageCollector.slice(
+      messageStart,
+      messageStart + contentLength,
+    );
 
     try {
       const message = JSON.parse(slice);
@@ -54,12 +56,14 @@ export class Server {
       const result = await this.#handle(message);
 
       this.#respond(message, result);
-    } catch(e) {
-      Logger.write(`FAILED to write slice: ${slice}\n${e}`);
+    } catch (e) {
+      Logger.error(`FAILED to write slice: ${slice}\n${e}`);
       if (e instanceof Error)
         Deno.stderr.write(this.#encoder.encode(e.toString()));
       else
-        Deno.stderr.write(this.#encoder.encode(`FAILED to write slice: ${slice}`));
+        Deno.stderr.write(
+          this.#encoder.encode(`FAILED to write slice: ${slice}`),
+        );
     }
 
     this.messageCollector = this.messageCollector.slice(
@@ -86,10 +90,14 @@ export class Server {
     }
   }
 
-  static #respond({ id, method }: RequestMessage, result?: unknown, error?: ResponseError) {
+  static #respond(
+    { id, method }: RequestMessage,
+    result?: unknown,
+    error?: ResponseError,
+  ) {
     result ??= null;
     if (!id && !result) return;
-    const message = JSON.stringify({ jsonrpc: '2.0', id, result, error });
+    const message = JSON.stringify({ jsonrpc: "2.0", id, result, error });
     const messageLength = this.#encoder.encode(message).byteLength;
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
     switch (method) {
