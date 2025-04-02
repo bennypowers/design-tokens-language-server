@@ -5,33 +5,39 @@ import { get } from "../../storage.ts";
 
 import Color from "npm:tinycolor2"
 
+interface Match {
+  name: string;
+  start: number;
+  end: number;
+}
+
 export function documentColor(params: DocumentColorParams): ColorInformation[] {
   const text = documentTextCache.get(params.textDocument.uri) ?? '';
   const lines = text.split('\n');
   return lines.flatMap((lineTxt, line) => {
     let match
-    const idxs: [match: string, start: number, end: number][] = [];
+    const idxs: Match[] = [];
     const VAR_RE = /var\(--(?<name>[^)]+)\)/g;
     // deno-lint-ignore no-cond-assign
-    while (match = VAR_RE.exec(lineTxt))
-      idxs.push([
-        match.groups!.name,
-        match.index,
-        match.index + match.groups!.name.length,
-      ])
-    return idxs.flatMap(([match, start, end]) => {
-      const token = get(match);
+    while (match = VAR_RE.exec(lineTxt)) {
+      const { name } = match.groups!;
+      const start = match.index + 4; // var(
+      const end = start + match.groups!.name.length + 2; // --
+      idxs.push({ name, start, end });
+    }
+    return idxs.flatMap(({ name, start, end }) => {
+      const token = get(name);
       if (!token || token.$type !== 'color')
         return [];
       else {
         const [hex] = `${token.$value}`.match(/#(.{3}|.{4}|.{6}|.{8})/) ?? [];
         const color = Color(hex!);
-        const { r, g, b } = color.toPercentageRgb();
+        const prgb = color.toPercentageRgb();
         const info: ColorInformation = {
           color: {
-            red: parseInt(r) * .01,
-            green: parseInt(g) * .01,
-            blue: parseInt(b) * .01,
+            red: parseInt(prgb.r) * .01,
+            green: parseInt(prgb.g) * .01,
+            blue: parseInt(prgb.b) * .01,
             alpha: color.getAlpha(),
           },
           range: {
