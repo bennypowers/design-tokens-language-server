@@ -1,10 +1,10 @@
 {
-    "name": "dtls-test",
-    "private": true,
-    "version": "0.0.1",
-    "designTokensLanguageServer": {
-        "tokensFiles": [
-            "/var/home/bennyp/Developer/redhat-ux/red-hat-design-tokens/json/rhds.tokens.json"
-        ]
-    }
+  "name": "dtls-test",
+  "private": true,
+  "version": "0.0.1",
+  "designTokensLanguageServer": {
+    "tokensFiles": [
+      "~/Developer/redhat-ux/red-hat-design-tokens/json/rhds.tokens.json"
+    ]
+  }
 }

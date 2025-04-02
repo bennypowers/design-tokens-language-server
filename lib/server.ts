@@ -1,4 +1,4 @@
-import type { CompletionList, RequestMessage, ResponseError } from "npm:vscode-languageserver-protocol";
+import type { RequestMessage, ResponseError } from "vscode-languageserver-protocol";
 
 import { Logger } from "./logger.ts";
 
@@ -6,7 +6,7 @@ import { initialize, type InitializeRequestMessage } from "./methods/initialize.
 import { completion, type CompletionRequestMessage } from "./methods/textDocument/completion.ts";
 import { didChange, type DidChangeRequestMessage } from "./methods/textDocument/didChange.ts";
 import { hover, type HoverRequestMessage } from "./methods/textDocument/hover.ts";
-import { didOpen, DidOpenRequestMessage } from "./methods/textDocument/didOpen.ts";
+import { didOpen, type DidOpenRequestMessage } from "./methods/textDocument/didOpen.ts";
 
 export class Server {
   static messageCollector = "";
@@ -77,7 +77,7 @@ export class Server {
   static #respond({ id, method }: RequestMessage, result?: unknown, error?: ResponseError) {
     result ??= null;
     if (!id && !result) return;
-    const message = JSON.stringify({ jsonrpc: method == 'initialize' ? '2.0' : undefined, id, result, error });
+    const message = JSON.stringify({ jsonrpc: '2.0', id, result, error });
     const messageLength = this.#encoder.encode(message).byteLength;
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
     switch (method) {

@@ -1,4 +1,5 @@
-import type { DidChangeTextDocumentParams, RequestMessage } from "npm:vscode-languageserver-protocol";
+import type { DidChangeTextDocumentParams, RequestMessage } from "vscode-languageserver-protocol";
+
 import { documentTextCache } from "../../documents.ts";
 
 export interface DidChangeRequestMessage extends RequestMessage {

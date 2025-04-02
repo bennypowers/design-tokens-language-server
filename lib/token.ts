@@ -1,4 +1,4 @@
-import { Token } from "style-dictionary";
+import type { Token } from "style-dictionary";
 
 export function getTokenMarkdown(token: Token) {
   return [

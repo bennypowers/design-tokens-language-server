@@ -14,9 +14,10 @@ export function getCSSWordAtPosition(uri: string, position: Position): CSSWord {
   const right = line?.substring(position.character);
   // TODO: suck less
   const word = `${left?.replace(/^.+ /g, "")}${right?.replace(/ .+$/g, "")}`.replace(/var\(([^)]*)\)/, '$1').replace(';', '');
-  const range: Range | undefined = line && left && right && {
-    start: { ...position, character: line?.indexOf(left??'') ?? 0 },
-    end: { ...position }
+  const character = line?.indexOf(word)!;
+  const range: Range | undefined = line && left && right && word && {
+    start: { ...position, character },
+    end: { ...position, character: character + word.length }
   } || undefined;
   return { word, range };
 }
