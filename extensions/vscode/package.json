@@ -16,9 +16,7 @@
     "directory": "extensions/vscode"
   },
   "activationEvents": [
-    "onLanguage:css",
-    "onLanguage:json",
-    "onLanguage:yaml"
+    "onLanguage:css"
   ],
   "main": "./client/out/extension",
   "contributes": {
