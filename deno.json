@@ -1,14 +1,45 @@
 {
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "dev": "npx nodemon -e ts -x 'deno task build'",
+    "compile": "deno compile --unstable-temporal -A --output bin/design-tokens-language-server main.ts --stdio",
+    "copy": {
+      "command": "cp bin/design-tokens-language-server /var/home/bennyp/.local/bin/design-tokens-language-server",
+      "dependencies": [
+        "compile"
+      ]
+    },
+    "vscode-build": {
+      "command": "npm run build --prefix extensions/vscode",
+      "dependencies": [
+        "compile",
+        "vscode-copy"
+      ]
+    },
+    "vscode-copy": {
+      "command": "mkdir -p extensions/vscode/bin && cp bin/design-tokens-language-server extensions/vscode/bin/",
+      "dependencies": [
+        "compile",
+        "copy"
+      ]
+    },
+    "vscode-install": {
+      "command": "flatpak run --command='bash -c codium --install-extension /var/home/bennyp/Developer/design-tokens-language-server/extensions/vscode/design-tokens-language-server-vscode-1.0.0.vsix' com.vscodium.codium",
+      "dependencies": [
+        "vscode-build"
+      ]
+    },
+    "build": {
+      "command": "echo DONE",
+      "dependencies": [
+        "vscode-install"
+      ]
+    }
   },
   "imports": {
     "@rhds/tokens": "npm:@rhds/tokens@^3.0.0",
     "@std/assert": "jsr:@std/assert@1",
     "@std/fs": "jsr:@std/fs@^1.0.15",
     "@std/path": "jsr:@std/path@^1.0.8",
-    "@types/node": "npm:@types/node@^22.13.14",
-    "fuse.js": "npm:fuse.js@^7.1.0",
     "style-dictionary": "npm:style-dictionary@^4.3.3",
     "vscode-languageserver-protocol": "npm:vscode-languageserver-protocol@^3.17.5"
   }

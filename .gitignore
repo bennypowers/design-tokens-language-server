@@ -1,0 +1,9 @@
+node_modules
+bin
+**/*.db
+**/cargo-target
+**/target
+**/venv
+*.wasm
+*.xcodeproj
+.vscode

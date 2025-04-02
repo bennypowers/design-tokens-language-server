@@ -19,32 +19,42 @@ export interface CompletionRequestMessage extends RequestMessage {
   params: CompletionParams;
 }
 
-let tokens: Token[];
+let tokens: CompletionItem[];
 
-function computeSnippets() {
-  return Array.from(all());
-}
-
-export function completion({ params }: CompletionRequestMessage): null | CompletionList {
-  tokens ??= computeSnippets();
-  const word = getCSSWordAtPosition(params.textDocument.uri, params.position);
-  if (!word) return null;
-  const items: CompletionItem[] = tokens.filter(x =>
-      x.name?.replaceAll('-','').startsWith(word.replaceAll('-','')))
-    .map(token => ({
-      label: token.name!.replaceAll('-', '')!,
+function getAllSnippets() {
+  return Array.from(all())
+    .map((token, i, a) => ({
+      label: token.name!,
       kind: CompletionItemKind.Snippet,
       insertText: `var(--${token.name})$0`,
+      insertTextFormat: InsertTextFormat.Snippet,
+      insertTextMode: InsertTextMode.asIs,
+      sortText: (i + 1).toString().padStart(a.length.toString().length, '0'),
       documentation: token.$description && {
         value: getTokenMarkdown(token),
         kind: MarkupKind.Markdown,
       },
-    }) satisfies CompletionItem);
+    }) satisfies CompletionItem)
+}
+
+const matchesWord = (word: string) =>
+  (x: Token) =>
+    x.name &&
+    x.name.replaceAll('-','').startsWith(word.replaceAll('-',''))
+
+export function completion(
+  { params }: CompletionRequestMessage,
+): null | CompletionList {
+  tokens ??= getAllSnippets();
+  const { word } = getCSSWordAtPosition(params.textDocument.uri, params.position);
+  if (!word) return null;
+  const items: CompletionItem[] = tokens.filter(matchesWord(word))
   return {
     items,
-    isIncomplete: false,
+    isIncomplete: true,
     itemDefaults: {
       insertTextFormat: InsertTextFormat.Snippet,
+      insertTextMode: InsertTextMode.asIs,
     }
   }
 }

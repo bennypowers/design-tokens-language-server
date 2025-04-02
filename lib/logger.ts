@@ -15,7 +15,7 @@ export class Logger {
   static async write(message: RequestMessage | ResponseMessage | unknown) {
     await this.#init();
     const date = Temporal.Now.plainTimeISO();
-    const prefix = `// [design-tokens-languageserver][${date}]\r\n`;
+    const prefix = `// [design-tokens-language-server][${date}]\r\n`;
     if (typeof message === "object") {
       this.#stream.write(new TextEncoder().encode(`${prefix}${JSON.stringify(message, null, 2)}\r\n`));
     } else {

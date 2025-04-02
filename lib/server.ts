@@ -1,4 +1,4 @@
-import type { RequestMessage, ResponseError } from "npm:vscode-languageserver-protocol";
+import type { CompletionList, RequestMessage, ResponseError } from "npm:vscode-languageserver-protocol";
 
 import { Logger } from "./logger.ts";
 
@@ -12,11 +12,12 @@ export class Server {
   static messageCollector = "";
 
   static #decoder = new TextDecoder();
+  static #encoder = new TextEncoder();
 
   static async serve() {
-    Logger.write('Now serving');
+    Logger.write("Now serving");
     for await (const chunk of Deno.stdin.readable) {
-      this.#handleChunk(chunk)
+      this.#handleChunk(chunk);
     }
   }
 
@@ -33,32 +34,40 @@ export class Server {
 
     if (this.messageCollector.length < messageStart + contentLength) return;
 
-    const rawMessage = this.messageCollector.slice(
-      messageStart,
+    const slice = this.messageCollector.slice(messageStart, messageStart + contentLength);
+
+    try {
+      const message = JSON.parse(slice);
+
+      Logger.write({ id: message.id, method: message.method });
+
+      const result = await this.#handle(message);
+
+      this.#respond(message, result);
+    } catch(e) {
+      Logger.write(`FAILED to write slice: ${slice}\n${e}`);
+      if (e instanceof Error)
+        Deno.stderr.write(this.#encoder.encode(e.toString()));
+      else
+        Deno.stderr.write(this.#encoder.encode(`FAILED to write slice: ${slice}`));
+    }
+
+    this.messageCollector = this.messageCollector.slice(
       messageStart + contentLength,
     );
-    const message = JSON.parse(rawMessage);
-
-    Logger.write({ id: message.id, method: message.method });
-
-    const result = await this.#handle(message);
-
-    this.#respond(message, result);
-
-    this.messageCollector = this.messageCollector.slice(messageStart + contentLength);
   }
 
   static #handle(request: RequestMessage): unknown | Promise<unknown> {
     switch (request.method) {
-      case 'initialize':
+      case "initialize":
         return initialize(request as InitializeRequestMessage);
-      case 'textDocument/completion':
+      case "textDocument/completion":
         return completion(request as CompletionRequestMessage);
-      case 'textDocument/didOpen':
+      case "textDocument/didOpen":
         return didOpen(request as DidOpenRequestMessage);
-      case 'textDocument/didChange':
+      case "textDocument/didChange":
         return didChange(request as DidChangeRequestMessage);
-      case 'textDocument/hover':
+      case "textDocument/hover":
         return hover(request as HoverRequestMessage);
       default:
         return null;
@@ -67,14 +76,16 @@ export class Server {
 
   static #respond({ id, method }: RequestMessage, result?: unknown, error?: ResponseError) {
     result ??= null;
-    if (!id && !result)
-      return;
-    const message = JSON.stringify({ id, result, error });
-    const messageLength = new TextEncoder().encode(message).byteLength;
+    if (!id && !result) return;
+    const message = JSON.stringify({ jsonrpc: method == 'initialize' ? '2.0' : undefined, id, result, error });
+    const messageLength = this.#encoder.encode(message).byteLength;
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
-    if (method === 'textDocument/completion')
-      Logger.write(payload);
-    Deno.stdout.write(new TextEncoder().encode(payload));
+    switch (method) {
+      case "textDocument/completion":
+        break;
+      case "initialize":
+        Logger.write(payload);
+    }
+    Deno.stdout.write(this.#encoder.encode(payload));
   }
 }
-
