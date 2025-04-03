@@ -53,23 +53,25 @@ const matchesWord =
 export async function completion(params: CompletionParams): Promise<null | CompletionList | CompletionItem[]> {
   await new Promise(r => setTimeout(r));
   const { word, range } = getCSSWordAtPosition(params.textDocument.uri, params.position);
-  if (!range) return null;
   const trigger = params.context?.triggerKind === InlineCompletionTriggerKind.Automatic ? word + params.context.triggerCharacter : word;
   try {
     const items = all().filter(matchesWord(trigger)).map(({ name, $value }) => ({
       label: name,
       kind: 15 satisfies typeof CompletionItemKind.Snippet,
-      textEdit: {
-        range,
-        newText: `var(--${name}\${1:|\, ${$value},|}):0`,
-      }
+      ...(range ? {
+        textEdit: {
+          range,
+          newText: `var(--${name}\${1:|\, ${$value},|}):0`,
+        }
+      } : {
+        insertText:  `var(--${name}\${1:|\, ${$value},|}):0`,
+      })
     }) satisfies CompletionItem).toArray();
-    Logger.debug({ word, range });
     return {
       isIncomplete: false,
       itemDefaults: {
-        insertTextFormat: 2 satisfies typeof InsertTextFormat.Snippet,
-        insertTextMode: 1 satisfies typeof InsertTextMode.asIs,
+        insertTextFormat: InsertTextFormat.Snippet,
+        insertTextMode: InsertTextMode.asIs,
         editRange: range,
       },
       items
