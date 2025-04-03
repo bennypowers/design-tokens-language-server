@@ -6,6 +6,20 @@ import {
 
 import * as path from "jsr:@std/path";
 
+function isRequestMessage(message: unknown): message is RequestMessage {
+  return !!message
+    && typeof message === 'object'
+    && ('id' in message)
+    && ('method' in message)
+}
+
+function isResponseMessage(message: unknown): message is ResponseMessage {
+  return !!message
+    && typeof message === 'object'
+    && ('id' in message)
+    && !('method' in message)
+}
+
 export class Logger {
   // static #path = `${Deno.env.get("XDG_STATE_HOME") ?? `${Deno.env.get("HOME")}/.local/state`}/design-tokens-language-server/dtls.log`;
   static #path = `/var/home/bennyp/.local/state/design-tokens-language-server/dtls.log`;
@@ -22,50 +36,37 @@ export class Logger {
     }
   }
 
-  static debug(message: string|object) {
-    this.logMessage(message, MessageType.Warning);
+  static async #write(message: unknown) {
+    const kind = isRequestMessage(message) ? 'RECV' : isResponseMessage(message) ? 'SEND' : 'DBUG';
+    await this.#init();
+    const prefix = `\r\n\r\n// [dtls][${kind}][${Temporal.Now.plainDateTimeISO()}]\r\n`;
+    const stringified = typeof message === 'object' ? JSON.stringify(message) : `${message}`
+    this.#stream.write(this.#encoder.encode(`${prefix}${stringified}`));
   }
 
-  static info(message: string|object) {
-    this.logMessage(message, MessageType.Warning);
-  }
-
-  static log(message: string|object) {
-    this.logMessage(message, MessageType.Warning);
-  }
-
-  static warn(message: string|object) {
-    this.logMessage(message, MessageType.Warning);
-  }
-
-  static error(message: string|object) {
-    this.logMessage(message, MessageType.Error);
-  }
-
-  static logMessage(message: string|object, type: MessageType = MessageType.Log) {
-    if (type === MessageType.Error) this.showMessage(message, type);
-    const rpcmessage = JSON.stringify({ method: "window/logMessage", params: { message, type } });
-    this.#payload(rpcmessage);
-    this.write(message);
-  }
-
-  static showMessage(message: string|object, type: MessageType = MessageType.Log) {
-    const rpcmessage = JSON.stringify({ method: "window/showMessage", params: { message, type } });
-    this.#payload(rpcmessage);
-  }
-
-  static #payload(message: string) {
+  static #report(message: string) {
     const messageLength = this.#encoder.encode(message).byteLength;
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
     Deno.stdout.write(this.#encoder.encode(payload));
   }
 
-  static async write(message: RequestMessage | ResponseMessage | unknown) {
-    await this.#init();
-    const date = Temporal.Now.plainTimeISO();
-    const prefix = `// [design-tokens-language-server][${date}]\r\n`;
-    this.#stream.write(this.#encoder.encode(`${prefix}${typeof message === "object"
-        ? JSON.stringify(message, null, 2)
-        : (message as string)}`));
+  static logMessage(message: string|object, type: MessageType = MessageType.Log) {
+    message = typeof message === 'string' ? message : JSON.stringify(message);
+    this.#write(message);
+    if (type === MessageType.Error)
+      this.showMessage(message, type);
+    const rpcmessage = JSON.stringify({ method: "window/logMessage", params: { message, type } });
+    this.#report(rpcmessage);
   }
+
+  static showMessage(message: string|object, type: MessageType = MessageType.Log) {
+    const rpcmessage = JSON.stringify({ method: "window/showMessage", params: { message, type } });
+    this.#report(rpcmessage);
+  }
+
+  static debug(message: string|object) { this.logMessage(message, MessageType.Debug); }
+  static info(message: string|object) { this.logMessage(message, MessageType.Info); }
+  static log(message: string|object) { this.logMessage(message, MessageType.Log); }
+  static warn(message: string|object) { this.logMessage(message, MessageType.Warning); }
+  static error(message: string|object) { this.logMessage(message, MessageType.Error); }
 }
