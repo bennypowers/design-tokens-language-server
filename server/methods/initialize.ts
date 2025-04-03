@@ -1,4 +1,8 @@
-import type { InitializeParams, InitializeResult, TextDocumentSyncKind } from "vscode-languageserver-protocol";
+import {
+  InitializeParams,
+  InitializeResult,
+  TextDocumentSyncKind,
+} from "vscode-languageserver-protocol";
 
 import { register } from "../storage.ts";
 import { Logger } from "../logger.ts";
@@ -15,10 +19,9 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
   return {
     capabilities: {
       hoverProvider: true,
-      textDocumentSync: 1 satisfies typeof TextDocumentSyncKind.Full,
-      completionProvider: {
-        resolveProvider: true,
-      },
+      textDocumentSync: TextDocumentSyncKind.Full,
+      // FIXME: completion is totally busted - not clear why
+      completionProvider: { resolveProvider: true },
       colorProvider: { },
     },
     serverInfo: {

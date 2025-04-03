@@ -2,6 +2,7 @@ import {
   CompletionItem,
   CompletionParams,
   DidChangeTextDocumentParams,
+  DidCloseTextDocumentParams,
   DidOpenTextDocumentParams,
   DocumentColorParams,
   HoverParams,
@@ -13,11 +14,15 @@ import {
 import { Logger } from "./logger.ts";
 
 import { initialize } from "./methods/initialize.ts";
-import { completion } from "./methods/textDocument/completion.ts";
-import { didChange } from "./methods/textDocument/didChange.ts";
-import { hover } from "./methods/textDocument/hover.ts";
 import { didOpen } from "./methods/textDocument/didOpen.ts";
+import { didChange } from "./methods/textDocument/didChange.ts";
+import { didClose } from "./methods/textDocument/didClose.ts";
+
 import { documentColor } from "./methods/textDocument/documentColor.ts";
+
+import { hover } from "./methods/textDocument/hover.ts";
+
+import { completion } from "./methods/textDocument/completion.ts";
 import { resolve } from "./methods/completionItem/resolve.ts";
 
 export class Server {
@@ -67,12 +72,16 @@ export class Server {
   static async #result(request: RequestMessage): Promise<unknown> {
     switch (request.method) {
       case "initialize": return initialize(request.params as InitializeParams);
-      case "completionItem/resolve": return resolve(request.params as CompletionItem);
-      case "textDocument/documentColor": return documentColor(request.params as DocumentColorParams);
-      case "textDocument/completion": return completion(request.params as CompletionParams);
+
       case "textDocument/didOpen": return didOpen(request.params as DidOpenTextDocumentParams);
       case "textDocument/didChange": return didChange(request.params as DidChangeTextDocumentParams);
+      case "textDocument/didClose": return didClose(request.params as DidCloseTextDocumentParams);
+      case "textDocument/documentColor": return documentColor(request.params as DocumentColorParams);
+
       case "textDocument/hover": return hover(request.params as HoverParams);
+      case "textDocument/completion": return completion(request.params as CompletionParams);
+
+      case "completionItem/resolve": return resolve(request.params as CompletionItem);
       default:
         return null;
     }
@@ -87,48 +96,4 @@ export class Server {
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
     Deno.stdout.write(this.#encoder.encode(payload));
   }
-}
-
-
-for (const signal of [
-  "SIGABRT",
-  "SIGALRM",
-  "SIGBREAK",
-  "SIGBUS",
-  "SIGCHLD",
-  "SIGCONT",
-  "SIGEMT",
-  "SIGFPE",
-  "SIGHUP",
-  "SIGILL",
-  "SIGINFO",
-  "SIGINT",
-  "SIGIO",
-  "SIGPOLL",
-  "SIGUNUSED",
-  "SIGKILL",
-  "SIGPIPE",
-  "SIGPROF",
-  "SIGPWR",
-  "SIGQUIT",
-  "SIGSEGV",
-  "SIGSTKFLT",
-  "SIGSTOP",
-  "SIGSYS",
-  "SIGTERM",
-  "SIGTRAP",
-  "SIGTSTP",
-  "SIGTTIN",
-  "SIGTTOU",
-  "SIGURG",
-  "SIGUSR1",
-  "SIGUSR2",
-  "SIGVTALRM",
-  "SIGWINCH",
-  "SIGXCPU",
-  "SIGXFSZ",
-] as const) {
-  Deno.addSignalListener(signal, () => {
-    Logger.logMessage(signal, 5);
-  })
 }
