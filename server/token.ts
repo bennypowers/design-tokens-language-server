@@ -6,7 +6,6 @@ export function getTokenMarkdown({ name, $description, $value, $type }: Token) {
   const desc = $description ? `: ${$description}` : "";
   const type = $type ? ` *<\`${$type}\`>*` : "";
   let value = $value;
-  // 'cause why parse when you can .replace?
   if ($value?.startsWith?.("light-dark\(") && $value.split("\n").length === 1) {
     const [light, , dark] = parse($value)?.pop()?.nodes ?? [];
     value = `light-dark(
