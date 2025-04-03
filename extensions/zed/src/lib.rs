@@ -15,8 +15,8 @@ impl DesignTokensLanguageserverExtension {
         _id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<String, String> {
-        if let Some(path) = worktree.which("deno") {
-            return Ok(path);
+        if let Some(path) = Some("/var/home/bennyp/.local/bin/design-tokens-language-server") {
+            return Ok(path.to_string());
         }
 
         if let Some(path) = &self.cached_binary_path {
@@ -69,8 +69,7 @@ impl zed::Extension for DesignTokensLanguageserverExtension {
         id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command, std::string::String> {
-        // let command = self.language_server_binary_path(id, worktree);
-        let command = Ok("/var/home/bennyp/.local/bin/design-tokens-language-server");
+        let command = self.language_server_binary_path(id, worktree);
         match command {
             Ok(command) => Ok(zed::Command {
                 command: command.to_string(),
