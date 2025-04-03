@@ -27,6 +27,6 @@ export function getCSSWordUntilPosition(uri: string, position: Position): null |
   const line = text?.split('\n')[position.line] ?? null;
   const until = line?.slice(0, position.character + 1) ?? null;
   const word = until?.replace(/.*\s+(.*?)/, "$1") ?? null;
-  Logger.write({ uri, text, line, until, word });
+  Logger.debug({ uri, text, line, until, word });
   return word;
 }
