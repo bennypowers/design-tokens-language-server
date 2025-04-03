@@ -69,10 +69,11 @@ impl zed::Extension for DesignTokensLanguageserverExtension {
         id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command, std::string::String> {
-        let command = self.language_server_binary_path(id, worktree);
+        // let command = self.language_server_binary_path(id, worktree);
+        let command = Ok("/var/home/bennyp/.local/bin/design-tokens-language-server");
         match command {
             Ok(command) => Ok(zed::Command {
-                command,
+                command: command.to_string(),
                 args: [].to_vec(),
                 env: Default::default(),
             }),
