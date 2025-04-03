@@ -1,6 +1,5 @@
 import type { CompletionItem, MarkupKind } from "vscode-languageserver-protocol";
 
-
 import { get } from "../../storage.ts";
 
 import { getTokenMarkdown } from "../../markdown.ts";

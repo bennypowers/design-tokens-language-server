@@ -1,8 +1,8 @@
-import type { Hover, HoverParams } from "vscode-languageserver-protocol";
+import { Hover, HoverParams, MarkupContent, MarkupKind } from "vscode-languageserver-protocol";
 
 import { getCSSWordAtPosition } from "../../css/css.ts";
 import { get } from "../../storage.ts";
-import { getTokenMarkdown } from "../../token.ts";
+import { getTokenMarkdown } from "../../markdown.ts";
 
 export function hover(params: HoverParams): null | Hover {
   const { word, range } = getCSSWordAtPosition(
@@ -11,13 +11,11 @@ export function hover(params: HoverParams): null | Hover {
   );
   const token = get(word?.replace(/^--/, "") ?? "");
   if (token) {
-    return {
-      contents: {
-        value: getTokenMarkdown(token),
-        kind: "markdown",
-      },
-      range,
-    };
+    const contents: MarkupContent = {
+      value: getTokenMarkdown(token),
+      kind: MarkupKind.Markdown,
+    }
+    return { contents, range };
   }
   return null;
 }
