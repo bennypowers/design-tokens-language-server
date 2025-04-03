@@ -3,19 +3,19 @@
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
     "bundle": "deno -A build.ts",
     "compile": {
-      "command": "deno compile --unstable-temporal --allow-all --no-check --output bin/design-tokens-language-server dist/main.js --stdio",
+      "command": "cd dist && deno compile --no-lock --no-remote --reload --no-config --unstable-temporal --allow-all --no-check --output bin/design-tokens-language-server main.js --stdio",
       "dependencies": [
         "bundle"
       ]
     },
     "copy": {
-      "command": "cp bin/design-tokens-language-server /var/home/bennyp/.local/bin/design-tokens-language-server",
+      "command": "cp $(which deno) dist/bin/ && cp dist/bin/design-tokens-language-server /var/home/bennyp/.local/bin/",
       "dependencies": [
         "compile"
       ]
     },
     "vscode:copy": {
-      "command": "mkdir -p extensions/vscode/dist && cp -r main.js bin extensions/vscode/dist && cp $(which deno) extensions/vscode/dist/bin/",
+      "command": "mkdir -p extensions/vscode/dist && cp -r dist extensions/vscode/",
       "dependencies": [
         "compile",
         "copy"
@@ -28,29 +28,10 @@
         "vscode:copy"
       ]
     },
-    "vscode:install": {
-      "command": "flatpak run --command='bash -c codium --install-extension /var/home/bennyp/Developer/design-tokens-language-server/extensions/vscode/design-tokens-language-server-vscode:1.0.0.vsix' com.vscodium.codium",
-      "dependencies": [
-        "vscode:build"
-      ]
-    },
-    "zed:copy": {
-      "command": "mkdir -p extensions/zed/dist && cp -r main.js bin extensions/zed/dist/",
-      "dependencies": [
-        "compile",
-        "copy"
-      ]
-    },
-    "zed:build": {
-      "dependencies": [
-        "zed:copy"
-      ]
-    },
     "build": {
       "command": "echo DONE",
       "dependencies": [
         "vscode:build",
-        "zed:build",
         "copy"
       ]
     }

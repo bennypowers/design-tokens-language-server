@@ -21,7 +21,7 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
       hoverProvider: true,
       textDocumentSync: TextDocumentSyncKind.Full,
       // FIXME: completion is totally busted - not clear why
-      completionProvider: { resolveProvider: true },
+      // completionProvider: { resolveProvider: true },
       colorProvider: { },
     },
     serverInfo: {
