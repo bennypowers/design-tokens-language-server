@@ -1,7 +1,13 @@
 {
   "tasks": {
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
-    "compile": "deno compile --unstable-temporal -A --output bin/design-tokens-language-server main.ts --stdio",
+    "bundle": "deno -A build.ts",
+    "compile": {
+      "command": "deno compile --unstable-temporal --allow-all --no-check --output bin/design-tokens-language-server dist/main.js --stdio",
+      "dependencies": [
+        "bundle"
+      ]
+    },
     "copy": {
       "command": "cp bin/design-tokens-language-server /var/home/bennyp/.local/bin/design-tokens-language-server",
       "dependencies": [
@@ -9,9 +15,10 @@
       ]
     },
     "vscode:copy": {
-      "command": "mkdir -p extensions/vscode/bin && cp bin/design-tokens-language-server extensions/vscode/bin/design-tokens-language-server",
+      "command": "mkdir -p extensions/vscode/dist && cp -r main.js bin extensions/vscode/dist && cp $(which deno) extensions/vscode/dist/bin/",
       "dependencies": [
-        "compile"
+        "compile",
+        "copy"
       ]
     },
     "vscode:build": {
@@ -28,9 +35,10 @@
       ]
     },
     "zed:copy": {
-      "command": "mkdir -p extensions/zed/bin && cp bin/design-tokens-language-server extensions/zed/bin/design-tokens-language-server",
+      "command": "mkdir -p extensions/zed/dist && cp -r main.js bin extensions/zed/dist/",
       "dependencies": [
-        "compile"
+        "compile",
+        "copy"
       ]
     },
     "zed:build": {
@@ -48,6 +56,7 @@
     }
   },
   "imports": {
+    "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@^0.11.1",
     "@std/assert": "jsr:@std/assert@1",
     "style-dictionary": "npm:style-dictionary@^4.3.3",
     "vscode-languageserver-protocol": "npm:vscode-languageserver-protocol@^3.17.5"

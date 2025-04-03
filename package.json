@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@types/tinycolor2": "^1.4.6",
+    "esbuild": "^0.25.2",
     "tinycolor2": "^1.6.0"
   }
 }

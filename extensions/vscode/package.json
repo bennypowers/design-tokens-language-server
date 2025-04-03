@@ -24,9 +24,7 @@
   },
   "scripts": {
     "vscode:prepublish": "node build.js",
-    "compile": "tsc -b",
     "build": "npx @vscode/vsce package",
-    "watch": "tsc -b -w",
     "postinstall": "cd client && npm install && cd .."
   },
   "devDependencies": {

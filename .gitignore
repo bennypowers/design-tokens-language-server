@@ -6,4 +6,6 @@ bin
 **/venv
 *.wasm
 *.xcodeproj
+**/dist
+main.js
 .vscode
