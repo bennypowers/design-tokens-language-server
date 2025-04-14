@@ -36,8 +36,7 @@ export class Logger {
     }
   }
 
-  static async #write(message: unknown) {
-    const kind = isRequestMessage(message) ? 'RECV' : isResponseMessage(message) ? 'SEND' : 'DBUG';
+  static async #write(message: unknown, kind: 'SEND'|'RECV'|'DBUG') {
     await this.#init();
     const prefix = `\r\n\r\n// [dtls][${kind}][${Temporal.Now.plainDateTimeISO()}]\r\n`;
     const stringified = typeof message === 'object' ? JSON.stringify(message) : `${message}`
@@ -50,13 +49,16 @@ export class Logger {
     Deno.stdout.write(this.#encoder.encode(payload));
   }
 
-  static logMessage(message: string|object, type: MessageType = MessageType.Log) {
+  static logMessage(message: string|object, type: MessageType = MessageType.Log, report: boolean) {
+    const kind = isRequestMessage(message) ? 'SEND' : isResponseMessage(message) ? 'RECV' : 'DBUG';
     message = typeof message === 'string' ? message : JSON.stringify(message);
-    this.#write(message);
+    this.#write(message, kind);
     if (type === MessageType.Error)
       this.showMessage(message, type);
-    const rpcmessage = JSON.stringify({ method: "window/logMessage", params: { message, type } });
-    this.#report(rpcmessage);
+    if (report) {
+      const rpcmessage = JSON.stringify({ method: "window/logMessage", params: { message, type } });
+      this.#report(rpcmessage);
+    }
   }
 
   static showMessage(message: string|object, type: MessageType = MessageType.Log) {
@@ -64,9 +66,9 @@ export class Logger {
     this.#report(rpcmessage);
   }
 
-  static debug(message: string|object) { this.logMessage(message, MessageType.Debug); }
-  static info(message: string|object) { this.logMessage(message, MessageType.Info); }
-  static log(message: string|object) { this.logMessage(message, MessageType.Log); }
-  static warn(message: string|object) { this.logMessage(message, MessageType.Warning); }
-  static error(message: string|object) { this.logMessage(message, MessageType.Error); }
+  static debug(message: string|object, report = false) { this.logMessage(message, MessageType.Debug, report); }
+  static info(message: string|object, report = false) { this.logMessage(message, MessageType.Info, report); }
+  static log(message: string|object, report = false) { this.logMessage(message, MessageType.Log, report); }
+  static warn(message: string|object, report = false) { this.logMessage(message, MessageType.Warning, report); }
+  static error(message: string|object, report = false) { this.logMessage(message, MessageType.Error, report); }
 }

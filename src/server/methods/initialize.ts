@@ -2,6 +2,7 @@ import {
   InitializeParams,
   InitializeResult,
   TextDocumentSyncKind,
+  CodeActionKind,
 } from "vscode-languageserver-protocol";
 
 import { register } from "../storage.ts";
@@ -18,6 +19,7 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
 
   return {
     capabilities: {
+      colorProvider: true,
       hoverProvider: true,
       textDocumentSync: TextDocumentSyncKind.Full,
       // FIXME: completion is totally busted - not clear why
@@ -27,7 +29,11 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
           labelDetailsSupport: true,
         },
       },
-      colorProvider: { },
+      codeActionProvider: {
+        codeActionKinds: [
+          CodeActionKind.RefactorRewrite
+        ]
+      },
     },
     serverInfo: {
       name: "design-tokens-language-server",

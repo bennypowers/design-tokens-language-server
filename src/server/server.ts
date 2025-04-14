@@ -31,6 +31,8 @@ export class Server {
   static #decoder = new TextDecoder();
   static #encoder = new TextEncoder();
 
+  static #deadRequests = new Set<RequestMessage['id']>;
+
   static async serve() {
     for await (const chunk of Deno.stdin.readable) {
       this.#handleChunk(chunk);
@@ -54,6 +56,9 @@ export class Server {
     const slice = this.messageCollector.slice(messageStart, messageEnd);
 
     const request = JSON.parse(slice) as RequestMessage;
+
+    if (request.id !== null && this.#deadRequests.has(request.id))
+      return;
 
     let result, error;
 
@@ -82,18 +87,27 @@ export class Server {
       case "textDocument/completion": return completion(request.params as CompletionParams);
 
       case "completionItem/resolve": return resolve(request.params as CompletionItem);
+
+      case "$/cancelRequest": {
+        const { id } = (request.params as RequestMessage)
+        Logger.debug(`Cancel ${id}`);
+        this.#deadRequests.add(id);
+        return null;
+      }
+
       default:
         return null;
     }
   }
 
   static #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
-    if (id == null && !result && !error)
-      return;
-    const message = JSON.stringify({ jsonrpc: "2.0", id, result, error });
-    const messageLength = this.#encoder.encode(message).byteLength;
-    Logger.debug(message);
-    const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
-    Deno.stdout.write(this.#encoder.encode(payload));
+    if (!((id == null && !result && !error) || id != null && this.#deadRequests.has(id))) {
+      const message = JSON.stringify({ jsonrpc: "2.0", id, result, error });
+      const messageLength = this.#encoder.encode(message).byteLength;
+      Logger.debug(message, false);
+      const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
+      Deno.stdout.write(this.#encoder.encode(payload));
+      this.#deadRequests.add(id ?? null);
+    }
   }
 }

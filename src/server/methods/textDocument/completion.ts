@@ -4,41 +4,18 @@ import {
   CompletionItemKind,
   CompletionParams,
   CompletionList,
-  InlineCompletionTriggerKind,
   InsertTextFormat,
   InsertTextMode,
+  Position,
 } from "vscode-languageserver-protocol";
 
 import { all } from "../../storage.ts";
 
-import { getCSSWordAtPosition } from "../../css/css.ts";
+import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../css/css.ts";
 import { Logger } from "../../logger.ts";
 
 interface NamedToken extends Token {
   name: string;
-}
-
-const good = {
-  "label": "additive-symbols",
-  "documentation": {
-    "kind": "plaintext",
-    "value": "@counter-style descriptor. Specifies the symbols used by the marker-construction algorithm specified by the system descriptor. Needs to be specified if the counter system is 'additive'.\n(Firefox 33)\n\nSyntax: [ <integer> && <symbol> ]#"
-  },
-  "tags": [],
-  "textEdit": {
-    "range": {
-      "start": { "line": 5, "character": 4 },
-      "end": { "line": 5, "character": 9 }
-    },
-    "newText": "additive-symbols: $0;"
-  },
-  "insertTextFormat": 2,
-  "kind": 10,
-  "command": {
-    "title": "Suggest",
-    "command": "editor.action.triggerSuggest"
-  },
-  "sortText": "d_cd"
 }
 
 const matchesWord =
@@ -50,25 +27,37 @@ const matchesWord =
         .replaceAll("-", "")
         .startsWith(word.replaceAll("-", ""));
 
+function offset(pos: Position, offset: Partial<Position>): Position {
+  return {
+    line: pos.line + (offset.line ?? 0),
+    character: pos.character + (offset.character ?? 0),
+  };
+}
+
 export async function completion(params: CompletionParams): Promise<null | CompletionList | CompletionItem[]> {
   await new Promise(r => setTimeout(r));
-  const { word, range } = getCSSWordAtPosition(params.textDocument.uri, params.position);
-  const trigger = params.context?.triggerKind === InlineCompletionTriggerKind.Automatic ? word + params.context.triggerCharacter : word;
+  const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
+  if (!node) return null;
+  // const trigger = params.context?.triggerKind === InlineCompletionTriggerKind.Automatic ?
+  //   node.text + params.context.triggerCharacter : node.text;
   try {
-    const items = all().filter(matchesWord(trigger)).map(({ name, $value }) => ({
+    const range = tsNodeToRange(node);
+    Logger.debug({ node: node.text, range });
+    const items = all().filter(matchesWord(node.text)).map(({ name, $value }) => ({
       label: name,
       kind: 15 satisfies typeof CompletionItemKind.Snippet,
       ...(range ? {
         textEdit: {
           range,
-          newText: `var(--${name}\${1:|\, ${$value},|}):0`,
+          newText: `var(--${name}\${1|\\, ${$value},|})$0`,
         }
       } : {
-        insertText:  `var(--${name}\${1:|\, ${$value},|}):0`,
+        insertText: `var(--${name}\${1|\\, ${$value},|}):0`,
       })
     }) satisfies CompletionItem).toArray();
     return {
-      isIncomplete: false,
+      // TODO: perf
+      isIncomplete: items.length === 0 || items.length < all().toArray().length,
       itemDefaults: {
         insertTextFormat: InsertTextFormat.Snippet,
         insertTextMode: InsertTextMode.asIs,

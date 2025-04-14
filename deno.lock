@@ -10,11 +10,16 @@
     "jsr:@std/path@^1.0.6": "1.0.8",
     "npm:@types/tinycolor2@^1.4.6": "1.4.6",
     "npm:esbuild@~0.25.2": "0.25.2",
+    "npm:node-tree-sitter@^0.0.1": "0.0.1",
     "npm:style-dictionary@*": "4.3.3",
     "npm:style-dictionary@^4.3.3": "4.3.3",
+    "npm:tinycolor2@*": "1.6.0",
     "npm:tinycolor2@^1.6.0": "1.6.0",
+    "npm:tree-sitter-css@~0.23.2": "0.23.2",
+    "npm:tree-sitter-json@~0.24.8": "0.24.8",
     "npm:vscode-languageserver-protocol@*": "3.17.5",
-    "npm:vscode-languageserver-protocol@^3.17.5": "3.17.5"
+    "npm:vscode-languageserver-protocol@^3.17.5": "3.17.5",
+    "npm:web-tree-sitter@~0.25.3": "0.25.3"
   },
   "jsr": {
     "@luca/esbuild-deno-loader@0.11.1": {
@@ -682,6 +687,19 @@
     "minipass@7.1.2": {
       "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw=="
     },
+    "node-addon-api@8.3.1": {
+      "integrity": "sha512-lytcDEdxKjGJPTLEfW4mYMigRezMlyJY8W4wxJK8zE533Jlb8L8dRuObJFWg2P+AuOIxoCgKF+2Oq4d4Zd0OUA=="
+    },
+    "node-gyp-build@4.8.4": {
+      "integrity": "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ=="
+    },
+    "node-tree-sitter@0.0.1": {
+      "integrity": "sha512-9S/Y7JEHG8QT2GyhKhnOp8I13KGTHCVO0mWSBjmuUgsls+pndcZjj5ClsZ3FGDp71aWFb+eBfna+uNBPbpEclg==",
+      "dependencies": [
+        "node-addon-api",
+        "node-gyp-build"
+      ]
+    },
     "object-inspect@1.13.4": {
       "integrity": "sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew=="
     },
@@ -962,6 +980,20 @@
         "tslib"
       ]
     },
+    "tree-sitter-css@0.23.2": {
+      "integrity": "sha512-B7teNQrPIEEus37nvv00FcW6tw3bXsMUAZDi56OyZAp8cNebA1NPBEZxzIabtyHQnwXSKXeRtUzYhWxTa0JuAg==",
+      "dependencies": [
+        "node-addon-api",
+        "node-gyp-build"
+      ]
+    },
+    "tree-sitter-json@0.24.8": {
+      "integrity": "sha512-Tc9ZZYwHyWZ3Tt1VEw7Pa2scu1YO7/d2BCBbKTx5hXwig3UfdQjsOPkPyLpDJOn/m1UBEWYAtSdGAwCSyagBqQ==",
+      "dependencies": [
+        "node-addon-api",
+        "node-gyp-build"
+      ]
+    },
     "tslib@2.8.1": {
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="
     },
@@ -1004,6 +1036,9 @@
     "vscode-languageserver-types@3.17.5": {
       "integrity": "sha512-Ld1VelNuX9pdF39h2Hgaeb5hEZM2Z3jUrrMgWQAu82jMtZp7p3vJT3BzToKtZI7NgQssZje5o0zryOrhQvzQAg=="
     },
+    "web-tree-sitter@0.25.3": {
+      "integrity": "sha512-e0hdXG+nJ18Zd/QJFhSx0DNTSMz7miwUjKyJ/lglTnZo6ke08++BQzXkaeaqnGJFi9qq+nPJg2L8hYAjduToHQ=="
+    },
     "which-typed-array@1.1.19": {
       "integrity": "sha512-rEvr90Bck4WZt9HHFC4DJMsjvu7x+r6bImz0/BrbWb7A2djJ8hnZMrWnHo9F8ssv0OMErasDhftrfROTyqSDrw==",
       "dependencies": [
@@ -1045,18 +1080,44 @@
       "integrity": "sha512-10ULxpnOCQXxJvBgxsn9ptjq6uviG/htZKk9veJGhlqn3w/DxQ631zFF+nlQXLwmImeS5amR2dl2U8sg6U9jsQ=="
     }
   },
+  "redirects": {
+    "https://esm.sh/gh/jeff-hykin/good-js@1.7.1.1/source/array.js": "https://esm.sh/gh/jeff-hykin/good-js@cb479a9/source/array.js",
+    "https://github.com/jeff-hykin/common_tree_sitter_languages/raw/a1c34a3a73a173f82657e25468efc76e9e593843/main/css.js": "https://raw.githubusercontent.com/jeff-hykin/common_tree_sitter_languages/a1c34a3a73a173f82657e25468efc76e9e593843/main/css.js"
+  },
+  "remote": {
+    "https://deno.land/x/deno_tree_sitter@0.2.8.5/main.js": "d5fd38c7fa99044ad43f85553f624e6cf79a0a13b590af02c4d8b69ab165679a",
+    "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.js": "d11e616eec8c706b31286d5abdb6c77e3fb2f718d438e3f71c20b318afb00599",
+    "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.wasm.binaryified.js": "f33a47484aa05fee2a1e4a88aadfd347b7ca8ca7877f0339130bb175eb4228bc",
+    "https://deno.land/x/good@1.14.2.1/flattened/all_keys.js": "71ed06664181d08960b7df5e401bf7f82224457a65b41d5ddd71fd0e5e61b0cc",
+    "https://deno.land/x/good@1.14.2.1/flattened/indent.js": "8014a642ee1d22901b9c5e8768ce7b0e582bfe142814442199b44a7e17dbbaa0",
+    "https://deno.land/x/good@1.14.2.1/flattened/is_valid_identifier.js": "8336e641318bbe52d9a948f4b1c30a544c6e23d298a60d7383dfd896eaa8f32d",
+    "https://deno.land/x/good@1.14.2.1/flattened/is_valid_key_literal.js": "92a4006858f0db16da69e929900be675e0b0fd240fe177a86fe0b75b8114b39f",
+    "https://deno.land/x/good@1.14.2.1/flattened/to_representation.js": "43b790e1fa70eb2d008bd2629dbc5403e930e81d4b5479e17b35aff6d13a6785",
+    "https://deno.land/x/good@1.14.2.1/flattened/typed_array__class.js": "90aff697c9b806cc12c2d72fd4aad994b1239790fc4da060d8e9621bf84070d6",
+    "https://deno.land/x/good@1.14.2.1/flattened/typed_array_classes.js": "a4820d7bbec03a38fb26f45ed3995fedbebc355e934d046b6f490b55df959300",
+    "https://esm.sh/gh/jeff-hykin/good-js@cb479a9/denonext/source/array.mjs": "1cf6395c4896d030acd40380ec0b617deb6b2e506d201a255e572eadaad24e61",
+    "https://esm.sh/gh/jeff-hykin/good-js@cb479a9/source/array.js": "a656aaa05b016e22937d7208e2e0c42cc706d7497e77607a6a2f0b36bb6c51a9",
+    "https://raw.githubusercontent.com/jeff-hykin/common_tree_sitter_languages/a1c34a3a73a173f82657e25468efc76e9e593843/main/css.js": "19e44a32e582c04ce369693c64c7130ec6772dba2ca54602ff13f85cd1bf7ffb"
+  },
   "workspace": {
     "dependencies": [
       "jsr:@luca/esbuild-deno-loader@~0.11.1",
       "jsr:@std/assert@1",
       "npm:style-dictionary@^4.3.3",
-      "npm:vscode-languageserver-protocol@^3.17.5"
+      "npm:tree-sitter-css@~0.23.2",
+      "npm:tree-sitter-json@~0.24.8",
+      "npm:vscode-languageserver-protocol@^3.17.5",
+      "npm:web-tree-sitter@~0.25.3"
     ],
     "packageJson": {
       "dependencies": [
         "npm:@types/tinycolor2@^1.4.6",
         "npm:esbuild@~0.25.2",
-        "npm:tinycolor2@^1.6.0"
+        "npm:node-tree-sitter@^0.0.1",
+        "npm:tinycolor2@^1.6.0",
+        "npm:tree-sitter-css@~0.23.2",
+        "npm:tree-sitter-json@~0.24.8",
+        "npm:web-tree-sitter@~0.25.3"
       ]
     }
   }

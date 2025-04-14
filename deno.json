@@ -1,9 +1,16 @@
 {
+  "nodeModulesDir": "auto",
   "tasks": {
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
     "bundle": "deno -A build.ts",
-    "compile": {
+    "xompile": {
       "command": "cd dist && deno compile --no-lock --no-remote --reload --no-config --unstable-temporal --allow-all --no-check --output bin/design-tokens-language-server main.js --stdio",
+      "dependencies": [
+        "bundle"
+      ]
+    },
+    "compile": {
+      "command": "deno compile --unstable-temporal --allow-all --output dist/bin/design-tokens-language-server src/main.ts --stdio",
       "dependencies": [
         "bundle"
       ]
@@ -39,7 +46,11 @@
   "imports": {
     "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@^0.11.1",
     "@std/assert": "jsr:@std/assert@1",
+    "fs": "node:fs",
     "style-dictionary": "npm:style-dictionary@^4.3.3",
+    "tree-sitter-css": "npm:tree-sitter-css@^0.23.2",
+    "tree-sitter-json": "npm:tree-sitter-json@^0.24.8",
+    "web-tree-sitter": "npm:web-tree-sitter@^0.25.3",
     "vscode-languageserver-protocol": "npm:vscode-languageserver-protocol@^3.17.5"
   }
 }

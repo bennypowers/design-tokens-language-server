@@ -10,6 +10,10 @@
   "dependencies": {
     "@types/tinycolor2": "^1.4.6",
     "esbuild": "^0.25.2",
-    "tinycolor2": "^1.6.0"
+    "node-tree-sitter": "^0.0.1",
+    "tinycolor2": "^1.6.0",
+    "tree-sitter-css": "^0.23.2",
+    "tree-sitter-json": "^0.24.8",
+    "web-tree-sitter": "^0.25.3"
   }
 }
