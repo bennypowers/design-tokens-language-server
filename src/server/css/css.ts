@@ -6,18 +6,24 @@ import { parserFromWasm } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/mai
 
 const parser = await Promise.resolve(parserFromWasm('https://github.com/jeff-hykin/common_tree_sitter_languages/raw/refs/heads/master/main/css.wasm'));
 
-interface TSQueryCapture {
+export interface TSQueryCapture {
   name: string;
-  node: Omit<ReturnType<Node['toJSON']> & { hasChildren: boolean }, 'text'|'rootLeadingWhitespace'|'fieldNames'>;
+  node: Omit<HardNode, 'children'> & TSNodePosition & { children: HardNode[] };
 }
 
-interface TSQueryResult {
+export interface TSQueryResult {
   pattern: number;
   captures: TSQueryCapture[]
 }
 
-export interface SyntaxNode extends HardNode {
-  startPosition: HardNode['endPosition'];
+export interface TSNodePosition {
+  endPosition: { row: number; column: number; };
+  startPosition: { row: number; column: number; }
+}
+
+export interface SyntaxNode extends Node, TSNodePosition {
+  type: string;
+  text: string;
 }
 
 // const cssTreeCache = new Map<DocumentUri, Tree>;
@@ -29,9 +35,13 @@ function getCssTreeForDocument(uri: DocumentUri) {
   return tree;
 }
 
-export function queryCssDocument(uri: DocumentUri, query: string) {
-  const rootNode = getCssTreeForDocument(uri).rootNode as SyntaxNode
-  return rootNode.query(query, {}) as unknown as TSQueryResult[];
+export function queryCssDocument(
+  uri: DocumentUri,
+  query: string,
+  options?: TSNodePosition,
+) {
+  const rootNode = getCssTreeForDocument(uri).rootNode as HardNode
+  return rootNode.query(query, options ?? {}) as unknown as TSQueryResult[];
 }
 
 export function getCssSyntaxNodeAtPosition(uri: DocumentUri, position: Position): null | SyntaxNode {
@@ -48,3 +58,29 @@ export function tsNodeToRange(node: SyntaxNode): Range {
   };
 }
 
+export function tsNodeIsInLspRange(node: TSNodePosition, range: Range): boolean {
+  const inRows =
+       node.startPosition.row >= range.start.line
+    && node.endPosition.row <= range.end.line;
+  const inCols =
+       node.startPosition.column >= range.start.character
+    && node.endPosition.column <= range.end.character;
+  return (inRows && inCols);
+}
+
+export function lspRangeIsInTsNode(node: TSNodePosition, range: Range): boolean {
+  const inRows =
+       node.startPosition.row >= range.start.line
+    && node.endPosition.row <= range.end.line;
+  const inCols =
+       node.startPosition.column <= range.start.character
+    && node.endPosition.column >= range.end.character;
+  return (inRows && inCols);
+}
+
+export function tsNodeToLspRange(node: Pick<SyntaxNode, 'startPosition'|'endPosition'>): Range {
+  return {
+    start: { line: node.startPosition.row, character: node.startPosition.column },
+    end: { line: node.endPosition.row, character: node.endPosition.column },
+  }
+}

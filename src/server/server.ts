@@ -1,4 +1,5 @@
 import {
+CodeActionParams,
   CompletionItem,
   CompletionParams,
   DidChangeTextDocumentParams,
@@ -24,6 +25,7 @@ import { hover } from "./methods/textDocument/hover.ts";
 
 import { completion } from "./methods/textDocument/completion.ts";
 import { resolve } from "./methods/completionItem/resolve.ts";
+import { codeAction } from "./methods/textDocument/codeAction.ts";
 
 export class Server {
   static messageCollector = "";
@@ -75,28 +77,34 @@ export class Server {
   }
 
   static async #result(request: RequestMessage): Promise<unknown> {
-    switch (request.method) {
-      case "initialize": return initialize(request.params as InitializeParams);
+    try {
+      switch (request.method) {
+        case "initialize": return initialize(request.params as InitializeParams);
 
-      case "textDocument/didOpen": return didOpen(request.params as DidOpenTextDocumentParams);
-      case "textDocument/didChange": return didChange(request.params as DidChangeTextDocumentParams);
-      case "textDocument/didClose": return didClose(request.params as DidCloseTextDocumentParams);
-      case "textDocument/documentColor": return documentColor(request.params as DocumentColorParams);
+        case "textDocument/didOpen": return didOpen(request.params as DidOpenTextDocumentParams);
+        case "textDocument/didChange": return didChange(request.params as DidChangeTextDocumentParams);
+        case "textDocument/didClose": return didClose(request.params as DidCloseTextDocumentParams);
+        case "textDocument/documentColor": return documentColor(request.params as DocumentColorParams);
 
-      case "textDocument/hover": return hover(request.params as HoverParams);
-      case "textDocument/completion": return completion(request.params as CompletionParams);
+        case "textDocument/hover": return hover(request.params as HoverParams);
+        case "textDocument/completion": return completion(request.params as CompletionParams);
+        case "textDocument/codeAction": return codeAction(request.params as CodeActionParams);
 
-      case "completionItem/resolve": return resolve(request.params as CompletionItem);
+        case "completionItem/resolve": return resolve(request.params as CompletionItem);
 
-      case "$/cancelRequest": {
-        const { id } = (request.params as RequestMessage)
-        Logger.debug(`Cancel ${id}`);
-        this.#deadRequests.add(id);
-        return null;
+        case "$/cancelRequest": {
+          const { id } = (request.params as RequestMessage)
+          Logger.debug(`Cancel ${id}`);
+          this.#deadRequests.add(id);
+          return null;
+        }
+
+        default:
+          return null;
       }
-
-      default:
-        return null;
+    } catch(e) {
+      Logger.error(`${e}`)
+      return null;
     }
   }
 

@@ -35,11 +35,8 @@ function offset(pos: Position, offset: Partial<Position>): Position {
 }
 
 export async function completion(params: CompletionParams): Promise<null | CompletionList | CompletionItem[]> {
-  await new Promise(r => setTimeout(r));
   const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
   if (!node) return null;
-  // const trigger = params.context?.triggerKind === InlineCompletionTriggerKind.Automatic ?
-  //   node.text + params.context.triggerCharacter : node.text;
   try {
     const range = tsNodeToRange(node);
     Logger.debug({ node: node.text, range });
