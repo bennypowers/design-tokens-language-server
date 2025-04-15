@@ -13,9 +13,9 @@ function format(value: string): string {
     return value;
 }
 
-export function getTokenMarkdown({ name, $description, $value, $type }: Token) {
+export function getTokenMarkdown(name: string, { $description, $value, $type }: Token) {
   return [
-    `# \`--${name}\``,
+    `# \`--${name.replace(/^--/, '')}\``,
     '',
     // TODO: convert DTCG types to CSS syntax
     // const type = $type ? ` *<\`${$type}\`>*` : "";

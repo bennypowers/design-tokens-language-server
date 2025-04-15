@@ -12,9 +12,9 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
   for (const { uri } of params.workspaceFolders ?? []) {
     const pkgJsonPath = new URL('./package.json', `${uri}/`);
     const { default: manifest } = await import(pkgJsonPath.href, { with: { type: 'json' } });
-    for (const spec of manifest?.designTokensLanguageServer?.tokensFiles ?? [])
-      await register(spec)
-        .catch(() => Logger.error(`Could not load tokens for ${spec}`));
+    for (const tokensFile of manifest?.designTokensLanguageServer?.tokensFiles ?? [])
+      await register(tokensFile)
+        .catch(() => Logger.error(`Could not load tokens for ${tokensFile.path}`));
   }
 
   return {

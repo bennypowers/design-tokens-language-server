@@ -7,10 +7,10 @@ import { getTokenMarkdown } from "../../markdown.ts";
 export function hover(params: HoverParams): null | Hover {
   const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, params.position);
   if (node) {
-    const token = get(node.text.replace(/^--/, "") ?? "");
+    const token = get(node.text);
     if (token) {
       const contents: MarkupContent = {
-        value: getTokenMarkdown(token),
+        value: getTokenMarkdown(node.text, token),
         kind: MarkupKind.Markdown,
       }
       return {

@@ -4,7 +4,10 @@
   "version": "0.0.1",
   "designTokensLanguageServer": {
     "tokensFiles": [
-      "~/Developer/redhat-ux/red-hat-design-tokens/json/rhds.tokens.json"
+      {
+        "prefix": "token",
+        "path": "./test/tokens.json"
+      }
     ]
   },
   "dependencies": {

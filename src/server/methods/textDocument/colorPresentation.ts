@@ -1,5 +1,5 @@
 import type { ColorPresentation, ColorPresentationParams } from "vscode-languageserver-protocol";
-import { all } from "../../storage.ts";
+import { tokens } from "../../storage.ts";
 
 export function colorPresentation(params: ColorPresentationParams): ColorPresentation[] {
   params.color
@@ -12,9 +12,9 @@ export function colorPresentation(params: ColorPresentationParams): ColorPresent
   // const word = text.split('\n')[start.line].substring(start.character, end.character);
   // const token = get(word.replace(/^--/, ''))
   // if (token) {}
-  return all().map(function (token) {
+  return tokens.entries().map(function ([name]) {
     return {
-      label: `--${token.name}`,
+      label: `--${name}`,
     }
   }).toArray();
 }

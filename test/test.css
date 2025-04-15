@@ -1,7 +1,6 @@
 a {
-  color: var(--rh-color-black);
-  background: var(--rh-color-surface-lighter);
-  text-emphasis-color: var(--rh-color-red-orange-30);
-  border-color: var(--rh-color-border-subtle)
+  background: var(--token-color-red);
+  border-color: var(--token-color-green);
+  color: var(--token-color-blue);
 }
 

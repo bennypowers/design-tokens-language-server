@@ -9,21 +9,15 @@ import {
   Position,
 } from "vscode-languageserver-protocol";
 
-import { all } from "../../storage.ts";
+import { tokens } from "../../storage.ts";
 
 import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../css/css.ts";
 import { Logger } from "../../logger.ts";
 
-interface NamedToken extends Token {
-  name: string;
-}
-
 const matchesWord =
-(word: string | null) =>
-  (x: Token): x is NamedToken =>
-    !!word &&
-    !!x.name &&
-    x.name
+  (word: string | null) =>
+    ([name]: [name: string, x: Token]): boolean =>
+      !!word && !!name && name
         .replaceAll("-", "")
         .startsWith(word.replaceAll("-", ""));
 
@@ -39,8 +33,8 @@ export async function completion(params: CompletionParams): Promise<null | Compl
   if (!node) return null;
   try {
     const range = tsNodeToRange(node);
-    Logger.debug({ node: node.text, range });
-    const items = all().filter(matchesWord(node.text)).map(({ name, $value }) => ({
+    const items = tokens.entries().filter(matchesWord(node.text))
+    .map(([name, { $value }]) => ({
       label: name,
       kind: 15 satisfies typeof CompletionItemKind.Snippet,
       ...(range ? {
@@ -54,7 +48,7 @@ export async function completion(params: CompletionParams): Promise<null | Compl
     }) satisfies CompletionItem).toArray();
     return {
       // TODO: perf
-      isIncomplete: items.length === 0 || items.length < all().toArray().length,
+      isIncomplete: items.length === 0 || items.length < tokens.size,
       itemDefaults: {
         insertTextFormat: InsertTextFormat.Snippet,
         insertTextMode: InsertTextMode.asIs,

@@ -43,7 +43,7 @@ function getEdit(node: HardNode): TextEdit | undefined {
   const token = tokens.get(nameNode.text);
   if (token) {
     // TODO: preserve whitespace
-    const newText = hasFallback ? `(--${token.name})` : `(--${token.name}, ${token.$value})`;
+    const newText = hasFallback ? `(${nameNode.text})` : `(${nameNode.text}, ${token.$value})`;
     const range = tsNodeToLspRange(node as unknown as SyntaxNode);
     return { range, newText }
   }

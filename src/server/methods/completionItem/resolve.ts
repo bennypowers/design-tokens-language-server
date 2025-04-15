@@ -15,7 +15,7 @@ export function resolve(params: CompletionItem): CompletionItem {
         detail: `: ${token.$value}`,
       },
       documentation: token?.$description && {
-        value: getTokenMarkdown(token),
+        value: getTokenMarkdown(`--${params.label}`, token),
         kind: "markdown" satisfies typeof MarkupKind.Markdown,
       },
     };
