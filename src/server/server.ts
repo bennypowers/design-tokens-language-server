@@ -62,9 +62,7 @@ export class Server {
     const request = JSON.parse(slice) as RequestMessage;
 
     if (!(request.id !== null && this.#requests.get(request.id) === DEAD)) {
-      if (request.method === 'document/didOpen')
-        Logger.debug(request)
-      Logger.debug(`📥 (${request.id ?? 'notification'}): ${request.method}`);
+      Logger.debug(`📥 ({id}): {method}`, { id: request.id ?? 'notification', method: request.method });
       this.#respond(request.id, ...await this.#handle(request));
     }
 
@@ -105,7 +103,7 @@ export class Server {
 
         case "$/cancelRequest": {
           const { id } = (request.params as RequestMessage)
-          Logger.debug(`Cancel ${id}`);
+          Logger.debug(`📵 Cancel {id}`, { id });
           this.#requests.delete(id);
           return null;
         }
@@ -114,30 +112,46 @@ export class Server {
           return null;
       }
     } catch(e) {
-      Logger.error(`${e}`)
+      Logger.error(`{e}`, {e});
       return null;
     }
   }
 
   static async #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
     if (!((id == null && !result && !error) || (id != null && !this.#requests.has(id)))) {
-      const message = JSON.stringify({ jsonrpc: "2.0", id, result, error });
+      const pkg = { jsonrpc: "2.0", id, result, error };
+      const message = JSON.stringify(pkg);
       const messageLength = this.#encoder.encode(message).byteLength;
       const request = this.#requests.get(id!);
-      if (id && request && request !== DEAD) {
-        Logger.debug(`↩️  (${id}): ${request.method}`);
+      if (!request)
+        Logger.debug(`↩️ {method}: {result}`, {
+          method: (result as { method: string }).method,
+          result
+        });
+      else if (request === DEAD)
+        this.#requests.delete(id!);
+      else if (id && error) {
+        Logger.error(`↩️  ({id}): {method}\n{error}`, { id, error, method: request.method });
         this.#requests.delete(id);
-      } else if ('method' in (result as { method: string })) {
-        Logger.debug(`↩️  (notification): ${(result as { method: string }).method}`);
       }
-      const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
-      if (!message.match(/^[{\[]/)) Logger.debug(payload)
-      await this.#print(payload);
+      else if (id) {
+        Logger.debug(`↩️  ({id}): {method}\n{result}`, { id, method: request.method, result });
+        this.#requests.delete(id);
+      }
+      await this.#print(`Content-Length: ${messageLength}\r\n\r\n${message}`);
     }
   }
 
+  static #lastWrite: undefined | Promise<unknown>;
+
+  /**
+   * Deno.stdout.write is not guaranteed to write the whole buffer in a single call
+   * using it led to unexpected bugs, bad responses, etc.
+   * https://stackoverflow.com/a/79576657/2515275
+   */
   static async #print(input: string) {
+    if (this.#lastWrite) await this.#lastWrite;
     const stream = new Blob([input]).stream();
-    await stream.pipeTo(Deno.stdout.writable, { preventClose: true })
+    this.#lastWrite = stream.pipeTo(Deno.stdout.writable, { preventClose: true })
   }
 }

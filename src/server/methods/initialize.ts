@@ -14,7 +14,7 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
     const { default: manifest } = await import(pkgJsonPath.href, { with: { type: 'json' } });
     for (const tokensFile of manifest?.designTokensLanguageServer?.tokensFiles ?? [])
       await register(tokensFile)
-        .catch(() => Logger.error(`Could not load tokens for ${tokensFile.path}`));
+        .catch(() => Logger.error(`Could not load tokens for {path}`, { path: tokensFile.path}));
   }
 
   return {
