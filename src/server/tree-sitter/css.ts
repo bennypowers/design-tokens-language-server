@@ -3,6 +3,7 @@ import { documentTextCache } from "../documents.ts";
 
 import type { Node, HardNode } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.js"
 import { parserFromWasm } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/main.js"
+import { tokens } from "../storage.ts";
 
 const parser = await Promise.resolve(parserFromWasm('https://github.com/jeff-hykin/common_tree_sitter_languages/raw/refs/heads/master/main/css.wasm'));
 
@@ -84,3 +85,16 @@ export function tsNodeToLspRange(node: Pick<SyntaxNode, 'startPosition'|'endPosi
     end: { line: node.endPosition.row, character: node.endPosition.column },
   }
 }
+
+export function captureIsTokenName(cap: TSQueryCapture) {
+  return cap.name === 'tokenName' && tokens.has(cap.node.text.replace(/^--/, ''));
+}
+
+export function captureIsTokenCall(cap: TSQueryCapture) {
+  return cap.name === 'call' && !!cap.node.children
+    .find(child => child.type === 'arguments')
+    ?.children
+    .some(child => child.type === 'plain_value'
+                && tokens.has(child.text.replace(/^--/, '')));
+}
+

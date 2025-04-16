@@ -1,102 +1,124 @@
 import {
-  type CodeActionParams,
   type CodeAction,
   CodeActionKind,
+  type CodeActionParams,
   TextEdit,
 } from "vscode-languageserver-protocol";
 import {
+  captureIsTokenCall,
+  captureIsTokenName,
+  lspRangeIsInTsNode,
   queryCssDocument,
+  type SyntaxNode,
   tsNodeIsInLspRange,
   tsNodeToLspRange,
-  lspRangeIsInTsNode,
-  TSQueryCapture,
-  SyntaxNode,
-} from "../../css/css.ts";
+} from "../../tree-sitter/css.ts";
+
+import { VarCall } from "../../tree-sitter/css/queries.ts";
+import { DTLSErrorCodes } from "./diagnostic.ts";
 import { tokens } from "../../storage.ts";
 import { HardNode } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.js";
 
-const scheme = String.raw;
-const QUERY = scheme`
-  (call_expression
-    (function_name) @fn
-    (arguments) @args
-    (#eq? @fn "var")) @call
-`;
-
-function captureIsTokenName(cap: TSQueryCapture) {
-  return cap.name === 'args' && !!cap.node.children
-    .find(child => child.type === 'plain_value'
-                && tokens.has(child.text.replace(/^--/, '')));
+export enum DTLSCodeActionTitles {
+  fixFallback = "Fix token fallback value",
+  fixAllFallbacks = "Fix all token fallback values",
+  toggleFallback = "Toggle design token fallback value",
+  toggleRangeFallbacks = "Toggle design token fallback values (in range)",
 }
 
-function captureIsTokenCall(cap: TSQueryCapture) {
-  return cap.name === 'call' && !!cap.node.children
-    .find(child => child.type === 'arguments')
-    ?.children
-    .some(child => child.type === 'plain_value'
-                && tokens.has(child.text.replace(/^--/, '')));
-}
-
-function getEdit(node: HardNode): TextEdit | undefined {
+function getEditFromTSNode(node: HardNode): TextEdit | undefined {
   const [, nameNode, closeParenOrFallback] = node.children;
-  const hasFallback = closeParenOrFallback.text !== ')';
+  const hasFallback = closeParenOrFallback.text !== ")";
   const token = tokens.get(nameNode.text);
   if (token) {
     // TODO: preserve whitespace
-    const newText = hasFallback ? `(${nameNode.text})` : `(${nameNode.text}, ${token.$value})`;
+    const newText = hasFallback
+      ? `(${nameNode.text})`
+      : `(${nameNode.text}, ${token.$value})`;
     const range = tsNodeToLspRange(node as unknown as SyntaxNode);
-    return { range, newText }
+    return { range, newText };
   }
 }
 
 export function codeAction(params: CodeActionParams): null | CodeAction[] {
-  const results = queryCssDocument(params.textDocument.uri, QUERY);
+  const { textDocument } = params;
+  const results = queryCssDocument(textDocument.uri, VarCall);
 
-  const tokenNameCaptures = results.flatMap(result =>
-    result.captures.filter(cap =>
-         captureIsTokenName(cap)
-      && lspRangeIsInTsNode(cap.node, params.range)));
+  const diagnostics = params.context.diagnostics.filter((d) =>
+    d.code === DTLSErrorCodes.incorrectFallback
+  );
 
-  const tokenCallCaptures = results.flatMap(result =>
-    result.captures.filter(cap =>
-         captureIsTokenCall(cap)
-      && tsNodeIsInLspRange(cap.node, params.range)));
+  const actions = [];
 
-  const kind = CodeActionKind.RefactorRewrite;
+  const fixes: CodeAction[] = diagnostics
+    .map((d) => ({
+      title: DTLSCodeActionTitles.fixFallback,
+      kind: CodeActionKind.QuickFix,
+      data: { textDocument },
+      diagnostics: [d],
+    }));
+
+  actions.push(...fixes);
+
+  if (diagnostics.length) {
+    actions.push({
+      title: DTLSCodeActionTitles.fixAllFallbacks,
+      kind: CodeActionKind.SourceFixAll,
+      data: { textDocument },
+    });
+  }
+
+  const tokenNameCaptures = results.flatMap((result) =>
+    result.captures.filter((cap) =>
+      captureIsTokenName(cap) &&
+      lspRangeIsInTsNode(cap.node, params.range)
+    )
+  );
+
+  const tokenCallCaptures = results.flatMap((result) =>
+    result.captures.filter((cap) =>
+      captureIsTokenCall(cap) &&
+      tsNodeIsInLspRange(cap.node, params.range)
+    )
+  );
+
   if (tokenCallCaptures.length) {
-    const title = 'Toggle design token fallback values (in range)';
-    return [{
-      title,
-      kind,
+    actions.push({
+      title: DTLSCodeActionTitles.toggleRangeFallbacks,
+      kind: CodeActionKind.RefactorRewrite,
       edit: {
         changes: {
-          [params.textDocument.uri]: tokenCallCaptures.map(cap => {
-            const args = cap.node.children.find(x =>x.type === 'arguments')
+          [textDocument.uri]: tokenCallCaptures.map((cap) => {
+            const args = cap.node.children.find((x) => x.type === "arguments");
             if (args) {
-              const edit = getEdit(args);
+              const edit = getEditFromTSNode(args);
               if (edit) {
                 return edit;
               }
             }
-          }).filter(x => !!x),
+          }).filter((x) => !!x),
         },
       },
-    }];
+    });
   } else if (tokenNameCaptures.length) {
     const [cap] = tokenNameCaptures;
-    const title = 'Toggle design token fallback value';
-    const edit = getEdit(cap.node)
+    const edit = getEditFromTSNode(cap.node);
     if (edit) {
-      return [{
-        title,
-        kind,
+      actions.push({
+        title: DTLSCodeActionTitles.toggleFallback,
+        kind: CodeActionKind.RefactorRewrite,
         edit: {
           changes: {
-            [params.textDocument.uri]: [edit],
+            [textDocument.uri]: [edit],
           },
         },
-      }]
+      });
     }
   }
-  return null;
+
+  if (actions.length) {
+    return actions;
+  } else {
+    return null;
+  }
 }

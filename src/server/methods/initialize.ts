@@ -31,9 +31,15 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
       },
       codeActionProvider: {
         codeActionKinds: [
-          CodeActionKind.RefactorRewrite
+          CodeActionKind.QuickFix,
+          CodeActionKind.RefactorRewrite,
+          CodeActionKind.SourceFixAll,
         ]
       },
+      diagnosticProvider: {
+        interFileDependencies: false,
+        workspaceDiagnostics: false,
+      }
     },
     serverInfo: {
       name: "design-tokens-language-server",

@@ -11,7 +11,7 @@ import {
 
 import { tokens } from "../../storage.ts";
 
-import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../css/css.ts";
+import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../tree-sitter/css.ts";
 
 const matchesWord =
   (word: string | null) =>

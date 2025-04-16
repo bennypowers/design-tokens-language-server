@@ -1,6 +1,6 @@
 import { Hover, HoverParams, MarkupContent, MarkupKind } from "vscode-languageserver-protocol";
 
-import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../css/css.ts";
+import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../tree-sitter/css.ts";
 import { get } from "../../storage.ts";
 import { getTokenMarkdown } from "../../markdown.ts";
 

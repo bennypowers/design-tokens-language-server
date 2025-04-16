@@ -1,6 +1,7 @@
 import type { Token } from "style-dictionary";
 
-import { parse, stringify } from "./css/value-parser.ts";
+// TODO: replace with tree-sitter
+import { parse, stringify } from "./tree-sitter/value-parser.ts";
 
 function format(value: string): string {
   if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {

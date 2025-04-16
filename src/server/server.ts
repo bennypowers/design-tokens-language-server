@@ -1,11 +1,13 @@
 import {
-CodeActionParams,
+  CodeAction,
+  CodeActionParams,
   CompletionItem,
   CompletionParams,
   DidChangeTextDocumentParams,
   DidCloseTextDocumentParams,
   DidOpenTextDocumentParams,
   DocumentColorParams,
+  DocumentDiagnosticParams,
   HoverParams,
   InitializeParams,
   RequestMessage,
@@ -20,12 +22,12 @@ import { didChange } from "./methods/textDocument/didChange.ts";
 import { didClose } from "./methods/textDocument/didClose.ts";
 
 import { documentColor } from "./methods/textDocument/documentColor.ts";
-
-import { hover } from "./methods/textDocument/hover.ts";
-
-import { completion } from "./methods/textDocument/completion.ts";
-import { resolve } from "./methods/completionItem/resolve.ts";
 import { codeAction } from "./methods/textDocument/codeAction.ts";
+import { diagnostic } from "./methods/textDocument/diagnostic.ts";
+import { hover } from "./methods/textDocument/hover.ts";
+import { completion } from "./methods/textDocument/completion.ts";
+import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
+import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
 
 const DEAD = Symbol('dead request');
 
@@ -93,13 +95,15 @@ export class Server {
         case "textDocument/didOpen": return didOpen(request.params as DidOpenTextDocumentParams);
         case "textDocument/didChange": return didChange(request.params as DidChangeTextDocumentParams);
         case "textDocument/didClose": return didClose(request.params as DidCloseTextDocumentParams);
+        case "textDocument/diagnostic": return diagnostic(request.params as DocumentDiagnosticParams);
         case "textDocument/documentColor": return documentColor(request.params as DocumentColorParams);
 
         case "textDocument/hover": return hover(request.params as HoverParams);
         case "textDocument/completion": return completion(request.params as CompletionParams);
         case "textDocument/codeAction": return codeAction(request.params as CodeActionParams);
 
-        case "completionItem/resolve": return resolve(request.params as CompletionItem);
+        case "completionItem/resolve": return completionItemResolve(request.params as CompletionItem);
+        case "codeAction/resolve": return codeActionResolve(request.params as CodeAction);
 
         case "$/cancelRequest": {
           const { id } = (request.params as RequestMessage)
