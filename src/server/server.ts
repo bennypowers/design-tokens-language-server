@@ -27,13 +27,15 @@ import { completion } from "./methods/textDocument/completion.ts";
 import { resolve } from "./methods/completionItem/resolve.ts";
 import { codeAction } from "./methods/textDocument/codeAction.ts";
 
+const DEAD = Symbol('dead request');
+
 export class Server {
   static messageCollector = "";
 
   static #decoder = new TextDecoder();
   static #encoder = new TextEncoder();
 
-  static #deadRequests = new Set<RequestMessage['id']>;
+  static #requests = new Map<RequestMessage['id'], RequestMessage | typeof DEAD>;
 
   static async serve() {
     for await (const chunk of Deno.stdin.readable) {
@@ -59,8 +61,18 @@ export class Server {
 
     const request = JSON.parse(slice) as RequestMessage;
 
-    if (request.id !== null && this.#deadRequests.has(request.id))
-      return;
+    if (!(request.id !== null && this.#requests.get(request.id) === DEAD)) {
+      if (request.method === 'document/didOpen')
+        Logger.debug(request)
+      Logger.debug(`📥 (${request.id ?? 'notification'}): ${request.method}`);
+      this.#respond(request.id, ...await this.#handle(request));
+    }
+
+    this.messageCollector = this.messageCollector.slice(messageEnd);
+  }
+
+  static async #handle(request: RequestMessage) {
+    this.#requests.set(request.id, request);
 
     let result, error;
 
@@ -71,12 +83,11 @@ export class Server {
       error = err as ResponseError
     }
 
-    this.#respond(request.id, result, error);
+    return [result, error];
 
-    this.messageCollector = this.messageCollector.slice(messageEnd);
   }
 
-  static async #result(request: RequestMessage): Promise<unknown> {
+  static #result(request: RequestMessage): unknown | Promise<unknown> {
     try {
       switch (request.method) {
         case "initialize": return initialize(request.params as InitializeParams);
@@ -95,7 +106,7 @@ export class Server {
         case "$/cancelRequest": {
           const { id } = (request.params as RequestMessage)
           Logger.debug(`Cancel ${id}`);
-          this.#deadRequests.add(id);
+          this.#requests.delete(id);
           return null;
         }
 
@@ -108,14 +119,25 @@ export class Server {
     }
   }
 
-  static #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
-    if (!((id == null && !result && !error) || id != null && this.#deadRequests.has(id))) {
+  static async #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
+    if (!((id == null && !result && !error) || (id != null && !this.#requests.has(id)))) {
       const message = JSON.stringify({ jsonrpc: "2.0", id, result, error });
       const messageLength = this.#encoder.encode(message).byteLength;
-      Logger.debug(message, false);
+      const request = this.#requests.get(id!);
+      if (id && request && request !== DEAD) {
+        Logger.debug(`↩️  (${id}): ${request.method}`);
+        this.#requests.delete(id);
+      } else if ('method' in (result as { method: string })) {
+        Logger.debug(`↩️  (notification): ${(result as { method: string }).method}`);
+      }
       const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
-      Deno.stdout.write(this.#encoder.encode(payload));
-      this.#deadRequests.add(id ?? null);
+      if (!message.match(/^[{\[]/)) Logger.debug(payload)
+      await this.#print(payload);
     }
+  }
+
+  static async #print(input: string) {
+    const stream = new Blob([input]).stream();
+    await stream.pipeTo(Deno.stdout.writable, { preventClose: true })
   }
 }

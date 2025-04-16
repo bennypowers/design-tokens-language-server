@@ -28,6 +28,8 @@ export class Logger {
 
   static #encoder = new TextEncoder();
 
+  static #lastWrite: Promise<unknown>;
+
   static async #init() {
     if (!this.#stream) {
       await Deno.mkdir(path.dirname(this.#path), { recursive: true });
@@ -38,9 +40,10 @@ export class Logger {
 
   static async #write(message: unknown, kind: 'SEND'|'RECV'|'DBUG') {
     await this.#init();
-    const prefix = `\r\n\r\n// [dtls][${kind}][${Temporal.Now.plainDateTimeISO()}]\r\n`;
+    const prefix = `\r\n\r\n// [dtls][${kind}][${Temporal.Now.plainDateTimeISO().toString().split('T').join('][')}]\r\n`;
     const stringified = typeof message === 'object' ? JSON.stringify(message) : `${message}`
-    this.#stream.write(this.#encoder.encode(`${prefix}${stringified}`));
+    await this.#lastWrite;
+    this.#lastWrite = this.#stream.write(this.#encoder.encode(`${prefix}${stringified}`));
   }
 
   static #report(message: string) {
@@ -49,10 +52,10 @@ export class Logger {
     Deno.stdout.write(this.#encoder.encode(payload));
   }
 
-  static logMessage(message: string|object, type: MessageType = MessageType.Log, report: boolean) {
+  static async logMessage(message: string|object, type: MessageType = MessageType.Log, report: boolean) {
     const kind = isRequestMessage(message) ? 'SEND' : isResponseMessage(message) ? 'RECV' : 'DBUG';
     message = typeof message === 'string' ? message : JSON.stringify(message);
-    this.#write(message, kind);
+    await this.#write(message, kind);
     if (type === MessageType.Error)
       this.showMessage(message, type);
     if (report) {

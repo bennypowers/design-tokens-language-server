@@ -12,7 +12,7 @@ import {
 import { tokens } from "../../storage.ts";
 
 import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../css/css.ts";
-import { Logger } from "../../logger.ts";
+import { CompletionTriggerKind } from "vscode-languageserver-protocol";
 
 const matchesWord =
   (word: string | null) =>
@@ -29,6 +29,7 @@ function offset(pos: Position, offset: Partial<Position>): Position {
 }
 
 export async function completion(params: CompletionParams): Promise<null | CompletionList | CompletionItem[]> {
+  // if (params.context?.triggerKind !== CompletionTriggerKind.Invoked) await new Promise(r => setTimeout(r, 50)); // TODO: properly flush didChange
   const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
   if (!node) return null;
   const range = tsNodeToRange(node);
