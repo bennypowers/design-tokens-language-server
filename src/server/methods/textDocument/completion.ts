@@ -12,7 +12,6 @@ import {
 import { tokens } from "../../storage.ts";
 
 import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../css/css.ts";
-import { CompletionTriggerKind } from "vscode-languageserver-protocol";
 
 const matchesWord =
   (word: string | null) =>
@@ -28,8 +27,12 @@ function offset(pos: Position, offset: Partial<Position>): Position {
   };
 }
 
-export async function completion(params: CompletionParams): Promise<null | CompletionList | CompletionItem[]> {
-  // if (params.context?.triggerKind !== CompletionTriggerKind.Invoked) await new Promise(r => setTimeout(r, 50)); // TODO: properly flush didChange
+function escapeCommas($value: string) {
+  return $value.replaceAll(',', '\\,')
+
+}
+
+export function completion(params: CompletionParams): null | CompletionList | CompletionItem[] {
   const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
   if (!node) return null;
   const range = tsNodeToRange(node);
@@ -40,14 +43,13 @@ export async function completion(params: CompletionParams): Promise<null | Compl
     ...(range ? {
       textEdit: {
         range,
-        newText: `var(--${name}\${1|\\, ${$value},|})$0`,
+        newText: `var(--${name}\${1|\\, ${escapeCommas($value)},|})$0`,
       }
     } : {
-      insertText: `var(--${name}\${1|\\, ${$value},|}):0`,
+      insertText: `var(--${name}\${1|\\, ${escapeCommas($value)},|})$0`,
     })
   }) satisfies CompletionItem).toArray();
   return {
-    // TODO: perf
     isIncomplete: items.length === 0 || items.length < tokens.size,
     itemDefaults: {
       insertTextFormat: InsertTextFormat.Snippet,
