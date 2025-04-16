@@ -1,14 +1,13 @@
 import type { Token } from "style-dictionary";
 
-// TODO: replace with tree-sitter
-import { parse, stringify } from "./tree-sitter/value-parser.ts";
+import { getLightDarkValues } from "./css/values.ts";
 
 function format(value: string): string {
   if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {
-    const [light, , dark] = parse(value)?.pop()?.nodes ?? [];
+    const [light, dark] = getLightDarkValues(value);
     return `color: light-dark(
-  ${stringify(light)},
-  ${stringify(dark)}
+  ${light},
+  ${dark}
 )`;
   } else
     return value;

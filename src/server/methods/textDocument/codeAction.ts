@@ -4,20 +4,11 @@ import {
   type CodeActionParams,
   TextEdit,
 } from "vscode-languageserver-protocol";
-import {
-  captureIsTokenCall,
-  captureIsTokenName,
-  lspRangeIsInTsNode,
-  queryCssDocument,
-  type SyntaxNode,
-  tsNodeIsInLspRange,
-  tsNodeToLspRange,
-} from "../../tree-sitter/css.ts";
 
-import { VarCall } from "../../tree-sitter/css/queries.ts";
 import { DTLSErrorCodes } from "./diagnostic.ts";
 import { tokens } from "../../storage.ts";
 import { HardNode } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.js";
+import { captureIsTokenCall, captureIsTokenName, documents, lspRangeIsInTsNode, tsNodeIsInLspRange, tsRangeToLspRange } from "../../css/documents.ts";
 
 export enum DTLSCodeActionTitles {
   fixFallback = "Fix token fallback value",
@@ -26,23 +17,23 @@ export enum DTLSCodeActionTitles {
   toggleRangeFallbacks = "Toggle design token fallback values (in range)",
 }
 
-function getEditFromTSNode(node: HardNode): TextEdit | undefined {
+function getEditFromTSArgumentsNode(node: HardNode): TextEdit | undefined {
   const [, nameNode, closeParenOrFallback] = node.children;
-  const hasFallback = closeParenOrFallback.text !== ")";
+  const hasFallback = closeParenOrFallback?.text !== ")";
   const token = tokens.get(nameNode.text);
   if (token) {
     // TODO: preserve whitespace
     const newText = hasFallback
       ? `(${nameNode.text})`
       : `(${nameNode.text}, ${token.$value})`;
-    const range = tsNodeToLspRange(node as unknown as SyntaxNode);
+    const range = tsRangeToLspRange(node);
     return { range, newText };
   }
 }
 
 export function codeAction(params: CodeActionParams): null | CodeAction[] {
   const { textDocument } = params;
-  const results = queryCssDocument(textDocument.uri, VarCall);
+  const results = documents.queryVarCalls(textDocument.uri);
 
   const diagnostics = params.context.diagnostics.filter((d) =>
     d.code === DTLSErrorCodes.incorrectFallback
@@ -91,7 +82,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
           [textDocument.uri]: tokenCallCaptures.map((cap) => {
             const args = cap.node.children.find((x) => x.type === "arguments");
             if (args) {
-              const edit = getEditFromTSNode(args);
+              const edit = getEditFromTSArgumentsNode(args);
               if (edit) {
                 return edit;
               }
@@ -102,7 +93,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
     });
   } else if (tokenNameCaptures.length) {
     const [cap] = tokenNameCaptures;
-    const edit = getEditFromTSNode(cap.node);
+    const edit = getEditFromTSArgumentsNode(cap.node.parent);
     if (edit) {
       actions.push({
         title: DTLSCodeActionTitles.toggleFallback,

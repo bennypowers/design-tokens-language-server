@@ -1,11 +1,11 @@
 import { Hover, HoverParams, MarkupContent, MarkupKind } from "vscode-languageserver-protocol";
 
-import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../tree-sitter/css.ts";
 import { get } from "../../storage.ts";
 import { getTokenMarkdown } from "../../markdown.ts";
+import { documents, tsRangeToLspRange } from "../../css/documents.ts";
 
 export function hover(params: HoverParams): null | Hover {
-  const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, params.position);
+  const node = documents.getNodeAtPosition(params.textDocument.uri, params.position);
   if (node) {
     const token = get(node.text);
     if (token) {
@@ -15,7 +15,7 @@ export function hover(params: HoverParams): null | Hover {
       }
       return {
         contents,
-        range: tsNodeToRange(node),
+        range: tsRangeToLspRange(node),
       };
     }
   }

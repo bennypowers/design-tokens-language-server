@@ -1,15 +1,14 @@
 import { DiagnosticSeverity, DocumentDiagnosticReportKind, type DocumentDiagnosticParams, type DocumentDiagnosticReport } from "vscode-languageserver-protocol";
 
-import { queryCssDocument, tsNodeToLspRange } from "../../tree-sitter/css.ts";
-import { VarCallWithFallback } from "../../tree-sitter/css/queries.ts";
 import { tokens } from "../../storage.ts";
+import { documents, tsRangeToLspRange } from "../../css/documents.ts";
 
 export enum DTLSErrorCodes {
   incorrectFallback = 'incorrect-fallback',
 }
 
 export function diagnostic(params: DocumentDiagnosticParams): DocumentDiagnosticReport {
-  const results = queryCssDocument(params.textDocument.uri, VarCallWithFallback);
+  const results = documents.queryVarCallsWithFallback(params.textDocument.uri);
   return {
     kind: DocumentDiagnosticReportKind.Full,
     items: results.flatMap(result => {
@@ -22,7 +21,7 @@ export function diagnostic(params: DocumentDiagnosticParams): DocumentDiagnostic
         const valid = fallback === token.$value;
         if (!valid)
           return [{
-            range: tsNodeToLspRange(fallbackCap.node),
+            range: tsRangeToLspRange(fallbackCap.node),
             severity: DiagnosticSeverity.Error,
             message: `Token fallback does not match expected value: ${token.$value}`,
             code: DTLSErrorCodes.incorrectFallback,

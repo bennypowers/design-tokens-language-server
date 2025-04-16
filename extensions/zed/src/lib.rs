@@ -1,5 +1,5 @@
 extern crate zed_extension_api;
-use std::env;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -15,7 +15,7 @@ impl DesignTokensLanguageserverExtension {
         _id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<String, String> {
-        if let Some(path) = Some("/var/home/bennyp/.local/bin/design-tokens-language-server") {
+        if let Some(path) = Some(&self.get_local_bin_path(worktree)) {
             return Ok(path.to_string());
         }
 
@@ -35,23 +35,47 @@ impl DesignTokensLanguageserverExtension {
         }
     }
 
+    fn get_local_bin_path(&mut self, worktree: &zed::Worktree) -> String {
+        let env = worktree
+            .shell_env()
+            .into_iter()
+            .map(|data| (data.0, data.1))
+            .collect::<HashMap<String, String>>();
+
+        let home = match env.get("HOME") {
+            Some(h) => h,
+            None => {
+                panic!("No HOME env var")
+            }
+        };
+
+        let state_home = match env.get("XDG_STATE_HOME") {
+            Some(h) => h,
+            None => &Path::new(&home)
+                .join(".local")
+                .to_string_lossy()
+                .to_string(),
+        };
+
+        return Path::new(state_home)
+            .join("bin")
+            .join("design-tokens-language-server")
+            .to_string_lossy()
+            .to_string();
+    }
+
     fn copy_bin(&mut self, worktree: &zed::Worktree) -> Result<String, std::io::Error> {
-        let root_path = worktree.root_path();
-
-        let home = env::var("XDG_STATE_HOME").unwrap_or("/var/home/bennyp/.local".to_string());
-
-        let repo_path = Path::new("").join(&home).to_string_lossy().to_string();
-
-        let binary_path = Path::new("")
-            .join(root_path)
+        let binary_path = Path::new(&worktree.root_path())
             .join("node_modules/.bin/design-tokens-language-server")
             .to_string_lossy()
             .to_string();
 
-        let result = fs::copy(repo_path, binary_path.clone());
+        let local_bin_path = self.get_local_bin_path(worktree);
+
+        let result = fs::copy(&local_bin_path, binary_path.clone());
 
         match result {
-            Ok(_u64) => Ok(binary_path.clone()),
+            Ok(_u64) => Ok(binary_path),
             Err(e) => Err(e),
         }
     }

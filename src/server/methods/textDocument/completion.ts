@@ -11,7 +11,7 @@ import {
 
 import { tokens } from "../../storage.ts";
 
-import { getCssSyntaxNodeAtPosition, tsNodeToRange } from "../../tree-sitter/css.ts";
+import { documents, tsRangeToLspRange } from "../../css/documents.ts";
 
 const matchesWord =
   (word: string | null) =>
@@ -33,13 +33,13 @@ function escapeCommas($value: string) {
 }
 
 export function completion(params: CompletionParams): null | CompletionList | CompletionItem[] {
-  const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
+  const node = documents.getNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
   if (!node) return null;
-  const range = tsNodeToRange(node);
+  const range = tsRangeToLspRange(node);
   const items = tokens.entries().filter(matchesWord(node.text))
   .map(([name, { $value }]) => ({
     label: name,
-    kind: 15 satisfies typeof CompletionItemKind.Snippet,
+    kind: CompletionItemKind.Snippet,
     ...(range ? {
       textEdit: {
         range,
@@ -59,3 +59,4 @@ export function completion(params: CompletionParams): null | CompletionList | Co
     items
   }
 }
+

@@ -5,12 +5,7 @@ import {
 } from "vscode-languageserver-protocol";
 import { tokens } from "../../storage.ts";
 import { DTLSCodeActionTitles } from "../textDocument/codeAction.ts";
-import { VarCallWithFallback } from "../../tree-sitter/css/queries.ts";
-import {
-  queryCssDocument,
-  tsNodeToLspRange,
-  TSQueryCapture,
-} from "../../tree-sitter/css.ts";
+import { documents, TSQueryCapture, tsRangeToLspRange } from "../../css/documents.ts";
 
 function getEditFromDiagnostic(diagnostic: Diagnostic): TextEdit | undefined {
   const token = tokens.get(diagnostic.data.tokenName);
@@ -26,7 +21,7 @@ function getEditFromVarFallbackCap(cap: TSQueryCapture): TextEdit | undefined {
   const token = tokens.get(cap.node.text);
   if (token) {
     const newText = token.$value;
-    const range = tsNodeToLspRange(cap.node);
+    const range = tsRangeToLspRange(cap.node);
     return { range, newText };
   }
 }
@@ -52,10 +47,7 @@ function fixFallback(action: CodeAction): CodeAction {
 
 function fixAllFallbacks(action: CodeAction): CodeAction {
   if (typeof action.data?.textDocument?.uri === "string") {
-    const results = queryCssDocument(
-      action.data.textDocument.uri,
-      VarCallWithFallback,
-    );
+    const results = documents.queryVarCallsWithFallback(action.data.textDocument.uri);
     return {
       ...action,
       edit: {

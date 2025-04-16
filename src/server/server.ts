@@ -17,9 +17,6 @@ import {
 import { Logger } from "./logger.ts";
 
 import { initialize } from "./methods/initialize.ts";
-import { didOpen } from "./methods/textDocument/didOpen.ts";
-import { didChange } from "./methods/textDocument/didChange.ts";
-import { didClose } from "./methods/textDocument/didClose.ts";
 
 import { documentColor } from "./methods/textDocument/documentColor.ts";
 import { codeAction } from "./methods/textDocument/codeAction.ts";
@@ -28,6 +25,7 @@ import { hover } from "./methods/textDocument/hover.ts";
 import { completion } from "./methods/textDocument/completion.ts";
 import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
+import { documents } from "./css/documents.ts";
 
 const DEAD = Symbol('dead request');
 
@@ -92,9 +90,9 @@ export class Server {
       switch (request.method) {
         case "initialize": return initialize(request.params as InitializeParams);
 
-        case "textDocument/didOpen": return didOpen(request.params as DidOpenTextDocumentParams);
-        case "textDocument/didChange": return didChange(request.params as DidChangeTextDocumentParams);
-        case "textDocument/didClose": return didClose(request.params as DidCloseTextDocumentParams);
+        case "textDocument/didOpen": return documents.onDidOpen(request.params as DidOpenTextDocumentParams);
+        case "textDocument/didChange": return documents.onDidChange(request.params as DidChangeTextDocumentParams);
+        case "textDocument/didClose": return documents.onDidClose(request.params as DidCloseTextDocumentParams);
         case "textDocument/diagnostic": return diagnostic(request.params as DocumentDiagnosticParams);
         case "textDocument/documentColor": return documentColor(request.params as DocumentColorParams);
 

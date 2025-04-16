@@ -21,8 +21,8 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
     capabilities: {
       colorProvider: true,
       hoverProvider: true,
+      // textDocumentSync: TextDocumentSyncKind.Incremental, // currently busted
       textDocumentSync: TextDocumentSyncKind.Full,
-      // FIXME: completion is totally busted - not clear why
       completionProvider: {
         resolveProvider: true,
         completionItem: {
@@ -34,7 +34,8 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
           CodeActionKind.QuickFix,
           CodeActionKind.RefactorRewrite,
           CodeActionKind.SourceFixAll,
-        ]
+        ],
+        resolveProvider: true,
       },
       diagnosticProvider: {
         interFileDependencies: false,
