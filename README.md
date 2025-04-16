@@ -25,4 +25,31 @@ Install Deno and clone this repo
 deno task install
 ```
 
+## Neovim
+
+```lua
+---@type vim.lsp.ClientConfig
+return {
+  cmd = { 'design-tokens-language-server' },
+  root_markers = { '.git' },
+  filetypes = { 'css' },
+}
+```
+
+## Usage
+
+Add a `designTokensLanguageServer` block to your project's `package.json`, 
+pointing to [dtcg][dtcg] format design tokens, and including an optional prefix:
+
+```json
+"designTokensLanguageServer": {
+  "tokensFiles": [
+    {
+      "prefix": "token",
+      "path": "./node_modules/@mydesign/system/tokens.json"
+    }
+  ]
+},
+```
+
 [dtcg]: https://tr.designtokens.org/format/
