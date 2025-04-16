@@ -1,6 +1,5 @@
 import type { Token } from "style-dictionary";
 import { convertTokenData } from "style-dictionary/utils";
-import { Logger } from "./logger.ts";
 
 export const tokens = new Map<string, Token>();
 
@@ -25,7 +24,6 @@ export async function register(tokenFile: TokenFile) {
       const name = tokenFile.prefix ? `${tokenFile.prefix}-${joined}` : joined;
       tokens.set(name, token);
       tokens.set(`--${name}`, token);
-      Logger.debug({token, name, key});
     }
   }
 }
