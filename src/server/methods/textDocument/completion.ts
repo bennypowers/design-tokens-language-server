@@ -31,33 +31,28 @@ function offset(pos: Position, offset: Partial<Position>): Position {
 export async function completion(params: CompletionParams): Promise<null | CompletionList | CompletionItem[]> {
   const node = getCssSyntaxNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
   if (!node) return null;
-  try {
-    const range = tsNodeToRange(node);
-    const items = tokens.entries().filter(matchesWord(node.text))
-    .map(([name, { $value }]) => ({
-      label: name,
-      kind: 15 satisfies typeof CompletionItemKind.Snippet,
-      ...(range ? {
-        textEdit: {
-          range,
-          newText: `var(--${name}\${1|\\, ${$value},|})$0`,
-        }
-      } : {
-        insertText: `var(--${name}\${1|\\, ${$value},|}):0`,
-      })
-    }) satisfies CompletionItem).toArray();
-    return {
-      // TODO: perf
-      isIncomplete: items.length === 0 || items.length < tokens.size,
-      itemDefaults: {
-        insertTextFormat: InsertTextFormat.Snippet,
-        insertTextMode: InsertTextMode.asIs,
-        editRange: range,
-      },
-      items
-    }
-  } catch (e) {
-    Logger.error(`${e}`);
-    return null
+  const range = tsNodeToRange(node);
+  const items = tokens.entries().filter(matchesWord(node.text))
+  .map(([name, { $value }]) => ({
+    label: name,
+    kind: 15 satisfies typeof CompletionItemKind.Snippet,
+    ...(range ? {
+      textEdit: {
+        range,
+        newText: `var(--${name}\${1|\\, ${$value},|})$0`,
+      }
+    } : {
+      insertText: `var(--${name}\${1|\\, ${$value},|}):0`,
+    })
+  }) satisfies CompletionItem).toArray();
+  return {
+    // TODO: perf
+    isIncomplete: items.length === 0 || items.length < tokens.size,
+    itemDefaults: {
+      insertTextFormat: InsertTextFormat.Snippet,
+      insertTextMode: InsertTextMode.asIs,
+      editRange: range,
+    },
+    items
   }
 }
