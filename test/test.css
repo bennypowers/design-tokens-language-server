@@ -2,5 +2,6 @@ a {
   background: var(--token-color-red);
   border-color: var(--token-color-green);
   color: var(--token-color-blue);
+  outline: 1px solid var(--token-color-lightdark);
 }
 
