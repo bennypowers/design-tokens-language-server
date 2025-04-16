@@ -15,7 +15,7 @@
         "bundle"
       ]
     },
-    "copy": {
+    "install": {
       "command": "cp $(which deno) dist/bin/ && cp dist/bin/design-tokens-language-server /var/home/bennyp/.local/bin/",
       "dependencies": [
         "compile"
@@ -25,7 +25,7 @@
       "command": "mkdir -p extensions/vscode/dist && cp -r dist extensions/vscode/",
       "dependencies": [
         "compile",
-        "copy"
+        "install"
       ]
     },
     "vscode:build": {
@@ -39,7 +39,7 @@
       "command": "echo DONE",
       "dependencies": [
         "vscode:build",
-        "copy"
+        "install"
       ]
     }
   },
