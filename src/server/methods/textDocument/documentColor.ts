@@ -7,7 +7,6 @@ import { tokens } from "../../storage.ts";
 import { documents, tsRangeToLspRange } from "../../css/documents.ts";
 
 import Color from "npm:tinycolor2";
-import { Logger } from "../../logger.ts";
 import { getLightDarkValues } from "../../css/values.ts";
 
 const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
@@ -19,7 +18,6 @@ export function documentColor(params: DocumentColorParams): ColorInformation[] {
     const tokenName = tokenCap.node.text;
     const token = tokens.get(tokenName);
     if (!token || token.$type !== "color") return [];
-    Logger.debug('{tokenName} {token}', {tokenName, token});
     const colors = [];
     const hexMatches = `${token.$value}`.match(HEX_RE);
     const [light, dark] = getLightDarkValues(token.$value);
