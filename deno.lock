@@ -1,6 +1,7 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@henrygd/queue@^1.0.7": "1.0.7",
     "jsr:@logtape/file@0.9": "0.9.0",
     "jsr:@logtape/logtape@0.9": "0.9.0",
     "jsr:@luca/esbuild-deno-loader@~0.11.1": "0.11.1",
@@ -15,6 +16,7 @@
     "jsr:@std/io@*": "0.225.2",
     "jsr:@std/io@~0.225.2": "0.225.2",
     "jsr:@std/path@^1.0.6": "1.0.8",
+    "jsr:@sv2dev/tasque@~0.1.2": "0.1.2",
     "npm:@types/tinycolor2@^1.4.6": "1.4.6",
     "npm:esbuild@~0.25.2": "0.25.2",
     "npm:style-dictionary@^4.3.3": "4.3.3",
@@ -26,6 +28,9 @@
     "npm:web-tree-sitter@~0.25.3": "0.25.3"
   },
   "jsr": {
+    "@henrygd/queue@1.0.7": {
+      "integrity": "98cade132744bb420957c5413393f76eb8ba7261826f026c8a89a562b8fa2961"
+    },
     "@logtape/file@0.9.0": {
       "integrity": "bad79375e963446ff25df371c9ab137d7ba464180115f37f05afc610b8e0a595",
       "dependencies": [
@@ -69,6 +74,9 @@
     },
     "@std/path@1.0.8": {
       "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
+    },
+    "@sv2dev/tasque@0.1.2": {
+      "integrity": "8ce3bc214e8de951a09a59dbae2835f5d7a9bb19b127c9347a5110ab7b6bfcc4"
     }
   },
   "npm": {
@@ -1077,12 +1085,14 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@henrygd/queue@^1.0.7",
       "jsr:@logtape/file@0.9",
       "jsr:@logtape/logtape@0.9",
       "jsr:@luca/esbuild-deno-loader@~0.11.1",
       "jsr:@std/assert@1",
       "jsr:@std/collections@^1.0.10",
       "jsr:@std/io@~0.225.2",
+      "jsr:@sv2dev/tasque@~0.1.2",
       "npm:style-dictionary@^4.3.3",
       "npm:vscode-languageserver-protocol@^3.17.5",
       "npm:web-tree-sitter@*"
