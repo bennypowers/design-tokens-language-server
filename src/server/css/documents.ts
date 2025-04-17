@@ -220,6 +220,7 @@ class Documents {
   onDidOpen(params: DidOpenTextDocumentParams) {
     const { uri, languageId,  version, text } = params.textDocument;
     const doc = new CssDocument(uri, languageId, version, text);
+    Logger.debug`didOpen ${uri}`;
     this.#map.set(params.textDocument.uri, doc);
   }
 

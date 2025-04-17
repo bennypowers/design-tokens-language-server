@@ -16,9 +16,9 @@
       ]
     },
     "compile": {
-      "command": "deno compile --unstable-temporal --allow-all --include ./src/server/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
+      "command": "deno compile --quiet --unstable-temporal --allow-all --include ./src/server/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
       "dependencies": [
-        "overwrite-web-tree-sitter"
+        "copy:wts:vendor"
       ]
     },
     "install": {

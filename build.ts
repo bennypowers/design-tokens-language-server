@@ -28,6 +28,7 @@ async function compile(arch?: Arch) {
     "--no-check",
     "--no-remote",
     "--no-config",
+    "--quiet",
     "--import-map=import-map-bundle.json",
     "--include=dist/tree-sitter/tree-sitter-css.wasm",
     "--include=dist/web-tree-sitter.wasm",
