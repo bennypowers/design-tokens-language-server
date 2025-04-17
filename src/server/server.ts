@@ -29,7 +29,7 @@ import { resolve as completionItemResolve } from "./methods/completionItem/resol
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
 import { documents } from "./css/documents.ts";
 
-const DEAD = Symbol('dead request');
+import { writeAllSync } from 'jsr:@std/io/write-all';
 
 export class Server {
   static messageCollector = "";
@@ -38,7 +38,7 @@ export class Server {
   static #decoder = new TextDecoder();
   static #encoder = new TextEncoder();
 
-  static #requests = new Map<RequestMessage['id'], RequestMessage | typeof DEAD>;
+  static #cancelled = new Set<RequestMessage['id']>;
 
   static async serve() {
     for await (const chunk of Deno.stdin.readable) {
@@ -46,7 +46,7 @@ export class Server {
     }
   }
 
-  static async #handleChunk(chunk: Uint8Array<ArrayBuffer>) {
+  static #handleChunk(chunk: Uint8Array<ArrayBuffer>) {
     this.messageCollector += this.#decoder.decode(chunk);
     const [, lengthMatch] =
       this.messageCollector.match(/Content-Length: (\d+)\r\n/) ?? [];
@@ -64,31 +64,43 @@ export class Server {
 
     const request = JSON.parse(slice) as RequestMessage;
 
-    if (!(request.id !== null && this.#requests.get(request.id) === DEAD)) {
-      Logger.debug(`📥 ({id}): {method}`, { id: request.id ?? 'notification', method: request.method });
-      this.#respond(request.id, ...await this.#handle(request));
-    }
-
     this.messageCollector = this.messageCollector.slice(messageEnd);
+
+    if (this.#cancelled.has(request.id))
+      return Logger.debug`Skipping DEAD request ${request.id}`;
+
+    if (request.id != null)
+      Logger.debug`📥 (${request.id}): ${request.method ?? 'notification'}`;
+
+    this.#handle(request);
   }
 
+  static #requestQueue = new Set<RequestMessage>();
+
+  static #processing = false;
+
   static async #handle(request: RequestMessage) {
-    this.#requests.set(request.id, request);
-
-    let result, error;
-
-    try {
-      result = await this.#result(request);
-    } catch(err) {
-      result = null
-      error = err as ResponseError
+    if (request.id && this.#cancelled.has(request.id)) return;
+    this.#requestQueue.add(request);
+    if (!this.#processing) {
+      while (this.#requestQueue.size > 0) {
+        this.#processing = true;
+        const [currentRequest] = this.#requestQueue.values().take(1);
+        if (currentRequest) {
+          try {
+            const result = await this.#result(currentRequest);
+            this.#respond(currentRequest.id, result);
+          } catch (error) {
+            this.#respond(currentRequest.id, null, error as ResponseError);
+          }
+        }
+      }
+      this.#processing = false;
     }
-
-    return [result, error];
-
   }
 
   static #result(request: RequestMessage): unknown | Promise<unknown> {
+    this.#requestQueue.delete(request);
     try {
       switch (request.method) {
         case "initialize": return initialize(request.params as InitializeParams);
@@ -111,7 +123,10 @@ export class Server {
         case "$/cancelRequest": {
           const { id } = (request.params as RequestMessage)
           Logger.debug(`📵 Cancel {id}`, { id });
-          this.#requests.delete(id);
+          this.#cancelled.add(id);
+          const cancelledReq = this.#requestQueue.values().find(r => r.id === id);
+          if (cancelledReq)
+            this.#requestQueue.delete(cancelledReq);
           return null;
         }
 
@@ -124,50 +139,24 @@ export class Server {
     }
   }
 
-  static #logTrace(message: string, verbose: unknown) {
-    Logger.debug`${message}:\n${verbose}`;
-    if (this.#traceLevel !== TraceValues.Off) {
-      if (this.#traceLevel !== TraceValues.Verbose)
-        verbose = undefined;
-      const pkg = { jsonrpc: "2.0", method: '$/logTrace', params: { message, verbose } };
-      const payload = JSON.stringify(pkg);
-      const messageLength = this.#encoder.encode(payload).byteLength;
-      this.#print(`Content-Length: ${messageLength}\r\n\r\n${payload}`);
-    }
+  static #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
+    if (!id && !result && !error) return;
+    const pkg = { jsonrpc: "2.0", id, result, error };
+    const message = JSON.stringify(pkg);
+    const messageLength = this.#encoder.encode(message).byteLength;
+    Logger.debug`Remaining Requests: ${[...this.#requestQueue]}`
+    this.#print(`Content-Length: ${messageLength}\r\n\r\n${message}`);
   }
-
-  static async #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
-    if (!((id == null && !result && !error) || (id != null && !this.#requests.has(id)))) {
-      const pkg = { jsonrpc: "2.0", id, result, error };
-      const message = JSON.stringify(pkg);
-      const messageLength = this.#encoder.encode(message).byteLength;
-      const request = this.#requests.get(id!);
-      if (request === DEAD)
-        return;
-      if (!request)
-        this.#logTrace(`↩️ ${(result as { method: string }).method}`, result);
-      else if (error)
-        Logger.error`↩️  (${id}): ${request.method}\n${error}`;
-      else if (id)
-        this.#logTrace(`↩️  (${id}): ${request.method}`, result);
-
-      if (id)
-        this.#requests.delete(id!);
-
-      await this.#print(`Content-Length: ${messageLength}\r\n\r\n${message}`);
-    }
-  }
-
-  static #lastWrite: undefined | Promise<unknown>;
 
   /**
    * Deno.stdout.write is not guaranteed to write the whole buffer in a single call
    * using it led to unexpected bugs, bad responses, etc.
    * https://stackoverflow.com/a/79576657/2515275
    */
-  static async #print(input: string) {
-    if (this.#lastWrite) await this.#lastWrite;
-    const stream = new Blob([input]).stream();
-    this.#lastWrite = stream.pipeTo(Deno.stdout.writable, { preventClose: true })
+  static #print(input: string) {
+    writeAllSync(
+      Deno.stdout,
+      new TextEncoder().encode(input),
+    );
   }
 }

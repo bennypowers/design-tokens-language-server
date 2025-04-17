@@ -13,6 +13,7 @@
     "jsr:@std/encoding@^1.0.5": "1.0.8",
     "jsr:@std/internal@^1.0.6": "1.0.6",
     "jsr:@std/io@*": "0.225.2",
+    "jsr:@std/io@~0.225.2": "0.225.2",
     "jsr:@std/path@^1.0.6": "1.0.8",
     "npm:@types/tinycolor2@^1.4.6": "1.4.6",
     "npm:esbuild@~0.25.2": "0.25.2",
@@ -1081,6 +1082,7 @@
       "jsr:@luca/esbuild-deno-loader@~0.11.1",
       "jsr:@std/assert@1",
       "jsr:@std/collections@^1.0.10",
+      "jsr:@std/io@~0.225.2",
       "npm:style-dictionary@^4.3.3",
       "npm:vscode-languageserver-protocol@^3.17.5",
       "npm:web-tree-sitter@*"

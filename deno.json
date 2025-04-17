@@ -68,6 +68,7 @@
     "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@^0.11.1",
     "@std/assert": "jsr:@std/assert@1",
     "@std/collections": "jsr:@std/collections@^1.0.10",
+    "@std/io": "jsr:@std/io@^0.225.2",
     "web-tree-sitter": "npm:web-tree-sitter",
     "style-dictionary": "npm:style-dictionary@^4.3.3",
     "env": "npm:web-tree-sitter",
