@@ -16,7 +16,7 @@
       ]
     },
     "install": {
-      "command": "cp $(which deno) dist/bin/ && cp dist/bin/design-tokens-language-server /var/home/bennyp/.local/bin/",
+      "command": "cp $(which deno) dist/bin/ && cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
       "dependencies": [
         "compile"
       ]
@@ -24,15 +24,25 @@
     "vscode:copy": {
       "command": "mkdir -p extensions/vscode/dist && cp -r dist extensions/vscode/",
       "dependencies": [
-        "compile",
-        "install"
+        "compile"
       ]
     },
     "vscode:build": {
       "command": "npm run build --prefix extensions/vscode",
       "dependencies": [
-        "compile",
         "vscode:copy"
+      ]
+    },
+    "vscode:install": {
+      "command": "flatpak run com.vscodium.codium --install-extension extensions/vscode/design-tokens-language-server-vscode-1.0.0.vsix ",
+      "dependencies": [
+        "vscode:build"
+      ]
+    },
+    "vscode": {
+      "command": "flatpak run com.vscodium.codium",
+      "dependencies": [
+        "vscode:install"
       ]
     },
     "build": {
