@@ -26,9 +26,6 @@ jobs:
       - name: Build step
         run: deno task bundle
 
-      - name: Remove native compile
-        run: rm dist/bin/design-tokens-language-server
-
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
