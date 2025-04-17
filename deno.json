@@ -2,11 +2,17 @@
   "nodeModulesDir": "auto",
   "tasks": {
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
-    "overwrite-web-tree-sitter": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
+    "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
+    "copy:wts:mkdir": "mkdir -p dist/tree-sitter",
+    "copy:wts:wasm": "cp ./vendor/web-tree-sitter/web-tree-sitter.wasm dist/web-tree-sitter.wasm",
+    "copy:wts:css": "cp ./src/server/css/tree-sitter/tree-sitter-css.wasm dist/tree-sitter/tree-sitter-css.wasm",
     "bundle": {
-      "command": "mkdir -p dist/tree-sitter && cp ./src/server/css/tree-sitter/* dist/tree-sitter && deno --allow-all build.ts && cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
+      "command": "deno --allow-all build.ts",
       "dependencies": [
-        "overwrite-web-tree-sitter"
+        "copy:wts:mkdir",
+        "copy:wts:wasm",
+        "copy:wts:css",
+        "copy:wts:vendor"
       ]
     },
     "compile": {

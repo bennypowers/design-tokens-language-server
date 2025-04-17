@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*.*.*"
+
   pull_request:
     branches:
       - main
@@ -21,4 +24,12 @@ jobs:
           deno-version: v2.x
 
       - name: Build step
-        run: "deno task bundle"
+        run: deno task bundle
+
+      - name: Remove native compile
+        run: rm dist/bin/design-tokens-language-server
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/bin/*
