@@ -12,6 +12,8 @@ import {
   InitializeParams,
   RequestMessage,
   ResponseError,
+  SetTraceParams,
+  TraceValues,
 } from "vscode-languageserver-protocol";
 
 import { Logger } from "./logger.ts";
@@ -32,6 +34,7 @@ const DEAD = Symbol('dead request');
 export class Server {
   static messageCollector = "";
 
+  static #traceLevel: TraceValues = TraceValues.Off;
   static #decoder = new TextDecoder();
   static #encoder = new TextEncoder();
 
@@ -103,6 +106,8 @@ export class Server {
         case "completionItem/resolve": return completionItemResolve(request.params as CompletionItem);
         case "codeAction/resolve": return codeActionResolve(request.params as CodeAction);
 
+        case "$/setTrace": return (params: SetTraceParams) => this.#traceLevel = params.value;
+
         case "$/cancelRequest": {
           const { id } = (request.params as RequestMessage)
           Logger.debug(`📵 Cancel {id}`, { id });
@@ -119,27 +124,36 @@ export class Server {
     }
   }
 
+  static #logTrace(message: string, verbose: unknown) {
+    Logger.debug`${message}:\n${verbose}`;
+    if (this.#traceLevel !== TraceValues.Off) {
+      if (this.#traceLevel !== TraceValues.Verbose)
+        verbose = undefined;
+      const pkg = { jsonrpc: "2.0", method: '$/logTrace', params: { message, verbose } };
+      const payload = JSON.stringify(pkg);
+      const messageLength = this.#encoder.encode(payload).byteLength;
+      this.#print(`Content-Length: ${messageLength}\r\n\r\n${payload}`);
+    }
+  }
+
   static async #respond(id?: string|number|null, result?: unknown, error?: ResponseError) {
     if (!((id == null && !result && !error) || (id != null && !this.#requests.has(id)))) {
       const pkg = { jsonrpc: "2.0", id, result, error };
       const message = JSON.stringify(pkg);
       const messageLength = this.#encoder.encode(message).byteLength;
       const request = this.#requests.get(id!);
+      if (request === DEAD)
+        return;
       if (!request)
-        Logger.debug(`↩️ {method}: {result}`, {
-          method: (result as { method: string }).method,
-          result
-        });
-      else if (request === DEAD)
+        this.#logTrace(`↩️ ${(result as { method: string }).method}`, result);
+      else if (error)
+        Logger.error`↩️  (${id}): ${request.method}\n${error}`;
+      else if (id)
+        this.#logTrace(`↩️  (${id}): ${request.method}`, result);
+
+      if (id)
         this.#requests.delete(id!);
-      else if (id && error) {
-        Logger.error(`↩️  ({id}): {method}\n{error}`, { id, error, method: request.method });
-        this.#requests.delete(id);
-      }
-      else if (id) {
-        Logger.debug(`↩️  ({id}): {method}\n{result}`, { id, method: request.method, result });
-        this.#requests.delete(id);
-      }
+
       await this.#print(`Content-Length: ${messageLength}\r\n\r\n${message}`);
     }
   }
