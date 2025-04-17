@@ -28,7 +28,6 @@ async function compile(arch?: Arch) {
     "--no-check",
     "--no-remote",
     "--no-config",
-    "--reload",
     "--import-map=import-map-bundle.json",
     "--include=dist/tree-sitter/tree-sitter-css.wasm",
     "--include=dist/web-tree-sitter.wasm",
@@ -37,20 +36,21 @@ async function compile(arch?: Arch) {
     "dist/main.js",
     "--stdio",
   ].filter(x => typeof x === 'string');
-  const { code } = await new Deno.Command(Deno.execPath(), {
-    stdout: 'piped',
-    stderr: 'piped',
+  const { code, stdout, stderr } = await new Deno.Command(Deno.execPath(), {
     args,
   }).output();
   if (code === 0)
     console.log(`Built ${arch ?? 'native'}`)
   else {
-    console.log(`deno ${args.join(' ')}`);
+    const decoder = new TextDecoder();
+    console.log(`deno ${args.join(' ')}\n`);
+    console.log(decoder.decode(stdout));
+    console.log(decoder.decode(stderr));
     throw new Error(`Could not build ${arch ?? 'native'}`);
   }
 }
 
-await compile();
+Deno.env.has('CI') || await compile();
 
 await Promise.all(Object.values(Arch).map(compile));
 
