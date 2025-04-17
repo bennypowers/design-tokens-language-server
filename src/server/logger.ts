@@ -1,11 +1,8 @@
 import { getFileSink } from "@logtape/file";
-import {
-  configure,
-  getAnsiColorFormatter,
-  getLogger,
-} from "@logtape/logtape";
+import { configure, getAnsiColorFormatter, getLogger } from "@logtape/logtape";
 
-const XDG_STATE_HOME = Deno.env.get("XDG_STATE_HOME") ?? `${Deno.env.get("HOME")}/.local/state`;
+const XDG_STATE_HOME = Deno.env.get("XDG_STATE_HOME") ??
+  `${Deno.env.get("HOME")}/.local/state`;
 const path = `${XDG_STATE_HOME}/design-tokens-language-server/dtls.log`;
 
 const inspectValue = (v: unknown) =>
@@ -24,6 +21,7 @@ await configure({
     }),
   },
   loggers: [
+    { category: ["logtape", "meta"], sinks: [] },
     {
       category: "dtls",
       lowestLevel: "debug",

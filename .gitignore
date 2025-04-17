@@ -4,8 +4,9 @@ bin
 **/cargo-target
 **/target
 **/venv
-*.wasm
 *.xcodeproj
 **/dist
 main.js
 .vscode
+vendor/**/*.h
+vendor/**/*.c

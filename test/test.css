@@ -1,8 +1,7 @@
 a {
-  background: var(--token-color-red);
-  border-color: var(--token-color-green);
-  color: var(--token-color-blue);
+  background: var(--token-color-red, blue);
+  border-color: var(--token-color-green, red);
+  color: var(--token-color-blue, green);
   column-rule-color: var(--token-color-red-hex);
   outline: 1px solid var(--token-color-lightdark);
 }
-

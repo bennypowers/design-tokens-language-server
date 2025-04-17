@@ -1,36 +1,14 @@
-import { DiagnosticSeverity, DocumentDiagnosticReportKind, type DocumentDiagnosticParams, type DocumentDiagnosticReport } from "vscode-languageserver-protocol";
+import { DocumentDiagnosticReportKind, DocumentDiagnosticParams, DocumentDiagnosticReport } from "vscode-languageserver-protocol";
 
-import { tokens } from "../../storage.ts";
-import { documents, tsRangeToLspRange } from "../../css/documents.ts";
+import { documents } from "../../css/documents.ts";
 
 export enum DTLSErrorCodes {
   incorrectFallback = 'incorrect-fallback',
 }
 
 export function diagnostic(params: DocumentDiagnosticParams): DocumentDiagnosticReport {
-  const results = documents.queryVarCallsWithFallback(params.textDocument.uri);
   return {
     kind: DocumentDiagnosticReportKind.Full,
-    items: results.flatMap(result => {
-      const tokenNameCap = result.captures.find(x => x.name === 'tokenName');
-      const fallbackCap = result.captures.find(x => x.name === 'fallback');
-      if (tokenNameCap && fallbackCap && tokens.has(tokenNameCap.node.text)) {
-        const tokenName = tokenNameCap.node.text;
-        const fallback = fallbackCap.node.text;
-        const token = tokens.get(tokenName)!;
-        const valid = fallback === token.$value;
-        if (!valid)
-          return [{
-            range: tsRangeToLspRange(fallbackCap.node),
-            severity: DiagnosticSeverity.Error,
-            message: `Token fallback does not match expected value: ${token.$value}`,
-            code: DTLSErrorCodes.incorrectFallback,
-            data: {
-              tokenName
-            }
-          }]
-      }
-      return []
-    })
+    items: documents.getDiagnostics(params.textDocument.uri),
   };
 }

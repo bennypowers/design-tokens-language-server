@@ -2,21 +2,21 @@
   "nodeModulesDir": "auto",
   "tasks": {
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
-    "bundle": "deno -A build.ts",
-    "xompile": {
-      "command": "cd dist && deno compile --no-lock --no-remote --reload --no-config --unstable-temporal --allow-all --no-check --output bin/design-tokens-language-server main.js --stdio",
+    "overwrite-web-tree-sitter": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
+    "bundle": {
+      "command": "mkdir -p dist/tree-sitter && cp ./src/server/css/tree-sitter/* dist/tree-sitter && deno --allow-all build.ts && cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
       "dependencies": [
-        "bundle"
+        "overwrite-web-tree-sitter"
       ]
     },
     "compile": {
-      "command": "deno compile --unstable-temporal --allow-all --output dist/bin/design-tokens-language-server src/main.ts --stdio",
+      "command": "deno compile --unstable-temporal --allow-all --include ./src/server/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
       "dependencies": [
-        "bundle"
+        "overwrite-web-tree-sitter"
       ]
     },
     "install": {
-      "command": "cp $(which deno) dist/bin/ && cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
+      "command": "cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
       "dependencies": [
         "compile"
       ]
@@ -51,6 +51,9 @@
         "vscode:build",
         "install"
       ]
+    },
+    "build:ci": {
+      "command": "deno --allow-all build.ts"
     }
   },
   "imports": {
@@ -58,11 +61,10 @@
     "@logtape/logtape": "jsr:@logtape/logtape@^0.9.0",
     "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@^0.11.1",
     "@std/assert": "jsr:@std/assert@1",
-    "fs": "node:fs",
+    "@std/collections": "jsr:@std/collections@^1.0.10",
+    "web-tree-sitter": "npm:web-tree-sitter",
     "style-dictionary": "npm:style-dictionary@^4.3.3",
-    "tree-sitter-css": "npm:tree-sitter-css@^0.23.2",
-    "tree-sitter-json": "npm:tree-sitter-json@^0.24.8",
-    "web-tree-sitter": "npm:web-tree-sitter@^0.25.3",
+    "env": "npm:web-tree-sitter",
     "vscode-languageserver-protocol": "npm:vscode-languageserver-protocol@^3.17.5"
   }
 }

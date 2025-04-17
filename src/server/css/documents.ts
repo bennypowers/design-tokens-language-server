@@ -1,56 +1,59 @@
-import type {
+import { Parser, Language, Query } from "web-tree-sitter";
+import type { QueryCapture, Node, Tree } from "web-tree-sitter";
+import { readAll } from 'jsr:@std/io/read-all';
+import { zip } from 'jsr:@std/collections/zip';
+
+type TsRange = Pick<Node, 'startPosition'|'endPosition'>;
+
+import {
+  Diagnostic,
+  DiagnosticSeverity,
   DidChangeTextDocumentParams,
   DidCloseTextDocumentParams,
+  DidOpenTextDocumentParams,
   DocumentUri,
   Position,
   Range,
   TextDocumentContentChangeEvent,
 } from "vscode-languageserver-protocol";
 
-import type {
-  HardNode,
-  Node,
-  Tree,
-} from "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.js";
-import { parserFromWasm } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/main.js";
-import { DidOpenTextDocumentParams } from "vscode-languageserver-protocol";
+import {
+  LightDarkValuesQuery,
+  VarCall,
+  VarCallWithFallback,
+} from "./tree-sitter/queries.ts";
+
+import { FullTextDocument } from "./textDocument.ts";
+import { DTLSErrorCodes } from "../methods/textDocument/diagnostic.ts";
+
 import { tokens } from "../storage.ts";
-import { VarCall, VarCallWithFallback } from "./tree-sitter/queries.ts";
 import { Logger } from "../logger.ts";
 
-interface HardTree extends Tree {
-  rootNode: HardNode;
-}
+const f = await Deno.open(new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url))
+const grammar = await readAll(f);
 
-export interface TSQueryCapture {
-  name: string;
-  node: Omit<HardNode, "children"> & TSNodePosition & { children: HardNode[] };
-}
-
-export interface TSQueryResult {
-  pattern: number;
-  captures: TSQueryCapture[];
-}
+await Parser.init();
+const parser = new Parser();
+const Css = await Language.load(grammar);
+parser.setLanguage(Css);
 
 export interface TSNodePosition {
   endPosition: { row: number; column: number };
   startPosition: { row: number; column: number };
 }
 
-export interface SyntaxNode extends Node, TSNodePosition {
-  type: string;
-  text: string;
+export function getLightDarkValues(value: string) {
+  const tree = parser.parse(`a{b:${value}}`);
+  if (!tree)
+    return [];
+  const query = new Query(tree.language, LightDarkValuesQuery);
+  const captures = query.captures(tree.rootNode);
+  const lightNode = captures.find(cap => cap.name === 'lightValue');
+  const darkNode = captures.find(cap => cap.name === 'darkValue');
+  return [lightNode?.node.text, darkNode?.node.text];
 }
 
-type TsRange = Pick<SyntaxNode, "startPosition" | "endPosition">;
-
-export const parser = await Promise.resolve(
-  parserFromWasm(
-    "https://github.com/jeff-hykin/common_tree_sitter_languages/raw/refs/heads/master/main/css.wasm",
-  ),
-);
-
-export function tsRangeToLspRange(node: TsRange|HardNode): Range {
+export function tsRangeToLspRange(node: TsRange|Node): Range {
   return {
     start: {
       line: (node as TsRange).startPosition.row,
@@ -92,18 +95,18 @@ export function lspRangeIsInTsNode(node: TSNodePosition, range: Range): boolean 
   return (inRows && inCols);
 }
 
-export function captureIsTokenName(cap: TSQueryCapture) {
+export function captureIsTokenName(cap: QueryCapture) {
   return cap.name === "tokenName" &&
     tokens.has(cap.node.text.replace(/^--/, ""));
 }
 
-export function captureIsTokenCall(cap: TSQueryCapture) {
+export function captureIsTokenCall(cap: QueryCapture) {
   return cap.name === "call" && !!cap.node.children
-    .find((child) => child.type === "arguments")
+    .find((child) => child?.type === "arguments")
     ?.children
     .some((child) =>
-      child.type === "plain_value" &&
-      tokens.has(child.text.replace(/^--/, ""))
+      child?.type === "plain_value" &&
+      tokens.has(child?.text.replace(/^--/, ""))
     );
 }
 
@@ -113,68 +116,84 @@ class ENODOCError extends Error {
   }
 }
 
-class CssDocument {
-  #tree: HardTree;
+class CssDocument extends FullTextDocument {
+  #tree: Tree | null;
 
-  constructor(
-    public uri: string,
-    public text: string,
-    public version: number,
-    public languageId: string,
-  ) {
+  diagnostics: Diagnostic[];
+
+  constructor(uri: string, languageId: string, version: number, text: string) {
+    super(uri, languageId, version, text);
     this.#tree = parser.parse(text);
+    this.diagnostics = this.#computeDiagnostics();
   }
 
-  update(change: TextDocumentContentChangeEvent, version: number) {
-    const old = this.text;
-    const rows = old.split('\n');
+  override update(changes: TextDocumentContentChangeEvent[], version: number) {
+    const old = this.getText();
+    super.update(changes, version);
+    const newText = this.getText();
+    const newRows = newText.split('\n');
+    if (!this.#tree)
+      return;
     const oldEndPosition = this.#tree.rootNode.endPosition;
-    if ('range' in change) {
-      const startIndex = Iterator
-        .from(rows)
-        .take(change.range.start.line + 1)
-        .reduce((sum, row, i) => i >= change.range.start.character ? sum : sum + row.length, 0)
-      const oldEndIndex = Iterator
-        .from(rows)
-        .take(change.range.end.line + 1)
-        .reduce((sum, row, i) => i >= change.range.end.character ? sum : sum + row.length, 0)
-      if (!change.text)
-        Logger.debug(`{change}`, { change });
-      this.text = `${this.text.substring(0, startIndex)}${change.text}${this.text.substring(oldEndIndex, this.text.length)}`;
-      const newRows = this.text.split('\n');
-      this.#tree.edit({
-        startIndex,
-        oldEndIndex,
-        newEndIndex: startIndex + change.text.length,
-        ...lspRangeToTsRange(change.range),
-        oldEndPosition,
-        newEndPosition: { row: newRows.length-1, column: newRows.at(-1)!.length -1 },
-      })
-    } else {
-      const newRows = change.text.split('\n');
-      this.text = change.text;
-      this.#tree.edit({
-        startIndex: 0,
-        oldEndIndex: old.length,
-        newEndIndex: change.text.length,
-        startPosition: { row: 0, column: 0 },
-        oldEndPosition,
-        newEndPosition: { row: newRows.length-1, column: newRows.at(-1)!.length -1 },
-      })
-    }
-    this.version = version;
-    this.#tree = parser.parse(this.text, this.#tree);
+    this.#tree.edit({
+      startIndex: 0,
+      oldEndIndex: old.length,
+      newEndIndex: newText.length,
+      startPosition: { row: 0, column: 0 },
+      oldEndPosition,
+      newEndPosition: { row: newRows.length - 1, column: newRows[newRows.length - 1].length - 1 },
+    });
+    this.#tree = parser.parse(newText, this.#tree);
+    this.diagnostics = this.#computeDiagnostics();
   }
 
   query(query: string, options?: TSNodePosition) {
-    return this.#tree.rootNode.query(query, options ?? {}) as unknown as TSQueryResult[];
+    if (!this.#tree)
+      return [];
+    const q = new Query(this.#tree.language, query);
+    return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
   }
 
-  getNodeAtPosition(position: Position): null | SyntaxNode {
-    return this.#tree.rootNode.descendantForPosition({
+  getNodeAtPosition(position: Position): null | Node {
+    return this.#tree?.rootNode.descendantForPosition({
       row: position.line,
       column: position.character,
-    });
+    }) ?? null;
+  }
+
+  /**
+   *
+   * (call_expression
+   *   (function_name) @fn
+   *   (arguments
+   *     (plain_value) @tokenName
+   *     (_) @fallback) @arguments
+   *   (#eq? @fn "var")
+   *   (#match? @fallback ".+"))
+   */
+  #computeDiagnostics() {
+    const captures = this.query(VarCallWithFallback);
+    const tokenNameCaps = captures.filter(x => x.name === 'tokenName');
+    const fallbackCaps = captures.filter(x => x.name === 'fallback');
+    return zip(tokenNameCaps, fallbackCaps).flatMap(([tokenNameCap, fallbackCap]) => {
+      if (tokens.has(tokenNameCap.node.text)) {
+        const tokenName = tokenNameCap.node.text;
+        const fallback = fallbackCap.node.text;
+        const token = tokens.get(tokenName)!;
+        const valid = fallback === token.$value;
+        if (!valid)
+          return [{
+            range: tsRangeToLspRange(fallbackCap.node),
+            severity: DiagnosticSeverity.Error,
+            message: `Token fallback does not match expected value: ${token.$value}`,
+            code: DTLSErrorCodes.incorrectFallback,
+            data: {
+              tokenName
+            }
+          }]
+      }
+      return [];
+    })
   }
 }
 
@@ -188,20 +207,26 @@ class Documents {
     return doc;
   }
 
+  getDiagnostics(uri: DocumentUri) {
+    const doc = this.get(uri);
+    return doc.diagnostics;
+  }
+
+  getVersion(uri: DocumentUri) {
+    const doc = this.get(uri);
+    return doc.version;
+  }
+
   onDidOpen(params: DidOpenTextDocumentParams) {
-    this.#map.set(params.textDocument.uri, new CssDocument(
-      params.textDocument.uri,
-      params.textDocument.text,
-      params.textDocument.version,
-      params.textDocument.languageId,
-    ))
+    const { uri, languageId,  version, text } = params.textDocument;
+    const doc = new CssDocument(uri, languageId, version, text);
+    this.#map.set(params.textDocument.uri, doc);
   }
 
   onDidChange(params: DidChangeTextDocumentParams) {
     const { uri, version } = params.textDocument;
     const doc = this.get(uri);
-    for (const change of params.contentChanges)
-      doc.update(change, version);
+    doc.update(params.contentChanges, version);
   }
 
   onDidClose(params: DidCloseTextDocumentParams) {
@@ -209,7 +234,7 @@ class Documents {
   }
 
   getText(uri: DocumentUri) {
-    return this.get(uri).text;
+    return this.get(uri).getText();
   }
 
   getNodeAtPosition(uri: DocumentUri, position: Position) {

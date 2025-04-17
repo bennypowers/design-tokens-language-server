@@ -21,8 +21,7 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
     capabilities: {
       colorProvider: true,
       hoverProvider: true,
-      // textDocumentSync: TextDocumentSyncKind.Incremental, // currently busted
-      textDocumentSync: TextDocumentSyncKind.Full,
+      textDocumentSync: TextDocumentSyncKind.Incremental,
       completionProvider: {
         resolveProvider: true,
         completionItem: {

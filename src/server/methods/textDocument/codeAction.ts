@@ -7,8 +7,15 @@ import {
 
 import { DTLSErrorCodes } from "./diagnostic.ts";
 import { tokens } from "../../storage.ts";
-import { HardNode } from "https://deno.land/x/deno_tree_sitter@0.2.8.5/tree_sitter.js";
-import { captureIsTokenCall, captureIsTokenName, documents, lspRangeIsInTsNode, tsNodeIsInLspRange, tsRangeToLspRange } from "../../css/documents.ts";
+import type { Node } from "web-tree-sitter";
+import {
+  captureIsTokenCall,
+  captureIsTokenName,
+  documents,
+  lspRangeIsInTsNode,
+  tsNodeIsInLspRange,
+  tsRangeToLspRange,
+} from "../../css/documents.ts";
 
 export enum DTLSCodeActionTitles {
   fixFallback = "Fix token fallback value",
@@ -17,24 +24,26 @@ export enum DTLSCodeActionTitles {
   toggleRangeFallbacks = "Toggle design token fallback values (in range)",
 }
 
-function getEditFromTSArgumentsNode(node: HardNode): TextEdit | undefined {
-  const [, nameNode, closeParenOrFallback] = node.children;
-  const hasFallback = closeParenOrFallback?.text !== ")";
-  const token = tokens.get(nameNode.text);
-  if (token) {
-    // TODO: preserve whitespace
-    const newText = hasFallback
-      ? `(${nameNode.text})`
-      : `(${nameNode.text}, ${token.$value})`;
-    const range = tsRangeToLspRange(node);
-    return { range, newText };
+function getEditFromTSArgumentsNode(
+  node: Node | null,
+): TextEdit | undefined {
+  if (node) {
+    const [, nameNode, closeParenOrFallback] = node.children;
+    const hasFallback = closeParenOrFallback?.text !== ")";
+    const token = tokens.get(nameNode?.text!);
+    if (token) {
+      // TODO: preserve whitespace
+      const newText = hasFallback
+        ? `(${nameNode?.text})`
+        : `(${nameNode?.text}, ${token.$value})`;
+      const range = tsRangeToLspRange(node);
+      return { range, newText };
+    }
   }
 }
 
 export function codeAction(params: CodeActionParams): null | CodeAction[] {
   const { textDocument } = params;
-  const results = documents.queryVarCalls(textDocument.uri);
-
   const diagnostics = params.context.diagnostics.filter((d) =>
     d.code === DTLSErrorCodes.incorrectFallback
   );
@@ -59,18 +68,16 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
     });
   }
 
-  const tokenNameCaptures = results.flatMap((result) =>
-    result.captures.filter((cap) =>
-      captureIsTokenName(cap) &&
-      lspRangeIsInTsNode(cap.node, params.range)
-    )
+  const captures = documents.queryVarCalls(textDocument.uri);
+
+  const tokenNameCaptures = captures.filter((cap) =>
+    captureIsTokenName(cap) &&
+    lspRangeIsInTsNode(cap.node, params.range)
   );
 
-  const tokenCallCaptures = results.flatMap((result) =>
-    result.captures.filter((cap) =>
-      captureIsTokenCall(cap) &&
-      tsNodeIsInLspRange(cap.node, params.range)
-    )
+  const tokenCallCaptures = captures.filter((cap) =>
+    captureIsTokenCall(cap) &&
+    tsNodeIsInLspRange(cap.node, params.range)
   );
 
   if (tokenCallCaptures.length) {
@@ -80,7 +87,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
       edit: {
         changes: {
           [textDocument.uri]: tokenCallCaptures.map((cap) => {
-            const args = cap.node.children.find((x) => x.type === "arguments");
+            const args = cap.node.children.find((x) => x?.type === "arguments");
             if (args) {
               const edit = getEditFromTSArgumentsNode(args);
               if (edit) {

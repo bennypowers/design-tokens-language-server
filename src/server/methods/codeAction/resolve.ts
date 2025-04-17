@@ -5,7 +5,8 @@ import {
 } from "vscode-languageserver-protocol";
 import { tokens } from "../../storage.ts";
 import { DTLSCodeActionTitles } from "../textDocument/codeAction.ts";
-import { documents, TSQueryCapture, tsRangeToLspRange } from "../../css/documents.ts";
+import { documents, tsRangeToLspRange } from "../../css/documents.ts";
+import type { QueryCapture } from 'npm:web-tree-sitter';
 
 function getEditFromDiagnostic(diagnostic: Diagnostic): TextEdit | undefined {
   const token = tokens.get(diagnostic.data.tokenName);
@@ -17,7 +18,7 @@ function getEditFromDiagnostic(diagnostic: Diagnostic): TextEdit | undefined {
   }
 }
 
-function getEditFromVarFallbackCap(cap: TSQueryCapture): TextEdit | undefined {
+function getEditFromVarFallbackCap(cap: QueryCapture): TextEdit | undefined {
   const token = tokens.get(cap.node.text);
   if (token) {
     const newText = token.$value;
@@ -47,14 +48,12 @@ function fixFallback(action: CodeAction): CodeAction {
 
 function fixAllFallbacks(action: CodeAction): CodeAction {
   if (typeof action.data?.textDocument?.uri === "string") {
-    const results = documents.queryVarCallsWithFallback(action.data.textDocument.uri);
+    const captures = documents.queryVarCallsWithFallback(action.data.textDocument.uri);
     return {
       ...action,
       edit: {
         changes: {
-          [action.data.textDocument.uri]: results.flatMap((r) =>
-            r.captures.map(getEditFromVarFallbackCap)
-          ).filter((x) => !!x),
+          [action.data.textDocument.uri]: captures.map(getEditFromVarFallbackCap).filter(x => !!x),
         },
       },
     };

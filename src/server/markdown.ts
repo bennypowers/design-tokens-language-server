@@ -1,6 +1,6 @@
 import type { Token } from "style-dictionary";
 
-import { getLightDarkValues } from "./css/values.ts";
+import { getLightDarkValues } from "./css/documents.ts";
 
 function format(value: string): string {
   if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {
