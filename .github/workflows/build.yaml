@@ -23,11 +23,15 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Test
+        run: deno test -A
+
       - name: Build step
         run: deno task bundle
 
       - name: Release
         uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         with:
           files: dist/bin/*
           token: ${{ secrets.RELEASE_PAT }}

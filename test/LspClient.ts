@@ -135,6 +135,7 @@ export class LspClient {
     await this.server.stdin.close();
     await this.server.stdout.cancel();
     this.server.kill();
+    return await this.server.status;
   }
 }
 
