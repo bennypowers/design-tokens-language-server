@@ -27,7 +27,7 @@
     "install": {
       "command": "cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
       "dependencies": [
-        "compile"
+        "bundle"
       ]
     },
     "vscode:copy": {
