@@ -3,7 +3,7 @@ import { configure, getAnsiColorFormatter, getLogger } from "@logtape/logtape";
 
 const XDG_STATE_HOME = Deno.env.get("XDG_STATE_HOME") ??
   `${Deno.env.get("HOME")}/.local/state`;
-const path = `${XDG_STATE_HOME}/design-tokens-language-server/dtls.log`;
+const path = `${Deno.env.has('CI') ? Deno.cwd() : XDG_STATE_HOME}/design-tokens-language-server/dtls.log`;
 
 const inspectValue = (v: unknown) =>
   typeof v === "string" ? v : Deno.inspect(v, {

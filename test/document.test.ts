@@ -156,8 +156,6 @@ Deno.test("should handle rapid document changes without race conditions", async 
         result: { kind: "full", items: [] },
       }); // Replace with expected diagnostics
     });
-  } catch (e) {
-    throw e;
   } finally {
     await client.close();
   }
