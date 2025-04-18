@@ -1,5 +1,8 @@
 {
   "nodeModulesDir": "auto",
+  "unstable": [
+    "temporal"
+  ],
   "tasks": {
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
     "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
@@ -16,7 +19,7 @@
       ]
     },
     "compile": {
-      "command": "deno compile --quiet --unstable-temporal --allow-all --include ./src/server/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
+      "command": "deno compile --quiet --allow-all --include ./src/server/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
       "dependencies": [
         "copy:wts:vendor"
       ]

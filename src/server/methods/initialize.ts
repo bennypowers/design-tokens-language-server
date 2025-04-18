@@ -3,24 +3,27 @@ import * as LSP from "vscode-languageserver-protocol";
 import { register, tokens } from "../storage.ts";
 import { Logger } from "../logger.ts";
 
-export type SupportedRequestMessage = LSP.RequestMessage & (
-| { method: 'initialize'; params: LSP.InitializeParams }
-| { method: 'initialized'; params: LSP.InitializedParams }
+export type SupportedNotificationMessage = LSP.NotificationMessage & (
 | { method: 'textDocument/didOpen'; params: LSP.DidOpenTextDocumentParams }
 | { method: 'textDocument/didChange'; params: LSP.DidChangeTextDocumentParams }
 | { method: 'textDocument/didClose'; params: LSP.DidCloseTextDocumentParams }
+| { method: '$/setTrace'; params: LSP.SetTraceParams }
+| { method: '$/cancelRequest'; params: LSP.RequestMessage }
+);
+
+export type SupportedRequestMessage = LSP.RequestMessage & (
+| { method: 'initialize'; params: LSP.InitializeParams }
+| { method: 'initialized'; params: LSP.InitializedParams }
 | { method: 'textDocument/diagnostic'; params: LSP.DocumentDiagnosticParams }
 | { method: 'textDocument/documentColor'; params: LSP.DocumentColorParams }
 | { method: 'textDocument/hover'; params: LSP.HoverParams }
 | { method: 'textDocument/completion'; params: LSP.CompletionParams }
 | { method: 'textDocument/codeAction'; params: LSP.CodeActionParams }
-
 | { method: 'codeAction/resolve'; params: LSP.CodeAction }
 | { method: 'completionItem/resolve'; params: LSP.CompletionItem }
-
-| { method: '$/setTrace'; params: LSP.SetTraceParams }
-| { method: '$/cancelRequest'; params: LSP.RequestMessage }
 );
+
+export type SupportedMessage = SupportedRequestMessage | SupportedNotificationMessage;
 
 
 export async function initialize(params: LSP.InitializeParams): Promise<LSP.InitializeResult> {

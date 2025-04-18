@@ -1,8 +1,8 @@
-import { RequestMessage, ResponseError, SetTraceParams, TraceValues, ResponseMessage } from "vscode-languageserver-protocol";
+import { Message, RequestMessage, ResponseError, SetTraceParams, TraceValues } from "vscode-languageserver-protocol";
 
 import { Logger } from "./logger.ts";
 
-import { initialize, SupportedRequestMessage } from "./methods/initialize.ts";
+import { initialize, SupportedMessage } from "./methods/initialize.ts";
 
 import { documentColor } from "./methods/textDocument/documentColor.ts";
 import { codeAction } from "./methods/textDocument/codeAction.ts";
@@ -19,7 +19,7 @@ import { createQueue } from "@sv2dev/tasque";
 
 export class Server {
   static #chunks = "";
-  static #queue = createQueue({ parallelize: 2 });
+  static #queue = createQueue({ parallelize: 5 });
   static #traceLevel: TraceValues = TraceValues.Off;
   static #decoder = new TextDecoder;
   static #encoder = new TextEncoder;
@@ -67,7 +67,7 @@ export class Server {
 
   static async #handle(request: RequestMessage) {
     if (!request.id)
-      await this.#process(request as SupportedRequestMessage);
+      await this.#process(request as SupportedMessage);
     else
       await this.#queue.add(async () => {
         try {
@@ -75,7 +75,7 @@ export class Server {
             return this.#respond(request.id, null);
           if (!request.method.match(/^initialized?$/))
             await this.#initialized;
-          const result = await this.#process(request as SupportedRequestMessage);
+          const result = await this.#process(request as SupportedMessage);
           return this.#respond(request.id, result);
         } catch (error) {
           Logger.error`${error}`;
@@ -84,8 +84,8 @@ export class Server {
       });
   }
 
-  static async #process(request: SupportedRequestMessage): Promise<unknown> {
-    if (this.#cancelled.has(request.id)) return null;
+  static async #process(request: SupportedMessage): Promise<unknown> {
+    if (Message.isRequest(request) && this.#cancelled.has(request.id)) return null;
     switch (request.method) {
       case "initialize": return await initialize(request.params);
       case "initialized": return this.#resolveInitialized();
@@ -114,6 +114,7 @@ export class Server {
   static #respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError) {
     if (!id && !result && !error) return;
     const pkg = { jsonrpc: "2.0", id, result, error };
+    Logger.debug`${pkg}`
     const message = JSON.stringify(pkg);
     const messageLength = this.#encoder.encode(message).byteLength;
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
