@@ -2,7 +2,7 @@
 
 Editor tools for working with [design tokens][dtcg]
 
-> [!Info]
+> [!NOTE]
 > This is extremely early software. Features may be buggy or incomplete. Before 
 > relying on this software, consider contacting the developers to contribute
 > features, tests, etc.
