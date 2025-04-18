@@ -1,48 +1,30 @@
 import { assertEquals } from "jsr:@std/assert";
-import { TextDocumentSyncKind } from "npm:vscode-languageserver-protocol";
-
-// Utility function to send and receive LSP messages
-async function sendLspMessage(
-  process: Deno.ChildProcess,
-  message: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const jsonMessage = JSON.stringify(message);
-  const contentLength = `Content-Length: ${jsonMessage.length}\r\n\r\n`;
-  const fullMessage = contentLength + jsonMessage;
-
-  // Write the LSP message to the server's stdin
-  await process.stdin.getWriter().write(new TextEncoder().encode(fullMessage));
-
-  // Read the response from the server's stdout
-  const buffer = await process.stdout.getReader().read();
-
-  const response = new TextDecoder().decode(buffer.value);
-
-  const jsonResponseStart = response.indexOf("{");
-  const jsonResponse = response.slice(jsonResponseStart).trim();
-
-  console.log(response)
-  return JSON.parse(jsonResponse);
-}
+import * as LSP from "npm:vscode-languageserver-protocol";
+import { LspClient } from "./LspClient.ts";
 
 // Test against the running server binary
-Deno.test("should handle rapid document changes without race conditions", async () => {
+Deno.test("should handle rapid document changes without race conditions", async (t) => {
   // Step 1: Start the language server binary
   const server = new Deno.Command(Deno.execPath(), {
-    stdin: 'piped',
-    stdout: 'piped',
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "piped",
     args: ["-A", "--quiet", "./src/main.ts"],
   }).spawn();
 
-  try {
+  const client = new LspClient(server);
+
+  await t.step("initialize", async () => {
     // Step 2: Initialize the LSP server
-    const initializeResponse = await sendLspMessage(server, {
-      jsonrpc: "2.0",
-      id: 1,
+    const initializeResponse = await client.sendLspMessage({
       method: "initialize",
       params: {
         processId: null,
         rootUri: "file:///",
+        clientInfo: {
+          name: 'DENO_TEST_CLIENT',
+          version: Temporal.Now.plainDateTimeISO().toLocaleString(),
+        },
         capabilities: {
           textDocument: {
             synchronization: {
@@ -56,13 +38,22 @@ Deno.test("should handle rapid document changes without race conditions", async 
       },
     });
 
-    assertEquals((initializeResponse.result as any)?.capabilities.textDocumentSync, TextDocumentSyncKind.Full);
+    assertEquals(
+      initializeResponse?.result.capabilities.textDocumentSync,
+      LSP.TextDocumentSyncKind.Incremental,
+    );
 
+    await client.sendNotification({
+      method: 'initialized'
+    })
+  });
+
+  const uri = "file://test.css";
+
+  const initialText = "body { color: red; }";
+  await t.step("didOpen", async () => {
     // Step 3: Open a document
-    const uri = "file://test.css";
-    const initialText = "body { color: red; }";
-    const didOpenResponse = await sendLspMessage(server, {
-      jsonrpc: "2.0",
+    const didOpenResponse = await client.sendNotification({
       method: "textDocument/didOpen",
       params: {
         textDocument: {
@@ -75,32 +66,45 @@ Deno.test("should handle rapid document changes without race conditions", async 
     });
 
     assertEquals(didOpenResponse, undefined); // No response expected for didOpen
+  });
 
-    // Step 4: Simulate rapid document changes
-    const updatedText1 = "body { color: blue; }";
-    const updatedText2 = "body { color: green; }";
+  await t.step("changes", async () => {
+    // Step 4: Simulate incremental document changes
+    const change1 = {
+      range: {
+        start: { line: 0, character: 12 },
+        end: { line: 0, character: 15 },
+      },
+      text: "blue",
+    };
+    const change2 = {
+      range: {
+        start: { line: 0, character: 12 },
+        end: { line: 0, character: 16 },
+      },
+      text: "green",
+    };
 
-    await sendLspMessage(server, {
-      jsonrpc: "2.0",
+    // First incremental update: Change "red" to "blue"
+    await client.sendNotification({
       method: "textDocument/didChange",
       params: {
         textDocument: { uri, version: 2 },
-        contentChanges: [{ text: updatedText1 }],
+        contentChanges: [change1],
       },
     });
 
-    await sendLspMessage(server, {
-      jsonrpc: "2.0",
+    // Second incremental update: Change "blue" to "green"
+    await client.sendNotification({
       method: "textDocument/didChange",
       params: {
         textDocument: { uri, version: 3 },
-        contentChanges: [{ text: updatedText2 }],
+        contentChanges: [change2],
       },
     });
 
     // Step 5: Request hover and diagnostics
-    const hoverResponse = await sendLspMessage(server, {
-      jsonrpc: "2.0",
+    const hoverResponse = await client.sendLspMessage({
       method: "textDocument/hover",
       params: {
         textDocument: { uri },
@@ -108,16 +112,19 @@ Deno.test("should handle rapid document changes without race conditions", async 
       },
     });
 
-    const diagnosticsResponse = await sendLspMessage(server, {
-      jsonrpc: "2.0",
-      method: "textDocument/publishDiagnostics",
-      params: { uri },
+    const diagnosticsResponse = await client.sendLspMessage({
+      method: "textDocument/diagnostic",
+      params: { textDocument: { uri } },
     });
 
     // Step 6: Assert results
-    assertEquals((hoverResponse.result as any)?.contents, "Expected hover content"); // Replace with expected hover content
-    assertEquals((diagnosticsResponse.result as any)?.diagnostics, []); // Replace with expected diagnostics
-  } finally {
-    server.kill();
-  }
+    assertEquals(
+      hoverResponse?.result,
+      null
+    );
+
+    assertEquals(diagnosticsResponse?.result.items, []); // Replace with expected diagnostics
+  });
+
+  await t.step('close', () => client.close());
 });

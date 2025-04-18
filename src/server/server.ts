@@ -56,8 +56,7 @@ export class Server {
 
       try {
         const request = JSON.parse(slice) as RequestMessage;
-        if (request.id != null)
-          Logger.debug`📥 (${request.id}): ${request.method ?? "notification"}`;
+        Logger.debug`📥 (${request.id ?? ''}): ${request.method ?? "notification"}`;
         this.#handle(request);
       } catch (error) {
         Logger.error`${error}`;
@@ -114,7 +113,6 @@ export class Server {
   static #respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError) {
     if (!id && !result && !error) return;
     const pkg = { jsonrpc: "2.0", id, result, error };
-    Logger.debug`${pkg}`
     const message = JSON.stringify(pkg);
     const messageLength = this.#encoder.encode(message).byteLength;
     const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
