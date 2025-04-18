@@ -27,7 +27,6 @@ import { FullTextDocument } from "./textDocument.ts";
 import { DTLSErrorCodes } from "../methods/textDocument/diagnostic.ts";
 
 import { tokens } from "../storage.ts";
-import { Logger } from "../logger.ts";
 
 const f = await Deno.open(new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url))
 const grammar = await readAll(f);
@@ -161,16 +160,6 @@ class CssDocument extends FullTextDocument {
     }) ?? null;
   }
 
-  /**
-   *
-   * (call_expression
-   *   (function_name) @fn
-   *   (arguments
-   *     (plain_value) @tokenName
-   *     (_) @fallback) @arguments
-   *   (#eq? @fn "var")
-   *   (#match? @fallback ".+"))
-   */
   #computeDiagnostics() {
     const captures = this.query(VarCallWithFallback);
     const tokenNameCaps = captures.filter(x => x.name === 'tokenName');
@@ -220,7 +209,6 @@ class Documents {
   onDidOpen(params: DidOpenTextDocumentParams) {
     const { uri, languageId,  version, text } = params.textDocument;
     const doc = new CssDocument(uri, languageId, version, text);
-    Logger.debug`didOpen ${uri}`;
     this.#map.set(params.textDocument.uri, doc);
   }
 

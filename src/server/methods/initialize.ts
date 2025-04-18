@@ -1,27 +1,45 @@
-import {
-  InitializeParams,
-  InitializeResult,
-  TextDocumentSyncKind,
-  CodeActionKind,
-} from "vscode-languageserver-protocol";
+import * as LSP from "vscode-languageserver-protocol";
 
-import { register } from "../storage.ts";
+import { register, tokens } from "../storage.ts";
 import { Logger } from "../logger.ts";
 
-export async function initialize(params: InitializeParams): Promise<InitializeResult> {
+export type SupportedRequestMessage = LSP.RequestMessage & (
+| { method: 'initialize'; params: LSP.InitializeParams }
+| { method: 'textDocument/didOpen'; params: LSP.DidOpenTextDocumentParams }
+| { method: 'textDocument/didChange'; params: LSP.DidChangeTextDocumentParams }
+| { method: 'textDocument/didClose'; params: LSP.DidCloseTextDocumentParams }
+| { method: 'textDocument/diagnostic'; params: LSP.DocumentDiagnosticParams }
+| { method: 'textDocument/documentColor'; params: LSP.DocumentColorParams }
+| { method: 'textDocument/hover'; params: LSP.HoverParams }
+| { method: 'textDocument/completion'; params: LSP.CompletionParams }
+| { method: 'textDocument/codeAction'; params: LSP.CodeActionParams }
+
+| { method: 'codeAction/resolve'; params: LSP.CodeAction }
+| { method: 'completionItem/resolve'; params: LSP.CompletionItem }
+
+| { method: '$/setTrace'; params: LSP.SetTraceParams }
+| { method: '$/cancelRequest'; params: LSP.RequestMessage }
+);
+
+
+export async function initialize(params: LSP.InitializeParams): Promise<LSP.InitializeResult> {
+  Logger.info`\n\n🎨 DESIGN TOKENS LANGUAGE SERVER 💎: ${params.clientInfo?.name ?? 'unknown-client'}@${params.clientInfo?.version ?? 'unknown-version'}\n`;
+
   for (const { uri } of params.workspaceFolders ?? []) {
     const pkgJsonPath = new URL('./package.json', `${uri}/`);
     const { default: manifest } = await import(pkgJsonPath.href, { with: { type: 'json' } });
     for (const tokensFile of manifest?.designTokensLanguageServer?.tokensFiles ?? [])
       await register(tokensFile)
-        .catch(() => Logger.error(`Could not load tokens for {path}`, { path: tokensFile.path}));
+        .catch(() => Logger.error`Could not load tokens for ${tokensFile.path}`);
   }
+
+  Logger.info`Available Tokens:\n${Object.fromEntries(tokens.entries().filter(([k]) => k.startsWith('--')))}\n`;
 
   return {
     capabilities: {
       colorProvider: true,
       hoverProvider: true,
-      textDocumentSync: TextDocumentSyncKind.Incremental,
+      textDocumentSync: LSP.TextDocumentSyncKind.Incremental,
       completionProvider: {
         resolveProvider: true,
         completionItem: {
@@ -30,9 +48,9 @@ export async function initialize(params: InitializeParams): Promise<InitializeRe
       },
       codeActionProvider: {
         codeActionKinds: [
-          CodeActionKind.QuickFix,
-          CodeActionKind.RefactorRewrite,
-          CodeActionKind.SourceFixAll,
+          LSP.CodeActionKind.QuickFix,
+          LSP.CodeActionKind.RefactorRewrite,
+          LSP.CodeActionKind.SourceFixAll,
         ],
         resolveProvider: true,
       },

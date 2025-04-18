@@ -1,11 +1,11 @@
 import type { CompletionItem, MarkupKind } from "vscode-languageserver-protocol";
 
-import { get } from "../../storage.ts";
+import { tokens } from "../../storage.ts";
 
 import { getTokenMarkdown } from "../../markdown.ts";
 
 export function resolve(params: CompletionItem): CompletionItem {
-  const token = get(params.label);
+  const token = tokens.get(params.label);
   if (!token)
     return params
   else
