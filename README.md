@@ -2,8 +2,10 @@
 
 Editor tools for working with [design tokens][dtcg]
 
-> [!CAUTION]
-> This is extremely early software. Most features are buggy or incomplete
+> [!Info]
+> This is extremely early software. Features may be buggy or incomplete. Before 
+> relying on this software, consider contacting the developers to contribute
+> features, tests, etc.
 
 ## Features
 
@@ -25,7 +27,12 @@ Install Deno and clone this repo
 deno task install
 ```
 
-## Neovim
+### Usage
+
+Download the latest release for your platform and place the binary in your
+`$PATH`, renaming it to `design-tokens-language-server`.
+
+### Neovim
 
 ```lua
 ---@type vim.lsp.ClientConfig
@@ -36,7 +43,14 @@ return {
 }
 ```
 
-## Usage
+You can also build development extensions for vscodium/vscode and Zed. See
+[`deno.json`](tree/main/deno.json) for more info.
+
+### Configure your project
+
+The language server currently depends on a package.json field to read design 
+token files. If you have better ideas on how to source token files in a given
+project, Please open an issue with your suggestions.
 
 Add a `designTokensLanguageServer` block to your project's `package.json`, 
 pointing to [dtcg][dtcg] format design tokens, and including an optional prefix:
