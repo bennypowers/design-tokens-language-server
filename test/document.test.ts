@@ -1,5 +1,4 @@
 import { assertEquals } from "jsr:@std/assert";
-import * as LSP from "npm:vscode-languageserver-protocol";
 import { LspClient } from "./LspClient.ts";
 
 // Test against the running server binary
@@ -15,7 +14,6 @@ Deno.test("should handle rapid document changes without race conditions", async 
   const client = new LspClient(server);
 
   try {
-    
     await t.step("initialize", async () => {
       // Step 2: Initialize the LSP server
       const initializeResponse = await client.sendLspMessage({
@@ -24,8 +22,8 @@ Deno.test("should handle rapid document changes without race conditions", async 
           processId: null,
           rootUri: "file:///",
           clientInfo: {
-            name: 'DENO_TEST_CLIENT',
-            version: Temporal.Now.plainDateTimeISO().toLocaleString(),
+            name: "DENO_TEST_CLIENT",
+            version: Temporal.Now.plainDateTimeISO().toString(),
           },
           capabilities: {
             textDocument: {
@@ -40,19 +38,47 @@ Deno.test("should handle rapid document changes without race conditions", async 
         },
       });
 
-      assertEquals(
-        initializeResponse?.result.capabilities.textDocumentSync,
-        LSP.TextDocumentSyncKind.Incremental,
-      );
+      await client.sendNotification({ method: "initialized" });
 
-      await client.sendNotification({
-        method: 'initialized'
-      })
+      assertEquals(initializeResponse, {
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          capabilities: {
+            codeActionProvider: {
+              codeActionKinds: [
+                "quickfix",
+                "refactor.rewrite",
+                "source.fixAll",
+              ],
+              resolveProvider: true,
+            },
+            colorProvider: true,
+            completionProvider: {
+              completionItem: {
+                labelDetailsSupport: true,
+              },
+              resolveProvider: true,
+            },
+            diagnosticProvider: {
+              interFileDependencies: false,
+              workspaceDiagnostics: false,
+            },
+            hoverProvider: true,
+            textDocumentSync: 2,
+          },
+          serverInfo: {
+            name: "design-tokens-language-server",
+            version: "0.0.1",
+          },
+        },
+      });
     });
 
     const uri = "file://test.css";
 
     const initialText = "body { color: red; }";
+
     await t.step("didOpen", async () => {
       // Step 3: Open a document
       const didOpenResponse = await client.sendNotification({
@@ -122,13 +148,16 @@ Deno.test("should handle rapid document changes without race conditions", async 
       });
 
       // Step 6: Assert results
-      assertEquals(
-        hoverResponse?.result,
-        null
-      );
+      assertEquals(hoverResponse, { jsonrpc: "2.0", id: 2, result: null });
 
-      assertEquals(diagnosticsResponse?.result.items, []); // Replace with expected diagnostics
+      assertEquals(diagnosticsResponse, {
+        jsonrpc: "2.0",
+        id: 3,
+        result: { kind: "full", items: [] },
+      }); // Replace with expected diagnostics
     });
+  } catch (e) {
+    throw e;
   } finally {
     await client.close();
   }

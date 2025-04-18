@@ -6,7 +6,7 @@ type SupportedMethod = SupportedMessage['method'];
 type ResultFor<M extends SupportedMethod> =
     M extends SupportedNotificationMessage['method'] ? null
   : M extends 'initialize' ? LSP.InitializeResult
-  : M extends 'textDocument/hover' ? LSP.Hover
+  : M extends 'textDocument/hover' ? null | LSP.Hover
   : M extends 'textDocument/diagnostic' ? LSP.FullDocumentDiagnosticReport
   : never;
 

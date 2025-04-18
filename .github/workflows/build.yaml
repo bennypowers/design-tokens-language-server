@@ -23,11 +23,11 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Test
-        run: deno test -A
-
       - name: Build step
         run: deno task bundle
+
+      - name: Test
+        run: deno test -A
 
       - name: Release
         uses: softprops/action-gh-release@v2
