@@ -5,6 +5,7 @@ import { Logger } from "../logger.ts";
 
 export type SupportedRequestMessage = LSP.RequestMessage & (
 | { method: 'initialize'; params: LSP.InitializeParams }
+| { method: 'initialized'; params: LSP.InitializedParams }
 | { method: 'textDocument/didOpen'; params: LSP.DidOpenTextDocumentParams }
 | { method: 'textDocument/didChange'; params: LSP.DidChangeTextDocumentParams }
 | { method: 'textDocument/didClose'; params: LSP.DidCloseTextDocumentParams }

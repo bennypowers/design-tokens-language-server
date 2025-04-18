@@ -1,4 +1,4 @@
-import { RequestMessage, ResponseError, SetTraceParams, TraceValues, Message, ResponseMessage } from "vscode-languageserver-protocol";
+import { RequestMessage, ResponseError, SetTraceParams, TraceValues, ResponseMessage } from "vscode-languageserver-protocol";
 
 import { Logger } from "./logger.ts";
 
@@ -19,12 +19,13 @@ import { createQueue } from "@sv2dev/tasque";
 
 export class Server {
   static #chunks = "";
-  static #queue = createQueue({ parallelize: 5 });
+  static #queue = createQueue({ parallelize: 2 });
   static #traceLevel: TraceValues = TraceValues.Off;
   static #decoder = new TextDecoder;
   static #encoder = new TextEncoder;
   static #cancelled = new Set<RequestMessage['id']>;
-  static #requests = new Set<RequestMessage['id']>;
+  static #resolveInitialized: () => void;
+  static #initialized = new Promise<void>(r => this.#resolveInitialized = r);
 
   static #cancelRequest(request: RequestMessage) {
     const { id } = request;
@@ -39,48 +40,55 @@ export class Server {
 
   static #handleChunk(chunk: Uint8Array<ArrayBuffer>) {
     this.#chunks += this.#decoder.decode(chunk);
-    const [, lengthMatch] = this.#chunks.match(/Content-Length: (\d+)\r\n/) ??
-      [];
 
-    if (lengthMatch == null) return;
+    while (this.#chunks.includes("\r\n\r\n")) {
+      const [, lengthMatch] = this.#chunks.match(/Content-Length: (\d+)\r\n/) ?? [];
+      if (lengthMatch == null) break;
 
-    const contentLength = parseInt(lengthMatch);
-    const messageStart = this.#chunks.indexOf("\r\n\r\n") + 4;
-    const messageEnd = messageStart + contentLength;
+      const contentLength = parseInt(lengthMatch);
+      const messageStart = this.#chunks.indexOf("\r\n\r\n") + 4;
+      const messageEnd = messageStart + contentLength;
 
-    if (this.#chunks.length < messageStart + contentLength) return;
+      if (this.#chunks.length < messageEnd) break;
 
-    const slice = this.#chunks.slice(messageStart, messageEnd);
-    const request = JSON.parse(slice) as RequestMessage;
-    this.#chunks = this.#chunks.slice(messageEnd);
+      const slice = this.#chunks.slice(messageStart, messageEnd);
+      this.#chunks = this.#chunks.slice(messageEnd);
 
-    if (request.id != null)
-      Logger.debug`📥 (${request.id}): ${request.method ?? "notification"}`;
-
-    this.#handle(request);
+      try {
+        const request = JSON.parse(slice) as RequestMessage;
+        if (request.id != null)
+          Logger.debug`📥 (${request.id}): ${request.method ?? "notification"}`;
+        this.#handle(request);
+      } catch (error) {
+        Logger.error`${error}`;
+      }
+    }
   }
 
   static async #handle(request: RequestMessage) {
-    if (request.id && this.#cancelled.has(request.id)) return;
-    const { id } = request;
-    this.#requests.add(id)
-    await this.#queue.add(async () => {
-      try {
-        const result = await this.#process(request as SupportedRequestMessage);
-        if (!Message.isNotification(request))
-          return this.#respond(id, result);
-      } catch (error) {
-        Logger.error`${error}`;
-        this.#respond(id, null, error as ResponseError);
-      } finally {
-        this.#requests.delete(id);
-      }
-    });
+    if (!request.id)
+      await this.#process(request as SupportedRequestMessage);
+    else
+      await this.#queue.add(async () => {
+        try {
+          if (this.#cancelled.has(request.id))
+            return this.#respond(request.id, null);
+          if (!request.method.match(/^initialized?$/))
+            await this.#initialized;
+          const result = await this.#process(request as SupportedRequestMessage);
+          return this.#respond(request.id, result);
+        } catch (error) {
+          Logger.error`${error}`;
+          this.#respond(request.id, null, error as ResponseError);
+        }
+      });
   }
 
   static async #process(request: SupportedRequestMessage): Promise<unknown> {
+    if (this.#cancelled.has(request.id)) return null;
     switch (request.method) {
       case "initialize": return await initialize(request.params);
+      case "initialized": return this.#resolveInitialized();
 
       case "textDocument/didOpen": return documents.onDidOpen(request.params);
       case "textDocument/didChange": return documents.onDidChange(request.params);
@@ -103,8 +111,8 @@ export class Server {
     }
   }
 
-  static #respond(id?: ResponseMessage['id'], result?: unknown, error?: ResponseError) {
-    // if (!id && !result && !error) return;
+  static #respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError) {
+    if (!id && !result && !error) return;
     const pkg = { jsonrpc: "2.0", id, result, error };
     const message = JSON.stringify(pkg);
     const messageLength = this.#encoder.encode(message).byteLength;
@@ -121,5 +129,4 @@ export class Server {
       }
     }
   }
-
 }
