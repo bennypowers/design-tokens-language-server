@@ -1,4 +1,4 @@
-name: Deploy
+name: Test and Build
 on:
   push:
     branches:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Test and Build
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
@@ -22,12 +22,13 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-
-      - name: Build step
-        run: deno task bundle
+          
 
       - name: Test
         run: deno test -A
+
+      - name: Build step
+        run: deno task bundle
 
       - name: Release
         uses: softprops/action-gh-release@v2
