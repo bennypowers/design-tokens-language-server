@@ -1,45 +1,22 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-} from "@std/testing/bdd";
+import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { register, tokens } from "#tokens";
-import { documents } from "#css";
+import { TestDocuments, TestTokens } from "#test-helpers";
+
 import { diagnostic } from "./diagnostic.ts";
 
 describe("diagnostic", () => {
-  beforeAll(async () => {
-    await register({ path: "./test/tokens.json", prefix: "token" });
-  });
-
-  afterAll(() => {
-    tokens.clear();
-  });
+  const documents = new TestDocuments();
+  const tokens = new TestTokens();
 
   describe("in a document with a single token and no fallback", () => {
-    const uri = "test.css";
-    beforeEach(() => {
-      documents.onDidOpen({
-        textDocument: {
-          uri,
-          languageId: "css",
-          version: 1,
-          text: `body { color: var(--token-color); }`,
-        },
-      });
-    });
-
-    afterEach(() => {
-      documents.onDidClose({ textDocument: { uri } });
-    });
+    const uri = documents.create(`body { color: var(--token-color); }`, tokens);
 
     it("should return no diagnostics", () => {
-      const diagnostics = diagnostic({ textDocument: { uri } });
+      const diagnostics = diagnostic({ textDocument: { uri } }, {
+        documents,
+        tokens,
+      });
       if (diagnostics.kind !== "full") {
         throw new Error("Expected full diagnostics");
       }
@@ -48,24 +25,16 @@ describe("diagnostic", () => {
   });
 
   describe("in a document with a single token and an incorrect fallback", () => {
-    const uri = "test-incorrect-fallback.css";
-    beforeEach(() => {
-      documents.onDidOpen({
-        textDocument: {
-          uri,
-          languageId: "css",
-          version: 1,
-          text: `body { color: var(--token-color-red, blue); }`,
-        },
-      });
-    });
-
-    afterEach(() => {
-      documents.onDidClose({ textDocument: { uri } });
-    });
+    const uri = documents.create(
+      `body { color: var(--token-color-red, blue); }`,
+      tokens,
+    );
 
     it("should return a single diagnostic", () => {
-      const diagnostics = diagnostic({ textDocument: { uri } });
+      const diagnostics = diagnostic({ textDocument: { uri } }, {
+        documents,
+        tokens,
+      });
       if (diagnostics.kind !== "full") {
         throw new Error("Expected full diagnostics");
       }

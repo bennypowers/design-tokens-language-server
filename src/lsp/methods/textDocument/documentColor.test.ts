@@ -1,46 +1,23 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-} from "@std/testing/bdd";
+import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { register, tokens } from "#tokens";
-import { documents } from "#css";
+import { cssColorToLspColor } from "#color";
+
+import { TestDocuments, TestTokens } from "#test-helpers";
+
 import { documentColor } from "./documentColor.ts";
-import { cssColorToLspColor } from "../../../css/color.ts";
 
 describe("documentColor", () => {
-  beforeAll(async () => {
-    await register({ path: "./test/tokens.json", prefix: "token" });
-  });
-
-  afterAll(() => {
-    tokens.clear();
-  });
-
+  const documents = new TestDocuments();
+  const tokens = new TestTokens();
   describe("in a document with a single token with type color", () => {
-    const uri = "file:///single-color-token.css";
-    beforeEach(() => {
-      documents.onDidOpen({
-        textDocument: {
-          uri,
-          languageId: "css",
-          version: 0,
-          text: `a{b:var(--token-color-red)}\n`,
-        },
-      });
-    });
-
-    afterEach(() => {
-      documents.onDidClose({ textDocument: { uri } });
-    });
+    const uri = documents.create(`a{b:var(--token-color-red)}\n`, tokens);
 
     it("should return a single DocumentColor", () => {
-      const results = documentColor({ textDocument: { uri } });
+      const results = documentColor({ textDocument: { uri } }, {
+        documents,
+        tokens,
+      });
       expect(results).not.toBeNull();
       expect(results).toHaveLength(1);
       const [result] = results;
@@ -64,47 +41,28 @@ describe("documentColor", () => {
   });
 
   describe("in a document with a single token with type dimension", () => {
-    const uri = "file:///single-dimension-token.css";
-    beforeEach(() => {
-      documents.onDidOpen({
-        textDocument: {
-          uri,
-          languageId: "css",
-          version: 0,
-          text: `a{b:var(--token-space-small)}\n`,
-        },
-      });
-    });
-
-    afterEach(() => {
-      documents.onDidClose({ textDocument: { uri } });
-    });
+    const uri = documents.create(`a{b:var(--token-space-small)}\n`, tokens);
 
     it("should return an empty array", () => {
-      const results = documentColor({ textDocument: { uri } });
+      const results = documentColor({ textDocument: { uri } }, {
+        documents,
+        tokens,
+      });
       expect(results).toHaveLength(0);
     });
   });
 
   describe("in a document with two tokens: one color, one dimension", () => {
-    const uri = "file:///two-tokens-one-color-one-space.css";
-    beforeEach(() => {
-      documents.onDidOpen({
-        textDocument: {
-          uri,
-          languageId: "css",
-          version: 0,
-          text: `a{b:var(--token-color-red); c:var(--token-space-small)}\n`,
-        },
-      });
-    });
-
-    afterEach(() => {
-      documents.onDidClose({ textDocument: { uri } });
-    });
+    const uri = documents.create(
+      `a{b:var(--token-color-red); c:var(--token-space-small)}\n`,
+      tokens,
+    );
 
     it("should return a single DocumentColor", () => {
-      const results = documentColor({ textDocument: { uri } });
+      const results = documentColor({ textDocument: { uri } }, {
+        documents,
+        tokens,
+      });
       expect(results).not.toBeNull();
       expect(results).toHaveLength(1);
       const [result] = results;
@@ -123,24 +81,16 @@ describe("documentColor", () => {
   });
 
   describe("in a document with a single token with type color and light-dark values", () => {
-    const uri = "file:///single-color-token-light-dark.css";
-    beforeEach(() => {
-      documents.onDidOpen({
-        textDocument: {
-          uri,
-          languageId: "css",
-          version: 0,
-          text: `a{b:var(--token-color-blue-lightdark)}\n`,
-        },
-      });
-    });
-
-    afterEach(() => {
-      documents.onDidClose({ textDocument: { uri } });
-    });
+    const uri = documents.create(
+      `a{b:var(--token-color-blue-lightdark)}\n`,
+      tokens,
+    );
 
     it("should return two DocumentColors for the same token", () => {
-      const results = documentColor({ textDocument: { uri } });
+      const results = documentColor({ textDocument: { uri } }, {
+        documents,
+        tokens,
+      });
       expect(results).not.toBeNull();
       expect(results).toHaveLength(2);
       const [result1, result2] = results;

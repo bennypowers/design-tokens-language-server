@@ -1,9 +1,14 @@
+import type { Node } from "web-tree-sitter";
+import type { DTLSContext } from "#lsp";
 import * as LSP from "vscode-languageserver-protocol";
+import { tsRangeToLspRange } from "#css";
 
-import { tokens } from "#tokens";
-
-import { documents, tsRangeToLspRange } from "#css";
-import { Node } from "web-tree-sitter";
+interface CompletionArgs {
+  node: Node;
+  name: string;
+  range: LSP.Range;
+  tokens: DTLSContext["tokens"];
+}
 
 const matchesWord = (word: string | null) => (name: string): boolean =>
   !!word && !!name && name
@@ -24,7 +29,8 @@ function escapeCommas($value: string) {
   return $value.replaceAll(",", "\\,");
 }
 
-function getCompletionDependingOnNode(node: Node, name: string): string {
+function getCompletionDependingOnNode(args: CompletionArgs): string {
+  const { node, name, tokens } = args;
   switch (node.type) {
     case "identifier":
     case "property_name":
@@ -36,12 +42,14 @@ function getCompletionDependingOnNode(node: Node, name: string): string {
   }
 }
 
-function getEditOrEntry(
-  node: Node,
-  name: string,
-  range: LSP.Range,
-): Pick<LSP.CompletionItem, "insertText" | "textEdit"> {
-  const insertText = getCompletionDependingOnNode(node, name);
+function getEditOrEntry(args: {
+  node: Node;
+  name: string;
+  range: LSP.Range;
+  tokens: DTLSContext["tokens"];
+}): Pick<LSP.CompletionItem, "insertText" | "textEdit"> {
+  const { range } = args;
+  const insertText = getCompletionDependingOnNode(args);
   return (range
     ? { textEdit: { range, newText: insertText } }
     : { insertText });
@@ -56,9 +64,9 @@ function getEditOrEntry(
  */
 export function completion(
   params: LSP.CompletionParams,
-  docs = documents,
+  { documents, tokens }: DTLSContext,
 ): null | LSP.CompletionList | LSP.CompletionItem[] {
-  const document = docs.get(params.textDocument.uri);
+  const document = documents.get(params.textDocument.uri);
 
   const node = document.getNodeAtPosition(
     offset(params.position, { character: -2 }),
@@ -80,7 +88,7 @@ export function completion(
       ({
         label: name,
         kind: LSP.CompletionItemKind.Snippet,
-        ...getEditOrEntry(node, name, range),
+        ...getEditOrEntry({ node, name, range, tokens }),
       }) satisfies LSP.CompletionItem
     ).toArray();
 

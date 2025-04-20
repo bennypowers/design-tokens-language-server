@@ -1,5 +1,6 @@
 import { Language, Parser, Query } from "web-tree-sitter";
 import type { Node, Point, QueryCapture, Tree } from "web-tree-sitter";
+
 import { readAll } from "jsr:@std/io/read-all";
 import { zip } from "jsr:@std/collections/zip";
 
@@ -16,12 +17,14 @@ import {
 import { FullTextDocument } from "./textDocument.ts";
 import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
 
-import { tokens } from "#tokens";
 import { Logger } from "#logger";
+import { TokenMap } from "#tokens";
+import { DTLSContext } from "#lsp";
 
 const f = await Deno.open(
   new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url),
 );
+
 const grammar = await readAll(f);
 
 await Parser.init();
@@ -101,12 +104,12 @@ export function lspRangeIsInTsNode(
   return (inRows && inCols);
 }
 
-export function captureIsTokenName(cap: QueryCapture) {
+export function captureIsTokenName(cap: QueryCapture, { tokens }: DTLSContext) {
   return cap.name === "tokenName" &&
     tokens.has(cap.node.text.replace(/^--/, ""));
 }
 
-export function captureIsTokenCall(cap: QueryCapture) {
+export function captureIsTokenCall(cap: QueryCapture, { tokens }: DTLSContext) {
   return cap.name === "call" && !!cap.node.children
     .find((child) => child?.type === "arguments")
     ?.children
@@ -124,11 +127,19 @@ class ENODOCError extends Error {
 
 export class CssDocument extends FullTextDocument {
   #tree: Tree | null;
+  #tokens: TokenMap;
 
   diagnostics: LSP.Diagnostic[];
 
-  constructor(uri: string, languageId: string, version: number, text: string) {
+  constructor(
+    uri: string,
+    languageId: string,
+    version: number,
+    text: string,
+    tokens: TokenMap,
+  ) {
     super(uri, languageId, version, text);
+    this.#tokens = tokens;
     this.#tree = parser.parse(text);
     this.diagnostics = this.#computeDiagnostics();
   }
@@ -211,10 +222,10 @@ export class CssDocument extends FullTextDocument {
     const fallbackCaps = captures.filter((x) => x.name === "fallback");
     return zip(tokenNameCaps, fallbackCaps).flatMap(
       ([tokenNameCap, fallbackCap]) => {
-        if (tokens.has(tokenNameCap.node.text)) {
+        if (this.#tokens.has(tokenNameCap.node.text)) {
           const tokenName = tokenNameCap.node.text;
           const fallback = fallbackCap.node.text;
-          const token = tokens.get(tokenName)!;
+          const token = this.#tokens.get(tokenName)!;
           const valid = fallback === token.$value;
           if (!valid) {
             return [{
@@ -240,8 +251,10 @@ export class Documents {
 
   get handlers() {
     return {
-      "textDocument/didOpen": (params: LSP.DidOpenTextDocumentParams) =>
-        this.onDidOpen(params),
+      "textDocument/didOpen": (
+        params: LSP.DidOpenTextDocumentParams,
+        context: DTLSContext,
+      ) => this.onDidOpen(params, context.tokens),
       "textDocument/didChange": (params: LSP.DidChangeTextDocumentParams) =>
         this.onDidChange(params),
       "textDocument/didClose": (params: LSP.DidCloseTextDocumentParams) =>
@@ -253,9 +266,9 @@ export class Documents {
     return [...this.#map.values()];
   }
 
-  onDidOpen(params: LSP.DidOpenTextDocumentParams) {
+  onDidOpen(params: LSP.DidOpenTextDocumentParams, tokens: TokenMap) {
     const { uri, languageId, version, text } = params.textDocument;
-    const doc = new CssDocument(uri, languageId, version, text);
+    const doc = new CssDocument(uri, languageId, version, text, tokens);
     Logger.debug`📖 Opened ${uri}`;
     this.#map.set(params.textDocument.uri, doc);
   }

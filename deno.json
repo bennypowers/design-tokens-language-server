@@ -78,6 +78,7 @@
     "#main": "./src/main.ts",
     "#server": "./src/server.ts",
     "#tokens": "./src/tokens.ts",
+    "#color": "./src/css/color.ts",
     "#css": "./src/css/documents.ts",
     "#lsp": "./src/lsp/lsp.ts",
     "#test-helpers": "./test/helpers.ts",

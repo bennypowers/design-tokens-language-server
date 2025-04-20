@@ -1,12 +1,13 @@
-import type { Token } from "style-dictionary";
+import type { DTLSContext } from "#lsp";
+
 import type {
   ColorPresentation,
   ColorPresentationParams,
 } from "vscode-languageserver-protocol";
-import { tokens } from "#tokens";
 
 import Color from "tinycolor2";
-import { lspColorToTinyColor } from "../../../css/color.ts";
+
+import { lspColorToTinyColor } from "#color";
 
 /**
  * Generates color presentations for design tokens.
@@ -16,11 +17,12 @@ import { lspColorToTinyColor } from "../../../css/color.ts";
  */
 export function colorPresentation(
   { color }: ColorPresentationParams,
+  { tokens }: DTLSContext,
 ): ColorPresentation[] {
   const instance = lspColorToTinyColor(color);
   return tokens
     .entries()
-    .filter(([, token]: [string, Token]): boolean => {
+    .filter(([, token]): boolean => {
       try {
         return token.$type === "color" &&
           Color(token.$value).toHex8String() === instance.toHex8String();

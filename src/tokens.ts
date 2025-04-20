@@ -4,7 +4,7 @@ import { getLightDarkValues } from "#css";
 
 import { convertTokenData } from "style-dictionary/utils";
 
-class TokenMap extends Map<string, Token> {
+export class TokenMap extends Map<string, Token> {
   override get(key: string) {
     return super.get(key.replace(/^-+/, ""));
   }
@@ -20,6 +20,28 @@ export interface TokenFile {
   path: string;
 }
 
+export function populateMap(
+  tokens: Record<string, Token>,
+  map: TokenMap,
+  prefix?: string,
+): void {
+  const flat = convertTokenData(structuredClone(tokens), {
+    output: "map",
+    usesDtcg: true,
+  });
+  for (const [key, token] of flat) {
+    if (key) {
+      const joined = key
+        .replace(/^\{(.*)}$/, "$1")
+        .split(".")
+        .filter((x) => !["_", "@", "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
+        .join("-");
+      const name = prefix ? `${prefix}-${joined}` : joined;
+      map.set(name, token);
+    }
+  }
+}
+
 export async function register(tokenFile: TokenFile) {
   let spec = tokenFile.path;
   if (spec.startsWith("~")) {
@@ -29,18 +51,7 @@ export async function register(tokenFile: TokenFile) {
   }
 
   const { default: json } = await import(spec, { with: { type: "json" } });
-  const flat = convertTokenData(json, { output: "map", usesDtcg: true });
-  for (const [key, token] of flat) {
-    if (key) {
-      const joined = key
-        .replace(/^\{(.*)}$/, "$1")
-        .split(".")
-        .filter((x) => !["_", "@", "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
-        .join("-");
-      const name = tokenFile.prefix ? `${tokenFile.prefix}-${joined}` : joined;
-      tokens.set(name, token);
-    }
-  }
+  populateMap(json, tokens, tokenFile.prefix);
 }
 
 function format(value: string): string {

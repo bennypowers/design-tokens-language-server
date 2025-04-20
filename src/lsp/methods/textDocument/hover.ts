@@ -5,8 +5,9 @@ import {
   MarkupKind,
 } from "vscode-languageserver-protocol";
 
-import { getTokenMarkdown, tokens } from "#tokens";
-import { documents, tsRangeToLspRange } from "#css";
+import { getTokenMarkdown } from "#tokens";
+import { tsRangeToLspRange } from "#css";
+import { DTLSContext } from "#lsp";
 
 /**
  * Generates hover information for design tokens.
@@ -14,15 +15,15 @@ import { documents, tsRangeToLspRange } from "#css";
  * @param params - The parameters for the hover request.
  * @returns The hover information containing the token's documentation and range.
  */
-export function hover(params: HoverParams): null | Hover {
-  const node = documents.getNodeAtPosition(
+export function hover(params: HoverParams, context: DTLSContext): null | Hover {
+  const node = context.documents.getNodeAtPosition(
     params.textDocument.uri,
     params.position,
   );
   if (node) {
-    if (tokens.has(node.text)) {
+    if (context.tokens.has(node.text)) {
       const contents: MarkupContent = {
-        value: getTokenMarkdown(node.text, tokens.get(node.text)!),
+        value: getTokenMarkdown(node.text, context.tokens.get(node.text)!),
         kind: MarkupKind.Markdown,
       };
       return {

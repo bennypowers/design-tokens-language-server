@@ -1,35 +1,22 @@
-import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
+import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { register, tokens } from "#tokens";
-import { documents } from "#css";
+import { MarkupContent } from "vscode-languageserver-protocol";
+import { TestDocuments, TestTokens } from "#test-helpers";
+
 import { hover } from "./hover.ts";
 
-import { MarkupContent } from "vscode-languageserver-protocol";
-
 describe("hover", () => {
-  beforeAll(async () => {
-    await register({ path: "./test/tokens.json", prefix: "token" });
-  });
-
-  afterAll(() => {
-    tokens.clear();
-  });
+  const documents = new TestDocuments();
+  const tokens = new TestTokens();
 
   it("should return hover information for a token", () => {
-    documents.onDidOpen({
-      textDocument: {
-        uri: "file:///test.css",
-        languageId: "css",
-        version: 0,
-        text: `a{b:var(--token-color-red)}\n`,
-      },
-    });
+    const uri = documents.create(`a{b:var(--token-color-red)}\n`, tokens);
 
     const result = hover({
-      textDocument: { uri: "file:///test.css" },
+      textDocument: { uri },
       position: { line: 0, character: 10 },
-    });
+    }, { documents, tokens });
 
     expect(result).not.toBeNull();
     expect(result?.contents).toHaveProperty("kind", "markdown");
@@ -56,37 +43,26 @@ describe("hover", () => {
   });
 
   it("should return null for a non-token", () => {
-    documents.onDidOpen({
-      textDocument: {
-        uri: "file:///test.css",
-        languageId: "css",
-        version: 0,
-        text: `a{b:var(--non-token)}\n`,
-      },
-    });
+    const uri = documents.create(`a{b:var(--non-token)}\n`, tokens);
 
     const result = hover({
-      textDocument: { uri: "file:///test.css" },
+      textDocument: { uri },
       position: { line: 0, character: 10 },
-    });
+    }, { documents, tokens });
 
     expect(result).toBeNull();
   });
 
   it("should return formatted hover information for a token with a light-dark value", () => {
-    documents.onDidOpen({
-      textDocument: {
-        uri: "file:///test.css",
-        languageId: "css",
-        version: 0,
-        text: `a{b:var(--token-color-blue-lightdark)}`,
-      },
-    });
+    const uri = documents.create(
+      `a{b:var(--token-color-blue-lightdark)}`,
+      tokens,
+    );
 
     const result = hover({
-      textDocument: { uri: "file:///test.css" },
+      textDocument: { uri },
       position: { line: 0, character: 10 },
-    });
+    }, { documents, tokens });
 
     expect(result).not.toBeNull();
     expect(result?.contents).toHaveProperty("kind", "markdown");

@@ -1,12 +1,16 @@
-import { beforeAll, describe, it } from "@std/testing/bdd";
+import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
+import { cssColorToLspColor } from "#color";
+
+import { TestDocuments, TestTokens } from "#test-helpers";
+
 import { colorPresentation } from "./colorPresentation.ts";
-import { cssColorToLspColor } from "../../../css/color.ts";
-import { register } from "#tokens";
+
+const documents = new TestDocuments();
+const tokens = new TestTokens();
 
 describe("colorPresentation", () => {
-  beforeAll(() => register({ path: "./test/tokens.json", prefix: "token" }));
   const uri = "file:///test.css";
 
   it("should return color presentations for matching colors", () => {
@@ -17,7 +21,7 @@ describe("colorPresentation", () => {
         start: { line: 0, character: 0 },
         end: { line: 0, character: 0 },
       },
-    });
+    }, { documents, tokens });
     expect(result).toEqual([
       { label: "token-color-red" },
       { label: "token-color-red-hex" },

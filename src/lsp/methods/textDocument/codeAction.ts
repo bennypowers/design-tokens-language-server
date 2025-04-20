@@ -5,17 +5,19 @@ import {
   TextEdit,
 } from "vscode-languageserver-protocol";
 
-import { DTLSErrorCodes } from "./diagnostic.ts";
-import { tokens } from "#tokens";
 import type { Node } from "web-tree-sitter";
+
+import { DTLSErrorCodes } from "./diagnostic.ts";
+
 import {
   captureIsTokenCall,
   captureIsTokenName,
-  documents,
   lspRangeIsInTsNode,
   tsNodeIsInLspRange,
   tsRangeToLspRange,
 } from "#css";
+
+import { DTLSContext } from "#lsp";
 
 export enum DTLSCodeAction {
   /** Fix the fallback value of a design token.*/
@@ -30,11 +32,12 @@ export enum DTLSCodeAction {
 
 function getEditFromTSArgumentsNode(
   node: Node | null,
+  context: DTLSContext,
 ): TextEdit | undefined {
   if (node) {
     const [, nameNode, closeParenOrFallback] = node.children;
     const hasFallback = closeParenOrFallback?.text !== ")";
-    const token = tokens.get(nameNode?.text!);
+    const token = context.tokens.get(nameNode?.text!);
     if (token) {
       // TODO: preserve whitespace
       const newText = hasFallback
@@ -52,7 +55,10 @@ function getEditFromTSArgumentsNode(
  * @param params - The parameters for the code action request.
  * @returns An array of code actions representing the fixes or refactorings for design tokens.
  */
-export function codeAction(params: CodeActionParams): null | CodeAction[] {
+export function codeAction(
+  params: CodeActionParams,
+  context: DTLSContext,
+): null | CodeAction[] {
   const { textDocument } = params;
   const diagnostics = params.context.diagnostics.filter((d) =>
     d.code === DTLSErrorCodes.incorrectFallback
@@ -78,15 +84,15 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
     });
   }
 
-  const captures = documents.queryVarCalls(textDocument.uri);
+  const captures = context.documents.queryVarCalls(textDocument.uri);
 
   const tokenNameCaptures = captures.filter((cap) =>
-    captureIsTokenName(cap) &&
+    captureIsTokenName(cap, context) &&
     lspRangeIsInTsNode(cap.node, params.range)
   );
 
   const tokenCallCaptures = captures.filter((cap) =>
-    captureIsTokenCall(cap) &&
+    captureIsTokenCall(cap, context) &&
     tsNodeIsInLspRange(cap.node, params.range)
   );
 
@@ -101,7 +107,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
           [textDocument.uri]: tokenCallCaptures.map((cap) => {
             const args = cap.node.children.find((x) => x?.type === "arguments");
             if (args) {
-              const edit = getEditFromTSArgumentsNode(args);
+              const edit = getEditFromTSArgumentsNode(args, context);
               if (edit) {
                 return edit;
               }
@@ -112,7 +118,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
     });
   } else if (tokenNameCaptures.length) {
     const [cap] = tokenNameCaptures;
-    const edit = getEditFromTSArgumentsNode(cap.node.parent);
+    const edit = getEditFromTSArgumentsNode(cap.node.parent, context);
     if (edit) {
       actions.push({
         title: DTLSCodeAction.toggleFallback,
