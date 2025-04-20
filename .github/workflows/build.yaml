@@ -24,7 +24,7 @@ jobs:
           deno-version: v2.x
 
       - name: Test
-        run:
+        run: |
           deno test -A --coverage
           deno coverage --exclude="test/.*.ts\$" --lcov --out=coverage/lcov.info
 
