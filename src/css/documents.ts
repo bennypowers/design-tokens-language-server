@@ -118,7 +118,7 @@ class ENODOCError extends Error {
   }
 }
 
-class CssDocument extends FullTextDocument {
+export class CssDocument extends FullTextDocument {
   #tree: Tree | null;
 
   diagnostics: LSP.Diagnostic[];

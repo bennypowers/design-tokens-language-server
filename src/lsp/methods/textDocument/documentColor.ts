@@ -7,7 +7,7 @@ import { tokens } from "#tokens";
 
 import { documents, getLightDarkValues, tsRangeToLspRange } from "#css";
 
-import Color from "npm:tinycolor2";
+import { cssColorToLspColor } from "../../../css/color.ts";
 
 /**
  * Regular expression to match hex color values.
@@ -22,13 +22,15 @@ const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
  */
 export function documentColor(params: DocumentColorParams): ColorInformation[] {
   return documents.queryVarCalls(params.textDocument.uri)
-    .flatMap(cap => {
-      if (cap.name !== "tokenName")
+    .flatMap((cap) => {
+      if (cap.name !== "tokenName") {
         return [];
+      }
       const tokenName = cap.node.text;
-      const token = tokens.get(tokenName.replace(/^--/, ''));
-      if (!token || token.$type !== "color")
+      const token = tokens.get(tokenName.replace(/^--/, ""));
+      if (!token || token.$type !== "color") {
         return [];
+      }
       const colors = [];
       const hexMatches = `${token.$value}`.match(HEX_RE);
       const [light, dark] = getLightDarkValues(token.$value);
@@ -40,19 +42,12 @@ export function documentColor(params: DocumentColorParams): ColorInformation[] {
         colors.push(token.$value);
       }
       return colors.flatMap((match) => {
-        const color = Color(match);
-        const prgb = color.toPercentageRgb();
         return [
           {
-            color: {
-              red: parseInt(prgb.r) * 0.01,
-              green: parseInt(prgb.g) * 0.01,
-              blue: parseInt(prgb.b) * 0.01,
-              alpha: color.getAlpha(),
-            },
+            color: cssColorToLspColor(match),
             range: tsRangeToLspRange(cap.node),
           } satisfies ColorInformation,
         ];
       });
-  });
+    });
 }
