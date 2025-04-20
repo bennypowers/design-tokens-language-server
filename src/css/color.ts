@@ -11,3 +11,11 @@ export function cssColorToLspColor(color: string): Color {
     alpha: colorObj.getAlpha(),
   };
 }
+
+export function lspColorToTinyColor(color: Color): TinyColor.Instance {
+  return new TinyColor({
+    r: Math.round(color.red * 255),
+    g: Math.round(color.green * 255),
+    b: Math.round(color.blue * 255),
+  }).setAlpha(color.alpha);
+}

@@ -6,18 +6,7 @@ import type {
 import { tokens } from "#tokens";
 
 import Color from "tinycolor2";
-
-function isMatchFor(color: Color.Instance) {
-  return ([name, token]: [string, Token]): boolean => {
-    try {
-      return name.startsWith("--") &&
-        token.$type === "color" &&
-        Color(token.$value).toHex8String() === color.toHex8String();
-    } catch {
-      return false;
-    }
-  };
-}
+import { lspColorToTinyColor } from "../../../css/color.ts";
 
 /**
  * Generates color presentations for design tokens.
@@ -28,13 +17,17 @@ function isMatchFor(color: Color.Instance) {
 export function colorPresentation(
   { color }: ColorPresentationParams,
 ): ColorPresentation[] {
+  const instance = lspColorToTinyColor(color);
   return tokens
     .entries()
-    .filter(
-      isMatchFor(
-        Color({ r: color.red, g: color.green, b: color.blue, a: color.alpha }),
-      ),
-    )
+    .filter(([, token]: [string, Token]): boolean => {
+      try {
+        return token.$type === "color" &&
+          Color(token.$value).toHex8String() === instance.toHex8String();
+      } catch {
+        return false;
+      }
+    })
     .map(([label]) => ({ label }))
     .toArray();
 }
