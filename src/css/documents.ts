@@ -1,5 +1,10 @@
 import { Parser, Language, Query } from "web-tree-sitter";
-import type { QueryCapture, Node, Tree } from "web-tree-sitter";
+import type {
+  QueryCapture,
+  Node,
+  Tree,
+  Point
+} from "web-tree-sitter";
 import { readAll } from 'jsr:@std/io/read-all';
 import { zip } from 'jsr:@std/collections/zip';
 
@@ -67,6 +72,13 @@ export function lspRangeToTsRange(range: LSP.Range): TsRange {
       column: range.end.character,
     },
   }
+}
+
+export function lspPosToTsPos(pos: LSP.Position): Point{
+  return {
+    row: pos.line,
+    column: pos.character,
+  };
 }
 
 export function tsNodeIsInLspRange(node: TSNodePosition, range: LSP.Range): boolean {
@@ -137,6 +149,12 @@ class CssDocument extends FullTextDocument {
     this.diagnostics = this.#computeDiagnostics();
   }
 
+  /**
+   * Queries the document for a specific query.
+   *
+   * @param query - The query to run.
+   * @param options - The options to pass to the query.
+   */
   query(query: string, options?: TSNodePosition) {
     if (!this.#tree)
       return [];
@@ -144,11 +162,34 @@ class CssDocument extends FullTextDocument {
     return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
   }
 
+  /**
+   * Gets the node at the specified position in the document.
+   *
+   * @param position - The position to check.
+   */
   getNodeAtPosition(position: LSP.Position): null | Node {
     return this.#tree?.rootNode.descendantForPosition({
       row: position.line,
       column: position.character,
     }) ?? null;
+  }
+
+  /**
+   * Checks if the given position is within a specific node type in the document.
+   *
+   * @param position - The position to check.
+   * @param type - The type of node to check against.
+   * @return whether the position is within the specified node type.
+   */
+  positionIsInNodeType(position: LSP.Position, type: string): boolean {
+    let node = this.getNodeAtPosition(position);
+    while (node && node.type !== 'stylesheet') {
+      if (node.type === type)
+        return true;
+      else
+        node = node.parent;
+    }
+    return false
   }
 
   #computeDiagnostics() {

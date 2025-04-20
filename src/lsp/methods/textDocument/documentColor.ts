@@ -26,7 +26,7 @@ export function documentColor(params: DocumentColorParams): ColorInformation[] {
       if (cap.name !== "tokenName")
         return [];
       const tokenName = cap.node.text;
-      const token = tokens.get(tokenName);
+      const token = tokens.get(tokenName.replace(/^--/, ''));
       if (!token || token.$type !== "color")
         return [];
       const colors = [];

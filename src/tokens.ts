@@ -1,10 +1,19 @@
 import type { Token } from "style-dictionary";
 
-import { getLightDarkValues } from "./css/documents.ts";
+import { getLightDarkValues } from "#css";
 
 import { convertTokenData } from "style-dictionary/utils";
 
-export const tokens = new Map<string, Token>();
+class TokenMap extends Map<string, Token> {
+  override get(key: string) {
+    return super.get(key.replace(/^-+/, ''));
+  }
+  override has(key: string) {
+    return super.has(key.replace(/^-+/, ''));
+  }
+}
+
+export const tokens = new TokenMap();
 
 export interface TokenFile {
   prefix?: string;
@@ -29,7 +38,6 @@ export async function register(tokenFile: TokenFile) {
         .join('-');
       const name = tokenFile.prefix ? `${tokenFile.prefix}-${joined}` : joined;
       tokens.set(name, token);
-      tokens.set(`--${name}`, token);
     }
   }
 }

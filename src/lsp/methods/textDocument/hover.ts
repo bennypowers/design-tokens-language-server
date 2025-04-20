@@ -12,10 +12,9 @@ import { documents, tsRangeToLspRange } from "#css";
 export function hover(params: HoverParams): null | Hover {
   const node = documents.getNodeAtPosition(params.textDocument.uri, params.position);
   if (node) {
-    const token = tokens.get(node.text);
-    if (token) {
+    if (tokens.has(node.text)) {
       const contents: MarkupContent = {
-        value: getTokenMarkdown(node.text, token),
+        value: getTokenMarkdown(node.text, tokens.get(node.text)!),
         kind: MarkupKind.Markdown,
       }
       return {

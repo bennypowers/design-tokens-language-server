@@ -1,13 +1,14 @@
-import type { Token } from "style-dictionary";
 import * as LSP from "vscode-languageserver-protocol";
 
 import { tokens } from "#tokens";
 
 import { documents, tsRangeToLspRange } from "#css";
+import { Logger } from "#logger";
+import { Node } from "web-tree-sitter";
 
 const matchesWord =
   (word: string | null) =>
-    ([name]: [name: string, x: Token]): boolean =>
+    (name: string): boolean =>
       !!word && !!name && name
         .replaceAll("-", "")
         .startsWith(word.replaceAll("-", ""));
@@ -23,6 +24,27 @@ function escapeCommas($value: string) {
   return $value.replaceAll(',', '\\,');
 }
 
+function getCompletionDependingOnNode(node: Node, name: string): string {
+  switch (node.type) {
+    case 'identifier':
+    case 'property_name':
+      return `--${name}: $0`;
+    default: {
+      const token = tokens.get(name)!;
+      return `var(--${name}\${1|\\, ${escapeCommas(token.$value)},|})$0`;
+    }
+  }
+}
+
+function getEditOrEntry(
+  node: Node,
+  name: string,
+  range: LSP.Range,
+): Pick<LSP.CompletionItem, 'insertText'|'textEdit'> {
+  const insertText = getCompletionDependingOnNode(node, name);
+  return (range ? { textEdit: { range, newText: insertText } } : { insertText });
+}
+
 /**
  * Generates completion items for design tokens.
  *
@@ -30,30 +52,26 @@ function escapeCommas($value: string) {
  * @returns A completion list or an array of completion items representing the design tokens that match the specified word.
  */
 export function completion(params: LSP.CompletionParams): null | LSP.CompletionList | LSP.CompletionItem[] {
-  const node = documents.getNodeAtPosition(params.textDocument.uri, offset(params.position, { character: -2 }));
-  if (!node) return null;
+  const document = documents.get(params.textDocument.uri);
+  const node = document.getNodeAtPosition(offset(params.position, { character: -2 }));
+  if (!node || !document.positionIsInNodeType(params.position, 'block'))
+    return null;
   const range = tsRangeToLspRange(node);
-  const items = tokens.entries().filter(matchesWord(node.text))
-  .map(([name, { $value }]) => ({
-    label: name,
-    kind: LSP.CompletionItemKind.Snippet,
-    ...(range ? {
-      textEdit: {
-        range,
-        newText: `var(--${name}\${1|\\, ${escapeCommas($value)},|})$0`,
-      }
-    } : {
-      insertText: `var(--${name}\${1|\\, ${escapeCommas($value)},|})$0`,
-    })
-  }) satisfies LSP.CompletionItem).toArray();
+  const items = tokens
+    .keys()
+    .filter(matchesWord(node.text))
+    .map(name => ({
+      label: name,
+      kind: LSP.CompletionItemKind.Snippet,
+      ...getEditOrEntry(node, name, range)
+    }) satisfies LSP.CompletionItem).toArray();
   return {
+    items,
     isIncomplete: items.length === 0 || items.length < tokens.size,
     itemDefaults: {
       insertTextFormat: LSP.InsertTextFormat.Snippet,
       insertTextMode: LSP.InsertTextMode.asIs,
       editRange: range,
     },
-    items
   }
 }
-
