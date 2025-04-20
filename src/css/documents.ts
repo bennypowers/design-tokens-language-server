@@ -1,14 +1,9 @@
-import { Parser, Language, Query } from "web-tree-sitter";
-import type {
-  QueryCapture,
-  Node,
-  Tree,
-  Point
-} from "web-tree-sitter";
-import { readAll } from 'jsr:@std/io/read-all';
-import { zip } from 'jsr:@std/collections/zip';
+import { Language, Parser, Query } from "web-tree-sitter";
+import type { Node, Point, QueryCapture, Tree } from "web-tree-sitter";
+import { readAll } from "jsr:@std/io/read-all";
+import { zip } from "jsr:@std/collections/zip";
 
-type TsRange = Pick<Node, 'startPosition'|'endPosition'>;
+type TsRange = Pick<Node, "startPosition" | "endPosition">;
 
 import * as LSP from "vscode-languageserver-protocol";
 
@@ -24,7 +19,9 @@ import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
 import { tokens } from "#tokens";
 import { Logger } from "#logger";
 
-const f = await Deno.open(new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url))
+const f = await Deno.open(
+  new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url),
+);
 const grammar = await readAll(f);
 
 await Parser.init();
@@ -39,16 +36,17 @@ export interface TSNodePosition {
 
 export function getLightDarkValues(value: string) {
   const tree = parser.parse(`a{b:${value}}`);
-  if (!tree)
+  if (!tree) {
     return [];
+  }
   const query = new Query(tree.language, LightDarkValuesQuery);
   const captures = query.captures(tree.rootNode);
-  const lightNode = captures.find(cap => cap.name === 'lightValue');
-  const darkNode = captures.find(cap => cap.name === 'darkValue');
+  const lightNode = captures.find((cap) => cap.name === "lightValue");
+  const darkNode = captures.find((cap) => cap.name === "darkValue");
   return [lightNode?.node.text, darkNode?.node.text];
 }
 
-export function tsRangeToLspRange(node: TsRange|Node): LSP.Range {
+export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
   return {
     start: {
       line: (node as TsRange).startPosition.row,
@@ -71,17 +69,20 @@ export function lspRangeToTsRange(range: LSP.Range): TsRange {
       row: range.end.line,
       column: range.end.character,
     },
-  }
+  };
 }
 
-export function lspPosToTsPos(pos: LSP.Position): Point{
+export function lspPosToTsPos(pos: LSP.Position): Point {
   return {
     row: pos.line,
     column: pos.character,
   };
 }
 
-export function tsNodeIsInLspRange(node: TSNodePosition, range: LSP.Range): boolean {
+export function tsNodeIsInLspRange(
+  node: TSNodePosition,
+  range: LSP.Range,
+): boolean {
   const inRows = node.startPosition.row >= range.start.line &&
     node.endPosition.row <= range.end.line;
   const inCols = node.startPosition.column >= range.start.character &&
@@ -89,7 +90,10 @@ export function tsNodeIsInLspRange(node: TSNodePosition, range: LSP.Range): bool
   return (inRows && inCols);
 }
 
-export function lspRangeIsInTsNode(node: TSNodePosition, range: LSP.Range): boolean {
+export function lspRangeIsInTsNode(
+  node: TSNodePosition,
+  range: LSP.Range,
+): boolean {
   const inRows = node.startPosition.row >= range.start.line &&
     node.endPosition.row <= range.end.line;
   const inCols = node.startPosition.column <= range.start.character &&
@@ -129,13 +133,17 @@ export class CssDocument extends FullTextDocument {
     this.diagnostics = this.#computeDiagnostics();
   }
 
-  override update(changes: LSP.TextDocumentContentChangeEvent[], version: number) {
+  override update(
+    changes: LSP.TextDocumentContentChangeEvent[],
+    version: number,
+  ) {
     const old = this.getText();
     super.update(changes, version);
     const newText = this.getText();
-    const newRows = newText.split('\n');
-    if (!this.#tree)
+    const newRows = newText.split("\n");
+    if (!this.#tree) {
       return;
+    }
     const oldEndPosition = this.#tree.rootNode.endPosition;
     this.#tree.edit({
       startIndex: 0,
@@ -143,7 +151,10 @@ export class CssDocument extends FullTextDocument {
       newEndIndex: newText.length,
       startPosition: { row: 0, column: 0 },
       oldEndPosition,
-      newEndPosition: { row: newRows.length - 1, column: newRows[newRows.length - 1].length - 1 },
+      newEndPosition: {
+        row: newRows.length - 1,
+        column: newRows[newRows.length - 1].length - 1,
+      },
     });
     this.#tree = parser.parse(newText, this.#tree);
     this.diagnostics = this.#computeDiagnostics();
@@ -156,8 +167,9 @@ export class CssDocument extends FullTextDocument {
    * @param options - The options to pass to the query.
    */
   query(query: string, options?: TSNodePosition) {
-    if (!this.#tree)
+    if (!this.#tree) {
       return [];
+    }
     const q = new Query(this.#tree.language, query);
     return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
   }
@@ -183,56 +195,68 @@ export class CssDocument extends FullTextDocument {
    */
   positionIsInNodeType(position: LSP.Position, type: string): boolean {
     let node = this.getNodeAtPosition(position);
-    while (node && node.type !== 'stylesheet') {
-      if (node.type === type)
+    while (node && node.type !== "stylesheet") {
+      if (node.type === type) {
         return true;
-      else
+      } else {
         node = node.parent;
+      }
     }
-    return false
+    return false;
   }
 
   #computeDiagnostics() {
     const captures = this.query(VarCallWithFallback);
-    const tokenNameCaps = captures.filter(x => x.name === 'tokenName');
-    const fallbackCaps = captures.filter(x => x.name === 'fallback');
-    return zip(tokenNameCaps, fallbackCaps).flatMap(([tokenNameCap, fallbackCap]) => {
-      if (tokens.has(tokenNameCap.node.text)) {
-        const tokenName = tokenNameCap.node.text;
-        const fallback = fallbackCap.node.text;
-        const token = tokens.get(tokenName)!;
-        const valid = fallback === token.$value;
-        if (!valid)
-          return [{
-            range: tsRangeToLspRange(fallbackCap.node),
-            severity: LSP.DiagnosticSeverity.Error,
-            message: `Token fallback does not match expected value: ${token.$value}`,
-            code: DTLSErrorCodes.incorrectFallback,
-            data: {
-              tokenName
-            }
-          }]
-      }
-      return [];
-    })
+    const tokenNameCaps = captures.filter((x) => x.name === "tokenName");
+    const fallbackCaps = captures.filter((x) => x.name === "fallback");
+    return zip(tokenNameCaps, fallbackCaps).flatMap(
+      ([tokenNameCap, fallbackCap]) => {
+        if (tokens.has(tokenNameCap.node.text)) {
+          const tokenName = tokenNameCap.node.text;
+          const fallback = fallbackCap.node.text;
+          const token = tokens.get(tokenName)!;
+          const valid = fallback === token.$value;
+          if (!valid) {
+            return [{
+              range: tsRangeToLspRange(fallbackCap.node),
+              severity: LSP.DiagnosticSeverity.Error,
+              message:
+                `Token fallback does not match expected value: ${token.$value}`,
+              code: DTLSErrorCodes.incorrectFallback,
+              data: {
+                tokenName,
+              },
+            }];
+          }
+        }
+        return [];
+      },
+    );
   }
 }
 
-class Documents {
+export class Documents {
   #map = new Map<LSP.DocumentUri, CssDocument>();
 
   get handlers() {
     return {
-      "textDocument/didOpen": (params: LSP.DidOpenTextDocumentParams) => this.onDidOpen(params),
-      "textDocument/didChange": (params: LSP.DidChangeTextDocumentParams) => this.onDidChange(params),
-      "textDocument/didClose": (params: LSP.DidCloseTextDocumentParams) => this.onDidClose(params),
-    } as const
+      "textDocument/didOpen": (params: LSP.DidOpenTextDocumentParams) =>
+        this.onDidOpen(params),
+      "textDocument/didChange": (params: LSP.DidChangeTextDocumentParams) =>
+        this.onDidChange(params),
+      "textDocument/didClose": (params: LSP.DidCloseTextDocumentParams) =>
+        this.onDidClose(params),
+    } as const;
+  }
+
+  protected get allDocuments() {
+    return [...this.#map.values()];
   }
 
   onDidOpen(params: LSP.DidOpenTextDocumentParams) {
-    const { uri, languageId,  version, text } = params.textDocument;
+    const { uri, languageId, version, text } = params.textDocument;
     const doc = new CssDocument(uri, languageId, version, text);
-    Logger.debug`📖 Opened ${uri}`
+    Logger.debug`📖 Opened ${uri}`;
     this.#map.set(params.textDocument.uri, doc);
   }
 
@@ -248,8 +272,9 @@ class Documents {
 
   get(uri: LSP.DocumentUri) {
     const doc = this.#map.get(uri);
-    if (!doc)
+    if (!doc) {
       throw new ENODOCError(uri);
+    }
     return doc;
   }
 

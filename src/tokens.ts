@@ -6,10 +6,10 @@ import { convertTokenData } from "style-dictionary/utils";
 
 class TokenMap extends Map<string, Token> {
   override get(key: string) {
-    return super.get(key.replace(/^-+/, ''));
+    return super.get(key.replace(/^-+/, ""));
   }
   override has(key: string) {
-    return super.has(key.replace(/^-+/, ''));
+    return super.has(key.replace(/^-+/, ""));
   }
 }
 
@@ -22,20 +22,21 @@ export interface TokenFile {
 
 export async function register(tokenFile: TokenFile) {
   let spec = tokenFile.path;
-  if (spec.startsWith("~"))
+  if (spec.startsWith("~")) {
     spec = spec.replace("~", Deno.env.get("HOME")!);
-  else if (spec.startsWith('.'))
+  } else if (spec.startsWith(".")) {
     spec = spec.replace(".", Deno.cwd());
+  }
 
   const { default: json } = await import(spec, { with: { type: "json" } });
   const flat = convertTokenData(json, { output: "map", usesDtcg: true });
   for (const [key, token] of flat) {
     if (key) {
       const joined = key
-        .replace(/^\{(.*)}$/, '$1')
-        .split('.')
-        .filter(x => !['_', '@', "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
-        .join('-');
+        .replace(/^\{(.*)}$/, "$1")
+        .split(".")
+        .filter((x) => !["_", "@", "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
+        .join("-");
       const name = tokenFile.prefix ? `${tokenFile.prefix}-${joined}` : joined;
       tokens.set(name, token);
     }
@@ -49,21 +50,25 @@ function format(value: string): string {
   ${light},
   ${dark}
 )`;
-  } else
+  } else {
     return value;
+  }
 }
 
-export function getTokenMarkdown(name: string, { $description, $value, $type }: Token) {
+export function getTokenMarkdown(
+  name: string,
+  { $description, $value, $type }: Token,
+) {
   return [
-    `# \`--${name.replace(/^--/, '')}\``,
-    '',
+    `# \`--${name.replace(/^--/, "")}\``,
+    "",
     // TODO: convert DTCG types to CSS syntax
     // const type = $type ? ` *<\`${$type}\`>*` : "";
     `Type: \`${$type}\``,
-    $description ?? '',
-    '',
-    '```css',
+    $description ?? "",
+    "",
+    "```css",
     format($value),
-    '```',
+    "```",
   ].join("\n");
 }

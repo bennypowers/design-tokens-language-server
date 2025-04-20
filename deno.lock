@@ -21,6 +21,7 @@
     "jsr:@std/io@~0.225.2": "0.225.2",
     "jsr:@std/path@^1.0.6": "1.0.8",
     "jsr:@std/path@^1.0.8": "1.0.8",
+    "jsr:@std/testing@*": "1.0.11",
     "jsr:@std/testing@^1.0.11": "1.0.11",
     "jsr:@std/text@*": "1.0.12",
     "jsr:@sv2dev/tasque@~0.1.2": "0.1.2",
