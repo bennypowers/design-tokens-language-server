@@ -4,7 +4,7 @@ import { Logger } from "#logger";
 
 import { createQueue } from "@sv2dev/tasque";
 
-import { Lsp } from "./lsp/lsp.ts";
+import { Lsp } from "#lsp";
 import { Stdio } from "./server/stdio.ts";
 
 export interface Io {
@@ -44,8 +44,10 @@ export class Server {
 
     switch (options.io) {
       case 'stdio':
-      default:
         this.#io = new Stdio();
+        break;
+      default:
+        throw new Error(`Unsupported IO type: ${options.io}`);
     }
 
     for await (const request of this.#io.requests()) {
