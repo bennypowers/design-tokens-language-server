@@ -1,5 +1,6 @@
-import { assertEquals } from "jsr:@std/assert";
-import { LspClient } from "./LspClient.ts";
+import { assertEquals } from "@std/assert";
+
+import { TestLspClient } from "./LspClient.ts";
 
 // Test against the running server binary
 Deno.test("should handle rapid document changes without race conditions", async (t) => {
@@ -11,12 +12,12 @@ Deno.test("should handle rapid document changes without race conditions", async 
     args: ["-A", "--quiet", "./src/main.ts"],
   }).spawn();
 
-  const client = new LspClient(server);
+  const client = new TestLspClient(server);
 
   try {
     await t.step("initialize", async () => {
       // Step 2: Initialize the LSP server
-      const initializeResponse = await client.sendLspMessage({
+      const initializeResponse = await client.sendMessage({
         method: "initialize",
         params: {
           processId: null,
@@ -134,7 +135,7 @@ Deno.test("should handle rapid document changes without race conditions", async 
       // TODO: add test tokens so that this is meaningful
 
       // Step 5: Request hover and diagnostics
-      const hoverResponse = await client.sendLspMessage({
+      const hoverResponse = await client.sendMessage({
         method: "textDocument/hover",
         params: {
           textDocument: { uri },
@@ -142,7 +143,7 @@ Deno.test("should handle rapid document changes without race conditions", async 
         },
       });
 
-      const diagnosticsResponse = await client.sendLspMessage({
+      const diagnosticsResponse = await client.sendMessage({
         method: "textDocument/diagnostic",
         params: { textDocument: { uri } },
       });

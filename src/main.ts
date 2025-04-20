@@ -1,3 +1,3 @@
-import { Server } from "./server/server.ts";
+import { Server } from "#server";
 
-Server.serve();
+Server.serve({ io: 'stdio' });

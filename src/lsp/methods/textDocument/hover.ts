@@ -1,9 +1,14 @@
 import { Hover, HoverParams, MarkupContent, MarkupKind } from "vscode-languageserver-protocol";
 
-import { tokens } from "../../storage.ts";
-import { getTokenMarkdown } from "../../markdown.ts";
-import { documents, tsRangeToLspRange } from "../../css/documents.ts";
+import { tokens, getTokenMarkdown } from "#tokens";
+import { documents, tsRangeToLspRange } from "#css";
 
+/**
+ * Generates hover information for design tokens.
+ *
+ * @param params - The parameters for the hover request.
+ * @returns The hover information containing the token's documentation and range.
+ */
 export function hover(params: HoverParams): null | Hover {
   const node = documents.getNodeAtPosition(params.textDocument.uri, params.position);
   if (node) {

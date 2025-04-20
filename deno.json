@@ -8,7 +8,7 @@
     "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
     "copy:wts:mkdir": "mkdir -p dist/tree-sitter",
     "copy:wts:wasm": "cp ./vendor/web-tree-sitter/web-tree-sitter.wasm dist/web-tree-sitter.wasm",
-    "copy:wts:css": "cp ./src/server/css/tree-sitter/tree-sitter-css.wasm dist/tree-sitter/tree-sitter-css.wasm",
+    "copy:wts:css": "cp ./src/css/tree-sitter/tree-sitter-css.wasm dist/tree-sitter/tree-sitter-css.wasm",
     "bundle": {
       "command": "deno --allow-all build.ts",
       "dependencies": [
@@ -19,7 +19,7 @@
       ]
     },
     "compile": {
-      "command": "deno compile --quiet --allow-all --include ./src/server/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
+      "command": "deno compile --quiet --allow-all --include ./src/css/tree-sitter --output dist/bin/design-tokens-language-server src/main.ts --stdio",
       "dependencies": [
         "copy:wts:vendor"
       ]
@@ -66,6 +66,12 @@
     }
   },
   "imports": {
+    "#main": "./src/main.ts",
+    "#server": "./src/server.ts",
+    "#tokens": "./src/tokens.ts",
+    "#css": "./src/css/documents.ts",
+    "#lsp": "./src/lsp/lsp.ts",
+    "#logger": "./src/logger.ts",
     "@henrygd/queue": "jsr:@henrygd/queue@^1.0.7",
     "@logtape/file": "jsr:@logtape/file@^0.9.0",
     "@logtape/logtape": "jsr:@logtape/logtape@^0.9.0",

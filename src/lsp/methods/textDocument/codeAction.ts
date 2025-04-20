@@ -6,7 +6,7 @@ import {
 } from "vscode-languageserver-protocol";
 
 import { DTLSErrorCodes } from "./diagnostic.ts";
-import { tokens } from "../../storage.ts";
+import { tokens } from "#tokens";
 import type { Node } from "web-tree-sitter";
 import {
   captureIsTokenCall,
@@ -15,12 +15,16 @@ import {
   lspRangeIsInTsNode,
   tsNodeIsInLspRange,
   tsRangeToLspRange,
-} from "../../css/documents.ts";
+} from "#css";
 
-export enum DTLSCodeActionTitles {
+export enum DTLSCodeAction {
+  /** Fix the fallback value of a design token.*/
   fixFallback = "Fix token fallback value",
+  /** Fix all fallback values of design tokens. */
   fixAllFallbacks = "Fix all token fallback values",
+  /** Toggle the fallback value of a design token.* */
   toggleFallback = "Toggle design token fallback value",
+  /** Toggle the fallback value of a design token in a range. */
   toggleRangeFallbacks = "Toggle design token fallback values (in range)",
 }
 
@@ -42,6 +46,12 @@ function getEditFromTSArgumentsNode(
   }
 }
 
+/**
+ * Generates code actions for design tokens.
+ *
+ * @param params - The parameters for the code action request.
+ * @returns An array of code actions representing the fixes or refactorings for design tokens.
+ */
 export function codeAction(params: CodeActionParams): null | CodeAction[] {
   const { textDocument } = params;
   const diagnostics = params.context.diagnostics.filter((d) =>
@@ -52,7 +62,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
 
   const fixes: CodeAction[] = diagnostics
     .map((d) => ({
-      title: DTLSCodeActionTitles.fixFallback,
+      title: DTLSCodeAction.fixFallback,
       kind: CodeActionKind.QuickFix,
       data: { textDocument },
       diagnostics: [d],
@@ -62,7 +72,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
 
   if (diagnostics.length) {
     actions.push({
-      title: DTLSCodeActionTitles.fixAllFallbacks,
+      title: DTLSCodeAction.fixAllFallbacks,
       kind: CodeActionKind.SourceFixAll,
       data: { textDocument },
     });
@@ -80,9 +90,11 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
     tsNodeIsInLspRange(cap.node, params.range)
   );
 
+  // TODO: resolve the edits for the tokenCallCaptures
+
   if (tokenCallCaptures.length) {
     actions.push({
-      title: DTLSCodeActionTitles.toggleRangeFallbacks,
+      title: DTLSCodeAction.toggleRangeFallbacks,
       kind: CodeActionKind.RefactorRewrite,
       edit: {
         changes: {
@@ -103,7 +115,7 @@ export function codeAction(params: CodeActionParams): null | CodeAction[] {
     const edit = getEditFromTSArgumentsNode(cap.node.parent);
     if (edit) {
       actions.push({
-        title: DTLSCodeActionTitles.toggleFallback,
+        title: DTLSCodeAction.toggleFallback,
         kind: CodeActionKind.RefactorRewrite,
         edit: {
           changes: {
