@@ -3,5 +3,5 @@ a {
   border-color: var(--token-color-green, red);
   color: var(--token-color-blue, green);
   column-rule-color: var(--token-color-red-hex);
-  outline: 1px solid var(--token-color-lightdark);
+  outline: 1px solid var(--token-color-blue-lightdark);
 }
