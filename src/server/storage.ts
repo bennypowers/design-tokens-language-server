@@ -17,11 +17,14 @@ export async function register(tokenFile: TokenFile) {
     spec = spec.replace(".", Deno.cwd());
 
   const { default: json } = await import(spec, { with: { type: "json" } });
-  const flat = convertTokenData(json, { output: "array", usesDtcg: true });
-  for (const flattened of flat) {
-    const { key, ...token } = flattened;
+  const flat = convertTokenData(json, { output: "map", usesDtcg: true });
+  for (const [key, token] of flat) {
     if (key) {
-      const joined = key.replace(/^{(.*)}$/, '$1').replaceAll('.', '-');
+      const joined = key
+        .replace(/^\{(.*)}$/, '$1')
+        .split('.')
+        .filter(x => !['_', '@', "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
+        .join('-');
       const name = tokenFile.prefix ? `${tokenFile.prefix}-${joined}` : joined;
       tokens.set(name, token);
       tokens.set(`--${name}`, token);
