@@ -3,11 +3,11 @@ import {
   Diagnostic,
   TextEdit,
 } from "vscode-languageserver-protocol";
-import { tokens } from "../../storage.ts";
+import { tokens } from "#tokens";
 import { DTLSCodeActionTitles } from "../textDocument/codeAction.ts";
-import { documents, tsRangeToLspRange } from "../../css/documents.ts";
+import { documents, tsRangeToLspRange } from "#css";
 import type { QueryCapture } from 'web-tree-sitter';
-import { Logger } from "../../logger.ts";
+import { Logger } from "#logger";
 import { zip } from "@std/collections/zip";
 
 function getEditFromDiagnostic(diagnostic: Diagnostic): TextEdit | undefined {

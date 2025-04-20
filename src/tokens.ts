@@ -1,5 +1,7 @@
 import type { Token } from "style-dictionary";
 
+import { getLightDarkValues } from "./css/documents.ts";
+
 import { convertTokenData } from "style-dictionary/utils";
 
 export const tokens = new Map<string, Token>();
@@ -30,4 +32,30 @@ export async function register(tokenFile: TokenFile) {
       tokens.set(`--${name}`, token);
     }
   }
+}
+
+function format(value: string): string {
+  if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {
+    const [light, dark] = getLightDarkValues(value);
+    return `color: light-dark(
+  ${light},
+  ${dark}
+)`;
+  } else
+    return value;
+}
+
+export function getTokenMarkdown(name: string, { $description, $value, $type }: Token) {
+  return [
+    `# \`--${name.replace(/^--/, '')}\``,
+    '',
+    // TODO: convert DTCG types to CSS syntax
+    // const type = $type ? ` *<\`${$type}\`>*` : "";
+    `Type: \`${$type}\``,
+    $description ?? '',
+    '',
+    '```css',
+    format($value),
+    '```',
+  ].join("\n");
 }

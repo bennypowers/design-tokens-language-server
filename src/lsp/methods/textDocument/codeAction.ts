@@ -6,7 +6,7 @@ import {
 } from "vscode-languageserver-protocol";
 
 import { DTLSErrorCodes } from "./diagnostic.ts";
-import { tokens } from "../../storage.ts";
+import { tokens } from "#tokens";
 import type { Node } from "web-tree-sitter";
 import {
   captureIsTokenCall,
@@ -15,7 +15,7 @@ import {
   lspRangeIsInTsNode,
   tsNodeIsInLspRange,
   tsRangeToLspRange,
-} from "../../css/documents.ts";
+} from "../../../css/documents.ts";
 
 export enum DTLSCodeActionTitles {
   fixFallback = "Fix token fallback value",

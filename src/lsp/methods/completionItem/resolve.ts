@@ -1,8 +1,6 @@
 import type { CompletionItem, MarkupKind } from "vscode-languageserver-protocol";
 
-import { tokens } from "../../storage.ts";
-
-import { getTokenMarkdown } from "../../markdown.ts";
+import { tokens, getTokenMarkdown } from "#tokens";
 
 export function resolve(params: CompletionItem): CompletionItem {
   const token = tokens.get(params.label);

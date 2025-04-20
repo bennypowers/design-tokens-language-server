@@ -1,5 +1,5 @@
 import * as LSP from "npm:vscode-languageserver-protocol";
-import { SupportedMessage, SupportedNotificationMessage } from "../src/server/methods/initialize.ts";
+import { SupportedMessage, SupportedNotificationMessage } from "../src/lsp/methods/initialize.ts";
 
 type SupportedMethod = SupportedMessage['method'];
 

@@ -1,5 +1,5 @@
 import type { ColorPresentation, ColorPresentationParams } from "vscode-languageserver-protocol";
-import { tokens } from "../../storage.ts";
+import { tokens } from "#tokens";
 
 export function colorPresentation(params: ColorPresentationParams): ColorPresentation[] {
   params.color

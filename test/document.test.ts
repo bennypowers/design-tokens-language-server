@@ -1,4 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
+
 import { LspClient } from "./LspClient.ts";
 
 // Test against the running server binary

@@ -1,6 +1,6 @@
 import { DocumentDiagnosticReportKind, DocumentDiagnosticParams, DocumentDiagnosticReport } from "vscode-languageserver-protocol";
 
-import { documents } from "../../css/documents.ts";
+import { documents } from "#css";
 
 export enum DTLSErrorCodes {
   incorrectFallback = 'incorrect-fallback',

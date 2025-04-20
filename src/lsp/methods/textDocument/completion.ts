@@ -9,9 +9,9 @@ import {
   Position,
 } from "vscode-languageserver-protocol";
 
-import { tokens } from "../../storage.ts";
+import { tokens } from "#tokens";
 
-import { documents, tsRangeToLspRange } from "../../css/documents.ts";
+import { documents, tsRangeToLspRange } from "#css";
 
 const matchesWord =
   (word: string | null) =>

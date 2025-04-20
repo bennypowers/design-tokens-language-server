@@ -1,7 +1,7 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { register, tokens } from "../storage.ts";
-import { Logger } from "../logger.ts";
+import { register, tokens } from "#tokens";
+import { Logger } from "#logger";
 
 export type SupportedNotificationMessage = LSP.NotificationMessage & (
 | { method: 'textDocument/didOpen'; params: LSP.DidOpenTextDocumentParams }

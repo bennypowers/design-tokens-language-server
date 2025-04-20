@@ -3,12 +3,9 @@ import type {
   DocumentColorParams,
 } from "vscode-languageserver-protocol";
 
-import { tokens } from "../../storage.ts";
-import {
-  documents,
-  getLightDarkValues,
-  tsRangeToLspRange,
-} from "../../css/documents.ts";
+import { tokens } from "#tokens";
+
+import { documents, getLightDarkValues, tsRangeToLspRange } from "#css";
 
 import Color from "npm:tinycolor2";
 

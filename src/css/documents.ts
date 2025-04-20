@@ -24,9 +24,9 @@ import {
 } from "./tree-sitter/queries.ts";
 
 import { FullTextDocument } from "./textDocument.ts";
-import { DTLSErrorCodes } from "../methods/textDocument/diagnostic.ts";
+import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
 
-import { tokens } from "../storage.ts";
+import { tokens } from "#tokens";
 
 const f = await Deno.open(new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url))
 const grammar = await readAll(f);
