@@ -70,6 +70,7 @@ function fixAllFallbacks(action: CodeAction, context: DTLSContext): CodeAction {
  * Resolves a code action by applying the appropriate fix based on the action's title.
  *
  * @param action - The code action to resolve.
+ * @param context - The context containing design tokens and other relevant information.
  * @returns The resolved code action with the appropriate edit applied.
  */
 export function resolve(action: CodeAction, context: DTLSContext): CodeAction {

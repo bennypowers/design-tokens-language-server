@@ -17,6 +17,7 @@ const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
  * Generates color information for design tokens.
  *
  * @param params - The parameters for the document color request.
+ * @param context - The context containing design tokens and documents.
  * @returns An array of color information representing the design tokens found in the specified document.
  */
 export function documentColor(

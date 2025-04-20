@@ -59,7 +59,7 @@ function getEditOrEntry(args: {
  * Generates completion items for design tokens.
  *
  * @param params - The parameters for the completion request.
- * @param docs - The documents manager to retrieve the document at the specified position.
+ * @param context - The context containing the design tokens and documents.
  * @returns A completion list or an array of completion items representing the design tokens that match the specified word.
  */
 export function completion(

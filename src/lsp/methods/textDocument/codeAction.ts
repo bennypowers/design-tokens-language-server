@@ -53,6 +53,7 @@ function getEditFromTSArgumentsNode(
  * Generates code actions for design tokens.
  *
  * @param params - The parameters for the code action request.
+ * @param context - The context containing the design tokens and documents.
  * @returns An array of code actions representing the fixes or refactorings for design tokens.
  */
 export function codeAction(

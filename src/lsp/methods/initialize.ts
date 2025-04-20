@@ -1,6 +1,7 @@
 import * as LSP from "vscode-languageserver-protocol";
 
 import { register, tokens } from "#tokens";
+
 import { Logger } from "#logger";
 
 /**

@@ -15,6 +15,7 @@ export enum DTLSErrorCodes {
  * Generates a full document diagnostic report.
  *
  * @param params - The parameters for the document diagnostic request.
+ * @param context - The context containing the design tokens and documents.
  * @returns A full document diagnostic report containing the diagnostics for the specified document.
  */
 export function diagnostic(

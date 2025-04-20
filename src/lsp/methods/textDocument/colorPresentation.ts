@@ -13,6 +13,7 @@ import { lspColorToTinyColor } from "#color";
  * Generates color presentations for design tokens.
  *
  * @param params - The parameters for the color presentation request.
+ * @param context - The context containing design tokens and other information.
  * @returns An array of color presentations representing the design tokens that match the specified color.
  */
 export function colorPresentation(
