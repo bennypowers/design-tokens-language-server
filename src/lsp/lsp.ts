@@ -39,7 +39,6 @@ export type RequestTypeForMethod<M extends SupportedMethod> =
   : M extends keyof typeof handlers ? LSP.RequestMessage & { method: M; params: Parameters<typeof handlers[M]>[0]; }
   : never;
 
-
 export type ResultFor<M extends SupportedMethod> = Awaited<
     M extends 'initialized' ? null
   : M extends '$/cancelRequest' ? null
@@ -48,8 +47,10 @@ export type ResultFor<M extends SupportedMethod> = Awaited<
   : never
 >;
 
-export type ResponseFor<M extends SupportedMethod> =
-Omit<LSP.ResponseMessage,'result'> & { result: ResultFor<M> };
+export type ResponseFor<M extends SupportedMethod> = Omit<
+  LSP.ResponseMessage,
+  'result'
+> & { result: ResultFor<M> };
 
 function isCancelRequest(
   request: Omit<LSP.NotificationMessage, 'jsonrpc'>,
@@ -71,17 +72,14 @@ function isInitializedRequest(
 
 /**
  * The Lsp class is responsible for processing LSP requests and notifications.
- * It handles the initialization of the server,
-  and the processing of various LSP methods.
+ * It handles the initialization of the server, and the processing of various LSP methods.
  */
 export class Lsp {
-  #cancelled = new Set<RequestId
->;
+  #cancelled = new Set<RequestId>;
   #resolveInitialized!: () => void;
-
   #initialized = new Promise<void>(r => this.#resolveInitialized = r);
-
   #traceLevel: LSP.TraceValues = LSP.TraceValues.Off;
+  #handlerMap = new Map(Object.entries(handlers));
 
   #cancelRequest(request: LSP.RequestMessage) {
     const { id } = request;
@@ -93,9 +91,8 @@ export class Lsp {
   #setTrace(params: LSP.SetTraceParams) {
     Logger.info`Set trace level to ${params.value}`;
     this.#traceLevel = params.value;
+    return null;
   }
-
-  #handlerMap = new Map(Object.entries(handlers));
 
   /**
    * A promise which resolves when the server has completed initialization.
@@ -111,6 +108,12 @@ export class Lsp {
     return this.#cancelled.has(id);
   }
 
+  /**
+   * Processes the given request and returns the result.
+   *
+   * @param request - The request to process.
+   * @returns The result of the request.
+   */
   public async process(request: LSP.RequestMessage): Promise<unknown> {
     if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id))
       return null;
