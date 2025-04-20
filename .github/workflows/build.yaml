@@ -26,7 +26,7 @@ jobs:
       - name: Test
         run: |
           deno test -A --coverage
-          deno coverage --exclude="test/.*.ts\$" --lcov --out=coverage/lcov.info
+          deno coverage --exclude="test/.*.ts\$" --lcov --output=coverage/lcov.info
 
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v4
