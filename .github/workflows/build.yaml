@@ -28,6 +28,8 @@ jobs:
           deno test -A --coverage
           deno coverage --exclude="test/.*.ts\$" --lcov --output=coverage/lcov.info
 
+      - name: Setup LCOV
+        uses: hrishikesh-kadam/setup-lcov@v1
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v4
         with:
