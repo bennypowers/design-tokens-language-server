@@ -1,20 +1,31 @@
+import type { Token } from "style-dictionary";
 import type { ColorPresentation, ColorPresentationParams } from "vscode-languageserver-protocol";
 import { tokens } from "#tokens";
 
-export function colorPresentation(params: ColorPresentationParams): ColorPresentation[] {
-  params.color
-  params.textDocument
-  // const { start, end } = params.range
-  // const text = documentTextCache.get(params.textDocument.uri);
-  // // QUESTION: multiline?
-  // if (!text || start.line !== end.line)
-  //   return [];
-  // const word = text.split('\n')[start.line].substring(start.character, end.character);
-  // const token = get(word.replace(/^--/, ''))
-  // if (token) {}
-  return tokens.entries().map(function ([name]) {
-    return {
-      label: `--${name}`,
+import Color from 'tinycolor2';
+
+function isMatchFor(color: Color.Instance) {
+  return ([name, token]: [string, Token]): boolean => {
+      try {
+        return name.startsWith('--')
+          && token.$type === 'color'
+          && Color(token.$value).toHex8String() === color.toHex8String();
+      } catch {
+        return false;
+      }
     }
-  }).toArray();
+}
+
+/**
+ * Generates color presentations for design tokens.
+ *
+ * @param params - The parameters for the color presentation request.
+ * @returns An array of color presentations representing the design tokens that match the specified color.
+ */
+export function colorPresentation({ color }: ColorPresentationParams): ColorPresentation[] {
+  return tokens
+    .entries()
+    .filter(isMatchFor(Color({ r: color.red, g: color.green, b: color.blue, a: color.alpha })))
+    .map(([label]) => ({ label } ))
+    .toArray();
 }

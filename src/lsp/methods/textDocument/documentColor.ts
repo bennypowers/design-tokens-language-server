@@ -9,17 +9,18 @@ import { documents, getLightDarkValues, tsRangeToLspRange } from "#css";
 
 import Color from "npm:tinycolor2";
 
+/**
+ * Regular expression to match hex color values.
+ */
 const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
 
+/**
+ * Generates color information for design tokens.
+ *
+ * @param params - The parameters for the document color request.
+ * @returns An array of color information representing the design tokens found in the specified document.
+ */
 export function documentColor(params: DocumentColorParams): ColorInformation[] {
-  /**
-   *
-  (call_expression
-    (function_name) @fn
-    (arguments
-      (plain_value) @tokenName) @arguments
-    (#eq? @fn "var")) @call
-    */
   return documents.queryVarCalls(params.textDocument.uri)
     .flatMap(cap => {
       if (cap.name !== "tokenName")

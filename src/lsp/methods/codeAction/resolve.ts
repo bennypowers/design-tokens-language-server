@@ -4,10 +4,8 @@ import {
   TextEdit,
 } from "vscode-languageserver-protocol";
 import { tokens } from "#tokens";
-import { DTLSCodeActionTitles } from "../textDocument/codeAction.ts";
+import { DTLSCodeAction } from "../textDocument/codeAction.ts";
 import { documents, tsRangeToLspRange } from "#css";
-import type { QueryCapture } from 'web-tree-sitter';
-import { Logger } from "#logger";
 import { zip } from "@std/collections/zip";
 
 function getEditFromDiagnostic(diagnostic: Diagnostic): TextEdit | undefined {
@@ -65,11 +63,17 @@ function fixAllFallbacks(action: CodeAction): CodeAction {
   }
 }
 
+/**
+ * Resolves a code action by applying the appropriate fix based on the action's title.
+ *
+ * @param action - The code action to resolve.
+ * @returns The resolved code action with the appropriate edit applied.
+ */
 export function resolve(action: CodeAction): CodeAction {
   switch (action.title) {
-    case DTLSCodeActionTitles.fixFallback:
+    case DTLSCodeAction.fixFallback:
       return fixFallback(action);
-    case DTLSCodeActionTitles.fixAllFallbacks:
+    case DTLSCodeAction.fixAllFallbacks:
       return fixAllFallbacks(action);
     default:
       return action;

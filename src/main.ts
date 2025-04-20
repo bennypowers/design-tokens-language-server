@@ -1,4 +1,3 @@
-import { Server } from "./server.ts";
-import { Lsp } from "./lsp/lsp.ts";
+import { Server } from "#server";
 
-Server.serve(Lsp);
+Server.serve({ io: 'stdio' });

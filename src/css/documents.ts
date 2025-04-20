@@ -5,17 +5,7 @@ import { zip } from 'jsr:@std/collections/zip';
 
 type TsRange = Pick<Node, 'startPosition'|'endPosition'>;
 
-import {
-  Diagnostic,
-  DiagnosticSeverity,
-  DidChangeTextDocumentParams,
-  DidCloseTextDocumentParams,
-  DidOpenTextDocumentParams,
-  DocumentUri,
-  Position,
-  Range,
-  TextDocumentContentChangeEvent,
-} from "vscode-languageserver-protocol";
+import * as LSP from "vscode-languageserver-protocol";
 
 import {
   LightDarkValuesQuery,
@@ -27,6 +17,7 @@ import { FullTextDocument } from "./textDocument.ts";
 import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
 
 import { tokens } from "#tokens";
+import { Logger } from "#logger";
 
 const f = await Deno.open(new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url))
 const grammar = await readAll(f);
@@ -52,7 +43,7 @@ export function getLightDarkValues(value: string) {
   return [lightNode?.node.text, darkNode?.node.text];
 }
 
-export function tsRangeToLspRange(node: TsRange|Node): Range {
+export function tsRangeToLspRange(node: TsRange|Node): LSP.Range {
   return {
     start: {
       line: (node as TsRange).startPosition.row,
@@ -65,7 +56,7 @@ export function tsRangeToLspRange(node: TsRange|Node): Range {
   };
 }
 
-export function lspRangeToTsRange(range: Range): TsRange {
+export function lspRangeToTsRange(range: LSP.Range): TsRange {
   return {
     startPosition: {
       row: range.start.line,
@@ -78,7 +69,7 @@ export function lspRangeToTsRange(range: Range): TsRange {
   }
 }
 
-export function tsNodeIsInLspRange(node: TSNodePosition, range: Range): boolean {
+export function tsNodeIsInLspRange(node: TSNodePosition, range: LSP.Range): boolean {
   const inRows = node.startPosition.row >= range.start.line &&
     node.endPosition.row <= range.end.line;
   const inCols = node.startPosition.column >= range.start.character &&
@@ -86,7 +77,7 @@ export function tsNodeIsInLspRange(node: TSNodePosition, range: Range): boolean 
   return (inRows && inCols);
 }
 
-export function lspRangeIsInTsNode(node: TSNodePosition, range: Range): boolean {
+export function lspRangeIsInTsNode(node: TSNodePosition, range: LSP.Range): boolean {
   const inRows = node.startPosition.row >= range.start.line &&
     node.endPosition.row <= range.end.line;
   const inCols = node.startPosition.column <= range.start.character &&
@@ -110,7 +101,7 @@ export function captureIsTokenCall(cap: QueryCapture) {
 }
 
 class ENODOCError extends Error {
-  constructor(public uri: DocumentUri) {
+  constructor(public uri: LSP.DocumentUri) {
     super(`ENOENT: no CssDocument found for ${uri}`);
   }
 }
@@ -118,7 +109,7 @@ class ENODOCError extends Error {
 class CssDocument extends FullTextDocument {
   #tree: Tree | null;
 
-  diagnostics: Diagnostic[];
+  diagnostics: LSP.Diagnostic[];
 
   constructor(uri: string, languageId: string, version: number, text: string) {
     super(uri, languageId, version, text);
@@ -126,7 +117,7 @@ class CssDocument extends FullTextDocument {
     this.diagnostics = this.#computeDiagnostics();
   }
 
-  override update(changes: TextDocumentContentChangeEvent[], version: number) {
+  override update(changes: LSP.TextDocumentContentChangeEvent[], version: number) {
     const old = this.getText();
     super.update(changes, version);
     const newText = this.getText();
@@ -153,7 +144,7 @@ class CssDocument extends FullTextDocument {
     return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
   }
 
-  getNodeAtPosition(position: Position): null | Node {
+  getNodeAtPosition(position: LSP.Position): null | Node {
     return this.#tree?.rootNode.descendantForPosition({
       row: position.line,
       column: position.character,
@@ -173,7 +164,7 @@ class CssDocument extends FullTextDocument {
         if (!valid)
           return [{
             range: tsRangeToLspRange(fallbackCap.node),
-            severity: DiagnosticSeverity.Error,
+            severity: LSP.DiagnosticSeverity.Error,
             message: `Token fallback does not match expected value: ${token.$value}`,
             code: DTLSErrorCodes.incorrectFallback,
             data: {
@@ -187,54 +178,63 @@ class CssDocument extends FullTextDocument {
 }
 
 class Documents {
-  #map = new Map<DocumentUri, CssDocument>();
+  #map = new Map<LSP.DocumentUri, CssDocument>();
 
-  get(uri: DocumentUri) {
+  get handlers() {
+    return {
+      "textDocument/didOpen": (params: LSP.DidOpenTextDocumentParams) => this.onDidOpen(params),
+      "textDocument/didChange": (params: LSP.DidChangeTextDocumentParams) => this.onDidChange(params),
+      "textDocument/didClose": (params: LSP.DidCloseTextDocumentParams) => this.onDidClose(params),
+    } as const
+  }
+
+  onDidOpen(params: LSP.DidOpenTextDocumentParams) {
+    const { uri, languageId,  version, text } = params.textDocument;
+    const doc = new CssDocument(uri, languageId, version, text);
+    Logger.debug`📖 Opened ${uri}`
+    this.#map.set(params.textDocument.uri, doc);
+  }
+
+  onDidChange(params: LSP.DidChangeTextDocumentParams) {
+    const { uri, version } = params.textDocument;
+    const doc = this.get(uri);
+    doc.update(params.contentChanges, version);
+  }
+
+  onDidClose(params: LSP.DidCloseTextDocumentParams) {
+    this.#map.delete(params.textDocument.uri);
+  }
+
+  get(uri: LSP.DocumentUri) {
     const doc = this.#map.get(uri);
     if (!doc)
       throw new ENODOCError(uri);
     return doc;
   }
 
-  getDiagnostics(uri: DocumentUri) {
-    const doc = this.get(uri);
-    return doc.diagnostics;
-  }
-
-  getVersion(uri: DocumentUri) {
+  getVersion(uri: LSP.DocumentUri) {
     const doc = this.get(uri);
     return doc.version;
   }
 
-  onDidOpen(params: DidOpenTextDocumentParams) {
-    const { uri, languageId,  version, text } = params.textDocument;
-    const doc = new CssDocument(uri, languageId, version, text);
-    this.#map.set(params.textDocument.uri, doc);
-  }
-
-  onDidChange(params: DidChangeTextDocumentParams) {
-    const { uri, version } = params.textDocument;
-    const doc = this.get(uri);
-    doc.update(params.contentChanges, version);
-  }
-
-  onDidClose(params: DidCloseTextDocumentParams) {
-    this.#map.delete(params.textDocument.uri);
-  }
-
-  getText(uri: DocumentUri) {
+  getText(uri: LSP.DocumentUri) {
     return this.get(uri).getText();
   }
 
-  getNodeAtPosition(uri: DocumentUri, position: Position) {
+  getDiagnostics(uri: LSP.DocumentUri) {
+    const doc = this.get(uri);
+    return doc.diagnostics;
+  }
+
+  getNodeAtPosition(uri: LSP.DocumentUri, position: LSP.Position) {
     return this.get(uri).getNodeAtPosition(position);
   }
 
-  queryVarCalls(uri: DocumentUri) {
+  queryVarCalls(uri: LSP.DocumentUri) {
     return this.get(uri).query(VarCall);
   }
 
-  queryVarCallsWithFallback(uri: DocumentUri) {
+  queryVarCallsWithFallback(uri: LSP.DocumentUri) {
     return this.get(uri).query(VarCallWithFallback);
   }
 }

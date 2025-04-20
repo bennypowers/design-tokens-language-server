@@ -2,81 +2,72 @@ import { RequestMessage, ResponseError } from "vscode-languageserver-protocol";
 
 import { Logger } from "#logger";
 
-import { writeAllSync } from "jsr:@std/io/write-all";
-
 import { createQueue } from "@sv2dev/tasque";
 
 import { Lsp } from "./lsp/lsp.ts";
+import { Stdio } from "./server/stdio.ts";
 
+export interface Io {
+  /**
+   * Requests are received from the client.
+   * This is an async iterable that yields request messages.
+   * The implementation of this method is responsible for reading from the appropriate input stream (e.g., stdin).
+   */
+  requests(): AsyncIterable<RequestMessage>;
+  /**
+   * Responds to the client with the result of the request.
+   * The implementation of this method is responsible for writing to the appropriate output stream (e.g., stdout).
+   */
+  respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError): void | Promise<void>
+}
+
+export interface StdioOptions {
+  io: 'stdio';
+}
+
+/**
+ * The server class is responsible for handling the communication between the LSP and the client.
+ *
+ * It uses the Io interface to handle the communication, and the Lsp class to process the requests.
+ */
 export class Server {
-  static #chunks = "";
-  static #handlers: Lsp;
+  static #lsp: Lsp;
+  static #io: Io;
   static #queue = createQueue({ parallelize: 5 });
-  static #decoder = new TextDecoder;
-  static #encoder = new TextEncoder;
 
-  static #handleChunk(chunk: Uint8Array<ArrayBuffer>) {
-    this.#chunks += this.#decoder.decode(chunk);
+  /**
+   * The serve method is the entry point for the server.
+   * It initializes the Lsp and Io instances, and starts listening for requests.
+   */
+  public static async serve(options: StdioOptions) {
+    this.#lsp = new Lsp();
 
-    while (this.#chunks.includes("\r\n\r\n")) {
-      const [, lengthMatch] = this.#chunks.match(/Content-Length: (\d+)\r\n/) ?? [];
-      if (lengthMatch == null) break;
-
-      const contentLength = parseInt(lengthMatch);
-      const messageStart = this.#chunks.indexOf("\r\n\r\n") + 4;
-      const messageEnd = messageStart + contentLength;
-
-      if (this.#chunks.length < messageEnd) break;
-
-      const slice = this.#chunks.slice(messageStart, messageEnd);
-      this.#chunks = this.#chunks.slice(messageEnd);
-
-      try {
-        const request = JSON.parse(slice) as RequestMessage;
-        Logger.debug`📥 (${request.id ?? ''}): ${request.method ?? "notification"}`;
-        this.#handle(request);
-      } catch (error) {
-        Logger.error`${error}`;
-      }
+    switch (options.io) {
+      case 'stdio':
+      default:
+        this.#io = new Stdio();
     }
-  }
 
-  static async #handle(request: RequestMessage) {
-    if (!request.id)
-      await this.#handlers.process(request);
-    else if (this.#handlers.isCancelledRequest(request.id))
-      return this.#respond(request.id, null);
-    else
-      await this.#queue.add(async () => {
-        try {
-          if (!request.method.match(/^initialized?$/))
-            await this.#handlers.isInitialized();
-          const result = await this.#handlers.process(request);
-          return this.#respond(request.id, result);
-        } catch (error) {
-          Logger.error`${error}`;
-          this.#respond(request.id, null, error as ResponseError);
-        }
-      });
-  }
-
-  static #respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError) {
-    if (!id && !result && !error) return;
-    const pkg = { jsonrpc: "2.0", id, result, error };
-    const message = JSON.stringify(pkg);
-    const messageLength = this.#encoder.encode(message).byteLength;
-    const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
-    writeAllSync(Deno.stdout, this.#encoder.encode(payload));
-  }
-
-  public static async serve() {
-    this.#handlers = new Lsp();
-    for await (const chunk of Deno.stdin.readable) {
-      try {
-        this.#handleChunk(chunk);
-      } catch(e) {
-        Logger.debug`CHUNK ERROR: ${e}`
+    for await (const request of this.#io.requests()) {
+      Logger.debug`${request.id ? `📥 (${request.id})` : `🔔`}: ${request.method ?? "notification"}`;
+      if (!request.id)
+        await this.#lsp.process(request);
+      else if (this.#lsp.isCancelledRequest(request.id))
+        return this.#io.respond(request.id, null);
+      else
+        await this.#queue.add(async () => {
+          try {
+            if (!request.method.match(/^initialized?$/))
+              await this.#lsp.initialized();
+            const result = await this.#lsp.process(request);
+            if (request.id)
+              Logger.debug`🚢 (${request.id}): ${request.method}`;
+            return this.#io.respond(request.id, result);
+          } catch (error) {
+            Logger.error`${error}`;
+            this.#io.respond(request.id, null, error as ResponseError);
+          }
+        });
       }
-    }
   }
 }

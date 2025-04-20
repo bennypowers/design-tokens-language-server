@@ -1,52 +1,12 @@
-import * as LSP from "npm:vscode-languageserver-protocol";
-import { SupportedMessage, SupportedNotificationMessage } from "../src/lsp/methods/initialize.ts";
-
-type SupportedMethod = SupportedMessage['method'];
-
-type ResultFor<M extends SupportedMethod> =
-    M extends SupportedNotificationMessage['method'] ? null
-  : M extends 'initialize' ? LSP.InitializeResult
-  : M extends 'textDocument/hover' ? null | LSP.Hover
-  : M extends 'textDocument/diagnostic' ? LSP.FullDocumentDiagnosticReport
-  : never;
-
-type ParamsFor<M extends SupportedMethod> =
-    M extends 'initialize' ? LSP.InitializeParams
-  : M extends 'initialized' ? LSP.InitializedParams
-  : M extends 'textDocument/hover' ? LSP.HoverParams
-  : M extends 'textDocument/diagnostic' ? LSP.DocumentDiagnosticParams
-  : M extends 'textDocument/didOpen' ? LSP.DidOpenTextDocumentParams
-  : M extends 'textDocument/didChange' ? LSP.DidChangeTextDocumentParams
-  : M extends 'textDocument/didClose' ? LSP.DidCloseTextDocumentParams
-  : never;
-
-type RequestFor<M extends SupportedMethod> =
-  Omit<LSP.RequestMessage, 'id'|'jsonrpc'|'method'> & {
-     method: M;
-     params: ParamsFor<M>
-  };
-
-type ResponseFor<M extends SupportedMethod> =
-  null |
-  M extends SupportedNotificationMessage['method'] ? null
-: Omit<LSP.ResponseMessage, 'result'> & { result: ResultFor<M> };
+import { RequestTypeForMethod, ResponseFor, SupportedMethod } from "#lsp";
 
 // Utility function to send and receive LSP messages
-export class LspClient {
-  static NOTIFICATIONS = new Set([
-    'textDocument/didOpen',
-    'textDocument/didChange',
-    'textDocument/didClose',
-    '$/cancelRequest',
-    '$/setTrace',
-  ] as const satisfies SupportedNotificationMessage['method'][]);
-
-  id = 1;
+export class TestLspClient {
+  #lastId = 1;
 
   constructor(private server: Deno.ChildProcess) {}
 
-  // Function to read a complete message based on Content-Length
-  async readMessage<M extends SupportedMethod>(): Promise<ResultFor<M>> {
+  async #readMessage<M extends SupportedMethod>(): Promise<ResponseFor<M>> {
     const reader = this.server.stdout.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -99,13 +59,18 @@ export class LspClient {
     }
   }
 
-  // Function to send a message to the LSP server
-  async sendLspMessage<M extends SupportedMessage['method']>(
-    message: RequestFor<M>,
+  /**
+   * Send a message to the LSP server and wait for a response.
+   *
+   * @param message - The message to send to the server.
+   * @returns The response from the server.
+   */
+  public async sendMessage<M extends SupportedMethod>(
+    message: { method: M } & Omit<RequestTypeForMethod<M>, 'jsonrpc'|'id'>,
   ): Promise<ResponseFor<M> | null> {
-    this.sendNotification(message, this.id++);
+    this.sendNotification(message, this.#lastId++);
     try {
-      const resp = await this.readMessage();
+      const resp = await this.#readMessage<M>();
       return resp as ResponseFor<M>;
     } catch (error) {
       console.error(error);
@@ -114,8 +79,14 @@ export class LspClient {
     }
   }
 
-  // Function to send a message to the LSP server
-  async sendNotification(message: object, id?: number) {
+  /**
+   * Send a notification to the LSP server.
+   *
+   * @param message - The message to send to the server.
+   * @param id - Optional ID for the message.
+   * @returns A promise that resolves when the message is sent.
+   */
+  public async sendNotification(message: object, id?: number) {
     const writer = this.server.stdin.getWriter();
     try {
       const bundle = { jsonrpc: "2.0", id, ...message };
@@ -130,7 +101,12 @@ export class LspClient {
     }
   }
 
-  async close() {
+  /**
+   * Close the LSP server and release resources.
+   *
+   * @returns A promise that resolves when the server is closed.
+   */
+  public async close() {
     await this.server.stderr.cancel();
     await this.server.stdin.close();
     await this.server.stdout.cancel();
