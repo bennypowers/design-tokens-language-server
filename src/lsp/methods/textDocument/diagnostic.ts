@@ -1,7 +1,7 @@
 import {
   DocumentDiagnosticParams,
-  DocumentDiagnosticReport,
   DocumentDiagnosticReportKind,
+  RelatedFullDocumentDiagnosticReport,
 } from "vscode-languageserver-protocol";
 
 import { DTLSContext } from "#lsp";
@@ -21,7 +21,7 @@ export enum DTLSErrorCodes {
 export function diagnostic(
   params: DocumentDiagnosticParams,
   { documents }: DTLSContext,
-): DocumentDiagnosticReport {
+): RelatedFullDocumentDiagnosticReport {
   return {
     kind: DocumentDiagnosticReportKind.Full,
     items: documents.getDiagnostics(params.textDocument.uri),

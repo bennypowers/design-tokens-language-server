@@ -12,10 +12,10 @@ export const VarCallWithFallback = scheme`
   (call_expression
     (function_name) @fn
     (arguments
-      (plain_value) @tokenName
-      (_) @fallback) @arguments
+      . (plain_value) @tokenName
+      (_) @fallback)
     (#eq? @fn "var")
-    (#match? @fallback ".+"))
+    (#match? @fallback ".+")) @VarCallWithFallback
 `;
 
 export const LightDarkValuesQuery = scheme`
@@ -25,4 +25,4 @@ export const LightDarkValuesQuery = scheme`
      (_) @lightValue
      (_) @darkValue)
     (#eq? @fn "light-dark"))
-`
+`;

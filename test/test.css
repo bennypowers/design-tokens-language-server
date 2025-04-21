@@ -1,7 +1,9 @@
 a {
-  background: var(--token-color-red, blue);
-  border-color: var(--token-color-green, red);
+  background: var(--token-color-red);
+  border-color: var(--token-color-green);
   color: var(--token-color-blue, green);
-  column-rule-color: var(--token-color-red-hex);
-  outline: 1px solid var(--token-color-blue-lightdark);
+  font-family: var(--token-font-family, a, b, c, d);
+  column-rule-color: var(--token-color-red-hex, #F00);
+  outline: 1px solid var(--token-color-blue-lightdark, light-dark(lightblue, darkblue));
+  color: var(--token-color-blue-lightdark);
 }

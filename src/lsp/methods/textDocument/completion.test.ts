@@ -44,7 +44,9 @@ describe("completion", () => {
     const position = textDocument.positionOf("token", "end");
     it("should return all token completions", () => {
       const completions = completion({ textDocument, position }, ctx);
-      expect((completions as CompletionList)?.items).toHaveLength(8);
+      expect((completions as CompletionList)?.items).toHaveLength(
+        ctx.tokens.size,
+      );
     });
   });
 
@@ -58,7 +60,7 @@ describe("completion", () => {
     const completions = completion({ textDocument, position }, ctx);
 
     it("should return all token completions", () => {
-      expect(completions?.items).toHaveLength(8);
+      expect(completions?.items).toHaveLength(ctx.tokens.size);
     });
     it("should return token completions as property names", () => {
       for (const item of completions?.items ?? []) {
@@ -76,7 +78,7 @@ describe("completion", () => {
     const position = textDocument.positionOf("token", "end");
     const completions = completion({ textDocument, position }, ctx);
     it("should return all token completions", () => {
-      expect(completions?.items).toHaveLength(8);
+      expect(completions?.items).toHaveLength(ctx.tokens.size);
     });
     it("should return token completions as var() calls", () => {
       for (const item of completions?.items ?? []) {

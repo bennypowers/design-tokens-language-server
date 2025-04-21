@@ -59,13 +59,19 @@ class TestDocuments extends Documents {
         };
       },
     };
-    this.onDidOpen({ textDocument }, this.#tokens);
+    this.onDidOpen({ textDocument }, {
+      documents: this,
+      tokens: this.#tokens,
+    });
     return textDocument;
   }
 
   tearDown() {
     for (const doc of this.allDocuments) {
-      this.onDidClose({ textDocument: { uri: doc.uri } });
+      this.onDidClose({ textDocument: { uri: doc.uri } }, {
+        documents: this,
+        tokens: this.#tokens,
+      });
     }
   }
 }
@@ -88,12 +94,19 @@ class TestTokens extends TokenMap {
 
   reset() {
     this.clear();
-    this.populateFromDtcg(this.#originalTokens, this.#prefix);
+    this.populateFromDtcg(
+      this.#originalTokens,
+      {
+        prefix: this.#prefix,
+        path: "test/test.json",
+      },
+    );
   }
 
   override get(key: string) {
     return super.get(key.replace(/^-+/, ""));
   }
+
   override has(key: string) {
     return super.has(key.replace(/^-+/, ""));
   }

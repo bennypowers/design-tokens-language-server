@@ -26,6 +26,9 @@ function offset(
 }
 
 function escapeCommas($value: string) {
+  if (typeof $value !== "string") {
+    throw $value;
+  }
   return $value.replaceAll(",", "\\,");
 }
 
@@ -37,7 +40,10 @@ function getCompletionDependingOnNode(args: CompletionArgs): string {
       return `--${name}: $0`;
     default: {
       const token = tokens.get(name)!;
-      return `var(--${name}\${1|\\, ${escapeCommas(token.$value)},|})$0`;
+      const value = Array.isArray(token.$value)
+        ? token.$value.join(", ")
+        : token.$value;
+      return `var(--${name}\${1|\\, ${escapeCommas(value)},|})$0`;
     }
   }
 }

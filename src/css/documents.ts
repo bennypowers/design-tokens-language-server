@@ -2,7 +2,6 @@ import { Language, Parser, Query } from "web-tree-sitter";
 import type { Node, Point, QueryCapture, Tree } from "web-tree-sitter";
 
 import { readAll } from "jsr:@std/io/read-all";
-import { zip } from "jsr:@std/collections/zip";
 
 type TsRange = Pick<Node, "startPosition" | "endPosition">;
 
@@ -59,6 +58,20 @@ export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
       character: node.endPosition.column,
     },
   };
+}
+
+export function tsNodesToLspRangeInclusive(...nodes: TsRange[]): LSP.Range {
+  const [startNode] = nodes;
+  const endNode = nodes.pop()!;
+  const start = {
+    line: startNode.startPosition.row,
+    character: startNode.startPosition.column,
+  };
+  const end = {
+    line: endNode.endPosition.row,
+    character: endNode.endPosition.column,
+  };
+  return { start, end };
 }
 
 export function lspRangeToTsRange(range: LSP.Range): TsRange {
@@ -214,31 +227,53 @@ export class CssDocument extends FullTextDocument {
 
   computeDiagnostics(context: DTLSContext) {
     const captures = this.query(VarCallWithFallback);
-    const tokenNameCaps = captures.filter((x) => x.name === "tokenName");
-    const fallbackCaps = captures.filter((x) => x.name === "fallback");
-    return zip(tokenNameCaps, fallbackCaps).flatMap(
-      ([tokenNameCap, fallbackCap]) => {
-        if (context.tokens.has(tokenNameCap.node.text)) {
-          const tokenName = tokenNameCap.node.text;
-          const fallback = fallbackCap.node.text;
-          const token = context.tokens.get(tokenName)!;
-          const valid = fallback === token.$value;
-          if (!valid) {
-            return [{
-              range: tsRangeToLspRange(fallbackCap.node),
-              severity: LSP.DiagnosticSeverity.Error,
-              message:
-                `Token fallback does not match expected value: ${token.$value}`,
-              code: DTLSErrorCodes.incorrectFallback,
-              data: {
-                tokenName,
-              },
-            }];
-          }
+
+    const callNodes = new Map<
+      number,
+      { tokenName: string; fallbacks: Node[] }
+    >();
+
+    for (const cap of captures) {
+      if (cap.name === "VarCallWithFallback") {
+        callNodes.set(cap.node.id, { tokenName: "", fallbacks: [] });
+      }
+    }
+
+    for (const cap of captures) {
+      const callNode = cap.node.parent?.parent;
+      try {
+        if (callNode?.type == "call_expression" && cap.name === "tokenName") {
+          callNodes.get(callNode.id)!.tokenName = cap.node.text;
+        } else if (
+          callNode?.type == "call_expression" && cap.name === "fallback"
+        ) {
+          callNodes.get(callNode.id)!.fallbacks.push(cap.node);
         }
-        return [];
-      },
-    );
+      } catch (e) {
+        Logger.error`Error while computing diagnostics: ${e}`;
+      }
+    }
+
+    return callNodes.values().flatMap(({ tokenName, fallbacks }) => {
+      if (context.tokens.has(tokenName)) {
+        const fallback = fallbacks.map((x) => x.text).join(", ");
+        const token = context.tokens.get(tokenName)!;
+        const valid = fallback === token.$value;
+        if (!valid) {
+          return [{
+            range: tsNodesToLspRangeInclusive(...fallbacks),
+            severity: LSP.DiagnosticSeverity.Error,
+            message:
+              `Token fallback does not match expected value: ${token.$value}`,
+            code: DTLSErrorCodes.incorrectFallback,
+            data: {
+              tokenName,
+            },
+          }];
+        }
+      }
+      return [];
+    }).toArray();
   }
 }
 
