@@ -11,7 +11,7 @@ import { createQueue } from "@sv2dev/tasque";
 import { Lsp } from "#lsp";
 import { Stdio } from "./server/stdio.ts";
 import { Documents } from "#css";
-import { TokenMap } from "#tokens";
+import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
 
 export interface Io {
@@ -71,7 +71,7 @@ export class Server {
    */
   public static async serve(options: StdioOptions) {
     const documents = new Documents();
-    const tokens = new TokenMap();
+    const tokens = new Tokens();
     const workspaces = new Workspaces();
     this.#lsp = new Lsp(documents, workspaces, tokens);
 

@@ -2,7 +2,7 @@ import * as LSP from "vscode-languageserver-protocol";
 
 import { Documents } from "#css";
 import { Logger } from "#logger";
-import { TokenMap } from "#tokens";
+import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
 
 import { documentColor } from "./methods/textDocument/documentColor.ts";
@@ -139,7 +139,7 @@ export interface DTLSContext {
   /**
    * All tokens available to the server.
    */
-  tokens: TokenMap;
+  tokens: Tokens;
 }
 
 export interface DTLSContextWithLsp extends DTLSContext {
@@ -185,12 +185,12 @@ export class Lsp {
   #cancelled = new Set<RequestId>();
   #documents: Documents;
   #workspaces: Workspaces;
-  #tokens: TokenMap;
+  #tokens: Tokens;
 
   constructor(
     documents: Documents,
     workspaces: Workspaces,
-    tokens: TokenMap,
+    tokens: Tokens,
   ) {
     this.#documents = documents;
     this.#workspaces = workspaces;

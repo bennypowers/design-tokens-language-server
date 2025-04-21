@@ -7,7 +7,7 @@ import { convertTokenData } from "style-dictionary/utils";
 import { TokenFileSpec } from "#lsp";
 import { Logger } from "#logger";
 
-export class TokenMap extends Map<string, Token> {
+export class Tokens extends Map<string, Token> {
   override get(key: string) {
     return super.get(key.replace(/^-+/, ""));
   }
@@ -81,4 +81,4 @@ export function getTokenMarkdown(
   ].join("\n");
 }
 
-export const tokens = new TokenMap();
+export const tokens = new Tokens();
