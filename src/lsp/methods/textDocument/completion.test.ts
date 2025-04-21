@@ -7,7 +7,7 @@ import { createTestContext } from "#test-helpers";
 
 import { completion } from "./completion.ts";
 
-describe("completion", () => {
+describe("textDocument/completion", () => {
   const ctx = createTestContext();
 
   describe("in an empty document", () => {

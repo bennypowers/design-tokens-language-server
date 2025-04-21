@@ -7,7 +7,7 @@ import { createTestContext } from "#test-helpers";
 
 import { hover } from "./hover.ts";
 
-describe("hover", () => {
+describe("textDocument/hover", () => {
   const ctx = createTestContext();
 
   it("should return hover information for a token", () => {
