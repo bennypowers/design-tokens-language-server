@@ -80,6 +80,7 @@
     "#tokens": "./src/tokens.ts",
     "#color": "./src/css/color.ts",
     "#css": "./src/css/documents.ts",
+    "#workspaces": "./src/lsp/workspaces.ts",
     "#lsp": "./src/lsp/lsp.ts",
     "#test-helpers": "./test/helpers.ts",
     "#logger": "./src/logger.ts",

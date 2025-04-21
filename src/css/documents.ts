@@ -18,7 +18,6 @@ import { FullTextDocument } from "./textDocument.ts";
 import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
 
 import { Logger } from "#logger";
-import { TokenMap } from "#tokens";
 import { DTLSContext } from "#lsp";
 
 const f = await Deno.open(
@@ -127,7 +126,6 @@ class ENODOCError extends Error {
 
 export class CssDocument extends FullTextDocument {
   #tree: Tree | null;
-  #tokens: TokenMap;
 
   diagnostics: LSP.Diagnostic[];
 
@@ -136,12 +134,11 @@ export class CssDocument extends FullTextDocument {
     languageId: string,
     version: number,
     text: string,
-    tokens: TokenMap,
+    context: DTLSContext,
   ) {
     super(uri, languageId, version, text);
-    this.#tokens = tokens;
     this.#tree = parser.parse(text);
-    this.diagnostics = this.#computeDiagnostics();
+    this.diagnostics = this.computeDiagnostics(context);
   }
 
   override update(
@@ -168,7 +165,6 @@ export class CssDocument extends FullTextDocument {
       },
     });
     this.#tree = parser.parse(newText, this.#tree);
-    this.diagnostics = this.#computeDiagnostics();
   }
 
   /**
@@ -216,16 +212,16 @@ export class CssDocument extends FullTextDocument {
     return false;
   }
 
-  #computeDiagnostics() {
+  computeDiagnostics(context: DTLSContext) {
     const captures = this.query(VarCallWithFallback);
     const tokenNameCaps = captures.filter((x) => x.name === "tokenName");
     const fallbackCaps = captures.filter((x) => x.name === "fallback");
     return zip(tokenNameCaps, fallbackCaps).flatMap(
       ([tokenNameCap, fallbackCap]) => {
-        if (this.#tokens.has(tokenNameCap.node.text)) {
+        if (context.tokens.has(tokenNameCap.node.text)) {
           const tokenName = tokenNameCap.node.text;
           const fallback = fallbackCap.node.text;
-          const token = this.#tokens.get(tokenName)!;
+          const token = context.tokens.get(tokenName)!;
           const valid = fallback === token.$value;
           if (!valid) {
             return [{
@@ -254,11 +250,15 @@ export class Documents {
       "textDocument/didOpen": (
         params: LSP.DidOpenTextDocumentParams,
         context: DTLSContext,
-      ) => this.onDidOpen(params, context.tokens),
-      "textDocument/didChange": (params: LSP.DidChangeTextDocumentParams) =>
-        this.onDidChange(params),
-      "textDocument/didClose": (params: LSP.DidCloseTextDocumentParams) =>
-        this.onDidClose(params),
+      ) => this.onDidOpen(params, context),
+      "textDocument/didChange": (
+        params: LSP.DidChangeTextDocumentParams,
+        context: DTLSContext,
+      ) => this.onDidChange(params, context),
+      "textDocument/didClose": (
+        params: LSP.DidCloseTextDocumentParams,
+        context: DTLSContext,
+      ) => this.onDidClose(params, context),
     } as const;
   }
 
@@ -266,20 +266,21 @@ export class Documents {
     return [...this.#map.values()];
   }
 
-  onDidOpen(params: LSP.DidOpenTextDocumentParams, tokens: TokenMap) {
+  onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
     const { uri, languageId, version, text } = params.textDocument;
-    const doc = new CssDocument(uri, languageId, version, text, tokens);
+    const doc = new CssDocument(uri, languageId, version, text, context);
     Logger.debug`📖 Opened ${uri}`;
     this.#map.set(params.textDocument.uri, doc);
   }
 
-  onDidChange(params: LSP.DidChangeTextDocumentParams) {
+  onDidChange(params: LSP.DidChangeTextDocumentParams, context: DTLSContext) {
     const { uri, version } = params.textDocument;
     const doc = this.get(uri);
     doc.update(params.contentChanges, version);
+    doc.diagnostics = doc.computeDiagnostics(context);
   }
 
-  onDidClose(params: LSP.DidCloseTextDocumentParams) {
+  onDidClose(params: LSP.DidCloseTextDocumentParams, _: DTLSContext) {
     this.#map.delete(params.textDocument.uri);
   }
 

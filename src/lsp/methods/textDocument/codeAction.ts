@@ -18,7 +18,6 @@ import {
 } from "#css";
 
 import { DTLSContext } from "#lsp";
-import { Logger } from "#logger";
 
 export enum DTLSCodeAction {
   /** Fix the fallback value of a design token.*/
@@ -45,7 +44,6 @@ function getEditFromTSArgumentsNode(
       const newText = hasFallback
         ? `(${nameNode?.text})`
         : `(${nameNode?.text}, ${token.$value})`;
-      Logger.debug`Replacing ${node.text} with ${newText}`;
       return { range, newText };
     }
   }
