@@ -13,11 +13,13 @@ import { completion } from "./methods/textDocument/completion.ts";
 import { colorPresentation } from "./methods/textDocument/colorPresentation.ts";
 import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
+import { definition } from "./methods/textDocument/definition.ts";
 
 const handlers = {
   "codeAction/resolve": codeActionResolve,
   "completionItem/resolve": completionItemResolve,
   "textDocument/codeAction": codeAction,
+  "textDocument/definition": definition,
   "textDocument/colorPresentation": colorPresentation,
   "textDocument/completion": completion,
   "textDocument/diagnostic": diagnostic,
@@ -249,6 +251,7 @@ export class Lsp {
         colorProvider: true,
         hoverProvider: true,
         textDocumentSync: LSP.TextDocumentSyncKind.Incremental,
+        definitionProvider: true,
         completionProvider: {
           resolveProvider: true,
           completionItem: {

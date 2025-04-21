@@ -98,7 +98,7 @@ class TestTokens extends TokenMap {
       this.#originalTokens,
       {
         prefix: this.#prefix,
-        path: "test/test.json",
+        path: new URL("../test/tokens.json", import.meta.url).href,
       },
     );
   }

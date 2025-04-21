@@ -31,6 +31,7 @@ export class TokenMap extends Map<string, Token> {
           .filter((x) => !groupMarkers.has(x))
           .join("-");
         const name = spec.prefix ? `${spec.prefix}-${joined}` : joined;
+        token["dev.bennypowers.dtls"] = { spec };
         this.set(name, token);
       }
     }
