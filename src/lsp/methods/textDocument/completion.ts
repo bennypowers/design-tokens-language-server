@@ -65,7 +65,7 @@ function getEditOrEntry(args: {
 export function completion(
   params: LSP.CompletionParams,
   { documents, tokens }: DTLSContext,
-): null | LSP.CompletionList | LSP.CompletionItem[] {
+): null | LSP.CompletionList {
   const document = documents.get(params.textDocument.uri);
 
   const node = document.getNodeAtPosition(

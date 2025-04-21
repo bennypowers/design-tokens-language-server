@@ -1,4 +1,9 @@
-import { RequestMessage, ResponseError } from "vscode-languageserver-protocol";
+import {
+  Message,
+  NotificationMessage,
+  RequestMessage,
+  ResponseError,
+} from "vscode-languageserver-protocol";
 
 import { Logger } from "#logger";
 import { Io } from "#server";
@@ -11,16 +16,18 @@ import { writeAllSync } from "@std/io/write-all";
  */
 export class Stdio implements Io {
   #chunks = "";
-  #decoder = new TextDecoder;
-  #encoder = new TextEncoder;
+  #decoder = new TextDecoder();
+  #encoder = new TextEncoder();
+  #lastId = 0;
 
-  public async * requests() {
+  public async *requests() {
     for await (const chunk of Deno.stdin.readable) {
       try {
         this.#chunks += this.#decoder.decode(chunk);
 
         while (this.#chunks.includes("\r\n\r\n")) {
-          const [, lengthMatch] = this.#chunks.match(/Content-Length: (\d+)\r\n/) ?? [];
+          const [, lengthMatch] =
+            this.#chunks.match(/Content-Length: (\d+)\r\n/) ?? [];
           if (lengthMatch == null) break;
 
           const contentLength = parseInt(lengthMatch);
@@ -34,18 +41,49 @@ export class Stdio implements Io {
 
           yield JSON.parse(slice) as RequestMessage;
         }
-      } catch(e) {
-        Logger.error`STDIO READ ERROR: ${e}`
+      } catch (e) {
+        Logger.error`STDIO READ ERROR: ${e}`;
       }
     }
   }
 
-  public respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError) {
+  public notify(message: Omit<NotificationMessage, "jsonrpc">) {
+    this.#sendJsonRpcMessage({ jsonrpc: "2.0", ...message });
+  }
+
+  public push(message: Omit<RequestMessage, "jsonrpc" | "id">) {
+    const id = this.#lastId + 1;
+    this.#sendJsonRpcMessage({
+      jsonrpc: "2.0",
+      id,
+      ...message,
+    } as RequestMessage);
+  }
+
+  public respond(
+    id?: RequestMessage["id"],
+    result?: unknown,
+    error?: ResponseError,
+  ) {
     if (!id && !result && !error) return;
-    const pkg = { jsonrpc: "2.0", id, result, error };
-    const message = JSON.stringify(pkg);
-    const messageLength = this.#encoder.encode(message).byteLength;
-    const payload = `Content-Length: ${messageLength}\r\n\r\n${message}`;
+    return this.#sendJsonRpcMessage({
+      jsonrpc: "2.0",
+      ...id && { id },
+      ...(result !== undefined) && { result },
+      ...error && { error },
+    });
+  }
+
+  #sendJsonRpcMessage(message: Message) {
+    if (Message.isResponse(message) || Message.isRequest(message)) {
+      const { id } = message;
+      if (id !== null) {
+        this.#lastId = typeof id === "number" ? id : parseInt(id);
+      }
+    }
+    const messageString = JSON.stringify(message);
+    const messageLength = this.#encoder.encode(messageString).byteLength;
+    const payload = `Content-Length: ${messageLength}\r\n\r\n${messageString}`;
     writeAllSync(Deno.stdout, this.#encoder.encode(payload));
   }
 }

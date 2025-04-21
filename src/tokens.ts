@@ -3,6 +3,8 @@ import type { Token } from "style-dictionary";
 import { getLightDarkValues } from "#css";
 
 import { convertTokenData } from "style-dictionary/utils";
+import { TokenFile } from "#lsp";
+import { Logger } from "#logger";
 
 export class TokenMap extends Map<string, Token> {
   override get(key: string) {
@@ -11,50 +13,49 @@ export class TokenMap extends Map<string, Token> {
   override has(key: string) {
     return super.has(key.replace(/^-+/, ""));
   }
-}
 
-export const tokens = new TokenMap();
+  populateFromDtcg(dtcgTokens: Record<string, Token>, prefix?: string) {
+    const flat = convertTokenData(structuredClone(dtcgTokens), {
+      output: "map",
+      usesDtcg: true,
+    });
+    for (const [key, token] of flat) {
+      if (key) {
+        const joined = key
+          .replace(/^\{(.*)}$/, "$1")
+          .split(".")
+          .filter((x) => !["_", "@", "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
+          .join("-");
+        const name = prefix ? `${prefix}-${joined}` : joined;
+        this.set(name, token);
+      }
+    }
+  }
 
-export interface TokenFile {
-  prefix?: string;
-  path: string;
-}
+  public async register(tokenFile: TokenFile) {
+    let spec = typeof tokenFile === "string" ? tokenFile : tokenFile.path;
+    const prefix = typeof tokenFile === "string" ? undefined : tokenFile.prefix;
+    try {
+      if (spec.startsWith("~")) {
+        spec = spec.replace("~", Deno.env.get("HOME")!);
+      } else if (spec.startsWith(".")) {
+        spec = spec.replace(".", Deno.cwd());
+      }
 
-export function populateMap(
-  tokens: Record<string, Token>,
-  map: TokenMap,
-  prefix?: string,
-): void {
-  const flat = convertTokenData(structuredClone(tokens), {
-    output: "map",
-    usesDtcg: true,
-  });
-  for (const [key, token] of flat) {
-    if (key) {
-      const joined = key
-        .replace(/^\{(.*)}$/, "$1")
-        .split(".")
-        .filter((x) => !["_", "@", "DEFAULT"].includes(x)) // hack for dtcg tokens-that-are-also-groups
-        .join("-");
-      const name = prefix ? `${prefix}-${joined}` : joined;
-      map.set(name, token);
+      const { default: json } = await import(spec, { with: { type: "json" } });
+      this.populateFromDtcg(json, prefix);
+      Logger.info`Registered Tokens File: ${spec}\n${
+        Object.fromEntries(
+          this.entries().map(([k, v]) => [k, v.$value]),
+        )
+      }\n`;
+    } catch {
+      Logger.error`Could not load tokens for ${spec}`;
     }
   }
 }
 
-export async function register(tokenFile: TokenFile) {
-  let spec = tokenFile.path;
-  if (spec.startsWith("~")) {
-    spec = spec.replace("~", Deno.env.get("HOME")!);
-  } else if (spec.startsWith(".")) {
-    spec = spec.replace(".", Deno.cwd());
-  }
-
-  const { default: json } = await import(spec, { with: { type: "json" } });
-  populateMap(json, tokens, tokenFile.prefix);
-}
-
-function format(value: string): string {
+export function format(value: string): string {
   if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {
     const [light, dark] = getLightDarkValues(value);
     return `color: light-dark(
@@ -83,3 +84,5 @@ export function getTokenMarkdown(
     "```",
   ].join("\n");
 }
+
+export const tokens = new TokenMap();

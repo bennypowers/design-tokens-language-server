@@ -1,8 +1,7 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { register, tokens } from "#tokens";
-
 import { Logger } from "#logger";
+import { DTLSContextWithLsp } from "#lsp";
 
 /**
  * The initialize function is called when the server is initialized.
@@ -13,34 +12,17 @@ import { Logger } from "#logger";
  */
 export async function initialize(
   params: LSP.InitializeParams,
+  context: DTLSContextWithLsp,
 ): Promise<LSP.InitializeResult> {
   Logger.info`\n\n🎨 DESIGN TOKENS LANGUAGE SERVER 💎: ${
     params.clientInfo?.name ?? "unknown-client"
   }@${params.clientInfo?.version ?? "unknown-version"}\n`;
 
-  for (const { uri } of params.workspaceFolders ?? []) {
-    const pkgJsonPath = new URL("./package.json", `${uri}/`);
-    const { default: manifest } = await import(pkgJsonPath.href, {
-      with: { type: "json" },
-    });
-    for (
-      const tokensFile of manifest?.designTokensLanguageServer?.tokensFiles ??
-        []
-    ) {
-      await register(tokensFile)
-        .catch(() =>
-          Logger.error`Could not load tokens for ${tokensFile.path}`
-        );
-    }
+  try {
+    await context.lsp.initialize(params, context);
+  } catch (error) {
+    Logger.error`Failed to initialize the server: ${error}`;
   }
-
-  Logger.info`Available Tokens:\n${
-    Object.fromEntries(
-      tokens.entries().filter(([k]) => k.startsWith("--")).map((
-        [k, v],
-      ) => [k, v.$value]),
-    )
-  }\n`;
 
   return {
     capabilities: {

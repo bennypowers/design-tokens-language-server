@@ -1,7 +1,11 @@
 import * as LSP from "vscode-languageserver-protocol";
 
+import type { Server } from "#server";
+
 import { Documents, documents } from "#css";
 import { Logger } from "#logger";
+
+import { TokenMap, tokens } from "#tokens";
 
 import { initialize } from "./methods/initialize.ts";
 import { documentColor } from "./methods/textDocument/documentColor.ts";
@@ -12,8 +16,7 @@ import { completion } from "./methods/textDocument/completion.ts";
 import { colorPresentation } from "./methods/textDocument/colorPresentation.ts";
 import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
-import { Token } from "style-dictionary";
-import { tokens } from "#tokens";
+import { didChangeConfiguration } from "./methods/workspace/didChangeConfiguration.ts";
 
 const handlers = {
   ...documents.handlers,
@@ -26,6 +29,7 @@ const handlers = {
   "textDocument/diagnostic": diagnostic,
   "textDocument/documentColor": documentColor,
   "textDocument/hover": hover,
+  "workspace/didChangeConfiguration": didChangeConfiguration,
 };
 
 export type RequestId = LSP.RequestMessage["id"];
@@ -66,39 +70,103 @@ export type ResponseFor<M extends SupportedMethod> =
   >
   & { result: ResultFor<M> };
 
+export interface TokenFileSpec {
+  /**
+   * The path to the token file, or a deno-compatible module specifier.
+   * If the path is a relative path, it will be resolved relative to the
+   * workspace root.
+   * If it is a module specifier, it will be resolved relative to the
+   * package.json file in the workspace root, i.e. in the node_modules folder.
+   * @example ~/path/to/tokens.json
+   * @example ./path/to/tokens.json
+   * @example npm:package-name/path/to/tokens.json
+   */
+  path: string;
+  /**
+   * CSS variable name prefix to use for the token file.
+   * if set, tokens in the file will be prefixed with this value.
+   * @example "prefix": "my-design-system" => `--my-design-system-color-primary`
+   */
+  prefix?: string;
+}
+
+export type TokenFile = string | TokenFileSpec;
+
+export interface DTLSClientSettings {
+  dtls: {
+    tokensFiles: TokenFile[];
+  };
+}
+
 export interface DTLSContext {
+  /**
+   * Documents manager that represents the state of all documents.
+   */
   documents: Documents;
-  tokens: Map<string, Token>;
+  /**
+   * All tokens available to the server.
+   */
+  tokens: TokenMap;
 }
 
-function isCancelRequest(
-  request: Omit<LSP.NotificationMessage, "jsonrpc">,
-): request is RequestTypeForMethod<"$/cancelRequest"> {
-  return request.method === "$/cancelRequest";
+export interface DTLSContextWithLsp extends DTLSContext {
+  /**
+   * The LSP server protocol implementation.
+   */
+  lsp: Lsp;
 }
 
-function isSetTraceRequest(
+type RequestMethodTypeGuard<M extends SupportedMethod> = (
   request: Omit<LSP.NotificationMessage, "jsonrpc">,
-): request is RequestTypeForMethod<"$/setTrace"> {
-  return request.method === "$/setTrace";
+) => request is RequestTypeForMethod<M>;
+
+function requestMethodTypeGuard<M extends SupportedMethod>(
+  method: M,
+): RequestMethodTypeGuard<M> {
+  return ((request) => request.method === method) as RequestMethodTypeGuard<M>;
 }
 
-function isInitializedRequest(
-  request: Omit<LSP.NotificationMessage, "jsonrpc">,
-): request is RequestTypeForMethod<"initialized"> {
-  return request.method === "initialized";
-}
+const isCancelRequest = requestMethodTypeGuard("$/cancelRequest");
+const isSetTraceRequest = requestMethodTypeGuard("$/setTrace");
+const isInitializedRequest = requestMethodTypeGuard("initialized");
 
 /**
  * The Lsp class is responsible for processing LSP requests and notifications.
  * It handles the initialization of the server, and the processing of various LSP methods.
  */
 export class Lsp {
-  #cancelled = new Set<RequestId>();
+  #handlerMap = new Map(Object.entries(handlers));
+  #server: typeof Server;
   #resolveInitialized!: () => void;
   #initialized = new Promise<void>((r) => this.#resolveInitialized = r);
+  #workspaceFolders = new Set<LSP.WorkspaceFolder>();
+  #tokenFiles = new Set<TokenFile>();
+  #initializationOptions?: LSP.LSPAny;
+  #clientCapabilities?: LSP.ClientCapabilities;
   #traceLevel: LSP.TraceValues = LSP.TraceValues.Off;
-  #handlerMap = new Map(Object.entries(handlers));
+  #cancelled = new Set<RequestId>();
+
+  constructor(server: typeof Server) {
+    this.#server = server;
+  }
+
+  async #updateConfiguration(context: DTLSContext) {
+    for (const { uri } of this.#workspaceFolders) {
+      const pkgJsonPath = new URL("./package.json", `${uri}/`);
+      const mod = await import(pkgJsonPath.href, { with: { type: "json" } });
+      for (
+        const tokensFile
+          of mod.default?.designTokensLanguageServer?.tokensFiles ??
+            []
+      ) {
+        this.#tokenFiles.add(tokensFile);
+      }
+    }
+
+    for (const tokensFile of this.#tokenFiles) {
+      await context.tokens.register(tokensFile);
+    }
+  }
 
   #cancelRequest(request: LSP.RequestMessage) {
     const { id } = request;
@@ -107,10 +175,39 @@ export class Lsp {
     return null;
   }
 
-  #setTrace(params: LSP.SetTraceParams) {
-    Logger.info`Set trace level to ${params.value}`;
-    this.#traceLevel = params.value;
+  #setTrace(value: LSP.TraceValues) {
+    Logger.info`Set trace level to ${value}`;
+    this.#traceLevel = value;
     return null;
+  }
+
+  /**
+   * Caches the workspace folders, initialization options, and client capabilities.
+   *
+   * @param params - The parameters for the initialization request.
+   * @param context - The context for the server.
+   */
+  public async initialize(params: LSP.InitializeParams, context: DTLSContext) {
+    const { capabilities, workspaceFolders, initializationOptions, trace } =
+      params;
+    if (trace) this.#setTrace(trace);
+    for (const dir of workspaceFolders ?? []) this.#workspaceFolders.add(dir);
+    this.#clientCapabilities = capabilities;
+    this.#initializationOptions = initializationOptions;
+    await this.#updateConfiguration(context);
+  }
+
+  /**
+   * Synchronize the server with client settings
+   */
+  public async updateSettings(
+    settings: DTLSClientSettings,
+    context: DTLSContext,
+  ) {
+    for (const tokenFile of settings?.dtls?.tokensFiles ?? []) {
+      this.#tokenFiles.add(tokenFile);
+    }
+    await this.#updateConfiguration(context);
   }
 
   /**
@@ -128,26 +225,43 @@ export class Lsp {
   }
 
   /**
+   * Requests client configuration for a specific section.
+   */
+  public requestConfiguration(scopeUri: LSP.URI, section: string) {
+    return this.#server.push({
+      method: "workspace/configuration",
+      params: {
+        items: [
+          {
+            scopeUri,
+            section,
+          },
+        ],
+      },
+    });
+  }
+
+  /**
    * Processes the given request and returns the result.
    *
    * @param request - The request to process.
    * @returns The result of the request.
    */
   public async process(request: LSP.RequestMessage): Promise<unknown> {
+    const context = { lsp: this, documents, tokens };
     if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id)) {
       return null;
     } else if (isInitializedRequest(request)) {
+      await this.#updateConfiguration(context);
       return this.#resolveInitialized();
     } else if (isSetTraceRequest(request)) {
-      return this.#setTrace(request.params);
+      return this.#setTrace(request.params.value);
     } else if (isCancelRequest(request)) {
       return this.#cancelRequest(request);
     } else if (request.method) {
-      return await this.#handlerMap.get(request.method)?.(
-        // deno-lint-ignore no-explicit-any
-        request.params as any,
-        { documents, tokens },
-      ) ?? null;
+      const method = this.#handlerMap.get(request.method);
+      // deno-lint-ignore no-explicit-any
+      return await method?.(request.params as any, context) ?? null;
     }
   }
 }

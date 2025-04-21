@@ -1,61 +1,62 @@
-import { beforeEach, describe, it } from "@std/testing/bdd";
+import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { TestDocuments, TestTokens } from "#test-helpers";
 import { CompletionList } from "vscode-languageserver-protocol";
+
+import { createTestContext } from "#test-helpers";
 
 import { completion } from "./completion.ts";
 
-const css = String.raw;
-
 describe("completion", () => {
-  const tokens = new TestTokens();
-  const documents = new TestDocuments(tokens);
+  const ctx = createTestContext();
 
   describe("in an empty document", () => {
-    const uri = documents.create("");
+    const textDocument = ctx.documents.create("");
 
     it("should return no completions", () => {
       const completions = completion({
-        textDocument: { uri },
+        textDocument,
         position: { line: 0, character: 0 },
-      }, { documents, tokens });
+      }, ctx);
       expect(completions).toBeNull();
     });
   });
 
   describe("in a document with a css rule", () => {
-    const uri = documents.create(css`body {\n  `);
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        a`);
+
+    const position = textDocument.positionOf("a", "end");
 
     it("should return no completions", () => {
-      const completions = completion({
-        textDocument: { uri },
-        position: { line: 1, character: 3 },
-      }, { documents, tokens });
+      const completions = completion({ textDocument, position }, ctx);
       expect(completions).toBeNull();
     });
   });
 
   describe("adding the token prefix in a malformed block", () => {
-    const uri = documents.create(css`body {\n  token }`);
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        token
+      }
+    `);
+    const position = textDocument.positionOf("token", "end");
     it("should return all token completions", () => {
-      const completions = completion({
-        textDocument: { uri },
-        position: { line: 1, character: 5 },
-      }, { documents, tokens });
+      const completions = completion({ textDocument, position }, ctx);
       expect((completions as CompletionList)?.items).toHaveLength(8);
     });
   });
 
   describe("adding the token prefix as a property name", () => {
-    const uri = documents.create(css`body {\n  --token }`);
-    let completions: CompletionList | null;
-    beforeEach(() => {
-      completions = completion({
-        textDocument: { uri },
-        position: { line: 1, character: 8 },
-      }, { documents, tokens }) as CompletionList;
-    });
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        --token
+      }
+    `);
+    const position = textDocument.positionOf("--token", "end");
+    const completions = completion({ textDocument, position }, ctx);
+
     it("should return all token completions", () => {
       expect(completions?.items).toHaveLength(8);
     });
@@ -67,14 +68,13 @@ describe("completion", () => {
   });
 
   describe("adding the token prefix as a property value", () => {
-    const uri = documents.create(css`body {\n  color: token }`);
-    let completions: CompletionList | null;
-    beforeEach(() => {
-      completions = completion({
-        textDocument: { uri },
-        position: { line: 1, character: 14 },
-      }, { documents, tokens }) as CompletionList;
-    });
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        color: token
+      }
+    `);
+    const position = textDocument.positionOf("token", "end");
+    const completions = completion({ textDocument, position }, ctx);
     it("should return all token completions", () => {
       expect(completions?.items).toHaveLength(8);
     });

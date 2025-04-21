@@ -1,22 +1,20 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { TestDocuments, TestTokens } from "#test-helpers";
+import { createTestContext } from "#test-helpers";
 
 import { diagnostic } from "./diagnostic.ts";
 
 describe("diagnostic", () => {
-  const documents = new TestDocuments();
-  const tokens = new TestTokens();
+  const ctx = createTestContext();
 
   describe("in a document with a single token and no fallback", () => {
-    const uri = documents.create(`body { color: var(--token-color); }`, tokens);
+    const textDocument = ctx.documents.create(/*css*/ `
+      body { color: var(--token-color); }
+    `);
 
     it("should return no diagnostics", () => {
-      const diagnostics = diagnostic({ textDocument: { uri } }, {
-        documents,
-        tokens,
-      });
+      const diagnostics = diagnostic({ textDocument }, ctx);
       if (diagnostics.kind !== "full") {
         throw new Error("Expected full diagnostics");
       }
@@ -25,16 +23,14 @@ describe("diagnostic", () => {
   });
 
   describe("in a document with a single token and an incorrect fallback", () => {
-    const uri = documents.create(
-      `body { color: var(--token-color-red, blue); }`,
-      tokens,
-    );
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        color: var(--token-color-red, blue);
+      }
+    `);
 
     it("should return a single diagnostic", () => {
-      const diagnostics = diagnostic({ textDocument: { uri } }, {
-        documents,
-        tokens,
-      });
+      const diagnostics = diagnostic({ textDocument }, ctx);
       if (diagnostics.kind !== "full") {
         throw new Error("Expected full diagnostics");
       }

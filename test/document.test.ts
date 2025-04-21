@@ -1,18 +1,10 @@
 import { assertEquals } from "@std/assert";
 
-import { TestLspClient } from "./LspClient.ts";
+import { createTestLspClient } from "#test-helpers";
 
 // Test against the running server binary
 Deno.test("should handle rapid document changes without race conditions", async (t) => {
-  // Step 1: Start the language server binary
-  const server = new Deno.Command(Deno.execPath(), {
-    stdin: "piped",
-    stdout: "piped",
-    stderr: "piped",
-    args: ["-A", "--quiet", "./src/main.ts"],
-  }).spawn();
-
-  const client = new TestLspClient(server);
+  const client = createTestLspClient();
 
   try {
     await t.step("initialize", async () => {

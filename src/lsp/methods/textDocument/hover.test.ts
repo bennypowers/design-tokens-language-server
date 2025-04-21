@@ -2,25 +2,27 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { MarkupContent } from "vscode-languageserver-protocol";
-import { TestDocuments, TestTokens } from "#test-helpers";
+
+import { createTestContext } from "#test-helpers";
 
 import { hover } from "./hover.ts";
 
-const css = String.raw;
-
 describe("hover", () => {
-  const tokens = new TestTokens();
-  const documents = new TestDocuments(tokens);
+  const ctx = createTestContext();
 
   it("should return hover information for a token", () => {
-    const uri = documents.create(css`a{b:var(--token-color-red)}\n`);
+    const textDocument = ctx.documents.create(/*css*/ `
+      a {
+        color:var(--token-color-red);
+      }
+    `);
 
-    const result = hover({
-      textDocument: { uri },
-      position: { line: 0, character: 10 },
-    }, { documents, tokens });
+    const position = textDocument.positionOf("--token-color-red");
+
+    const result = hover({ textDocument, position }, ctx);
 
     expect(result).not.toBeNull();
+    expect(result?.range).toEqual(textDocument.rangeOf("--token-color-red"));
     expect(result?.contents).toHaveProperty("kind", "markdown");
     expect(result?.contents).toHaveProperty("value");
     expect((result?.contents as MarkupContent).value).toEqual(`\
@@ -32,38 +34,37 @@ describe("hover", () => {
       \`\`\`css
       red
       \`\`\``.replaceAll(/^ {6}/gm, ""));
-    expect(result?.range).toEqual({
-      end: {
-        character: 25,
-        line: 0,
-      },
-      start: {
-        character: 8,
-        line: 0,
-      },
-    });
   });
 
   it("should return null for a non-token", () => {
-    const uri = documents.create(css`a{b:var(--non-token)}\n`);
+    const textDocument = ctx.documents.create(/*css*/ `
+      a {
+        color: :var(--non-token);
+      }
+    `);
 
-    const result = hover({
-      textDocument: { uri },
-      position: { line: 0, character: 10 },
-    }, { documents, tokens });
+    const position = textDocument.positionOf("--non-token");
+
+    const result = hover({ textDocument, position }, ctx);
 
     expect(result).toBeNull();
   });
 
   it("should return formatted hover information for a token with a light-dark value", () => {
-    const uri = documents.create(css`a{b:var(--token-color-blue-lightdark)}`);
+    const textDocument = ctx.documents.create(/*css*/ `
+      a{
+        color: var(--token-color-blue-lightdark);
+      }
+    `);
 
-    const result = hover({
-      textDocument: { uri },
-      position: { line: 0, character: 10 },
-    }, { documents, tokens });
+    const position = textDocument.positionOf("--token-color-blue-lightdark");
+
+    const range = textDocument.rangeOf("--token-color-blue-lightdark");
+
+    const result = hover({ textDocument, position }, ctx);
 
     expect(result).not.toBeNull();
+    expect(result?.range).toEqual(range);
     expect(result?.contents).toHaveProperty("kind", "markdown");
     expect(result?.contents).toHaveProperty("value");
     expect((result?.contents as MarkupContent).value).toEqual(`\
@@ -78,15 +79,5 @@ describe("hover", () => {
         darkblue
       )
       \`\`\``.replaceAll(/^ {6}/gm, ""));
-    expect(result?.range).toEqual({
-      end: {
-        character: 36,
-        line: 0,
-      },
-      start: {
-        character: 8,
-        line: 0,
-      },
-    });
   });
 });

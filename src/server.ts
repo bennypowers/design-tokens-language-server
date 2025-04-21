@@ -1,4 +1,8 @@
-import { RequestMessage, ResponseError } from "vscode-languageserver-protocol";
+import {
+  NotificationMessage,
+  RequestMessage,
+  ResponseError,
+} from "vscode-languageserver-protocol";
 
 import { Logger } from "#logger";
 
@@ -14,15 +18,30 @@ export interface Io {
    * The implementation of this method is responsible for reading from the appropriate input stream (e.g., stdin).
    */
   requests(): AsyncIterable<RequestMessage>;
+
   /**
    * Responds to the client with the result of the request.
    * The implementation of this method is responsible for writing to the appropriate output stream (e.g., stdout).
    */
-  respond(id?: RequestMessage['id'], result?: unknown, error?: ResponseError): void | Promise<void>
+  respond(
+    id?: RequestMessage["id"],
+    result?: unknown,
+    error?: ResponseError,
+  ): void | Promise<void>;
+
+  /**
+   * Sends a server notification to the client.
+   */
+  notify(message: NotificationMessage): void | Promise<void>;
+
+  /**
+   * Pushes a request message to the client.
+   */
+  push(message: Omit<RequestMessage, "jsonrpc" | "id">): void | Promise<void>;
 }
 
 export interface StdioOptions {
-  io: 'stdio';
+  io: "stdio";
 }
 
 /**
@@ -35,15 +54,23 @@ export class Server {
   static #io: Io;
   static #queue = createQueue({ parallelize: 5 });
 
+  public static notify(message: NotificationMessage) {
+    this.#io.notify(message);
+  }
+
+  public static push(message: Omit<RequestMessage, "jsonrpc" | "id">) {
+    this.#io.push(message);
+  }
+
   /**
    * The serve method is the entry point for the server.
    * It initializes the Lsp and Io instances, and starts listening for requests.
    */
   public static async serve(options: StdioOptions) {
-    this.#lsp = new Lsp();
+    this.#lsp = new Lsp(this);
 
     switch (options.io) {
-      case 'stdio':
+      case "stdio":
         this.#io = new Stdio();
         break;
       default:
@@ -51,19 +78,23 @@ export class Server {
     }
 
     for await (const request of this.#io.requests()) {
-      Logger.debug`${request.id ? `📥 (${request.id})` : `🔔`}: ${request.method ?? "notification"}`;
-      if (!request.id)
+      Logger.debug`${request.id ? `📥 (${request.id})` : `🔔`}: ${
+        request.method ?? "notification"
+      }`;
+      if (!request.id) {
         await this.#lsp.process(request);
-      else if (this.#lsp.isCancelledRequest(request.id))
+      } else if (this.#lsp.isCancelledRequest(request.id)) {
         return this.#io.respond(request.id, null);
-      else
+      } else {
         await this.#queue.add(async () => {
           try {
-            if (!request.method.match(/^initialized?$/))
+            if (!request.method.match(/^initialized?$/)) {
               await this.#lsp.initialized();
+            }
             const result = await this.#lsp.process(request);
-            if (request.id)
+            if (request.id) {
               Logger.debug`🚢 (${request.id}): ${request.method}`;
+            }
             return this.#io.respond(request.id, result);
           } catch (error) {
             Logger.error`${error}`;
@@ -71,5 +102,6 @@ export class Server {
           }
         });
       }
+    }
   }
 }
