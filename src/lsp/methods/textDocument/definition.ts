@@ -40,7 +40,7 @@ export async function definition(
   if (node) {
     const token = context.tokens.get(node.text);
     if (token) {
-      const spec = token?.["dev.bennypowers.dtls"]?.spec;
+      const spec = context.tokens.meta.get(token);
       if (spec?.path) {
         const tokenPath = node.text.replace(/^--/, "")
           .split("-")

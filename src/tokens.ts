@@ -16,6 +16,8 @@ export class Tokens extends Map<string, Token> {
     return super.has(key.replace(/^-+/, ""));
   }
 
+  meta = new Map<Token, TokenFileSpec>();
+
   populateFromDtcg(dtcgTokens: Record<string, Token>, spec: TokenFileSpec) {
     const flat = convertTokenData(structuredClone(dtcgTokens), {
       output: "map",
@@ -31,7 +33,7 @@ export class Tokens extends Map<string, Token> {
           .filter((x) => !groupMarkers.has(x))
           .join("-");
         const name = spec.prefix ? `${spec.prefix}-${joined}` : joined;
-        token["dev.bennypowers.dtls"] = { spec };
+        this.meta.set(token, spec);
         this.set(name, token);
       }
     }
