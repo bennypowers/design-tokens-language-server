@@ -7,11 +7,13 @@ import { TestDocuments, TestTokens } from "#test-helpers";
 
 import { documentColor } from "./documentColor.ts";
 
+const css = String.raw;
+
 describe("documentColor", () => {
-  const documents = new TestDocuments();
   const tokens = new TestTokens();
+  const documents = new TestDocuments(tokens);
   describe("in a document with a single token with type color", () => {
-    const uri = documents.create(`a{b:var(--token-color-red)}\n`, tokens);
+    const uri = documents.create(css`a{b:var(--token-color-red)}\n`);
 
     it("should return a single DocumentColor", () => {
       const results = documentColor({ textDocument: { uri } }, {
@@ -41,7 +43,7 @@ describe("documentColor", () => {
   });
 
   describe("in a document with a single token with type dimension", () => {
-    const uri = documents.create(`a{b:var(--token-space-small)}\n`, tokens);
+    const uri = documents.create(css`a{b:var(--token-space-small)}\n`);
 
     it("should return an empty array", () => {
       const results = documentColor({ textDocument: { uri } }, {
@@ -54,8 +56,7 @@ describe("documentColor", () => {
 
   describe("in a document with two tokens: one color, one dimension", () => {
     const uri = documents.create(
-      `a{b:var(--token-color-red); c:var(--token-space-small)}\n`,
-      tokens,
+      css`a{b:var(--token-color-red); c:var(--token-space-small)}\n`,
     );
 
     it("should return a single DocumentColor", () => {
@@ -81,10 +82,7 @@ describe("documentColor", () => {
   });
 
   describe("in a document with a single token with type color and light-dark values", () => {
-    const uri = documents.create(
-      `a{b:var(--token-color-blue-lightdark)}\n`,
-      tokens,
-    );
+    const uri = documents.create(css`a{b:var(--token-color-blue-lightdark)}\n`);
 
     it("should return two DocumentColors for the same token", () => {
       const results = documentColor({ textDocument: { uri } }, {

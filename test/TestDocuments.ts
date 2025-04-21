@@ -2,12 +2,17 @@ import { Documents } from "#css";
 import { TokenMap } from "#tokens";
 
 export class TestDocuments extends Documents {
-  create(text: string, tokens: TokenMap) {
+  #tokens: TokenMap;
+  constructor(tokens: TokenMap) {
+    super();
+    this.#tokens = tokens;
+  }
+  create(text: string) {
     const id = this.allDocuments.length;
     const uri = `file:///test-${id}.css`;
     this.onDidOpen({
       textDocument: { uri, languageId: "css", version: 1, text },
-    }, tokens);
+    }, this.#tokens);
     return uri;
   }
 

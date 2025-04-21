@@ -7,11 +7,21 @@ import { TestDocuments, TestTokens } from "#test-helpers";
 
 import { colorPresentation } from "./colorPresentation.ts";
 
-const documents = new TestDocuments();
 const tokens = new TestTokens();
+const documents = new TestDocuments(tokens);
+
+const css = String.raw;
 
 describe("colorPresentation", () => {
-  const uri = "file:///test.css";
+  const uri = documents.create(
+    css`
+      a {
+        color: var(--token-color-red);
+        border-color: var(--token-color-red-hex);
+        border-width: var(--token-space-small);
+      }
+    `,
+  );
 
   it("should return color presentations for matching colors", () => {
     const result = colorPresentation({

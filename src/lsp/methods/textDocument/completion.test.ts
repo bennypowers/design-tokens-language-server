@@ -6,12 +6,14 @@ import { CompletionList } from "vscode-languageserver-protocol";
 
 import { completion } from "./completion.ts";
 
+const css = String.raw;
+
 describe("completion", () => {
-  const documents = new TestDocuments();
   const tokens = new TestTokens();
+  const documents = new TestDocuments(tokens);
 
   describe("in an empty document", () => {
-    const uri = documents.create("", tokens);
+    const uri = documents.create("");
 
     it("should return no completions", () => {
       const completions = completion({
@@ -23,7 +25,7 @@ describe("completion", () => {
   });
 
   describe("in a document with a css rule", () => {
-    const uri = documents.create("body {\n  ", tokens);
+    const uri = documents.create(css`body {\n  `);
 
     it("should return no completions", () => {
       const completions = completion({
@@ -35,7 +37,7 @@ describe("completion", () => {
   });
 
   describe("adding the token prefix in a malformed block", () => {
-    const uri = documents.create("body {\n  token }", tokens);
+    const uri = documents.create(css`body {\n  token }`);
     it("should return all token completions", () => {
       const completions = completion({
         textDocument: { uri },
@@ -46,7 +48,7 @@ describe("completion", () => {
   });
 
   describe("adding the token prefix as a property name", () => {
-    const uri = documents.create("body {\n  --token }", tokens);
+    const uri = documents.create(css`body {\n  --token }`);
     let completions: CompletionList | null;
     beforeEach(() => {
       completions = completion({
@@ -65,7 +67,7 @@ describe("completion", () => {
   });
 
   describe("adding the token prefix as a property value", () => {
-    const uri = documents.create("body {\n  color: token }", tokens);
+    const uri = documents.create(css`body {\n  color: token }`);
     let completions: CompletionList | null;
     beforeEach(() => {
       completions = completion({

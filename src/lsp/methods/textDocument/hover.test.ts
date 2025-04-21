@@ -6,12 +6,14 @@ import { TestDocuments, TestTokens } from "#test-helpers";
 
 import { hover } from "./hover.ts";
 
+const css = String.raw;
+
 describe("hover", () => {
-  const documents = new TestDocuments();
   const tokens = new TestTokens();
+  const documents = new TestDocuments(tokens);
 
   it("should return hover information for a token", () => {
-    const uri = documents.create(`a{b:var(--token-color-red)}\n`, tokens);
+    const uri = documents.create(css`a{b:var(--token-color-red)}\n`);
 
     const result = hover({
       textDocument: { uri },
@@ -43,7 +45,7 @@ describe("hover", () => {
   });
 
   it("should return null for a non-token", () => {
-    const uri = documents.create(`a{b:var(--non-token)}\n`, tokens);
+    const uri = documents.create(css`a{b:var(--non-token)}\n`);
 
     const result = hover({
       textDocument: { uri },
@@ -54,10 +56,7 @@ describe("hover", () => {
   });
 
   it("should return formatted hover information for a token with a light-dark value", () => {
-    const uri = documents.create(
-      `a{b:var(--token-color-blue-lightdark)}`,
-      tokens,
-    );
+    const uri = documents.create(css`a{b:var(--token-color-blue-lightdark)}`);
 
     const result = hover({
       textDocument: { uri },
