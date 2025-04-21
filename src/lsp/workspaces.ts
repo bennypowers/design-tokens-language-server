@@ -64,15 +64,6 @@ export class Workspaces {
     const groupMarkers = tokenFileGroupMarkers ||
       settings?.groupMarkers ||
       this.#settings?.dtls?.groupMarkers;
-    Logger
-      .debug`Normalizing token file with with global settings ${this.#settings} ${{
-      settings,
-      tokenFile,
-      workspaceRoot,
-      path,
-      prefix,
-      groupMarkers,
-    }}`;
     return {
       path,
       prefix,
@@ -123,8 +114,6 @@ export class Workspaces {
         params.settings?.workspaceRoot ?? "",
         params.settings,
       );
-      Logger
-        .debug`Token file ${spec.path} with prefix ${spec.prefix} and group markers ${spec.groupMarkers}`;
       this.#tokenSpecs.add(spec);
     }
     await this.#updateConfiguration(context);
