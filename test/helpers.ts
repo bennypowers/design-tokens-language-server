@@ -1,6 +1,6 @@
 import { Token } from "style-dictionary";
 import { Documents } from "#css";
-import { TokenMap } from "#tokens";
+import { Tokens } from "#tokens";
 import { Position, Range } from "vscode-languageserver-protocol";
 
 import { RequestTypeForMethod, ResponseFor, SupportedMethod } from "#lsp";
@@ -16,9 +16,9 @@ import testTokens from "../test/tokens.json" with { type: "json" };
  * within the documents.
  */
 class TestDocuments extends Documents {
-  #tokens: TokenMap;
+  #tokens: Tokens;
 
-  constructor(tokens: TokenMap) {
+  constructor(tokens: Tokens) {
     super();
     this.#tokens = tokens;
   }
@@ -79,7 +79,7 @@ class TestDocuments extends Documents {
 /**
  * Test TokenMap for managing design tokens.
  */
-class TestTokens extends TokenMap {
+class TestTokens extends Tokens {
   #originalTokens: Record<string, Token>;
   #prefix: string;
   constructor(
