@@ -241,23 +241,24 @@ export class CssDocument extends FullTextDocument {
 
     for (const cap of captures) {
       const callNode = cap.node.parent?.parent;
-      try {
-        if (callNode?.type == "call_expression" && cap.name === "tokenName") {
-          callNodes.get(callNode.id)!.tokenName = cap.node.text;
-        } else if (
-          callNode?.type == "call_expression" && cap.name === "fallback"
-        ) {
-          callNodes.get(callNode.id)!.fallbacks.push(cap.node);
+      if (callNode?.type === "call_expression") {
+        try {
+          if (cap.name === "tokenName") {
+            callNodes.get(callNode.id)!.tokenName = cap.node.text;
+          } else if (cap.name === "fallback") {
+            callNodes.get(callNode.id)!.fallbacks.push(cap.node);
+          }
+        } catch (e) {
+          Logger.error`Error while computing diagnostics: ${e}`;
         }
-      } catch (e) {
-        Logger.error`Error while computing diagnostics: ${e}`;
       }
     }
 
     return callNodes.values().flatMap(({ tokenName, fallbacks }) => {
       if (context.tokens.has(tokenName)) {
-        const fallback = fallbacks.map((x) => x.text).join(", ");
         const token = context.tokens.get(tokenName)!;
+        const joiner = token.$type === "fontFamily" ? ", " : " ";
+        const fallback = fallbacks.map((x) => x.text).join(joiner);
         const valid = typeof token.$value === "number"
           ? (parseFloat(fallback) === token.$value)
           : (fallback === token.$value);

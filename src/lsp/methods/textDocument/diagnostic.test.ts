@@ -93,4 +93,16 @@ describe("textDocument/diagnostic", () => {
       );
     });
   });
+
+  describe("in a document with a single box-shadow token and accurate fallback", () => {
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        box-shadow: var(--token-box-shadow, 1px 2px 3px 4px rgba(2, 4, 6 / .8));
+      }
+    `);
+    it("should return an empty list", () => {
+      const diagnostics = diagnostic({ textDocument }, ctx);
+      expect(diagnostics.items).toEqual([]);
+    });
+  });
 });
