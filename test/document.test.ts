@@ -47,6 +47,7 @@ Deno.test("should handle rapid document changes without race conditions", async 
               resolveProvider: true,
             },
             colorProvider: true,
+            definitionProvider: true,
             completionProvider: {
               completionItem: {
                 labelDetailsSupport: true,

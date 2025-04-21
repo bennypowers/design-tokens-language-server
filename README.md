@@ -1,16 +1,29 @@
 # 🎨 Design Tokens Language Server 🪙
 
+<!--toc:start-->
+- [✨ Features](#features)
+  - [⛸️ Hover Docs](#️-hover-docs)
+  - [✂️ Snippets](#️-snippets)
+  - [🥼 Diagnostics](#🥼-diagnostics)
+  - [🦸 Code actions](#🦸-code-actions)
+  - [🎨 Document Color](#🎨-document-color)
+  - [🗺️ Go to Definition](#🗺️-go-to-definition)
+- [🧰 Usage](#🧰-usage)
+    - [Neovim](#neovim)
+- [⚙️ Configuration](#️-configuration)
+    - [Global configuration](#global-configuration)
+    - [Token Prefixes](#token-prefixes)
+    - [Group Markers](#group-markers)
+  - [🤝 Contributing](#🤝-contributing)
+- [🏗️ Building](#🏗️-building)
+<!--toc:end-->
+
 Editor tools for working with [design tokens][dtcg] in CSS files.
 
 > [!NOTE]
 > This pre-release software. Features may be buggy or incomplete. Before 
 > relying on this software, consider contacting the developers to contribute
 > features, tests, etc.
-
-- [✨ Features](#features)
-- [🧰 Usage](#usage)
-- [⚙️ Configuration](#configuration)
-- [🤝 Contributing](#contributing)
 
 ## ✨ Features
 
@@ -45,6 +58,17 @@ wrong token definitions in Diagnostics.
 Display token color values in your source, e.g. as swatches
 
 ![Document color swatches](./docs/document-color.png)
+
+### 🗺️ Go to Definition
+
+Jump to the position in the tokens file where the token is defined.
+
+
+![Json file jump in neovim](./docs/goto-definition.png)
+
+Go to definition in a split window using Neovim's [`<C-w C-]>`
+binding](https://neovim.io/doc/user/windows.html#CTRL-W_g_CTRL-%5D),
+which defers to LSP methods when they're available
 
 ## 🧰 Usage
 

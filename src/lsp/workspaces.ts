@@ -9,6 +9,7 @@ import {
   TokenFile,
   TokenFileSpec,
 } from "#lsp";
+
 import { createRequire } from "node:module";
 
 /**
@@ -140,5 +141,9 @@ export class Workspaces {
     return {
       "workspace/didChangeConfiguration": this.#didChangeConfiguration,
     };
+  }
+
+  public get tokensFiles() {
+    return this.#tokenSpecs.values();
   }
 }
