@@ -26,8 +26,8 @@ describe("textDocument/definition", () => {
       {
         uri,
         range: {
-          start: { line: 26, character: 11 },
-          end: { line: 30, character: 5 },
+          start: { line: 31, character: 11 },
+          end: { line: 35, character: 5 },
         },
       },
     ]);

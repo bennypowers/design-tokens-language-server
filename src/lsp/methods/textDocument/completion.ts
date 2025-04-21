@@ -27,9 +27,10 @@ function offset(
 
 function escapeCommas($value: string) {
   if (typeof $value !== "string") {
-    throw $value;
+    return $value;
+  } else {
+    return $value.replaceAll(",", "\\,");
   }
-  return $value.replaceAll(",", "\\,");
 }
 
 function getCompletionDependingOnNode(args: CompletionArgs): string {

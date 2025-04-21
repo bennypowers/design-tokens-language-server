@@ -258,7 +258,9 @@ export class CssDocument extends FullTextDocument {
       if (context.tokens.has(tokenName)) {
         const fallback = fallbacks.map((x) => x.text).join(", ");
         const token = context.tokens.get(tokenName)!;
-        const valid = fallback === token.$value;
+        const valid = typeof token.$value === "number"
+          ? (parseFloat(fallback) === token.$value)
+          : (fallback === token.$value);
         if (!valid) {
           return [{
             range: tsNodesToLspRangeInclusive(...fallbacks),

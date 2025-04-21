@@ -65,4 +65,32 @@ describe("textDocument/diagnostic", () => {
       );
     });
   });
+
+  describe("in a document with a single number-value token and a correct fallback", () => {
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        color: var(--token-font-weight, 400);
+      }
+    `);
+    it("should return an empty list", () => {
+      const diagnostics = diagnostic({ textDocument }, ctx);
+      expect(diagnostics.items).toEqual([]);
+    });
+  });
+
+  describe("in a document with a single number-value token and string fallback", () => {
+    const textDocument = ctx.documents.create(/*css*/ `
+      body {
+        color: var(--token-font-weight, '400');
+      }
+    `);
+    it("should return an empty list", () => {
+      const diagnostics = diagnostic({ textDocument }, ctx);
+      expect(diagnostics.items).toHaveLength(1);
+      const [diag] = diagnostics.items;
+      expect(diag.message).toBe(
+        "Token fallback does not match expected value: 400",
+      );
+    });
+  });
 });
