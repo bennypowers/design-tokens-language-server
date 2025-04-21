@@ -1,23 +1,5 @@
 # 🎨 Design Tokens Language Server 🪙
 
-<!--toc:start-->
-- [✨ Features](#features)
-  - [⛸️ Hover Docs](#️-hover-docs)
-  - [✂️ Snippets](#️-snippets)
-  - [🥼 Diagnostics](#🥼-diagnostics)
-  - [🦸 Code actions](#🦸-code-actions)
-  - [🎨 Document Color](#🎨-document-color)
-  - [🗺️ Go to Definition](#🗺️-go-to-definition)
-- [🧰 Usage](#🧰-usage)
-    - [Neovim](#neovim)
-- [⚙️ Configuration](#️-configuration)
-    - [Global configuration](#global-configuration)
-    - [Token Prefixes](#token-prefixes)
-    - [Group Markers](#group-markers)
-  - [🤝 Contributing](#🤝-contributing)
-- [🏗️ Building](#🏗️-building)
-<!--toc:end-->
-
 Editor tools for working with [design tokens][dtcg] in CSS files.
 
 > [!NOTE]
@@ -179,7 +161,6 @@ For example, if you have a token file with the following tokens:
 
 ```json
 {
-
   "color": {
     "red": {
       "GROUP": {
@@ -205,9 +186,9 @@ that particular token file, or globally for all token files
 },
 ```
 
-### 🤝 Contributing
+## 🤝 Contributing
 
-## 🏗️ Building
+### 🏗️ Building
 
 > [!WARNING]
 > This is being developed on Linux, might work with MacOS, and probably won't 
