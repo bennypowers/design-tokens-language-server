@@ -5,7 +5,7 @@ import { createTestContext } from "#test-helpers";
 
 import { diagnostic } from "./diagnostic.ts";
 
-describe("diagnostic", () => {
+describe("textDocument/diagnostic", () => {
   const ctx = createTestContext();
 
   describe("in a document with a single token and no fallback", () => {

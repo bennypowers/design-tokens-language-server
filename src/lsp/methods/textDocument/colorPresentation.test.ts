@@ -7,7 +7,7 @@ import { createTestContext } from "#test-helpers";
 
 import { colorPresentation } from "./colorPresentation.ts";
 
-describe("colorPresentation", () => {
+describe("textDocument/colorPresentation", () => {
   const ctx = createTestContext();
   const textDocument = ctx.documents.create(/*css*/ `
     a {

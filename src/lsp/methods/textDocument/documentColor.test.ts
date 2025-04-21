@@ -7,7 +7,7 @@ import { createTestContext } from "#test-helpers";
 
 import { documentColor } from "./documentColor.ts";
 
-describe("documentColor", () => {
+describe("textDocument/documentColor", () => {
   const ctx = createTestContext();
   describe("in a document with a single token with type color", () => {
     const textDocument = ctx.documents.create(/*css*/ `
