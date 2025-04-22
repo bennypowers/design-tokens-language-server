@@ -31,5 +31,8 @@
     "@types/node": "^20.5.7",
     "esbuild": "^0.25.2",
     "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }
