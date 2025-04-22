@@ -80,8 +80,6 @@ export class Workspaces {
       const settings = mod.default?.designTokensLanguageServer;
       for (const file of settings?.tokensFiles ?? []) {
         const spec = this.#normalizeTokenFile(file, uri, settings);
-        Logger
-          .debug`Token file ${spec.path} with prefix ${spec.prefix} and group markers ${spec.groupMarkers}`;
         this.#tokenSpecs.add(spec);
       }
     }

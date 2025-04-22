@@ -40,7 +40,14 @@
       ]
     },
     "vscode:copy": {
-      "command": "mkdir -p extensions/vscode/dist && cp -r dist extensions/vscode/",
+      "command": "cp -r dist extensions/vscode/",
+      "dependencies": [
+        "compile",
+        "vscode:clean"
+      ]
+    },
+    "vscode:clean": {
+      "command": "rm -rf extensions/vscode/*.vsix extensions/vscode/dist",
       "dependencies": [
         "compile"
       ]
@@ -52,7 +59,7 @@
       ]
     },
     "vscode:install": {
-      "command": "flatpak run com.vscodium.codium --install-extension extensions/vscode/design-tokens-language-server-vscode-1.0.0.vsix ",
+      "command": "flatpak run com.vscodium.codium --install-extension extensions/vscode/*.vsix ",
       "dependencies": [
         "vscode:build"
       ]

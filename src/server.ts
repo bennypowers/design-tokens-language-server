@@ -84,7 +84,9 @@ export class Server {
     }
 
     for await (const request of this.#io.requests()) {
-      Logger.debug`${request.id != null ? `📥 (${request.id})` : `🔔`}: ${request.method}`;
+      Logger.debug`${
+        request.id != null ? `📥 (${request.id})` : `🔔`
+      }: ${request.method}`;
       if (request.id == null) {
         await this.#lsp.process(request);
       } else if (this.#lsp.isCancelledRequest(request.id)) {
