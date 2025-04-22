@@ -47,7 +47,7 @@
       ]
     },
     "vscode:clean": {
-      "command": "rm -rf extensions/vscode/*.vsix extensions/vscode/dist",
+      "command": "rm -rf extensions/vscode/*.vsix extensions/vscode/dist || true",
       "dependencies": [
         "bundle"
       ]
