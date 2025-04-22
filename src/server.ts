@@ -84,10 +84,8 @@ export class Server {
     }
 
     for await (const request of this.#io.requests()) {
-      Logger.debug`${request.id ? `📥 (${request.id})` : `🔔`}: ${
-        request.method ?? "notification"
-      }`;
-      if (!request.id) {
+      Logger.debug`${request.id != null ? `📥 (${request.id})` : `🔔`}: ${request.method}`;
+      if (request.id == null) {
         await this.#lsp.process(request);
       } else if (this.#lsp.isCancelledRequest(request.id)) {
         return this.#io.respond(request.id, null);
@@ -98,8 +96,10 @@ export class Server {
               await this.#lsp.initialized();
             }
             const result = await this.#lsp.process(request);
-            if (request.id) {
+            if (request.id != null) {
               Logger.debug`🚢 (${request.id}): ${request.method}`;
+            } else {
+              Logger.debug`🚀 (${request.method}) ${result}`;
             }
             return this.#io.respond(request.id, result);
           } catch (error) {

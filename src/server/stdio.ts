@@ -68,7 +68,7 @@ export class Stdio implements Io {
     if (!id && !result && !error) return;
     return this.#sendJsonRpcMessage({
       jsonrpc: "2.0",
-      ...id && { id },
+      ...(id !== undefined) && { id },
       ...(result !== undefined) && { result },
       ...error && { error },
     });
