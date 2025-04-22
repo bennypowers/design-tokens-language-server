@@ -40,7 +40,7 @@ jobs:
           update-comment: true
 
       - name: Build step
-        run: deno task build
+        run: deno task build:ci
 
       - name: Release
         uses: softprops/action-gh-release@v2

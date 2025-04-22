@@ -24,6 +24,12 @@
         "install"
       ]
     },
+    "build:ci": {
+      "dependencies": [
+        "vscode:build",
+        "bundle"
+      ]
+    },
     "bundle": {
       "command": "deno --allow-all scripts/bundle.ts",
       "dependencies": [
