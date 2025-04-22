@@ -26,6 +26,8 @@
     },
     "build:ci": {
       "dependencies": [
+        "vscode:copyreadme",
+        "vscode:npm",
         "vscode:build",
         "bundle"
       ]
@@ -43,6 +45,15 @@
       "command": "cp dist/bin/design-tokens-language-server $HOME/.local/bin/",
       "dependencies": [
         "bundle"
+      ]
+    },
+    "vscode:copyreadme": {
+      "command": "cp README.md extensions/vscode/"
+    },
+    "vscode:npm": {
+      "command": "npm ci --prefix extensions/vscode",
+      "dependencies": [
+        "copy:wts:vendor"
       ]
     },
     "vscode:copy": {
