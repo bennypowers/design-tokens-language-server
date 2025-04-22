@@ -71,7 +71,7 @@
       ]
     },
     "vscode:build": {
-      "command": "npx --prefix extensions/vscode @vscode/vsce package $DTLS_VERSION",
+      "command": "npm --prefix extensions/vscode run build",
       "dependencies": [
         "vscode:copy"
       ]
