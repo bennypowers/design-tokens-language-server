@@ -1,10 +1,10 @@
 [package]
-name = "zed_design_tokens"
-version = "0.0.1"
-license = "GPL-2.0"
+name = "zed_design_tokens_language_server"
+version = "0.0.3"
+license = "GPL-3.0-or-later"
 
 [lib]
-path = "src/lib.rs"
+path = "src/dtls.rs"
 crate-type = ["cdylib"]
 
 [dependencies]

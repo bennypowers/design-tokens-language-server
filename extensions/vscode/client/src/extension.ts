@@ -1,22 +1,23 @@
 import * as path from "node:path";
 import { ExtensionContext } from "vscode";
 
-import { LanguageClient, TransportKind } from "vscode-languageclient/node";
+import {
+  LanguageClient,
+  LanguageClientOptions,
+  TransportKind,
+} from "vscode-languageclient/node";
 
 let client: LanguageClient;
 
-export function activate(context: ExtensionContext) {
-  const command = context.asAbsolutePath(path.join('dist', 'bin', 'design-tokens-language-server'));
+export async function activate(context: ExtensionContext) {
+  const command = context.asAbsolutePath(
+    path.join("dist", "bin", "design-tokens-language-server"),
+  );
   const args: string[] = [];
 
-  // const command = path.join(context.extensionPath, 'dist', 'bin', 'deno');
-  // const args = [
-  //   'run',
-  //   '--unstable-temporal',
-  //   '-A',
-  //   path.join(context.extensionPath, 'dist', 'main.js'),
-  //   '--stdio'
-  // ];
+  const clientOptions: LanguageClientOptions = {
+    documentSelector: [{ scheme: "file", language: "css" }],
+  };
 
   client = new LanguageClient(
     "design-tokens-language-server",
@@ -25,16 +26,14 @@ export function activate(context: ExtensionContext) {
       run: { command, args, transport: TransportKind.stdio },
       debug: { command, args, transport: TransportKind.stdio },
     },
-    {
-      documentSelector: [
-        { scheme: "file", language: "css" },
-      ],
-    },
+    clientOptions,
   );
 
-  client.start().then(() => {
-    console.log("STARTED")
-  });
+  try {
+    await client.start();
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 export function deactivate(): Thenable<void> | undefined {
