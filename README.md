@@ -1,5 +1,7 @@
 # 🎨 Design Tokens Language Server 🪙
 
+[![codecov](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
+
 Editor tools for working with [design tokens][dtcg] in CSS files.
 
 > [!NOTE]
