@@ -2,6 +2,8 @@ import { Server } from "#server";
 
 import { parseArgs } from "@std/cli/parse-args";
 
+import manifest from "../package.json" with { type: "json" };
+
 const flags = parseArgs(Deno.args, {
   boolean: ["stdio", "socket"],
   string: ["version", "port"],
@@ -11,7 +13,7 @@ const flags = parseArgs(Deno.args, {
 
 if (flags.version) {
   console.log("Design tokens language server");
-  console.log("version: 0.0.4");
+  console.log(`version: ${manifest.version}`);
   Deno.exit(0);
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "zed_design_tokens_language_server"
-version = "0.0.3"
+version = "0.0.5"
 license = "GPL-3.0-or-later"
 
 [lib]

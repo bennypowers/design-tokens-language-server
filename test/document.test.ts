@@ -2,6 +2,10 @@ import { assertEquals } from "@std/assert";
 
 import { createTestLspClient } from "#test-helpers";
 
+import manifest from "../package.json" with { type: "json" };
+
+const { version } = manifest;
+
 // Test against the running server binary
 Deno.test("should handle rapid document changes without race conditions", async (t) => {
   const client = createTestLspClient();
@@ -63,7 +67,7 @@ Deno.test("should handle rapid document changes without race conditions", async 
           },
           serverInfo: {
             name: "design-tokens-language-server",
-            version: "0.0.1",
+            version,
           },
         },
       });

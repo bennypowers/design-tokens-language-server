@@ -15,6 +15,10 @@ import { resolve as completionItemResolve } from "./methods/completionItem/resol
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
 import { definition } from "./methods/textDocument/definition.ts";
 
+import manifest from "../../package.json" with { type: "json" };
+
+const { version } = manifest;
+
 const handlers = {
   "codeAction/resolve": codeActionResolve,
   "completionItem/resolve": completionItemResolve,
@@ -273,7 +277,7 @@ export class Lsp {
       },
       serverInfo: {
         name: "design-tokens-language-server",
-        version: "0.0.1",
+        version,
       },
     };
   }
