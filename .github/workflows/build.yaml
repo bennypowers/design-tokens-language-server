@@ -40,11 +40,13 @@ jobs:
           update-comment: true
 
       - name: Build step
-        run: deno task bundle
+        run: deno task build
 
       - name: Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          files: dist/bin/* extensions/vscode/*.vsix
           token: ${{ secrets.RELEASE_PAT }}
+          files: |
+            dist/bin/*
+            extensions/vscode/*.vsix
