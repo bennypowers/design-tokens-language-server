@@ -6,30 +6,109 @@ import { createTestContext } from "#test-helpers";
 import { definition } from "./definition.ts";
 
 describe("textDocument/definition", () => {
-  const ctx = createTestContext();
-  const textDocument = ctx.documents.create(/*css*/ `
-    a {
-      color: var(--token-color-red);
-      border-color: var(--token-color-red-hex);
-      border-width: var(--token-space-small);
-    }
-  `);
-
-  it("should return color presentations for matching colors", async () => {
-    const range = textDocument.rangeOf("--token-color-red");
-    const position = await definition(
-      { textDocument, position: range.start },
-      ctx,
-    );
-    const uri = new URL("../../../../test/tokens.json", import.meta.url).href;
-    expect(position).toEqual([
-      {
-        uri,
-        range: {
-          start: { line: 31, character: 11 },
-          end: { line: 35, character: 5 },
+  const spec = "file:///tokens.json";
+  const ctx = createTestContext({
+    testTokensSpecs: [{
+      prefix: "token",
+      spec,
+      tokens: {
+        color: {
+          red: {
+            _: {
+              $value: "#ff0000",
+              $type: "color",
+            },
+            hex: {
+              $value: "#ff0000",
+              $type: "color",
+            },
+          },
+        },
+        space: {
+          small: {
+            $value: "4px",
+            $type: "size",
+          },
         },
       },
-    ]);
+    }],
+  });
+
+  describe("in a css document", () => {
+    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      a {
+        color: var(--token-color-red);
+        border-color: var(--token-color-red-hex);
+        border-width: var(--token-space-small);
+        handedness: var(--token-sinister);
+      }
+    `);
+
+    it("returns color presentation for a known token name", () => {
+      const range = textDocument.rangeOf("--token-color-red");
+      const position = range.start;
+      expect(definition({ textDocument, position }, ctx)).toEqual([
+        {
+          uri: spec,
+          range: {
+            start: { line: 2, character: 11 },
+            end: { line: 11, character: 5 },
+          },
+        },
+      ]);
+    });
+
+    it("returns matching range for nested token", () => {
+      const range = textDocument.rangeOf("--token-color-red-hex");
+      const position = range.start;
+      expect(definition({ textDocument, position }, ctx)).toEqual([
+        {
+          uri: spec,
+          range: {
+            start: { line: 7, character: 13 },
+            end: { line: 10, character: 7 },
+          },
+        },
+      ]);
+    });
+
+    it("returns an empty list for undeclared tokens", () => {
+      const range = textDocument.rangeOf("--token-sinister");
+      const location = definition(
+        { textDocument, position: range.start },
+        ctx,
+      );
+      expect(location).toEqual([]);
+    });
+  });
+
+  describe("in a json document", () => {
+    const textDocument = ctx.documents.createJsonDocument(/*json*/ `
+      {
+        "color": {
+          "red": {
+            "_": {
+              "$value": "#ff0000",
+              "$type": "color"
+            },
+            "hex": {
+              "$value": "{color.red._}",
+              "$type": "color"
+            }
+          }
+        }
+      }
+    `);
+
+    it("throws", () => {
+      expect(() =>
+        definition({
+          textDocument,
+          position: { line: 2, character: 11 },
+        }, ctx)
+      ).toThrow(
+        "textDocument/definition not implemented for JSON documents",
+      );
+    });
   });
 });

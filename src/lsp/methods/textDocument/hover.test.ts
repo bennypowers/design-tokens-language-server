@@ -8,15 +8,49 @@ import { createTestContext } from "#test-helpers";
 import { hover } from "./hover.ts";
 
 describe("textDocument/hover", () => {
-  const ctx = createTestContext();
+  const ctx = createTestContext({
+    testTokensSpecs: [
+      {
+        prefix: "token",
+        spec: "file:///tokens.json",
+        tokens: {
+          color: {
+            red: {
+              _: {
+                $value: "red",
+                $type: "color",
+                $description: "Red colour",
+              },
+              hex: {
+                $value: "#ff0000",
+                $type: "color",
+              },
+            },
+            blue: {
+              lightdark: {
+                $value: "light-dark(lightblue, darkblue)",
+                $description: "Color scheme color",
+                $type: "color",
+              },
+            },
+          },
+          space: {
+            small: {
+              $value: "4px",
+              $type: "size",
+            },
+          },
+        },
+      },
+    ],
+  });
 
   it("should return hover information for a token", () => {
-    const textDocument = ctx.documents.create(/*css*/ `
+    const textDocument = ctx.documents.createCssDocument(/*css*/ `
       a {
         color:var(--token-color-red);
       }
     `);
-
     const position = textDocument.positionOf("--token-color-red");
 
     const result = hover({ textDocument, position }, ctx);
@@ -37,7 +71,7 @@ describe("textDocument/hover", () => {
   });
 
   it("should return null for a non-token", () => {
-    const textDocument = ctx.documents.create(/*css*/ `
+    const textDocument = ctx.documents.createCssDocument(/*css*/ `
       a {
         color: :var(--non-token);
       }
@@ -51,7 +85,7 @@ describe("textDocument/hover", () => {
   });
 
   it("should return formatted hover information for a token with a light-dark value", () => {
-    const textDocument = ctx.documents.create(/*css*/ `
+    const textDocument = ctx.documents.createCssDocument(/*css*/ `
       a{
         color: var(--token-color-blue-lightdark);
       }

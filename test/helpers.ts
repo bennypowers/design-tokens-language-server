@@ -1,11 +1,42 @@
 import { Token } from "style-dictionary";
-import { Documents } from "#css";
+import { Documents } from "#documents";
 import { Tokens } from "#tokens";
-import { Position, Range } from "vscode-languageserver-protocol";
+import { DocumentUri, Position, Range } from "vscode-languageserver-protocol";
 
-import { RequestTypeForMethod, ResponseFor, SupportedMethod } from "#lsp";
+import {
+  RequestTypeForMethod,
+  ResponseFor,
+  SupportedMethod,
+  TokenFileSpec,
+} from "#lsp";
+
+import { normalizeTokenFile } from "../src/tokens/utils.ts";
+
+import { JsonDocument } from "#json";
 
 import testTokens from "../test/tokens.json" with { type: "json" };
+
+interface TestSpec {
+  tokens: Token;
+  prefix?: string;
+  spec: string | TokenFileSpec;
+}
+
+interface NormalizedTestTokenSpec {
+  tokens: Token;
+  prefix?: string;
+  spec: TokenFileSpec;
+}
+
+interface TestContextOptions {
+  documents?: Record<DocumentUri, string>;
+  testTokensSpecs: TestSpec[];
+}
+
+interface DTLSTestContext {
+  documents: TestDocuments;
+  tokens: TestTokens;
+}
 
 /**
  * Test Documents for managing text documents.
@@ -18,14 +49,48 @@ import testTokens from "../test/tokens.json" with { type: "json" };
 class TestDocuments extends Documents {
   #tokens: Tokens;
 
-  constructor(tokens: Tokens) {
+  constructor(tokens: Tokens, options?: TestContextOptions) {
     super();
     this.#tokens = tokens;
+    for (const [uri, text] of Object.entries(options?.documents ?? {})) {
+      switch (uri.split(".").pop()) {
+        case "json":
+          this.createJsonDocument(text, uri);
+          break;
+        case "css":
+          this.createCssDocument(text, uri);
+          break;
+        default:
+          throw new Error(`Unsupported file type: ${uri}`);
+      }
+    }
   }
 
-  create(text: string) {
+  createJsonDocument(
+    text: string,
+    uri?: DocumentUri,
+  ) {
     const id = this.allDocuments.length;
-    const uri = `file:///test-${id}.css`;
+    uri ??= `file:///test-${id}.json`;
+    const textDocument = {
+      uri,
+      languageId: "json",
+      version: 1,
+      text,
+    };
+    this.onDidOpen({ textDocument }, {
+      documents: this,
+      tokens: this.#tokens,
+    });
+    return textDocument;
+  }
+
+  createCssDocument(
+    text: string,
+    uri?: DocumentUri,
+  ) {
+    const id = this.allDocuments.length;
+    uri ??= `file:///test-${id}.css`;
     const textDocument = {
       uri,
       languageId: "css",
@@ -80,27 +145,29 @@ class TestDocuments extends Documents {
  * Test TokenMap for managing design tokens.
  */
 class TestTokens extends Tokens {
-  #originalTokens: Record<string, Token>;
-  #prefix: string;
-  constructor(
-    tokens = testTokens,
-    prefix = "token",
-  ) {
+  docs: JsonDocument[] = [];
+
+  normalizedTestTokenDefinitions: NormalizedTestTokenSpec[];
+
+  constructor(options: TestContextOptions) {
     super();
-    this.#originalTokens = tokens;
-    this.#prefix = prefix;
+    this.normalizedTestTokenDefinitions = options.testTokensSpecs.map((x) => ({
+      ...x,
+      spec: normalizeTokenFile(x.spec, "file:///test-root/", x),
+    }));
     this.reset();
   }
 
   reset() {
     this.clear();
-    this.populateFromDtcg(
-      this.#originalTokens,
-      {
-        prefix: this.#prefix,
-        path: new URL("../test/tokens.json", import.meta.url).href,
-      },
-    );
+    for (
+      const { tokens, prefix, spec } of this.normalizedTestTokenDefinitions
+    ) {
+      this.populateFromDtcg(
+        tokens,
+        normalizeTokenFile(spec, "file:///test-root/", { prefix }),
+      );
+    }
   }
 
   override get(key: string) {
@@ -119,13 +186,14 @@ class TestTokens extends Tokens {
  * It also manages the server process and handles errors.
  */
 class TestLspClient {
-  #lastId = 1;
+  #lastId = 0;
 
   constructor(private server: Deno.ChildProcess) {}
 
+  decoder = new TextDecoder();
+
   async #readMessage<M extends SupportedMethod>(): Promise<ResponseFor<M>> {
     const reader = this.server.stdout.getReader();
-    const decoder = new TextDecoder();
     let buffer = "";
 
     try {
@@ -137,7 +205,7 @@ class TestLspClient {
           return null; // No more data available, end of stream
         }
 
-        buffer += decoder.decode(value, { stream: true });
+        buffer += this.decoder.decode(value, { stream: true });
 
         // Check for Content-Length header and parse it
         const contentLengthMatch = buffer.match(
@@ -153,7 +221,8 @@ class TestLspClient {
               headerLength,
               headerLength + contentLength,
             );
-            return JSON.parse(message); // Return the complete message
+            const parsed = JSON.parse(message);
+            return parsed;
           }
         }
       }
@@ -164,7 +233,7 @@ class TestLspClient {
       try {
         stderr = this.server.stderr.getReader();
         const { value } = await stderr.read();
-        console.error(decoder.decode(value, { stream: true }));
+        console.error(this.decoder.decode(value, { stream: true }));
       } catch (e) {
         console.log("When logging stderr:", e);
       } finally {
@@ -185,15 +254,16 @@ class TestLspClient {
    */
   public async sendMessage<M extends SupportedMethod>(
     message: { method: M } & Omit<RequestTypeForMethod<M>, "jsonrpc" | "id">,
-  ): Promise<ResponseFor<M> | null> {
-    this.sendNotification(message, this.#lastId++);
+  ): Promise<ResponseFor<M> | null | undefined> {
+    const id = this.#lastId++;
+    this.sendNotification(message, id);
     try {
       const resp = await this.#readMessage<M>();
       return resp as ResponseFor<M>;
     } catch (error) {
       console.error(error);
       this.server.kill();
-      return null;
+      throw error;
     }
   }
 
@@ -208,7 +278,7 @@ class TestLspClient {
     const writer = this.server.stdin.getWriter();
     try {
       const bundle = { jsonrpc: "2.0", id, ...message };
-      if (!id) delete bundle.id;
+      if (id === undefined) delete bundle.id;
       const pkg = JSON.stringify(bundle);
       const encoder = new TextEncoder();
       const contentLength = pkg.length;
@@ -236,10 +306,20 @@ class TestLspClient {
 /**
  * Create a test context for the language server.
  */
-export function createTestContext() {
-  const tokens = new TestTokens();
-  const documents = new TestDocuments(tokens);
-  return { documents, tokens };
+export function createTestContext(
+  options: TestContextOptions,
+): DTLSTestContext {
+  const tokens = new TestTokens(options);
+  const documents = new TestDocuments(tokens, options);
+  const context = { documents, tokens };
+
+  for (const definition of tokens.normalizedTestTokenDefinitions) {
+    const uri = `file://${definition.spec.path.replace("file://", "")}`;
+    const content = JSON.stringify(definition.tokens, null, 2);
+    documents.add(JsonDocument.create(context, uri, content));
+  }
+
+  return context;
 }
 
 /**
@@ -255,5 +335,6 @@ export function createTestLspClient() {
   }).spawn();
 
   const client = new TestLspClient(server);
+
   return client;
 }

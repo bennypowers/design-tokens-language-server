@@ -7,8 +7,9 @@ import manifest from "../package.json" with { type: "json" };
 const { version } = manifest;
 
 // Test against the running server binary
-Deno.test("should handle rapid document changes without race conditions", async (t) => {
+Deno.test("design-tokens-language-server", async (t) => {
   const client = createTestLspClient();
+  await client.sendNotification({ method: "initialized" });
 
   try {
     await t.step("initialize", async () => {
@@ -17,7 +18,7 @@ Deno.test("should handle rapid document changes without race conditions", async 
         method: "initialize",
         params: {
           processId: null,
-          rootUri: "file:///",
+          rootUri: "file:///test-root/",
           clientInfo: {
             name: "DENO_TEST_CLIENT",
             version: Temporal.Now.plainDateTimeISO().toString(),
@@ -35,11 +36,9 @@ Deno.test("should handle rapid document changes without race conditions", async 
         },
       });
 
-      await client.sendNotification({ method: "initialized" });
-
       assertEquals(initializeResponse, {
         jsonrpc: "2.0",
-        id: 1,
+        id: 0,
         result: {
           capabilities: {
             codeActionProvider: {
@@ -72,6 +71,8 @@ Deno.test("should handle rapid document changes without race conditions", async 
         },
       });
     });
+
+    await client.sendNotification({ method: "initialized" });
 
     const uri = "file://test.css";
 
@@ -146,11 +147,11 @@ Deno.test("should handle rapid document changes without race conditions", async 
       });
 
       // Step 6: Assert results
-      assertEquals(hoverResponse, { jsonrpc: "2.0", id: 2, result: null });
+      assertEquals(hoverResponse, { jsonrpc: "2.0", id: 1, result: null });
 
       assertEquals(diagnosticsResponse, {
         jsonrpc: "2.0",
-        id: 3,
+        id: 2,
         result: { kind: "full", items: [] },
       }); // Replace with expected diagnostics
     });

@@ -1,3 +1,4 @@
+import type { Token } from "style-dictionary";
 import type { DTLSContext } from "#lsp";
 
 import type {
@@ -8,6 +9,14 @@ import type {
 import Color from "tinycolor2";
 
 import { lspColorToTinyColor } from "#color";
+
+function compareColors(
+  token: Token,
+  instance: Color.Instance,
+): boolean {
+  const c = Color(token.$value);
+  return c.toHex8String() === instance.toHex8String();
+}
 
 /**
  * Generates color presentations for design tokens.
@@ -23,14 +32,8 @@ export function colorPresentation(
   const instance = lspColorToTinyColor(color);
   return tokens
     .entries()
-    .filter(([, token]): boolean => {
-      try {
-        return token.$type === "color" &&
-          Color(token.$value).toHex8String() === instance.toHex8String();
-      } catch {
-        return false;
-      }
-    })
-    .map(([label]) => ({ label }))
+    .flatMap(([label, t]) =>
+      t.$type === "color" && compareColors(t, instance) ? [{ label }] : []
+    )
     .toArray();
 }

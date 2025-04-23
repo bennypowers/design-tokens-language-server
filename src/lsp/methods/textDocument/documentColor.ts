@@ -3,9 +3,10 @@ import type {
   DocumentColorParams,
 } from "vscode-languageserver-protocol";
 
-import { getLightDarkValues, tsRangeToLspRange } from "#css";
+import { CssDocument, getLightDarkValues, tsRangeToLspRange } from "#css";
 
 import { cssColorToLspColor } from "#color";
+
 import { DTLSContext } from "#lsp";
 
 /**
@@ -24,33 +25,37 @@ export function documentColor(
   params: DocumentColorParams,
   context: DTLSContext,
 ): ColorInformation[] {
-  return context.documents.queryVarCalls(params.textDocument.uri)
-    .flatMap((cap) => {
-      if (cap.name !== "tokenName") {
-        return [];
-      }
-      const tokenName = cap.node.text;
-      const token = context.tokens.get(tokenName.replace(/^--/, ""));
-      if (!token || token.$type !== "color") {
-        return [];
-      }
-      const colors = [];
-      const hexMatches = `${token.$value}`.match(HEX_RE);
-      const [light, dark] = getLightDarkValues(token.$value);
-      if (hexMatches) {
-        colors.push(...hexMatches);
-      } else if (light && dark) {
-        colors.push(light, dark);
-      } else {
-        colors.push(token.$value);
-      }
-      return colors.flatMap((match) => {
-        return [
-          {
-            color: cssColorToLspColor(match),
-            range: tsRangeToLspRange(cap.node),
-          } satisfies ColorInformation,
-        ];
+  const doc = context.documents.get(params.textDocument.uri);
+  if (doc.language === "css") {
+    return doc.query(CssDocument.queries.VarCall)
+      .flatMap((cap) => {
+        if (cap.name !== "tokenName") {
+          return [];
+        }
+        const tokenName = cap.node.text;
+        const token = context.tokens.get(tokenName.replace(/^--/, ""));
+        if (!token || token.$type !== "color") {
+          return [];
+        }
+        const colors = [];
+        const hexMatches = `${token.$value}`.match(HEX_RE);
+        const [light, dark] = getLightDarkValues(token.$value);
+        if (light && dark) {
+          colors.push(light, dark);
+        } else if (hexMatches) {
+          colors.push(...hexMatches);
+        } else {
+          colors.push(token.$value);
+        }
+        return colors.flatMap((match) => {
+          return [
+            {
+              color: cssColorToLspColor(match),
+              range: tsRangeToLspRange(cap.node),
+            } satisfies ColorInformation,
+          ];
+        });
       });
-    });
+  }
+  return [];
 }

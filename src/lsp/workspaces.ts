@@ -10,7 +10,10 @@ import {
   TokenFileSpec,
 } from "#lsp";
 
-import { createRequire } from "node:module";
+import { normalizeTokenFile } from "../tokens/utils.ts";
+import { JsonDocument } from "#json";
+
+const decoder = new TextDecoder();
 
 /**
  * Manages LSP workspace folders and settings.
@@ -20,23 +23,18 @@ import { createRequire } from "node:module";
  * - handles workspace/didChangeConfiguration
  */
 export class Workspaces {
-  #settings: DTLSClientSettings | null = null;
+  #settings: { dtls: DTLSClientSettings } | null = null;
   #tokenSpecs = new Set<TokenFileSpec>();
   #workspaces = new Set<LSP.WorkspaceFolder>();
 
-  #normalizePath(path: string, workspaceRoot: LSP.URI) {
-    if (path.startsWith("~")) {
-      return path.replace("~", Deno.env.get("HOME")!);
-    } else if (path.startsWith(".")) {
-      return path.replace(".", Deno.cwd());
-    } else if (path.startsWith("npm:")) {
-      const require = createRequire(import.meta.url);
-      return require.resolve(path.replace("npm:", ""), {
-        paths: [workspaceRoot],
-      });
-    } else {
-      return path;
-    }
+  /**
+   * Normalizes the settings by merging them with the default settings.
+   */
+  #normalizeSettings(settings: DTLSClientSettings | null) {
+    const clone = structuredClone<Partial<DTLSClientSettings>>(settings ?? {});
+    clone.prefix ||= this.#settings?.dtls?.prefix;
+    clone.groupMarkers ||= this.#settings?.dtls?.groupMarkers;
+    return clone;
   }
 
   /**
@@ -47,29 +45,13 @@ export class Workspaces {
   #normalizeTokenFile(
     tokenFile: TokenFile,
     workspaceRoot: LSP.URI,
-    settings: DTLSClientSettings["dtls"] | null,
+    settings: DTLSClientSettings | null,
   ): TokenFileSpec {
-    const tokenFilePath = typeof tokenFile === "string"
-      ? tokenFile
-      : tokenFile.path;
-    const tokenFilePrefix = typeof tokenFile === "string"
-      ? undefined
-      : tokenFile.prefix;
-    const tokenFileGroupMarkers = typeof tokenFile === "string"
-      ? undefined
-      : tokenFile.groupMarkers;
-    const path = this.#normalizePath(tokenFilePath, workspaceRoot);
-    const prefix = tokenFilePrefix ||
-      settings?.prefix ||
-      this.#settings?.dtls?.prefix;
-    const groupMarkers = tokenFileGroupMarkers ||
-      settings?.groupMarkers ||
-      this.#settings?.dtls?.groupMarkers;
-    return {
-      path,
-      prefix,
-      groupMarkers,
-    };
+    return normalizeTokenFile(
+      tokenFile,
+      workspaceRoot,
+      this.#normalizeSettings(settings),
+    );
   }
 
   async #updateConfiguration(context: DTLSContext) {
@@ -81,6 +63,9 @@ export class Workspaces {
       for (const file of settings?.tokensFiles ?? []) {
         const spec = this.#normalizeTokenFile(file, uri, settings);
         this.#tokenSpecs.add(spec);
+        const tokenfileContent = decoder.decode(await Deno.readFile(spec.path));
+        const doc = JsonDocument.create(context, spec.path, tokenfileContent);
+        context.documents.add(doc);
       }
     }
 
@@ -139,9 +124,5 @@ export class Workspaces {
     return {
       "workspace/didChangeConfiguration": this.#didChangeConfiguration,
     };
-  }
-
-  public get tokensFiles() {
-    return this.#tokenSpecs.values();
   }
 }

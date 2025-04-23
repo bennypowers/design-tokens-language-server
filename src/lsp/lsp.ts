@@ -1,6 +1,6 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { Documents } from "#css";
+import { Documents } from "#documents";
 import { Logger } from "#logger";
 import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
@@ -38,6 +38,11 @@ type Handlers =
   & Workspaces["handlers"];
 
 type Handler = Handlers[keyof Handlers];
+
+type RequestMethodTypeGuard<M extends SupportedMethod> = (
+  request: Omit<LSP.NotificationMessage, "jsonrpc">,
+) => request is RequestTypeForMethod<M>;
+
 export type RequestId = LSP.RequestMessage["id"];
 
 export type SupportedMethod =
@@ -112,27 +117,28 @@ export interface TokenFileSpec {
 export type TokenFile = string | TokenFileSpec;
 
 export interface DTLSClientSettings {
-  dtls: {
-    tokensFiles: TokenFile[];
+  /**
+   * List of token file paths or spec objects to load
+   */
+  tokensFiles: TokenFile[];
 
-    /**
-     * CSS variable name prefix to use for the token file.
-     * if set, tokens in the file will be prefixed with this value.
-     *
-     * Applies to all tokens in the project.
-     * @example "prefix": "my-design-system" => `--my-design-system-color-primary`
-     */
-    prefix?: string;
+  /**
+   * CSS variable name prefix to use for the token file.
+   * if set, tokens in the file will be prefixed with this value.
+   *
+   * Applies to all tokens in the project.
+   * @example "prefix": "my-design-system" => `--my-design-system-color-primary`
+   */
+  prefix?: string;
 
-    /**
-     * Terminal token path path which signifies that a token is also a group.
-     *
-     * Applies to all tokens in the project.
-     * @see https://github.com/design-tokens/community-group/issues/97
-     * @see https://github.com/amzn/style-dictionary/issues/716
-     */
-    groupMarkers?: string[];
-  };
+  /**
+   * Terminal token path path which signifies that a token is also a group.
+   *
+   * Applies to all tokens in the project.
+   * @see https://github.com/design-tokens/community-group/issues/97
+   * @see https://github.com/amzn/style-dictionary/issues/716
+   */
+  groupMarkers?: string[];
 }
 
 export interface DTLSContext {
@@ -159,10 +165,6 @@ export interface DTLSContextWithWorkspaces extends DTLSContext {
    */
   workspaces: Workspaces;
 }
-
-type RequestMethodTypeGuard<M extends SupportedMethod> = (
-  request: Omit<LSP.NotificationMessage, "jsonrpc">,
-) => request is RequestTypeForMethod<M>;
 
 function requestMethodTypeGuard<M extends SupportedMethod>(
   method: M,
@@ -309,6 +311,8 @@ export class Lsp {
       documents: this.#documents,
       tokens: this.#tokens,
     };
+    Logger.debug(request.method);
+    Logger.debug`📩 ${request.method}(${request.id})`;
     if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id)) {
       return null;
     } else if (isInitializeRequest(request)) {
@@ -321,6 +325,7 @@ export class Lsp {
     } else if (isCancelRequest(request)) {
       return this.#cancelRequest(request);
     } else if (request.method) {
+      await this.#initialized;
       if (!this.#handlers.has(request.method as SupportedMethod)) {
         Logger.debug`❌ Unsupported method: ${request.method}`;
         return null;

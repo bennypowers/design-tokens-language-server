@@ -8,11 +8,17 @@ import { TokenFileSpec } from "#lsp";
 import { Logger } from "#logger";
 
 export class Tokens extends Map<string, Token> {
-  override get(key: string) {
+  override get(key?: string) {
+    if (key === undefined) {
+      return undefined;
+    }
     return super.get(key.replace(/^-+/, ""));
   }
 
-  override has(key: string) {
+  override has(key?: string) {
+    if (key === undefined) {
+      return false;
+    }
     return super.has(key.replace(/^-+/, ""));
   }
 
