@@ -76,9 +76,7 @@
     "vscode:publish": {
       "command": "npm --prefix extensions/vscode run publish",
       "dependencies": [
-        "copy",
-        "vscode:npm",
-        "vscode:build"
+        "build:ci"
       ]
     },
     "vscode:run": {
