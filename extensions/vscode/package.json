@@ -5,7 +5,6 @@
   "author": "Benny Powers <web@bennypowers.com>",
   "publisher": "pwrs",
   "license": "GPL-3.0-only",
-  "version": "0.0.6",
   "version": "0.0.7",
   "categories": [
     "Programming Languages",
@@ -15,7 +14,7 @@
   "engines": {
     "vscode": "^1.75.0"
   },
-  "icon": "icon.png",
+  "icon": "logo.png",
   "galleryBanner": {
     "color": "#2C3E50",
     "theme": "dark"
