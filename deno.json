@@ -20,6 +20,16 @@
     "copy:wts:mkdir": "mkdir -p dist/tree-sitter",
     "copy:wts:wasm": "cp ./vendor/web-tree-sitter/web-tree-sitter.wasm dist/web-tree-sitter.wasm",
     "copy:wts:css": "cp ./src/*/tree-sitter/tree-sitter-*.wasm dist/tree-sitter/",
+    "copy:wts:vscode:readme": "cp README.md extensions/vscode/",
+    "copy": {
+      "dependencies": [
+        "copy:wts:vscode:readme",
+        "copy:wts:vendor",
+        "copy:wts:mkdir",
+        "copy:wts:wasm",
+        "copy:wts:css"
+      ]
+    },
     "build": {
       "dependencies": [
         "vscode:build",
@@ -28,7 +38,6 @@
     },
     "build:ci": {
       "dependencies": [
-        "vscode:copyreadme",
         "vscode:npm",
         "vscode:build",
         "bundle"
@@ -37,10 +46,7 @@
     "bundle": {
       "command": "deno --allow-all scripts/bundle.ts",
       "dependencies": [
-        "copy:wts:mkdir",
-        "copy:wts:wasm",
-        "copy:wts:css",
-        "copy:wts:vendor"
+        "copy"
       ]
     },
     "install": {
@@ -49,26 +55,16 @@
         "bundle"
       ]
     },
-    "vscode:copyreadme": {
-      "command": "cp README.md extensions/vscode/"
-    },
     "vscode:npm": {
       "command": "npm ci --prefix extensions/vscode",
       "dependencies": [
-        "copy:wts:vendor"
-      ]
-    },
-    "vscode:copy": {
-      "command": "cp -r dist extensions/vscode/",
-      "dependencies": [
-        "bundle",
-        "vscode:clean"
+        "copy"
       ]
     },
     "vscode:build": {
-      "command": "npm --prefix extensions/vscode run build",
+      "command": "cp -r dist extensions/vscode && npm --prefix extensions/vscode run build",
       "dependencies": [
-        "vscode:copy"
+        "vscode:clean"
       ]
     },
     "vscode:install": {
@@ -80,6 +76,7 @@
     "vscode:publish": {
       "command": "npm --prefix extensions/vscode run publish",
       "dependencies": [
+        "copy",
         "vscode:copyreadme",
         "vscode:npm",
         "vscode:build"
