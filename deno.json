@@ -65,12 +65,6 @@
         "vscode:clean"
       ]
     },
-    "vscode:clean": {
-      "command": "rm -rf extensions/vscode/*.vsix extensions/vscode/dist || true",
-      "dependencies": [
-        "bundle"
-      ]
-    },
     "vscode:build": {
       "command": "npm --prefix extensions/vscode run build",
       "dependencies": [
@@ -86,6 +80,8 @@
     "vscode:publish": {
       "command": "npm --prefix extensions/vscode run publish",
       "dependencies": [
+        "vscode:copyreadme",
+        "vscode:npm",
         "vscode:build"
       ]
     },
@@ -93,6 +89,12 @@
       "command": "flatpak run com.vscodium.codium",
       "dependencies": [
         "vscode:install"
+      ]
+    },
+    "vscode:clean": {
+      "command": "rm -rf extensions/vscode/*.vsix extensions/vscode/dist || true",
+      "dependencies": [
+        "bundle"
       ]
     }
   },
