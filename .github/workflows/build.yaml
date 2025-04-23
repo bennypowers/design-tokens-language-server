@@ -1,4 +1,4 @@
-name: Test and Build
+name: Build
 on:
   push:
     branches:
@@ -37,8 +37,6 @@ jobs:
       - name: Build step
         if: github.ref_type == 'tag'
         run: deno task build:ci
-        env:
-          DTLS_VERSION: ${{ github.ref_name }}
 
       - name: Release
         uses: softprops/action-gh-release@v2

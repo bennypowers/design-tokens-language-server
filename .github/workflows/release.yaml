@@ -1,0 +1,23 @@
+name: Build
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  deploy:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Release
+        run: deno task vscode:publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

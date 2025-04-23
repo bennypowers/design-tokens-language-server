@@ -25,6 +25,7 @@
     "jsr:@std/testing@*": "1.0.11",
     "jsr:@std/testing@^1.0.11": "1.0.11",
     "jsr:@std/text@*": "1.0.12",
+    "jsr:@std/toml@*": "1.0.4",
     "jsr:@sv2dev/tasque@~0.1.2": "0.1.2",
     "npm:@types/node@*": "22.12.0",
     "npm:@types/tinycolor2@^1.4.6": "1.4.6",
@@ -120,6 +121,12 @@
     },
     "@std/text@1.0.12": {
       "integrity": "921132a41e03a2363f76ee5afe83c90a6271596aa95c137494edcb3404a564a5"
+    },
+    "@std/toml@1.0.4": {
+      "integrity": "8781e687d04c8fbe246b9c5714be01925792a94d943462c33777675ab557cff1",
+      "dependencies": [
+        "jsr:@std/collections@^1.0.10"
+      ]
     },
     "@sv2dev/tasque@0.1.2": {
       "integrity": "8ce3bc214e8de951a09a59dbae2835f5d7a9bb19b127c9347a5110ab7b6bfcc4"

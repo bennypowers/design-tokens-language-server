@@ -13,6 +13,7 @@
   },
   "tasks": {
     "hook": "deno run --allow-read --allow-run --allow-write https://deno.land/x/deno_hooks@0.1.1/mod.ts",
+    "version": "deno -A scripts/version.ts",
     "test": "deno test --allow-all --unstable --coverage=coverage --import-map=test/imports.json",
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
     "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
@@ -82,7 +83,13 @@
         "vscode:build"
       ]
     },
-    "vscode": {
+    "vscode:publish": {
+      "command": "npm --prefix extensions/vscode run publish",
+      "dependencies": [
+        "vscode:build"
+      ]
+    },
+    "vscode:run": {
       "command": "flatpak run com.vscodium.codium",
       "dependencies": [
         "vscode:install"
