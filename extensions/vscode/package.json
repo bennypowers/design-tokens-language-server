@@ -5,7 +5,7 @@
   "author": "Benny Powers <web@bennypowers.com>",
   "publisher": "pwrs",
   "license": "GPL-3.0-only",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "categories": [],
   "engines": {
     "vscode": "^1.75.0"
