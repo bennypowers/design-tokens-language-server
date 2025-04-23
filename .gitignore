@@ -1,6 +1,7 @@
 node_modules
 bin
 extensions/**/*.wasm
+extensions/vscode/README.md
 coverage
 **/*.db
 **/cargo-target

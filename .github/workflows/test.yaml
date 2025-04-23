@@ -1,12 +1,15 @@
 name: Build
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   deploy:
-    name: Test and Build
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
@@ -27,14 +30,3 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           files: coverage/lcov.info
           token: ${{ secrets.CODECOV_PAT }}
-
-      - name: Build
-        run: deno task build:ci
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.RELEASE_PAT }}
-          files: |
-            dist/bin/*
-            extensions/vscode/*.vsix
