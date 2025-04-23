@@ -951,7 +951,7 @@ var Node = class {
    */
   childWithDescendant(descendant) {
     marshalNode(this);
-    marshalNode(descendant);
+    marshalNode(descendant, 1);
     C._ts_node_child_with_descendant_wasm(this.tree[0]);
     return unmarshalNode(this.tree);
   }
@@ -1072,8 +1072,8 @@ function unmarshalCaptures(query, tree, address, patternIndex, result) {
   return address;
 }
 __name(unmarshalCaptures, "unmarshalCaptures");
-function marshalNode(node) {
-  let address = TRANSFER_BUFFER;
+function marshalNode(node, index = 0) {
+  let address = TRANSFER_BUFFER + index * SIZE_OF_NODE;
   C.setValue(address, node.id, "i32");
   address += SIZE_OF_INT;
   C.setValue(address, node.startIndex, "i32");
@@ -2028,16 +2028,21 @@ var Language = class _Language {
     if (input instanceof Uint8Array) {
       bytes = Promise.resolve(input);
     } else {
-      bytes = fetch(input).then((response) => response.arrayBuffer().then((buffer) => {
-        if (response.ok) {
-          return new Uint8Array(buffer);
-        } else {
-          const body2 = new TextDecoder("utf-8").decode(buffer);
-          throw new Error(`Language.load failed with status ${response.status}.
+      if (globalThis.process?.versions.node) {
+        const fs2 = await import("fs/promises");
+        bytes = fs2.readFile(input);
+      } else {
+        bytes = fetch(input).then((response) => response.arrayBuffer().then((buffer) => {
+          if (response.ok) {
+            return new Uint8Array(buffer);
+          } else {
+            const body2 = new TextDecoder("utf-8").decode(buffer);
+            throw new Error(`Language.load failed with status ${response.status}.
 
 ${body2}`);
-        }
-      }));
+          }
+        }));
+      }
     }
     const mod = await C.loadWebAssemblyModule(await bytes, { loadAsync: true });
     const symbolNames = Object.keys(mod);
