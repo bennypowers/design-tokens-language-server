@@ -48,7 +48,6 @@ Display token color values in your source, e.g. as swatches
 
 Jump to the position in the tokens file where the token is defined.
 
-
 ![Json file jump in neovim](./docs/goto-definition.png)
 
 Go to definition in a split window using Neovim's [`<C-w C-]>`
@@ -194,17 +193,17 @@ that particular token file, or globally for all token files
 ### 🏗️ Building
 
 > [!WARNING]
-> This is being developed on Linux, might work with MacOS, and probably won't 
-> yet work on windows
+> DTLS is developed on Linux, works on macOS, but might not work on Windows.
+> If you need Windows support, please [open an issue](./issues/new).
 
-Install Deno and clone this repo. Run this task to build and install the binary
-to `~/.local/bin/design-tokens-language-server`:
+Install [Deno](https://deno.land) and clone this repo. Run this task to build
+and install the binary to `~/.local/bin/design-tokens-language-server`:
 
 ```sh
 deno task install
 ```
 
-You can read the logs at `~/.local/state/design-tokens-language-server/dtls.log`.
+Read the logs at `~/.local/state/design-tokens-language-server/dtls.log`.
 
 ```sh
 tail -f ~/.local/state/design-tokens-language-server/dtls.log
