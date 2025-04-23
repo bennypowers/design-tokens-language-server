@@ -23,9 +23,9 @@
     "copy:vscode:readme": "cp README.md extensions/vscode/",
     "copy": {
       "dependencies": [
+        "copy:wts:mkdir",
         "copy:vscode:readme",
         "copy:wts:vendor",
-        "copy:wts:mkdir",
         "copy:wts:wasm",
         "copy:wts:css"
       ]
