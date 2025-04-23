@@ -70,6 +70,12 @@ return {
 }
 ```
 
+#### VSCode
+
+Install from the [vscode marketplace](https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode). 
+
+#### Other editors
+
 You can also build development extensions for vscodium/vscode and Zed. See
 [`deno.json`](tree/main/deno.json) for more info.
 
