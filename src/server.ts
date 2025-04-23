@@ -10,7 +10,7 @@ import { createQueue } from "@sv2dev/tasque";
 
 import { Lsp } from "#lsp";
 import { Stdio } from "./server/stdio.ts";
-import { Documents } from "#css";
+import { Documents } from "#documents";
 import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
 

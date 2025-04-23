@@ -12,6 +12,7 @@ import { DTLSErrorCodes } from "./diagnostic.ts";
 import {
   captureIsTokenCall,
   captureIsTokenName,
+  CssDocument,
   lspRangeIsInTsNode,
   tsNodeIsInLspRange,
   tsRangeToLspRange,
@@ -85,57 +86,62 @@ export function codeAction(
     });
   }
 
-  const captures = context.documents.queryVarCalls(textDocument.uri);
+  const doc = context.documents.get(textDocument.uri);
+  if (doc.language === "css") {
+    const captures = doc.query(CssDocument.queries.VarCall);
 
-  const tokenNameCaptures = captures.filter((cap) =>
-    captureIsTokenName(cap, context) &&
-    lspRangeIsInTsNode(cap.node, params.range)
-  );
+    const tokenNameCaptures = captures.filter((cap) =>
+      captureIsTokenName(cap, context) &&
+      lspRangeIsInTsNode(cap.node, params.range)
+    );
 
-  const tokenCallCaptures = captures.filter((cap) =>
-    captureIsTokenCall(cap, context) &&
-    tsNodeIsInLspRange(cap.node, params.range)
-  );
+    const tokenCallCaptures = captures.filter((cap) =>
+      captureIsTokenCall(cap, context) &&
+      tsNodeIsInLspRange(cap.node, params.range)
+    );
 
-  // TODO: resolve the edits for the tokenCallCaptures
+    // TODO: resolve the edits for the tokenCallCaptures
 
-  if (tokenCallCaptures.length) {
-    actions.push({
-      title: DTLSCodeAction.toggleRangeFallbacks,
-      kind: CodeActionKind.RefactorRewrite,
-      edit: {
-        changes: {
-          [textDocument.uri]: tokenCallCaptures.map((cap) => {
-            const args = cap.node.children.find((x) => x?.type === "arguments");
-            if (args) {
-              const edit = getEditFromTSArgumentsNode(args, context);
-              if (edit) {
-                return edit;
-              }
-            }
-          }).filter((x) => !!x),
-        },
-      },
-    });
-  } else if (tokenNameCaptures.length) {
-    const [cap] = tokenNameCaptures;
-    const edit = getEditFromTSArgumentsNode(cap.node.parent, context);
-    if (edit) {
+    if (tokenCallCaptures.length) {
       actions.push({
-        title: DTLSCodeAction.toggleFallback,
+        title: DTLSCodeAction.toggleRangeFallbacks,
         kind: CodeActionKind.RefactorRewrite,
         edit: {
           changes: {
-            [textDocument.uri]: [edit],
+            [textDocument.uri]: tokenCallCaptures.map((cap) => {
+              const args = cap.node.children.find((x) =>
+                x?.type === "arguments"
+              );
+              if (args) {
+                const edit = getEditFromTSArgumentsNode(args, context);
+                if (edit) {
+                  return edit;
+                }
+              }
+            }).filter((x) => !!x),
           },
         },
       });
+    } else if (tokenNameCaptures.length) {
+      const [cap] = tokenNameCaptures;
+      const edit = getEditFromTSArgumentsNode(cap.node.parent, context);
+      if (edit) {
+        actions.push({
+          title: DTLSCodeAction.toggleFallback,
+          kind: CodeActionKind.RefactorRewrite,
+          edit: {
+            changes: {
+              [textDocument.uri]: [edit],
+            },
+          },
+        });
+      }
+    }
+
+    if (actions.length) {
+      return actions;
     }
   }
 
-  if (actions.length) {
-    return actions;
-  } else {
-    return null;
-  }
+  return null;
 }

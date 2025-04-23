@@ -17,20 +17,20 @@ import { DTLSContext } from "#lsp";
  * @returns The hover information containing the token's documentation and range.
  */
 export function hover(params: HoverParams, context: DTLSContext): null | Hover {
-  const node = context.documents.getNodeAtPosition(
-    params.textDocument.uri,
-    params.position,
-  );
-  if (node) {
-    if (context.tokens.has(node.text)) {
-      const contents: MarkupContent = {
-        value: getTokenMarkdown(node.text, context.tokens.get(node.text)!),
-        kind: MarkupKind.Markdown,
-      };
-      return {
-        contents,
-        range: tsRangeToLspRange(node),
-      };
+  const doc = context.documents.get(params.textDocument.uri);
+  if (doc.language === "css") {
+    const node = doc.getNodeAtPosition(params.position);
+    if (node) {
+      if (context.tokens.has(node.text)) {
+        const contents: MarkupContent = {
+          value: getTokenMarkdown(node.text, context.tokens.get(node.text)!),
+          kind: MarkupKind.Markdown,
+        };
+        return {
+          contents,
+          range: tsRangeToLspRange(node),
+        };
+      }
     }
   }
   return null;

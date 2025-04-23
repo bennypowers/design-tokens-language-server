@@ -1,34 +1,21 @@
-import { Language, Parser, Query } from "web-tree-sitter";
 import type { Node, Point, QueryCapture, Tree } from "web-tree-sitter";
 
-import { readAll } from "jsr:@std/io/read-all";
-
-type TsRange = Pick<Node, "startPosition" | "endPosition">;
+import { Query } from "web-tree-sitter";
 
 import * as LSP from "vscode-languageserver-protocol";
 
-import {
-  LightDarkValuesQuery,
-  VarCall,
-  VarCallWithFallback,
-} from "./tree-sitter/queries.ts";
+import * as Queries from "./tree-sitter/queries.ts";
 
-import { FullTextDocument } from "./textDocument.ts";
 import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
 
 import { Logger } from "#logger";
 import { DTLSContext } from "#lsp";
 
-const f = await Deno.open(
-  new URL("./tree-sitter/tree-sitter-css.wasm", import.meta.url),
-);
+import { DTLSTextDocument } from "#document";
 
-const grammar = await readAll(f);
+import { parser } from "./tree-sitter/parser.ts";
 
-await Parser.init();
-const parser = new Parser();
-const Css = await Language.load(grammar);
-parser.setLanguage(Css);
+type TsRange = Pick<Node, "startPosition" | "endPosition">;
 
 export interface TSNodePosition {
   endPosition: { row: number; column: number };
@@ -36,15 +23,14 @@ export interface TSNodePosition {
 }
 
 export function getLightDarkValues(value: string) {
-  const tree = parser.parse(`a{b:${value}}`);
-  if (!tree) {
-    return [];
-  }
-  const query = new Query(tree.language, LightDarkValuesQuery);
+  const tree = parser.parse(`a{b:${value}}`)!;
+  const query = new Query(tree.language, Queries.LightDarkValuesQuery);
   const captures = query.captures(tree.rootNode);
   const lightNode = captures.find((cap) => cap.name === "lightValue");
   const darkNode = captures.find((cap) => cap.name === "darkValue");
-  return [lightNode?.node.text, darkNode?.node.text];
+  return [lightNode?.node.text, darkNode?.node.text].filter((x) =>
+    x !== undefined
+  );
 }
 
 export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
@@ -57,40 +43,6 @@ export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
       line: node.endPosition.row,
       character: node.endPosition.column,
     },
-  };
-}
-
-export function tsNodesToLspRangeInclusive(...nodes: TsRange[]): LSP.Range {
-  const [startNode] = nodes;
-  const endNode = nodes.pop()!;
-  const start = {
-    line: startNode.startPosition.row,
-    character: startNode.startPosition.column,
-  };
-  const end = {
-    line: endNode.endPosition.row,
-    character: endNode.endPosition.column,
-  };
-  return { start, end };
-}
-
-export function lspRangeToTsRange(range: LSP.Range): TsRange {
-  return {
-    startPosition: {
-      row: range.start.line,
-      column: range.start.character,
-    },
-    endPosition: {
-      row: range.end.line,
-      column: range.end.character,
-    },
-  };
-}
-
-export function lspPosToTsPos(pos: LSP.Position): Point {
-  return {
-    row: pos.line,
-    column: pos.character,
   };
 }
 
@@ -131,27 +83,75 @@ export function captureIsTokenCall(cap: QueryCapture, { tokens }: DTLSContext) {
     );
 }
 
-class ENODOCError extends Error {
-  constructor(public uri: LSP.DocumentUri) {
-    super(`ENOENT: no CssDocument found for ${uri}`);
-  }
+function tsNodesToLspRangeInclusive(...nodes: TsRange[]): LSP.Range {
+  const [startNode] = nodes;
+  const endNode = nodes.pop()!;
+  const start = {
+    line: startNode.startPosition.row,
+    character: startNode.startPosition.column,
+  };
+  const end = {
+    line: endNode.endPosition.row,
+    character: endNode.endPosition.column,
+  };
+  return { start, end };
 }
 
-export class CssDocument extends FullTextDocument {
-  #tree: Tree | null;
+function lspRangeToTsRange(range: LSP.Range): TsRange {
+  return {
+    startPosition: {
+      row: range.start.line,
+      column: range.start.character,
+    },
+    endPosition: {
+      row: range.end.line,
+      column: range.end.character,
+    },
+  };
+}
 
-  diagnostics: LSP.Diagnostic[];
+function lspPosToTsPos(pos: LSP.Position): Point {
+  return {
+    row: pos.line,
+    column: pos.character,
+  };
+}
 
-  constructor(
+function offsetPosition(
+  position: LSP.Position,
+  offset: Partial<LSP.Position>,
+): LSP.Position {
+  return {
+    line: position.line + (offset.line ?? 0),
+    character: position.character + (offset.character ?? 0),
+  };
+}
+
+export class CssDocument extends DTLSTextDocument {
+  static create(
+    context: DTLSContext,
     uri: string,
-    languageId: string,
+    text: string,
+    version = 0,
+  ) {
+    const doc = new CssDocument(uri, version, text);
+    doc.#tree = parser.parse(text);
+    doc.diagnostics = doc.computeDiagnostics(context);
+    return doc;
+  }
+
+  language = "css" as const;
+
+  #tree!: Tree | null;
+
+  static queries = Queries;
+
+  private constructor(
+    uri: string,
     version: number,
     text: string,
-    context: DTLSContext,
   ) {
-    super(uri, languageId, version, text);
-    this.#tree = parser.parse(text);
-    this.diagnostics = this.computeDiagnostics(context);
+    super(uri, "css", version, text);
   }
 
   override update(
@@ -199,11 +199,13 @@ export class CssDocument extends FullTextDocument {
    *
    * @param position - The position to check.
    */
-  getNodeAtPosition(position: LSP.Position): null | Node {
-    return this.#tree?.rootNode.descendantForPosition({
-      row: position.line,
-      column: position.character,
-    }) ?? null;
+  getNodeAtPosition(
+    position: LSP.Position,
+    offset?: Partial<LSP.Position>,
+  ): null | Node {
+    const pos = !offset ? position : offsetPosition(position, offset);
+    return this.#tree?.rootNode.descendantForPosition(lspPosToTsPos(pos)) ??
+      null;
   }
 
   /**
@@ -225,8 +227,8 @@ export class CssDocument extends FullTextDocument {
     return false;
   }
 
-  computeDiagnostics(context: DTLSContext) {
-    const captures = this.query(VarCallWithFallback);
+  override computeDiagnostics(context: DTLSContext) {
+    const captures = this.query(Queries.VarCallWithFallback);
 
     const callNodes = new Map<
       number,
@@ -279,82 +281,3 @@ export class CssDocument extends FullTextDocument {
     }).toArray();
   }
 }
-
-export class Documents {
-  #map = new Map<LSP.DocumentUri, CssDocument>();
-
-  get handlers() {
-    return {
-      "textDocument/didOpen": (
-        params: LSP.DidOpenTextDocumentParams,
-        context: DTLSContext,
-      ) => this.onDidOpen(params, context),
-      "textDocument/didChange": (
-        params: LSP.DidChangeTextDocumentParams,
-        context: DTLSContext,
-      ) => this.onDidChange(params, context),
-      "textDocument/didClose": (
-        params: LSP.DidCloseTextDocumentParams,
-        context: DTLSContext,
-      ) => this.onDidClose(params, context),
-    } as const;
-  }
-
-  protected get allDocuments() {
-    return [...this.#map.values()];
-  }
-
-  onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
-    const { uri, languageId, version, text } = params.textDocument;
-    const doc = new CssDocument(uri, languageId, version, text, context);
-    Logger.debug`📖 Opened ${uri}`;
-    this.#map.set(params.textDocument.uri, doc);
-  }
-
-  onDidChange(params: LSP.DidChangeTextDocumentParams, context: DTLSContext) {
-    const { uri, version } = params.textDocument;
-    const doc = this.get(uri);
-    doc.update(params.contentChanges, version);
-    doc.diagnostics = doc.computeDiagnostics(context);
-  }
-
-  onDidClose(params: LSP.DidCloseTextDocumentParams, _: DTLSContext) {
-    this.#map.delete(params.textDocument.uri);
-  }
-
-  get(uri: LSP.DocumentUri) {
-    const doc = this.#map.get(uri);
-    if (!doc) {
-      throw new ENODOCError(uri);
-    }
-    return doc;
-  }
-
-  getVersion(uri: LSP.DocumentUri) {
-    const doc = this.get(uri);
-    return doc.version;
-  }
-
-  getText(uri: LSP.DocumentUri) {
-    return this.get(uri).getText();
-  }
-
-  getDiagnostics(uri: LSP.DocumentUri) {
-    const doc = this.get(uri);
-    return doc.diagnostics;
-  }
-
-  getNodeAtPosition(uri: LSP.DocumentUri, position: LSP.Position) {
-    return this.get(uri).getNodeAtPosition(position);
-  }
-
-  queryVarCalls(uri: LSP.DocumentUri) {
-    return this.get(uri).query(VarCall);
-  }
-
-  queryVarCallsWithFallback(uri: LSP.DocumentUri) {
-    return this.get(uri).query(VarCallWithFallback);
-  }
-}
-
-export const documents = new Documents();

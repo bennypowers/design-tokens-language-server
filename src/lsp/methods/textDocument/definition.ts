@@ -1,67 +1,49 @@
 import * as LSP from "vscode-languageserver-protocol";
-import { findNodeAtLocation, type Node, parseTree } from "npm:jsonc-parser";
 import { DTLSContext } from "#lsp";
+import { CssDocument } from "#css";
 
-function sonNodeToLspRange(node: Node, content: string): LSP.Range {
-  const start = node.offset;
-  const end = start + node.length;
-
-  return {
-    start: offsetToPosition(content, start),
-    end: offsetToPosition(content, end),
-  };
-}
-
-function offsetToPosition(content: string, offset: number): LSP.Position {
-  const lines = content.split("\n");
-  let line = 0;
-  let column = offset;
-
-  for (let i = 0; i < lines.length; i++) {
-    if (column <= lines[i].length) {
-      line = i;
-      break;
-    }
-    column -= lines[i].length + 1; // +1 for the newline character
-  }
-
-  return { line, character: column };
-}
-
-export async function definition(
+function getDefinitionFromCss(
   params: LSP.DefinitionParams,
+  doc: CssDocument,
   context: DTLSContext,
-): Promise<LSP.Location[]> {
-  const node = context.documents.getNodeAtPosition(
-    params.textDocument.uri,
-    params.position,
-  );
+) {
+  const node = doc.getNodeAtPosition(params.position);
+  const tokenName = node?.text;
+  const token = context.tokens.get(tokenName);
+  const spec = token && context.tokens.meta.get(token);
 
-  if (node) {
-    const token = context.tokens.get(node.text);
-    if (token) {
-      const spec = context.tokens.meta.get(token);
-      if (spec?.path) {
-        const tokenPath = node.text.replace(/^--/, "")
-          .split("-")
-          .filter((x) => !!x)
-          .filter((x) => spec.prefix ? x !== spec.prefix : true);
-
-        const url = new URL(spec.path, params.textDocument.uri);
-        const fileContent = await Deno.readTextFile(url);
-
-        const parsedNodes = parseTree(fileContent);
-        if (parsedNodes) {
-          const node = findNodeAtLocation(parsedNodes, tokenPath);
-          if (node) {
-            return [{
-              uri: url.href,
-              range: sonNodeToLspRange(node, fileContent),
-            }];
-          }
-        }
+  if (tokenName && spec) {
+    const uri = new URL(spec.path, params.textDocument.uri).href;
+    const doc = context.documents.get(uri);
+    if (doc.language === "json") {
+      const range = doc.getRangeForTokenName(tokenName, spec.prefix);
+      if (range) {
+        return [{ uri, range }];
       }
     }
   }
   return [];
+}
+
+/**
+ * Implements the LSP textDocument/definition request for tokens in css or json files.
+ *
+ * @param params - The LSP definition parameters.
+ * @param context - The DTLS context.
+ *
+ * @returns An array of LSP locations in the token definition JSON file for the token.
+ */
+export function definition(
+  params: LSP.DefinitionParams,
+  context: DTLSContext,
+): LSP.Location[] {
+  const doc = context.documents.get(params.textDocument.uri);
+  switch (doc.language) {
+    case "json":
+      throw new Error(
+        "textDocument/definition not implemented for JSON documents",
+      );
+    case "css":
+      return getDefinitionFromCss(params, doc, context);
+  }
 }

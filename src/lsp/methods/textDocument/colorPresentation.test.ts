@@ -8,10 +8,47 @@ import { createTestContext } from "#test-helpers";
 import { colorPresentation } from "./colorPresentation.ts";
 
 describe("textDocument/colorPresentation", () => {
-  const ctx = createTestContext();
-  const textDocument = ctx.documents.create(/*css*/ `
+  const ctx = createTestContext({
+    testTokensSpecs: [
+      {
+        prefix: "token",
+        spec: "file:///tokens.json",
+        tokens: {
+          color: {
+            red: {
+              _: {
+                $value: "#ff0000",
+                $type: "color",
+              },
+              hex: {
+                $value: "#ff0000",
+                $type: "color",
+              },
+              malformed: {
+                $value: "ff 00 00",
+                $type: "color",
+              },
+              wrongtype: {
+                $value: "red",
+                $type: "dimension",
+              },
+            },
+          },
+          space: {
+            small: {
+              $value: "4px",
+              $type: "dimension",
+            },
+          },
+        },
+      },
+    ],
+  });
+  const textDocument = ctx.documents.createCssDocument(/*css*/ `
     a {
       color: var(--token-color-red);
+      color: var(--token-color-red-malformed);
+      color: var(--token-color-red-wrongtype);
       border-color: var(--token-color-red-hex);
       border-width: var(--token-space-small);
     }

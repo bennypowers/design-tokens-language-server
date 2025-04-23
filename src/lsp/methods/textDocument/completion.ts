@@ -15,16 +15,6 @@ const matchesWord = (word: string | null) => (name: string): boolean =>
     .replaceAll("-", "")
     .startsWith(word.replaceAll("-", ""));
 
-function offset(
-  pos: LSP.Position,
-  offset: Partial<LSP.Position>,
-): LSP.Position {
-  return {
-    line: pos.line + (offset.line ?? 0),
-    character: pos.character + (offset.character ?? 0),
-  };
-}
-
 function escapeCommas($value: string) {
   if (typeof $value !== "string") {
     return $value;
@@ -75,37 +65,38 @@ export function completion(
 ): null | LSP.CompletionList {
   const document = documents.get(params.textDocument.uri);
 
-  const node = document.getNodeAtPosition(
-    offset(params.position, { character: -2 }),
-  );
+  if (document.language === "css") {
+    const node = document.getNodeAtPosition(params.position, { character: -2 });
 
-  if (
-    !node ||
-    node.type !== "identifier" &&
-      !document.positionIsInNodeType(params.position, "block")
-  ) {
-    return null;
+    if (
+      !node ||
+      node.type !== "identifier" &&
+        !document.positionIsInNodeType(params.position, "block")
+    ) {
+      return null;
+    }
+
+    const range = tsRangeToLspRange(node);
+    const items = tokens
+      .keys()
+      .filter(matchesWord(node.text))
+      .map((name) =>
+        ({
+          label: name,
+          kind: LSP.CompletionItemKind.Snippet,
+          ...getEditOrEntry({ node, name, range, tokens }),
+        }) satisfies LSP.CompletionItem
+      ).toArray();
+
+    return {
+      items,
+      isIncomplete: items.length === 0 || items.length < tokens.size,
+      itemDefaults: {
+        insertTextFormat: LSP.InsertTextFormat.Snippet,
+        insertTextMode: LSP.InsertTextMode.asIs,
+        editRange: range,
+      },
+    };
   }
-
-  const range = tsRangeToLspRange(node);
-  const items = tokens
-    .keys()
-    .filter(matchesWord(node.text))
-    .map((name) =>
-      ({
-        label: name,
-        kind: LSP.CompletionItemKind.Snippet,
-        ...getEditOrEntry({ node, name, range, tokens }),
-      }) satisfies LSP.CompletionItem
-    ).toArray();
-
-  return {
-    items,
-    isIncomplete: items.length === 0 || items.length < tokens.size,
-    itemDefaults: {
-      insertTextFormat: LSP.InsertTextFormat.Snippet,
-      insertTextMode: LSP.InsertTextMode.asIs,
-      editRange: range,
-    },
-  };
+  return null;
 }

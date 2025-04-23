@@ -20,7 +20,7 @@ jobs:
       - name: Test
         run: |
           deno test -A --coverage
-          deno coverage --exclude="test/.*.ts\$" --lcov --output=coverage/lcov.info
+          deno coverage --exclude="test/.*.ts\$|textDocument\.ts\$" --lcov --output=coverage/lcov.info
 
       - uses: codecov/codecov-action@v5
         with:
