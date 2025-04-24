@@ -22,11 +22,17 @@ jobs:
 
       - name: Test
         run: |
-          deno test -A --coverage
+          deno test -A --coverage --reporter=junit --junit-path=./report.xml
           deno coverage --exclude="test/.*.ts\$|textDocument\.ts\$" --lcov --output=coverage/lcov.info
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_PAT }}
+          files: ./report.xml
 
       - uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: true # optional (default = false)
           files: coverage/lcov.info
           token: ${{ secrets.CODECOV_PAT }}
