@@ -1,11 +1,20 @@
 const scheme = String.raw;
 
-export const VarCall = scheme`
+export const VarCallWithOrWithoutFallback = scheme`
   (call_expression
     (function_name) @fn
     (arguments
-      . (plain_value) @tokenName) @arguments
-    (#eq? @fn "var")) @call
+      . (plain_value) @tokenName
+      (_)* @fallback)
+    (#eq? @fn "var")) @VarCallWithOrWithoutFallback
+`;
+
+export const VarCallNoFallback = scheme`
+  (call_expression
+    (function_name) @fn
+    (arguments
+      . (plain_value) @tokenName)
+    (#eq? @fn "var")) @VarCallNoFallback
 `;
 
 export const VarCallWithFallback = scheme`
@@ -13,16 +22,15 @@ export const VarCallWithFallback = scheme`
     (function_name) @fn
     (arguments
       . (plain_value) @tokenName
-      (_) @fallback)
-    (#eq? @fn "var")
-    (#match? @fallback ".+")) @VarCallWithFallback
+      (_)+ @fallback)
+    (#eq? @fn "var")) @VarCallWithFallback
 `;
 
-export const LightDarkValuesQuery = scheme`
+export const VarCallWithLightDarkFallback = scheme`
   (call_expression
     (function_name) @fn
     (arguments
      (_) @lightValue
      (_) @darkValue)
-    (#eq? @fn "light-dark"))
+    (#eq? @fn "light-dark")) @VarCallWithLightDarkFallback
 `;

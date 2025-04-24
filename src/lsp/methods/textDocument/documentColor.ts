@@ -3,7 +3,7 @@ import type {
   DocumentColorParams,
 } from "vscode-languageserver-protocol";
 
-import { CssDocument, getLightDarkValues, tsRangeToLspRange } from "#css";
+import { getLightDarkValues } from "#css";
 
 import { cssColorToLspColor } from "#color";
 
@@ -27,35 +27,30 @@ export function documentColor(
 ): ColorInformation[] {
   const doc = context.documents.get(params.textDocument.uri);
   if (doc.language === "css") {
-    return doc.query(CssDocument.queries.VarCall)
-      .flatMap((cap) => {
-        if (cap.name !== "tokenName") {
-          return [];
-        }
-        const tokenName = cap.node.text;
-        const token = context.tokens.get(tokenName.replace(/^--/, ""));
-        if (!token || token.$type !== "color") {
-          return [];
-        }
-        const colors = [];
-        const hexMatches = `${token.$value}`.match(HEX_RE);
-        const [light, dark] = getLightDarkValues(token.$value);
-        if (light && dark) {
-          colors.push(light, dark);
-        } else if (hexMatches) {
-          colors.push(...hexMatches);
-        } else {
-          colors.push(token.$value);
-        }
-        return colors.flatMap((match) => {
-          return [
-            {
-              color: cssColorToLspColor(match),
-              range: tsRangeToLspRange(cap.node),
-            } satisfies ColorInformation,
-          ];
-        });
+    return doc.varCalls.flatMap((call) => {
+      const token = call.token.token;
+      if (!token || token.$type !== "color") {
+        return [];
+      }
+      const colors = [];
+      const hexMatches = `${token.$value}`.match(HEX_RE);
+      const [light, dark] = getLightDarkValues(token.$value);
+      if (light && dark) {
+        colors.push(light, dark);
+      } else if (hexMatches) {
+        colors.push(...hexMatches);
+      } else {
+        colors.push(token.$value);
+      }
+      return colors.flatMap((match) => {
+        return [
+          {
+            color: cssColorToLspColor(match),
+            range: call.token.range,
+          } satisfies ColorInformation,
+        ];
       });
+    });
   }
   return [];
 }

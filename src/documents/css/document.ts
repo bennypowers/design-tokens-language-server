@@ -1,6 +1,5 @@
 import { Node, Point, Query, QueryCapture, Tree } from "web-tree-sitter";
 
-import { Logger } from "#logger";
 import { DTLSContext, DTLSErrorCodes } from "#lsp";
 import { DTLSTextDocument } from "#document";
 
@@ -9,8 +8,23 @@ import * as LSP from "vscode-languageserver-protocol";
 import * as Queries from "./tree-sitter/queries.ts";
 
 import { parser } from "./tree-sitter/parser.ts";
+import { Token } from "style-dictionary";
 
 type TsRange = Pick<Node, "startPosition" | "endPosition">;
+
+export interface TokenVarCall {
+  range: LSP.Range;
+  token: {
+    name: string;
+    range: LSP.Range;
+    token: Token;
+  };
+  fallback?: {
+    value: string;
+    valid: boolean;
+    range: LSP.Range;
+  };
+}
 
 export interface TSNodePosition {
   endPosition: { row: number; column: number };
@@ -19,7 +33,7 @@ export interface TSNodePosition {
 
 export function getLightDarkValues(value: string) {
   const tree = parser.parse(`a{b:${value}}`)!;
-  const query = new Query(tree.language, Queries.LightDarkValuesQuery);
+  const query = new Query(tree.language, Queries.VarCallWithLightDarkFallback);
   const captures = query.captures(tree.rootNode);
   const lightNode = captures.find((cap) => cap.name === "lightValue");
   const darkNode = captures.find((cap) => cap.name === "darkValue");
@@ -52,17 +66,6 @@ export function tsNodeIsInLspRange(
   return (inRows && inCols);
 }
 
-export function lspRangeIsInTsNode(
-  node: TSNodePosition,
-  range: LSP.Range,
-): boolean {
-  const inRows = node.startPosition.row >= range.start.line &&
-    node.endPosition.row <= range.end.line;
-  const inCols = node.startPosition.column <= range.start.character &&
-    node.endPosition.column >= range.end.character;
-  return (inRows && inCols);
-}
-
 export function captureIsTokenName(cap: QueryCapture, { tokens }: DTLSContext) {
   return cap.name === "tokenName" &&
     tokens.has(cap.node.text.replace(/^--/, ""));
@@ -92,19 +95,6 @@ function tsNodesToLspRangeInclusive(...nodes: TsRange[]): LSP.Range {
   return { start, end };
 }
 
-function lspRangeToTsRange(range: LSP.Range): TsRange {
-  return {
-    startPosition: {
-      row: range.start.line,
-      column: range.start.character,
-    },
-    endPosition: {
-      row: range.end.line,
-      column: range.end.character,
-    },
-  };
-}
-
 function lspPosToTsPos(pos: LSP.Position): Point {
   return {
     row: pos.line,
@@ -132,17 +122,29 @@ export class CssDocument extends DTLSTextDocument {
     const doc = new CssDocument(uri, version, text);
     doc.#tree = parser.parse(text);
     doc.#context = context;
-    doc.diagnostics = doc.computeDiagnostics(context);
+    doc.#varCalls = doc.#computeVarCalls(context);
+    doc.#diagnostics = doc.#computeDiagnostics();
     return doc;
   }
 
+  #diagnostics: LSP.Diagnostic[] = [];
+  #tree!: Tree | null;
+  #context!: DTLSContext;
+  #varCalls: TokenVarCall[] = [];
+
   language = "css" as const;
 
-  #tree!: Tree | null;
+  // TODO: having this on CSSDocument and not JsonDocument is a code smell
+  // This is ultimately meant to get diagnostics and code actions
+  // eventually, we'll compute all of those upfront and store them here,
+  // then use code action resolve for the details
+  get varCalls() {
+    return this.#varCalls;
+  }
 
-  #context!: DTLSContext;
-
-  static queries = Queries;
+  get diagnostics() {
+    return this.#diagnostics;
+  }
 
   private constructor(
     uri: string,
@@ -176,7 +178,8 @@ export class CssDocument extends DTLSTextDocument {
       },
     });
     this.#tree = parser.parse(newText, this.#tree);
-    this.diagnostics = this.computeDiagnostics(this.#context);
+    this.#varCalls = this.#computeVarCalls(this.#context);
+    this.#diagnostics = this.#computeDiagnostics();
   }
 
   /**
@@ -226,57 +229,85 @@ export class CssDocument extends DTLSTextDocument {
     return false;
   }
 
-  override computeDiagnostics(context: DTLSContext) {
-    const captures = this.query(Queries.VarCallWithFallback);
+  #computeVarCalls(context: DTLSContext): TokenVarCall[] {
+    const captures = this.query(Queries.VarCallWithOrWithoutFallback);
 
     const callNodes = new Map<
       number,
-      { tokenName: string; fallbacks: Node[] }
+      { range: LSP.Range; tokenNameNode: Node; fallbacks: Node[] }
     >();
 
     for (const cap of captures) {
-      if (cap.name === "VarCallWithFallback") {
-        callNodes.set(cap.node.id, { tokenName: "", fallbacks: [] });
+      if (cap.name === "VarCallWithOrWithoutFallback") {
+        callNodes.set(cap.node.id, {
+          tokenNameNode: {} as Node,
+          range: tsRangeToLspRange(cap.node),
+          fallbacks: [],
+        });
       }
     }
 
     for (const cap of captures) {
-      const callNode = cap.node.parent?.parent;
+      let node = cap.node;
+      let callNode = node.parent;
+      while (callNode?.type !== "call_expression" && node.parent) {
+        callNode = node.parent;
+        node = node.parent;
+      }
       if (callNode?.type === "call_expression") {
-        try {
-          if (cap.name === "tokenName") {
-            callNodes.get(callNode.id)!.tokenName = cap.node.text;
-          } else if (cap.name === "fallback") {
-            callNodes.get(callNode.id)!.fallbacks.push(cap.node);
-          }
-        } catch (e) {
-          Logger.error`Error while computing diagnostics: ${e}`;
+        if (cap.name === "tokenName") {
+          callNodes.get(callNode.id)!.tokenNameNode = cap.node;
+        } else if (cap.name === "fallback") {
+          callNodes.get(callNode.id)!.fallbacks.push(cap.node);
         }
       }
     }
 
-    return callNodes.values().flatMap(({ tokenName, fallbacks }) => {
-      if (context.tokens.has(tokenName)) {
-        const token = context.tokens.get(tokenName)!;
-        const joiner = token.$type === "fontFamily" ? ", " : " ";
-        const fallback = fallbacks.map((x) => x.text).join(joiner);
-        const valid = typeof token.$value === "number"
-          ? (parseFloat(fallback) === token.$value)
-          : (fallback === token.$value);
-        if (!valid) {
+    return callNodes.values().flatMap(({ range, tokenNameNode, fallbacks }) => {
+      const token = {
+        name: tokenNameNode.text,
+        range: tsRangeToLspRange(tokenNameNode),
+        token: context.tokens.get(tokenNameNode.text)!,
+      };
+      if (context.tokens.has(token.name)) {
+        const { $value, $type } = token.token;
+        const joiner = $type === "fontFamily" ? ", " : " ";
+        if (fallbacks.length) {
+          const fallback = fallbacks.map((x) => x.text).join(joiner);
           return [{
-            range: tsNodesToLspRangeInclusive(...fallbacks),
-            severity: LSP.DiagnosticSeverity.Error,
-            message:
-              `Token fallback does not match expected value: ${token.$value}`,
-            code: DTLSErrorCodes.incorrectFallback,
-            data: {
-              tokenName,
+            range,
+            token,
+            fallback: {
+              value: fallback,
+              valid: typeof $value === "number"
+                ? (parseFloat(fallback) === $value)
+                : (fallback === $value),
+              range: tsNodesToLspRangeInclusive(...fallbacks),
             },
           }];
+        } else {
+          return [{ range, token }];
         }
       }
       return [];
     }).toArray();
+  }
+
+  #computeDiagnostics() {
+    return this.varCalls.flatMap((call) => {
+      if (!call.fallback || call.fallback.valid) return [];
+      else {
+        return [{
+          range: call.fallback.range,
+          severity: LSP.DiagnosticSeverity.Error,
+          message:
+            `Token fallback does not match expected value: ${call.token.token.$value}`,
+          code: DTLSErrorCodes.incorrectFallback,
+          data: {
+            tokenName: call.token.name,
+          },
+        }];
+      }
+    });
   }
 }

@@ -2,22 +2,21 @@ import {
   type CodeAction,
   CodeActionKind,
   type CodeActionParams,
+  Range,
   TextEdit,
 } from "vscode-languageserver-protocol";
 
-// TODO: hide all the tree sitter apis behind CssDocument
-import type { Node } from "web-tree-sitter";
-
-import {
-  captureIsTokenCall,
-  captureIsTokenName,
-  CssDocument,
-  lspRangeIsInTsNode,
-  tsNodeIsInLspRange,
-  tsRangeToLspRange,
-} from "#css";
+import { TokenVarCall } from "#css";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp";
+import { lspRangeContains } from "#lsp/utils.ts";
+
+function rangeIsSingleChar(range: Range): boolean {
+  return (
+    range.start.line === range.end.line &&
+    range.start.character === range.end.character
+  );
+}
 
 export enum DTLSCodeAction {
   /** Fix the fallback value of a design token.*/
@@ -31,19 +30,18 @@ export enum DTLSCodeAction {
 }
 
 function getEditFromTSArgumentsNode(
-  node: Node | null,
+  call: TokenVarCall,
   context: DTLSContext,
 ): TextEdit | undefined {
-  if (node) {
-    const range = tsRangeToLspRange(node);
-    const [, nameNode, closeParenOrFallback] = node.children;
-    const hasFallback = closeParenOrFallback?.text !== ")";
-    const token = context.tokens.get(nameNode?.text!);
+  if (call) {
+    const { range, token, fallback } = call;
+    const { $value } = context.tokens.get(token.name)!;
     if (token) {
+      const hasFallback = !!fallback;
       // TODO: preserve whitespace
       const newText = hasFallback
-        ? `(${nameNode?.text})`
-        : `(${nameNode?.text}, ${token.$value})`;
+        ? `var(${token.name})`
+        : `var(${token.name}, ${$value})`;
       return { range, newText };
     }
   }
@@ -87,54 +85,40 @@ export function codeAction(
   }
 
   const doc = context.documents.get(textDocument.uri);
+
   if (doc.language === "css") {
-    const captures = doc.query(CssDocument.queries.VarCall);
-
-    const tokenNameCaptures = captures.filter((cap) =>
-      captureIsTokenName(cap, context) &&
-      lspRangeIsInTsNode(cap.node, params.range)
-    );
-
-    const tokenCallCaptures = captures.filter((cap) =>
-      captureIsTokenCall(cap, context) &&
-      tsNodeIsInLspRange(cap.node, params.range)
-    );
-
     // TODO: resolve the edits for the tokenCallCaptures
-
-    if (tokenCallCaptures.length) {
-      actions.push({
-        title: DTLSCodeAction.toggleRangeFallbacks,
-        kind: CodeActionKind.RefactorRewrite,
-        edit: {
-          changes: {
-            [textDocument.uri]: tokenCallCaptures.map((cap) => {
-              const args = cap.node.children.find((x) =>
-                x?.type === "arguments"
-              );
-              if (args) {
-                const edit = getEditFromTSArgumentsNode(args, context);
-                if (edit) {
-                  return edit;
-                }
-              }
-            }).filter((x) => !!x),
-          },
-        },
-      });
-    } else if (tokenNameCaptures.length) {
-      const [cap] = tokenNameCaptures;
-      const edit = getEditFromTSArgumentsNode(cap.node.parent, context);
-      if (edit) {
+    if (!rangeIsSingleChar(params.range)) {
+      if (doc.varCalls.length) {
         actions.push({
-          title: DTLSCodeAction.toggleFallback,
+          title: DTLSCodeAction.toggleRangeFallbacks,
           kind: CodeActionKind.RefactorRewrite,
           edit: {
             changes: {
-              [textDocument.uri]: [edit],
+              [textDocument.uri]: doc.varCalls.map((call) =>
+                getEditFromTSArgumentsNode(call, context)
+              ).filter((x) => !!x),
             },
           },
         });
+      }
+    } else {
+      const call = doc.varCalls.find((call) =>
+        lspRangeContains(call.range, params.range)
+      );
+      if (call) {
+        const edit = getEditFromTSArgumentsNode(call, context);
+        if (edit) {
+          actions.push({
+            title: DTLSCodeAction.toggleFallback,
+            kind: CodeActionKind.RefactorRewrite,
+            edit: {
+              changes: {
+                [textDocument.uri]: [edit],
+              },
+            },
+          });
+        }
       }
     }
 

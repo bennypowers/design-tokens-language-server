@@ -1,5 +1,5 @@
 import { describe, it } from "@std/testing/bdd";
-import { getLightDarkValues } from "./document.ts";
+import { getLightDarkValues } from "#css";
 import { expect } from "@std/expect/expect";
 
 describe("getLightDarkValues", () => {

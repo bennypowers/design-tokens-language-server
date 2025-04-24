@@ -56,11 +56,10 @@ export class Documents {
     Logger.debug`📖 Opened ${uri}`;
   }
 
-  onDidChange(params: LSP.DidChangeTextDocumentParams, context: DTLSContext) {
+  onDidChange(params: LSP.DidChangeTextDocumentParams, _context: DTLSContext) {
     const { uri, version } = params.textDocument;
     const doc = this.get(uri);
     doc.update(params.contentChanges, version);
-    doc.diagnostics = doc.computeDiagnostics(context);
   }
 
   onDidClose(params: LSP.DidCloseTextDocumentParams, _: DTLSContext) {

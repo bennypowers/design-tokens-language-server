@@ -31,15 +31,20 @@ export class JsonDocument extends DTLSTextDocument {
   language = "json" as const;
 
   #root: Node;
+  #diagnostics: LSP.Diagnostic[] = [];
+
+  get diagnostics() {
+    return this.#diagnostics;
+  }
 
   static create(
-    context: DTLSContext,
+    _context: DTLSContext,
     uri: string,
     text: string,
     version = 0,
   ) {
     const doc = new JsonDocument(uri, version, text);
-    doc.diagnostics = doc.computeDiagnostics(context);
+    doc.#diagnostics = doc.#computeDiagnostics();
     return doc;
   }
 
@@ -94,9 +99,10 @@ export class JsonDocument extends DTLSTextDocument {
   ) {
     super.update(changes, version);
     this.#root = this.#parse();
+    this.#diagnostics = this.#computeDiagnostics();
   }
 
-  computeDiagnostics(_: DTLSContext): LSP.Diagnostic[] {
+  #computeDiagnostics(): LSP.Diagnostic[] {
     return [];
   }
 }

@@ -66,9 +66,9 @@ describe("textDocument/codeAction", () => {
       });
     });
 
-    describe("called on the first character of the token name", () => {
-      const position = doc.positionForSubstring("--token-color-red");
+    describe("calling codeAction on the first character of the token name", () => {
       beforeEach(() => {
+        const position = doc.positionForSubstring("--token-color-red");
         result = codeAction({
           textDocument,
           range: { start: position, end: position },
@@ -76,8 +76,8 @@ describe("textDocument/codeAction", () => {
         }, ctx);
       });
       it("should return a single-token refactor action", () => {
-        const newText = "(--token-color-red, red)";
-        const range = doc.rangeForSubstring("(--token-color-red)");
+        const newText = "var(--token-color-red, red)";
+        const range = doc.rangeForSubstring("var(--token-color-red)");
         expect(result).toEqual([
           {
             title: DTLSCodeAction.toggleFallback,
@@ -119,15 +119,17 @@ describe("textDocument/codeAction", () => {
         }, ctx);
       });
 
-      it("should return one fix for the incorrect fallback", () => {
-        expect(result).toEqual([
-          {
-            title: DTLSCodeAction.fixFallback,
-            kind: CodeActionKind.QuickFix,
-            diagnostics: doc.diagnostics,
-            data: { textDocument },
-          },
-        ]);
+      it("should return a fix for the incorrect fallback", () => {
+        expect(result?.at(0)).toEqual({
+          title: DTLSCodeAction.fixFallback,
+          kind: CodeActionKind.QuickFix,
+          diagnostics: doc.diagnostics,
+          data: { textDocument },
+        });
+      });
+      it("should not return a fixall", () => {
+        expect(result?.find((x) => x.kind === CodeActionKind.SourceFixAll))
+          .toBeUndefined();
       });
     });
   });
@@ -154,8 +156,8 @@ describe("textDocument/codeAction", () => {
       });
 
       it("should return a single refactor action for a token call with fallback", () => {
-        const range = doc.rangeForSubstring("(--token-color-red, red)");
-        const newText = "(--token-color-red)";
+        const range = doc.rangeForSubstring("var(--token-color-red, red)");
+        const newText = "var(--token-color-red)";
         expect(result).toEqual([
           {
             title: DTLSCodeAction.toggleFallback,
@@ -218,10 +220,10 @@ describe("textDocument/codeAction", () => {
       ]);
     });
 
-    describe("then performing the fixall", () => {
+    describe("then performing one of the fixes", () => {
       beforeEach(() => {
         const action = result?.find(({ kind }) =>
-          kind === CodeActionKind.SourceFixAll
+          kind === CodeActionKind.QuickFix
         );
         if (action) {
           const edits = resolve(action!, ctx)?.edit?.changes?.[doc.uri];
@@ -229,6 +231,30 @@ describe("textDocument/codeAction", () => {
             const text = DTLSTextDocument.applyEdits(doc, edits);
             doc.update([{ text }], doc.version + 1);
           }
+        }
+      });
+
+      it("fixes that part of the file", () => {
+        const text = ctx.documents.get(textDocument.uri).getText();
+        expect(text).toEqual(/*css*/ `
+      a {
+        color: var(--token-color-red, red);
+        border-color: var(--token-color-blue-lightdark, green);
+      }
+    `);
+      });
+    });
+
+    describe("then performing the fixall", () => {
+      beforeAll(() => {
+        const edits = resolve(
+          result!
+            .find((x) => x.kind === CodeActionKind.SourceFixAll)!,
+          ctx,
+        )?.edit?.changes?.[doc.uri];
+        if (edits) {
+          const text = DTLSTextDocument.applyEdits(doc, edits);
+          doc.update([{ text }], doc.version + 1);
         }
       });
 
@@ -265,13 +291,15 @@ describe("textDocument/codeAction", () => {
                 changes: {
                   [textDocument.uri]: [
                     {
-                      range: doc.rangeForSubstring("(--token-color-red, red)"),
-                      newText: "(--token-color-red)",
+                      range: doc.rangeForSubstring(
+                        "var(--token-color-red, red)",
+                      ),
+                      newText: "var(--token-color-red)",
                     },
                     {
-                      newText: "(--token-color-blue-lightdark)",
+                      newText: "var(--token-color-blue-lightdark)",
                       range: doc.rangeForSubstring(
-                        "(--token-color-blue-lightdark, light-dark(lightblue, darkblue))",
+                        "var(--token-color-blue-lightdark, light-dark(lightblue, darkblue))",
                       ),
                     },
                   ],
