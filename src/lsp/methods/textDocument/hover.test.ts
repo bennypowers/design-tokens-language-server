@@ -51,12 +51,13 @@ describe("textDocument/hover", () => {
         color:var(--token-color-red);
       }
     `);
-    const position = textDocument.positionOf("--token-color-red");
+    const doc = ctx.documents.get(textDocument.uri);
+    const position = doc.positionForSubstring("--token-color-red");
 
     const result = hover({ textDocument, position }, ctx);
 
     expect(result).not.toBeNull();
-    expect(result?.range).toEqual(textDocument.rangeOf("--token-color-red"));
+    expect(result?.range).toEqual(doc.rangeForSubstring("--token-color-red"));
     expect(result?.contents).toHaveProperty("kind", "markdown");
     expect(result?.contents).toHaveProperty("value");
     expect((result?.contents as MarkupContent).value).toEqual(`\
@@ -76,11 +77,9 @@ describe("textDocument/hover", () => {
         color: :var(--non-token);
       }
     `);
-
-    const position = textDocument.positionOf("--non-token");
-
+    const doc = ctx.documents.get(textDocument.uri);
+    const position = doc.positionForSubstring("--non-token");
     const result = hover({ textDocument, position }, ctx);
-
     expect(result).toBeNull();
   });
 
@@ -91,12 +90,10 @@ describe("textDocument/hover", () => {
       }
     `);
 
-    const position = textDocument.positionOf("--token-color-blue-lightdark");
-
-    const range = textDocument.rangeOf("--token-color-blue-lightdark");
-
+    const doc = ctx.documents.get(textDocument.uri);
+    const position = doc.positionForSubstring("--token-color-blue-lightdark");
+    const range = doc.rangeForSubstring("--token-color-blue-lightdark");
     const result = hover({ textDocument, position }, ctx);
-
     expect(result).not.toBeNull();
     expect(result?.range).toEqual(range);
     expect(result?.contents).toHaveProperty("kind", "markdown");

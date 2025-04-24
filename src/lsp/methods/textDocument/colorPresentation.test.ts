@@ -44,6 +44,7 @@ describe("textDocument/colorPresentation", () => {
       },
     ],
   });
+
   const textDocument = ctx.documents.createCssDocument(/*css*/ `
     a {
       color: var(--token-color-red);
@@ -54,8 +55,10 @@ describe("textDocument/colorPresentation", () => {
     }
   `);
 
+  const doc = ctx.documents.get(textDocument.uri);
+
   it("should return color presentations for matching colors", () => {
-    const range = textDocument.rangeOf("--token-color-red");
+    const range = doc.rangeForSubstring("--token-color-red");
     const color = cssColorToLspColor("red");
     const result = colorPresentation({ textDocument, color, range }, ctx);
     expect(result).toEqual([

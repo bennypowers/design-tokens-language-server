@@ -4,7 +4,7 @@ export const VarCall = scheme`
   (call_expression
     (function_name) @fn
     (arguments
-      (plain_value) @tokenName) @arguments
+      . (plain_value) @tokenName) @arguments
     (#eq? @fn "var")) @call
 `;
 

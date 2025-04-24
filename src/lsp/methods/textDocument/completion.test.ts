@@ -52,7 +52,8 @@ describe("textDocument/completion", () => {
 
   function getCompletionsForWord(word: string, content: string) {
     const textDocument = ctx.documents.createCssDocument(content);
-    const position = textDocument.positionOf(word, "end");
+    const doc = ctx.documents.get(textDocument.uri);
+    const position = doc.positionForSubstring(word, "end");
     return completion({ textDocument, position }, ctx);
   }
 

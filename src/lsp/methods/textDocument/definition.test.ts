@@ -44,8 +44,10 @@ describe("textDocument/definition", () => {
       }
     `);
 
+    const doc = ctx.documents.get(textDocument.uri);
+
     it("returns color presentation for a known token name", () => {
-      const range = textDocument.rangeOf("--token-color-red");
+      const range = doc.rangeForSubstring("--token-color-red");
       const position = range.start;
       expect(definition({ textDocument, position }, ctx)).toEqual([
         {
@@ -59,7 +61,7 @@ describe("textDocument/definition", () => {
     });
 
     it("returns matching range for nested token", () => {
-      const range = textDocument.rangeOf("--token-color-red-hex");
+      const range = doc.rangeForSubstring("--token-color-red-hex");
       const position = range.start;
       expect(definition({ textDocument, position }, ctx)).toEqual([
         {
@@ -73,7 +75,7 @@ describe("textDocument/definition", () => {
     });
 
     it("returns an empty list for undeclared tokens", () => {
-      const range = textDocument.rangeOf("--token-sinister");
+      const range = doc.rangeForSubstring("--token-sinister");
       const location = definition(
         { textDocument, position: range.start },
         ctx,

@@ -12,11 +12,8 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
-
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
@@ -25,8 +22,7 @@ jobs:
           deno test -A --coverage --reporter=junit --junit-path=./report.xml
           deno coverage --exclude="test/.*.ts\$|textDocument\.ts\$" --lcov --output=coverage/lcov.info
 
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
+      - if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_PAT }}

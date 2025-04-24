@@ -47,9 +47,7 @@ function getEditOrEntry(args: {
 }): Pick<LSP.CompletionItem, "insertText" | "textEdit"> {
   const { range } = args;
   const insertText = getCompletionDependingOnNode(args);
-  return (range
-    ? { textEdit: { range, newText: insertText } }
-    : { insertText });
+  return { textEdit: { range, newText: insertText } };
 }
 
 /**

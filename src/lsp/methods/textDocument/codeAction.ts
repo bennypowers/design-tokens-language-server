@@ -61,6 +61,7 @@ export function codeAction(
   context: DTLSContext,
 ): null | CodeAction[] {
   const { textDocument } = params;
+
   const diagnostics = params.context.diagnostics.filter((d) =>
     d.code === DTLSErrorCodes.incorrectFallback
   );
@@ -77,7 +78,7 @@ export function codeAction(
 
   actions.push(...fixes);
 
-  if (diagnostics.length) {
+  if (diagnostics.length > 1) {
     actions.push({
       title: DTLSCodeAction.fixAllFallbacks,
       kind: CodeActionKind.SourceFixAll,

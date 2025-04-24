@@ -46,10 +46,11 @@ describe("textDocument/documentColor", () => {
   describe("in a css document", () => {
     describe("with a single token with type color", () => {
       const textDocument = ctx.documents.createCssDocument(/*css*/ `
-      a {
-        color: var(--token-color-red);
-      }
-    `);
+        a {
+          color: var(--token-color-red);
+        }
+      `);
+      const doc = ctx.documents.get(textDocument.uri);
 
       it("should return a single DocumentColor", () => {
         const results = documentColor({ textDocument }, ctx);
@@ -57,7 +58,9 @@ describe("textDocument/documentColor", () => {
         expect(results).toHaveLength(1);
         const [result] = results;
         expect(result.color).toEqual(cssColorToLspColor("red"));
-        expect(result.range).toEqual(textDocument.rangeOf("--token-color-red"));
+        expect(result.range).toEqual(
+          doc.rangeForSubstring("--token-color-red"),
+        );
       });
     });
 
@@ -84,11 +87,14 @@ describe("textDocument/documentColor", () => {
 
       it("should return a single DocumentColor", () => {
         const results = documentColor({ textDocument }, ctx);
+        const doc = ctx.documents.get(textDocument.uri);
         expect(results).not.toBeNull();
         expect(results).toHaveLength(1);
         const [result] = results;
         expect(result.color).toEqual(cssColorToLspColor("red"));
-        expect(result.range).toEqual(textDocument.rangeOf("--token-color-red"));
+        expect(result.range).toEqual(
+          doc.rangeForSubstring("--token-color-red"),
+        );
       });
     });
 
@@ -101,7 +107,10 @@ describe("textDocument/documentColor", () => {
 
       it("should return two DocumentColors for the same token", () => {
         const results = documentColor({ textDocument }, ctx);
-        const range = textDocument.rangeOf("--token-color-blue-lightdark");
+        const doc = ctx.documents.get(textDocument.uri);
+        const range = doc.rangeForSubstring(
+          "--token-color-blue-lightdark",
+        );
         expect(results).not.toBeNull();
         expect(results).toHaveLength(2);
         const [result1, result2] = results;

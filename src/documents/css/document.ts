@@ -131,6 +131,7 @@ export class CssDocument extends DTLSTextDocument {
   ) {
     const doc = new CssDocument(uri, version, text);
     doc.#tree = parser.parse(text);
+    doc.#context = context;
     doc.diagnostics = doc.computeDiagnostics(context);
     return doc;
   }
@@ -138,6 +139,8 @@ export class CssDocument extends DTLSTextDocument {
   language = "css" as const;
 
   #tree!: Tree | null;
+
+  #context!: DTLSContext;
 
   static queries = Queries;
 
@@ -173,6 +176,7 @@ export class CssDocument extends DTLSTextDocument {
       },
     });
     this.#tree = parser.parse(newText, this.#tree);
+    this.diagnostics = this.computeDiagnostics(this.#context);
   }
 
   /**

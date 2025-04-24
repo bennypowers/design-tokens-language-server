@@ -1,7 +1,7 @@
 import { Token } from "style-dictionary";
 import { Documents } from "#documents";
 import { Tokens } from "#tokens";
-import { DocumentUri, Position, Range } from "vscode-languageserver-protocol";
+import { DocumentUri } from "vscode-languageserver-protocol";
 
 import {
   RequestTypeForMethod,
@@ -13,8 +13,6 @@ import {
 import { normalizeTokenFile } from "../src/tokens/utils.ts";
 
 import { JsonDocument } from "#json";
-
-import testTokens from "../test/tokens.json" with { type: "json" };
 
 interface TestSpec {
   tokens: Token;
@@ -96,40 +94,13 @@ class TestDocuments extends Documents {
       languageId: "css",
       version: 1,
       text,
-      /** Get the first position of the string in the document */
-      positionOf: (
-        string: string,
-        position: "start" | "end" = "start",
-      ): Position => {
-        const doc = this.get(uri);
-        const text = doc.getText();
-        // get the position of the string in doc
-        const rows = text.split("\n");
-        const line = rows.findIndex((line) => line.includes(string));
-        let character = rows[line].indexOf(string);
-        if (position === "end") {
-          character += string.length;
-        }
-        return { line, character };
-      },
-      /** Get the first range of the string in the document */
-      rangeOf: (string: string): Range => {
-        const doc = this.get(uri);
-        const text = doc.getText();
-        // get the range of the string in doc
-        const rows = text.split("\n");
-        const line = rows.findIndex((line) => line.includes(string));
-        const character = rows[line].indexOf(string);
-        return {
-          start: { line, character },
-          end: { line, character: character + string.length },
-        };
-      },
     };
+
     this.onDidOpen({ textDocument }, {
       documents: this,
       tokens: this.#tokens,
     });
+
     return textDocument;
   }
 
