@@ -15,6 +15,24 @@ import { JsonDocument } from "#json";
 
 const decoder = new TextDecoder();
 
+async function tryToLoadSettingsFromPackageJson(
+  uri: LSP.DocumentUri,
+): Promise<DTLSClientSettings | null> {
+  try {
+    const pkgJsonPath = new URL("./package.json", `${uri}/`);
+    Logger.debug`Loading package.json from ${pkgJsonPath.href}`;
+    const mod = await import(pkgJsonPath.href, { with: { type: "json" } });
+    Logger.debug` .. ${mod}`;
+    const settings = mod.default?.designTokensLanguageServer;
+    return settings;
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      Logger.error`Could not load package.json: ${e}`;
+    }
+    throw e;
+  }
+}
+
 /**
  * Manages LSP workspace folders and settings.
  * - reads workspace configuration from the workspace folder's package.json
@@ -57,11 +75,10 @@ export class Workspaces {
   async #updateConfiguration(context: DTLSContext) {
     for (const ws of this.#workspaces) {
       const { uri } = ws;
-      const pkgJsonPath = new URL("./package.json", `${uri}/`);
-      const mod = await import(pkgJsonPath.href, { with: { type: "json" } });
-      const settings = mod.default?.designTokensLanguageServer;
+      const settings = await tryToLoadSettingsFromPackageJson(uri);
       for (const file of settings?.tokensFiles ?? []) {
         const spec = this.#normalizeTokenFile(file, uri, settings);
+        Logger.debug`Adding token spec ${spec}`;
         this.#tokenSpecs.add(spec);
         const tokenfileContent = decoder.decode(await Deno.readFile(spec.path));
         const doc = JsonDocument.create(context, spec.path, tokenfileContent);

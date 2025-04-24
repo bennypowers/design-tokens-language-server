@@ -17,9 +17,9 @@
     "test": "deno test -A --coverage=coverage",
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
     "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
-    "copy:wts:mkdir": "mkdir -p dist/tree-sitter",
+    "copy:wts:mkdir": "mkdir -p dist/documents/css/tree-sitter",
     "copy:wts:wasm": "cp ./vendor/web-tree-sitter/web-tree-sitter.wasm dist/web-tree-sitter.wasm",
-    "copy:wts:css": "cp ./src/documents/css/tree-sitter/tree-sitter-*.wasm dist/tree-sitter/",
+    "copy:wts:css": "cp ./src/**/*.wasm dist/",
     "copy:vscode:readme": "cp README.md extensions/vscode/",
     "copy": {
       "dependencies": [
