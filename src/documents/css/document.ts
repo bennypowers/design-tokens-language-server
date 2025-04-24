@@ -1,17 +1,12 @@
-import type { Node, Point, QueryCapture, Tree } from "web-tree-sitter";
+import { Node, Point, Query, QueryCapture, Tree } from "web-tree-sitter";
 
-import { Query } from "web-tree-sitter";
+import { Logger } from "#logger";
+import { DTLSContext, DTLSErrorCodes } from "#lsp";
+import { DTLSTextDocument } from "#document";
 
 import * as LSP from "vscode-languageserver-protocol";
 
 import * as Queries from "./tree-sitter/queries.ts";
-
-import { DTLSErrorCodes } from "../lsp/methods/textDocument/diagnostic.ts";
-
-import { Logger } from "#logger";
-import { DTLSContext } from "#lsp";
-
-import { DTLSTextDocument } from "#document";
 
 import { parser } from "./tree-sitter/parser.ts";
 

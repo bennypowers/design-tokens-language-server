@@ -1,6 +1,3 @@
-// deno-coverage-ignore-file
-// See upstream for coverage
-
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -181,29 +178,6 @@ function getWellformedEdit(textEdit: LSP.TextEdit): LSP.TextEdit {
 }
 
 export class FullTextDocument implements TextDocument {
-  /**
-   * Updates a TextDocument by modifying its content.
-   *
-   * @param document the document to update. Only documents created by TextDocument.create are valid inputs.
-   * @param changes the changes to apply to the document.
-   * @param version the changes version for the document.
-   * @returns The updated TextDocument. Note: That's the same document instance passed in as first parameter.
-   */
-  static update(
-    document: TextDocument,
-    changes: LSP.TextDocumentContentChangeEvent[],
-    version: number,
-  ): TextDocument {
-    if (document instanceof FullTextDocument) {
-      document.update(changes, version);
-      return document;
-    } else {
-      throw new Error(
-        "TextDocument.update: document must be created by TextDocument.create",
-      );
-    }
-  }
-
   static applyEdits(document: TextDocument, edits: LSP.TextEdit[]): string {
     const text = document.getText();
     const sortedEdits = mergeSort(edits.map(getWellformedEdit), (a, b) => {

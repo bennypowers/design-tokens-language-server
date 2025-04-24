@@ -5,9 +5,8 @@ import {
   TextEdit,
 } from "vscode-languageserver-protocol";
 
+// TODO: hide all the tree sitter apis behind CssDocument
 import type { Node } from "web-tree-sitter";
-
-import { DTLSErrorCodes } from "./diagnostic.ts";
 
 import {
   captureIsTokenCall,
@@ -18,7 +17,7 @@ import {
   tsRangeToLspRange,
 } from "#css";
 
-import { DTLSContext } from "#lsp";
+import { DTLSContext, DTLSErrorCodes } from "#lsp";
 
 export enum DTLSCodeAction {
   /** Fix the fallback value of a design token.*/

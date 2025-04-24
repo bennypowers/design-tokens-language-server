@@ -6,11 +6,6 @@ import {
 
 import { DTLSContext } from "#lsp";
 
-export enum DTLSErrorCodes {
-  /** The fallback value of a design token is incorrect. */
-  incorrectFallback = "incorrect-fallback",
-}
-
 /**
  * Generates a full document diagnostic report.
  *

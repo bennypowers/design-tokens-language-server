@@ -166,6 +166,11 @@ export interface DTLSContextWithWorkspaces extends DTLSContext {
   workspaces: Workspaces;
 }
 
+export enum DTLSErrorCodes {
+  /** The fallback value of a design token is incorrect. */
+  incorrectFallback = "incorrect-fallback",
+}
+
 function requestMethodTypeGuard<M extends SupportedMethod>(
   method: M,
 ): RequestMethodTypeGuard<M> {

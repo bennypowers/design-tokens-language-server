@@ -9,10 +9,11 @@ import { Logger } from "#logger";
 import { createQueue } from "@sv2dev/tasque";
 
 import { Lsp } from "#lsp";
-import { Stdio } from "./server/stdio.ts";
 import { Documents } from "#documents";
 import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
+
+import { Stdio } from "./stdio.ts";
 
 export interface Io {
   /**
