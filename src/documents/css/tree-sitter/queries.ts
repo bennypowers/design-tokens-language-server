@@ -5,7 +5,7 @@ export const VarCallWithOrWithoutFallback = scheme`
     (function_name) @fn
     (arguments
       . (plain_value) @tokenName
-      (_)* @fallback)
+      (_) * @fallback)
     (#eq? @fn "var")) @VarCallWithOrWithoutFallback
 `;
 

@@ -3,6 +3,8 @@ import { expect } from "@std/expect";
 
 import { createTestContext } from "#test-helpers";
 
+import { DTLSErrorCodes } from "#lsp";
+
 import { diagnostic } from "./diagnostic.ts";
 
 describe("textDocument/diagnostic", () => {
@@ -43,9 +45,16 @@ describe("textDocument/diagnostic", () => {
               $value: "'Super Duper', Helvetica, Arial, sans-serif",
               $type: "fontFamily",
             },
+            mishpocha: {
+              $value: "Super, 'Pooper Duper', Helvetica, Arial, sans-serif",
+              $type: "fontFamily",
+            },
             weight: {
               $value: 400,
               $type: "fontWeight",
+            },
+            heft: {
+              $value: "400",
             },
           },
         },
@@ -111,6 +120,18 @@ describe("textDocument/diagnostic", () => {
     });
   });
 
+  describe("in a document with a saucy font-family", () => {
+    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      body {
+        font-family: var(--token-font-mishpocha, Super, 'Pooper Duper', Helvetica, Arial, sans-serif);
+      }
+    `);
+    it("should return no diagnostics", () => {
+      const diagnostics = diagnostic({ textDocument }, ctx);
+      expect(diagnostics.items).toHaveLength(0);
+    });
+  });
+
   describe("in a document with a single number-value token and a correct fallback", () => {
     const textDocument = ctx.documents.createCssDocument(/*css*/ `
       body {
@@ -123,19 +144,36 @@ describe("textDocument/diagnostic", () => {
     });
   });
 
-  describe("in a document with a single number-value token and string fallback", () => {
+  describe("in a document with a single stringy-number token and correct fallback", () => {
     const textDocument = ctx.documents.createCssDocument(/*css*/ `
       body {
-        color: var(--token-font-weight, '400');
+        color: var(--token-font-heft, '400');
+      }
+    `);
+    it("should return a single diagnostic list", () => {
+      const doc = ctx.documents.get(textDocument.uri)!;
+      const diagnostics = diagnostic({ textDocument }, ctx);
+      expect(diagnostics.items).toEqual([{
+        code: DTLSErrorCodes.incorrectFallback,
+        severity: 1,
+        data: {
+          tokenName: "--token-font-heft",
+        },
+        message: "Token fallback does not match expected value: 400",
+        range: doc.rangeForSubstring("'400'"),
+      }]);
+    });
+  });
+
+  describe("in a document with a single stringy-number token and number fallback", () => {
+    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      body {
+        color: var(--token-font-heft, 400);
       }
     `);
     it("should return an empty list", () => {
       const diagnostics = diagnostic({ textDocument }, ctx);
-      expect(diagnostics.items).toHaveLength(1);
-      const [diag] = diagnostics.items;
-      expect(diag.message).toBe(
-        "Token fallback does not match expected value: 400",
-      );
+      expect(diagnostics.items).toEqual([]);
     });
   });
 

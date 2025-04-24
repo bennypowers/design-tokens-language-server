@@ -114,7 +114,7 @@ describe("textDocument/documentColor", () => {
       }
     `);
 
-      it.only("should return two DocumentColors for the same token", () => {
+      it("should return two DocumentColors for the same token", () => {
         const results = documentColor({ textDocument }, ctx);
         const doc = ctx.documents.get(textDocument.uri);
         const range = doc.rangeForSubstring(

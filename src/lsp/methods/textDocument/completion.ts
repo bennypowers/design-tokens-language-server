@@ -59,36 +59,36 @@ function getEditOrEntry(args: {
  */
 export function completion(
   params: LSP.CompletionParams,
-  { documents, tokens }: DTLSContext,
+  ctx: DTLSContext,
 ): null | LSP.CompletionList {
-  const document = documents.get(params.textDocument.uri);
+  const doc = ctx.documents.get(params.textDocument.uri);
 
-  if (document.language === "css") {
-    const node = document.getNodeAtPosition(params.position, { character: -2 });
+  if (doc.language === "css") {
+    const node = doc.getNodeAtPosition(params.position, { character: -2 });
 
     if (
       !node ||
       node.type !== "identifier" &&
-        !document.positionIsInNodeType(params.position, "block")
+        !doc.positionIsInNodeType(params.position, "block")
     ) {
       return null;
     }
 
     const range = tsRangeToLspRange(node);
-    const items = tokens
+    const items = ctx.tokens
       .keys()
       .filter(matchesWord(node.text))
       .map((name) =>
         ({
           label: name,
           kind: LSP.CompletionItemKind.Snippet,
-          ...getEditOrEntry({ node, name, range, tokens }),
+          ...getEditOrEntry({ node, name, range, tokens: ctx.tokens }),
         }) satisfies LSP.CompletionItem
       ).toArray();
 
     return {
       items,
-      isIncomplete: items.length === 0 || items.length < tokens.size,
+      isIncomplete: items.length === 0 || items.length < ctx.tokens.size,
       itemDefaults: {
         insertTextFormat: LSP.InsertTextFormat.Snippet,
         insertTextMode: LSP.InsertTextMode.asIs,

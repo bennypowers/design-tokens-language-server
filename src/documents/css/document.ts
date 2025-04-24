@@ -1,4 +1,4 @@
-import { Node, Point, Query, QueryCapture, Tree } from "web-tree-sitter";
+import { Node, Point, Query, Tree } from "web-tree-sitter";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp";
 import { DTLSTextDocument } from "#document";
@@ -70,32 +70,6 @@ export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
       character: node.endPosition.column,
     },
   };
-}
-
-export function tsNodeIsInLspRange(
-  node: TSNodePosition,
-  range: LSP.Range,
-): boolean {
-  const inRows = node.startPosition.row >= range.start.line &&
-    node.endPosition.row <= range.end.line;
-  const inCols = node.startPosition.column >= range.start.character &&
-    node.endPosition.column <= range.end.character;
-  return (inRows && inCols);
-}
-
-export function captureIsTokenName(cap: QueryCapture, { tokens }: DTLSContext) {
-  return cap.name === "tokenName" &&
-    tokens.has(cap.node.text.replace(/^--/, ""));
-}
-
-export function captureIsTokenCall(cap: QueryCapture, { tokens }: DTLSContext) {
-  return cap.name === "call" && !!cap.node.children
-    .find((child) => child?.type === "arguments")
-    ?.children
-    .some((child) =>
-      child?.type === "plain_value" &&
-      tokens.has(child?.text.replace(/^--/, ""))
-    );
 }
 
 function tsNodesToLspRangeInclusive(...nodes: TsRange[]): LSP.Range {
@@ -251,14 +225,21 @@ export class CssDocument extends DTLSTextDocument {
 
     const callNodes = new Map<
       number,
-      { range: LSP.Range; tokenNameNode: Node; fallbacks: Node[] }
+      {
+        range: LSP.Range;
+        tokenNameNode: Node;
+        fallback: string;
+        fallbacks: Node[];
+      }
     >();
 
     for (const cap of captures) {
       if (cap.name === "VarCallWithOrWithoutFallback") {
+        const { fallback } = getVarCallArguments(cap.node.text);
         callNodes.set(cap.node.id, {
           tokenNameNode: {} as Node,
           range: tsRangeToLspRange(cap.node),
+          fallback,
           fallbacks: [],
         });
       }
@@ -280,34 +261,32 @@ export class CssDocument extends DTLSTextDocument {
       }
     }
 
-    return callNodes.values().flatMap(({ range, tokenNameNode, fallbacks }) => {
-      const token = {
-        name: tokenNameNode.text,
-        range: tsRangeToLspRange(tokenNameNode),
-        token: context.tokens.get(tokenNameNode.text)!,
-      };
-      if (context.tokens.has(token.name)) {
-        const { $value, $type } = token.token;
-        const joiner = $type === "fontFamily" ? ", " : " ";
-        if (fallbacks.length) {
-          const fallback = fallbacks.map((x) => x.text).join(joiner);
-          return [{
-            range,
-            token,
-            fallback: {
-              value: fallback,
-              valid: typeof $value === "number"
-                ? (parseFloat(fallback) === $value)
-                : (fallback === $value),
-              range: tsNodesToLspRangeInclusive(...fallbacks),
-            },
-          }];
-        } else {
-          return [{ range, token }];
+    return callNodes.values().flatMap(
+      ({ range, tokenNameNode, fallbacks, fallback }) => {
+        const token = {
+          name: tokenNameNode.text,
+          range: tsRangeToLspRange(tokenNameNode),
+          token: context.tokens.get(tokenNameNode.text)!,
+        };
+        if (context.tokens.has(token.name)) {
+          const { $value } = token.token;
+          if (fallbacks.length) {
+            return [{
+              range,
+              token,
+              fallback: {
+                value: fallback,
+                valid: fallback === $value.toString(),
+                range: tsNodesToLspRangeInclusive(...fallbacks),
+              },
+            }];
+          } else {
+            return [{ range, token }];
+          }
         }
-      }
-      return [];
-    }).toArray();
+        return [];
+      },
+    ).toArray();
   }
 
   #computeDiagnostics() {
