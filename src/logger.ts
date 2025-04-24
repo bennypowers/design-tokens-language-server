@@ -1,12 +1,15 @@
 import { getFileSink } from "@logtape/file";
 import { configure, getAnsiColorFormatter, getLogger } from "@logtape/logtape";
+import { dirname } from "@std/path";
 
 const XDG_STATE_HOME = Deno.env.get("XDG_STATE_HOME") ??
   `${Deno.env.get("HOME")}/.local/state`;
 
-const path =
-    Deno.env.has('CI') ? `${Deno.cwd()}dtls.log`
+const path = Deno.env.has("CI")
+  ? `${Deno.cwd()}dtls.log`
   : `${XDG_STATE_HOME}/design-tokens-language-server/dtls.log`;
+
+await Deno.mkdir(dirname(path), { recursive: true });
 
 const inspectValue = (v: unknown) =>
   typeof v === "string" ? v : Deno.inspect(v, {

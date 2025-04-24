@@ -17,7 +17,16 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Release
+      - name: Release to VSCode Marketplace
         run: deno task vscode:publish
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Release to Zed extensions
+        uses: huacnlee/zed-extension-action@v1
+        with:
+          extension-name: design-tokens-language-server
+          extension-path: extensions/zed
+          push-to: bennypowers/zed-extensions
+        env:
+          COMMITTER_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
