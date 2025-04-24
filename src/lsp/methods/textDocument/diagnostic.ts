@@ -19,6 +19,6 @@ export function diagnostic(
 ): RelatedFullDocumentDiagnosticReport {
   return {
     kind: DocumentDiagnosticReportKind.Full,
-    items: documents.getDiagnostics(params.textDocument.uri),
+    items: documents.get(params.textDocument.uri).diagnostics,
   };
 }

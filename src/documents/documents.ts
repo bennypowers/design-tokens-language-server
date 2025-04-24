@@ -74,18 +74,4 @@ export class Documents {
     }
     return doc;
   }
-
-  getVersion(uri: LSP.DocumentUri) {
-    const doc = this.get(uri);
-    return doc.version;
-  }
-
-  getText(uri: LSP.DocumentUri) {
-    return this.get(uri).getText();
-  }
-
-  getDiagnostics(uri: LSP.DocumentUri) {
-    const doc = this.get(uri);
-    return doc.diagnostics;
-  }
 }

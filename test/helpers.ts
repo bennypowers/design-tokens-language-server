@@ -101,7 +101,8 @@ class TestDocuments extends Documents {
         string: string,
         position: "start" | "end" = "start",
       ): Position => {
-        const text = this.getText(uri);
+        const doc = this.get(uri);
+        const text = doc.getText();
         // get the position of the string in doc
         const rows = text.split("\n");
         const line = rows.findIndex((line) => line.includes(string));
@@ -113,7 +114,8 @@ class TestDocuments extends Documents {
       },
       /** Get the first range of the string in the document */
       rangeOf: (string: string): Range => {
-        const text = this.getText(uri);
+        const doc = this.get(uri);
+        const text = doc.getText();
         // get the range of the string in doc
         const rows = text.split("\n");
         const line = rows.findIndex((line) => line.includes(string));
