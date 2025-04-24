@@ -29,7 +29,63 @@
   ],
   "main": "./client/out/extension",
   "contributes": {
-    "configuration": {}
+    "configuration": {
+      "title": "Design Tokens Language Server",
+      "type": "object",
+      "properties": {
+        "designTokensLanguageServer.tokensFiles": {
+          "type": "array",
+          "default": [],
+          "description": "List of design token files to watch for changes. Elements in the array can be strings (i.e. paths to token files) or objects. See README.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(npm:.*)|^(\\.|~|file://)\\/|^/"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^(npm:.*)|^(\\.|~|file://)\\/|^/"
+                  },
+                  "prefix": {
+                    "type": "string"
+                  },
+                  "groupMarkers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "path"
+                ]
+              }
+            ]
+          }
+        },
+        "designTokensLanguageServer.prefix": {
+          "type": "string",
+          "description": "Global prefix for all design tokens. This is useful for namespacing your design tokens. You probably would rather configure this on a per-project basis, though. See README.",
+          "default": ""
+        },
+        "designTokensLanguageServer.groupMarkers": {
+          "type": "array",
+          "description": "List of token names which will be treated as group names as well. See README.",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "_",
+            "@",
+            "DEFAULT"
+          ]
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "node build.js",
