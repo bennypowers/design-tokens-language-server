@@ -115,6 +115,7 @@
     "@std/collections": "jsr:@std/collections@^1.0.10",
     "@std/expect": "jsr:@std/expect@^1.0.15",
     "@std/io": "jsr:@std/io@^0.225.2",
+    "@std/path": "jsr:@std/path@^1.0.9",
     "@std/testing": "jsr:@std/testing@^1.0.11",
     "@sv2dev/tasque": "jsr:@sv2dev/tasque@^0.1.2",
     "web-tree-sitter": "npm:web-tree-sitter",

@@ -24,6 +24,7 @@
     "jsr:@std/io@~0.225.2": "0.225.2",
     "jsr:@std/path@^1.0.6": "1.0.8",
     "jsr:@std/path@^1.0.8": "1.0.8",
+    "jsr:@std/path@^1.0.9": "1.0.9",
     "jsr:@std/semver@*": "1.0.5",
     "jsr:@std/testing@*": "1.0.11",
     "jsr:@std/testing@^1.0.11": "1.0.11",
@@ -111,6 +112,9 @@
     },
     "@std/path@1.0.8": {
       "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
+    },
+    "@std/path@1.0.9": {
+      "integrity": "260a49f11edd3db93dd38350bf9cd1b4d1366afa98e81b86167b4e3dd750129e"
     },
     "@std/semver@1.0.5": {
       "integrity": "529f79e83705714c105ad0ba55bec0f9da0f24d2f726b6cc1c15e505cc2c0624"
@@ -1165,6 +1169,7 @@
       "jsr:@std/collections@^1.0.10",
       "jsr:@std/expect@^1.0.15",
       "jsr:@std/io@~0.225.2",
+      "jsr:@std/path@^1.0.9",
       "jsr:@std/testing@^1.0.11",
       "jsr:@sv2dev/tasque@~0.1.2",
       "npm:style-dictionary@^4.3.3",
