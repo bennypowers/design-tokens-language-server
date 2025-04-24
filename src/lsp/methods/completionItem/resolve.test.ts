@@ -52,7 +52,7 @@ describe("completionItem/resolve", () => {
     const completionItem = {
       label: "--token-color-blue",
     };
-    it.only("should resolve the completion item with details and documentation", () => {
+    it("should resolve the completion item with details and documentation", () => {
       const resolvedItem = resolve(completionItem, ctx);
       expect(resolvedItem).toEqual({
         ...completionItem,
