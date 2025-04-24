@@ -249,7 +249,7 @@ export class Lsp {
       if (trace) this.#setTrace(trace);
       this.#clientCapabilities = capabilities;
       this.#initializationOptions = initializationOptions;
-      Logger.debug`workspaceFolders: ${workspaceFolders}`;
+      Logger.debug`📁 workspaceFolders: ${workspaceFolders}`;
       await this.#workspaces.add(workspaceFolders, {
         documents: this.#documents,
         tokens: this.#tokens,
@@ -317,8 +317,6 @@ export class Lsp {
       documents: this.#documents,
       tokens: this.#tokens,
     };
-    Logger.debug(request.method);
-    Logger.debug`📩 ${request.method}(${request.id})`;
     if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id)) {
       return null;
     } else if (isInitializeRequest(request)) {

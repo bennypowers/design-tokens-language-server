@@ -1,15 +1,24 @@
 import { getFileSink } from "@logtape/file";
 import { configure, getAnsiColorFormatter, getLogger } from "@logtape/logtape";
-import { dirname } from "@std/path";
+import { join } from "@std/path";
 
-const XDG_STATE_HOME = Deno.env.get("XDG_STATE_HOME") ??
-  `${Deno.env.get("HOME")}/.local/state`;
+const XDG_STATE_HOME = Deno.env.get("XDG_STATE_HOME");
+const HOME = Deno.env.get("HOME");
+const isCi = Deno.env.has("CI");
 
-const path = Deno.env.has("CI")
-  ? `${Deno.cwd()}dtls.log`
-  : `${XDG_STATE_HOME}/design-tokens-language-server/dtls.log`;
+const serverName = "design-tokens-language-server";
 
-await Deno.mkdir(dirname(path), { recursive: true });
+const logDir = isCi
+  ? Deno.cwd()
+  : XDG_STATE_HOME
+  ? join(XDG_STATE_HOME, serverName)
+  : HOME
+  ? join(HOME, ".local", "state", serverName)
+  : join(Deno.cwd(), ".dtls-log");
+
+const path = join(logDir, "dtls.log");
+
+await Deno.mkdir(logDir, { recursive: true });
 
 const inspectValue = (v: unknown) =>
   typeof v === "string" ? v : Deno.inspect(v, {
@@ -22,7 +31,7 @@ const inspectValue = (v: unknown) =>
 
 await configure({
   sinks: {
-    jsonc: getFileSink(path, {
+    file: getFileSink(path, {
       formatter: getAnsiColorFormatter({ value: inspectValue }),
     }),
   },
@@ -31,7 +40,7 @@ await configure({
     {
       category: "dtls",
       lowestLevel: "debug",
-      sinks: ["jsonc"],
+      sinks: ["file"],
     },
   ],
 });

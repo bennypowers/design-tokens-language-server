@@ -86,7 +86,7 @@ export class Server {
 
     for await (const request of this.#io.requests()) {
       Logger.debug`${
-        request.id != null ? `📥 (${request.id})` : `🔔`
+        request.id != null ? `📩 (${request.id})` : `🔔`
       }: ${request.method}`;
       if (request.id == null) {
         await this.#lsp.process(request);

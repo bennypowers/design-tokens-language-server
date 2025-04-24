@@ -20,9 +20,10 @@ async function tryToLoadSettingsFromPackageJson(
 ): Promise<DTLSClientSettings | null> {
   try {
     const pkgJsonPath = new URL("./package.json", `${uri}/`);
-    Logger.debug`Loading package.json from ${pkgJsonPath.href}`;
+    Logger.debug`🎒 Loading package.json from ${pkgJsonPath.href}`;
     const mod = await import(pkgJsonPath.href, { with: { type: "json" } });
-    Logger.debug` .. ${mod}`;
+    Logger
+      .debug`  ...loaded package.json for ${mod.default.name}@${mod.default.version}`;
     const settings = mod.default?.designTokensLanguageServer;
     return settings;
   } catch (e) {
