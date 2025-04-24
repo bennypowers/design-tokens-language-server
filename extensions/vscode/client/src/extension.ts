@@ -41,21 +41,12 @@ export async function activate(context: ExtensionContext) {
     return `design-tokens-language-server-${architecture}-${operatingSystem}`;
   })();
 
-  // Create an output channel for logging
-  const outputChannel = window.createOutputChannel(
-    "Design Tokens Language Server",
-  );
-
-  outputChannel.appendLine(`Using binary: ${binaryName}`);
-  outputChannel.show(true);
-
   const command = context.asAbsolutePath(
     path.join("dist", "bin", binaryName),
   );
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "css" }],
-    outputChannel,
   };
 
   client = new LanguageClient(
