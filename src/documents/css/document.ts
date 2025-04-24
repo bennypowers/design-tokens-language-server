@@ -42,6 +42,23 @@ export function getLightDarkValues(value: string) {
   );
 }
 
+export function getVarCallArguments(value: string) {
+  const tree = parser.parse(`a{b:${value}}`)!;
+  const query = new Query(tree.language, Queries.VarCallWithOrWithoutFallback);
+  const captures = query.captures(tree.rootNode);
+  const tokenNameNode = captures.find((cap) => cap.name === "tokenName");
+  const fallback = value.replace(
+    new RegExp(`^var\\(${tokenNameNode?.node.text}(, *)`),
+    "",
+  )
+    .replace(/\)$/, "")
+    .trim();
+  return {
+    variable: tokenNameNode?.node.text,
+    fallback,
+  };
+}
+
 export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
   return {
     start: {

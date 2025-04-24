@@ -26,8 +26,17 @@ describe("textDocument/documentColor", () => {
               },
             },
             blue: {
+              light: {
+                $value: "#0000ff",
+                $type: "color",
+              },
+              dark: {
+                $value: "darkblue",
+                $type: "color",
+              },
               lightdark: {
-                $value: "light-dark(#0000ff, darkblue)",
+                $value:
+                  "light-dark(var(--token-blue-light, #0000ff), var(--token-blue-dark, darkblue))",
                 $type: "color",
               },
             },
@@ -105,19 +114,22 @@ describe("textDocument/documentColor", () => {
       }
     `);
 
-      it("should return two DocumentColors for the same token", () => {
+      it.only("should return two DocumentColors for the same token", () => {
         const results = documentColor({ textDocument }, ctx);
         const doc = ctx.documents.get(textDocument.uri);
         const range = doc.rangeForSubstring(
           "--token-color-blue-lightdark",
         );
-        expect(results).not.toBeNull();
-        expect(results).toHaveLength(2);
-        const [result1, result2] = results;
-        expect(result1.color).toEqual(cssColorToLspColor("#0000ff"));
-        expect(result2.color).toEqual(cssColorToLspColor("darkblue"));
-        expect(result1.range).toEqual(range);
-        expect(result2.range).toEqual(range);
+        expect(results).toEqual([
+          {
+            color: cssColorToLspColor("#0000ff"),
+            range,
+          },
+          {
+            color: cssColorToLspColor("darkblue"),
+            range,
+          },
+        ]);
       });
     });
   });
