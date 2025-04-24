@@ -81,12 +81,12 @@ export function getTokenMarkdown(
     // TODO: convert DTCG types to CSS syntax
     // const type = $type ? ` *<\`${$type}\`>*` : "";
     `Type: \`${$type}\``,
-    $description ?? "",
+    $description,
     "",
     "```css",
     format($value),
     "```",
-  ].join("\n");
+  ].filter((x) => x != null).join("\n");
 }
 
 export const tokens = new Tokens();

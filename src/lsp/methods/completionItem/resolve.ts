@@ -27,7 +27,7 @@ export function resolve(
       labelDetails: {
         detail: `: ${token.$value}`,
       },
-      documentation: token?.$description && {
+      documentation: {
         value: getTokenMarkdown(params.label, token),
         kind: "markdown" satisfies typeof MarkupKind.Markdown,
       },
