@@ -17,19 +17,14 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Test
-        run: |
-          deno test -A --coverage
-          deno coverage --exclude="test/.*.ts\$|textDocument\.ts\$" --lcov --output=coverage/lcov.info
+      - run: deno task test
+      - run: deno task test:coverage
+      - run: deno task build:ci
 
       - uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: true # optional (default = false)
           files: coverage/lcov.info
           token: ${{ secrets.CODECOV_PAT }}
-
-      - name: Build
-        run: deno task build:ci
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
