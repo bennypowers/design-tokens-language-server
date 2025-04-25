@@ -11,7 +11,7 @@ function normalizePath(
   if (path.startsWith("~")) {
     return path.replace("~", Deno.env.get("HOME")!);
   } else if (path.startsWith(".")) {
-    return path.replace(".", Deno.cwd());
+    return path.replace(".", workspaceRoot.replace("file://", ""));
   } else if (path.startsWith("npm:")) {
     return require.resolve(path.replace("npm:", ""), {
       paths: [workspaceRoot],

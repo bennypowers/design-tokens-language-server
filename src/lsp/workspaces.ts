@@ -66,6 +66,7 @@ export class Workspaces {
     workspaceRoot: LSP.URI,
     settings: DTLSClientSettings | null,
   ): TokenFileSpec {
+    Logger.debug`Normalizing token file at root ${workspaceRoot} ${tokenFile}`;
     return normalizeTokenFile(
       tokenFile,
       workspaceRoot,
@@ -81,9 +82,18 @@ export class Workspaces {
         const spec = this.#normalizeTokenFile(file, uri, settings);
         Logger.debug`Adding token spec ${spec}`;
         this.#tokenSpecs.add(spec);
-        const tokenfileContent = decoder.decode(await Deno.readFile(spec.path));
-        const doc = JsonDocument.create(context, spec.path, tokenfileContent);
-        context.documents.add(doc);
+        try {
+          const tokenfileContent = decoder.decode(
+            await Deno.readFile(spec.path),
+          );
+          const doc = JsonDocument.create(context, spec.path, tokenfileContent);
+          context.documents.add(doc);
+        } catch (e) {
+          Logger.error`Could not read token file ${spec.path}: ${
+            (e as Error).message
+          }`;
+          this.#tokenSpecs.delete(spec);
+        }
       }
     }
 
