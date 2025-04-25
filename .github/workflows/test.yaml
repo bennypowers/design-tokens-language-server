@@ -19,16 +19,16 @@ jobs:
 
       - name: Test
         run: |
-          deno test -A --coverage --reporter=junit --junit-path=./report.xml
-          deno coverage --exclude="test/.*.ts\$|textDocument\.ts\$" --lcov --output=coverage/lcov.info
-
-      - if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
-        with:
-          token: ${{ secrets.CODECOV_PAT }}
-          files: ./report.xml
+          deno task test --reporter=junit --junit-path=report.xml
+          deno task coverage
 
       - uses: codecov/codecov-action@v5
         with:
           files: coverage/lcov.info
           token: ${{ secrets.CODECOV_PAT }}
+
+      - if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_PAT }}
+          files: report.xml

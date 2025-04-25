@@ -13,3 +13,4 @@ main.js
 .vscode
 vendor/**/*.h
 vendor/**/*.c
+report.xml
