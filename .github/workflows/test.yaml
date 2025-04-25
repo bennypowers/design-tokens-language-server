@@ -20,7 +20,7 @@ jobs:
       - name: Test
         run: |
           deno task test --reporter=junit --junit-path=report.xml
-          deno task coverage
+          deno task test:coverage
 
       - uses: codecov/codecov-action@v5
         with:
