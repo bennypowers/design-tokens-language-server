@@ -3,7 +3,8 @@
 [![build](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg)](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml)
 [![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
 
-Editor tools for working with [design tokens][dtcg] in CSS files.
+Editor tools for working with [<abbr title="design tokens community 
+  group">DTCG</abbr> formatted design tokens][dtcg] in CSS files.
 
 > [!NOTE]
 > This pre-release software. Features may be buggy or incomplete. Before 
@@ -59,6 +60,8 @@ which defers to LSP methods when they're available
 Download the latest release for your platform and place the binary in your
 `$PATH`, renaming it to `design-tokens-language-server`.
 
+### 🛻 Installation
+
 #### Neovim
 
 ```lua
@@ -76,10 +79,20 @@ Install from the [vscode marketplace](https://marketplace.visualstudio.com/items
 
 #### Other editors
 
-You can also build development extensions for vscodium/vscode and Zed. See
+You can also build development extension for Zed. See 
 [`deno.json`](tree/main/deno.json) for more info.
 
 ## ⚙️ Configuration
+
+In order to use DTLS, you need to first configure it to know where to find
+your design tokens, and you can also provide it with options for how to
+deal with them.
+
+### 🪙 Token files
+
+Design Tokens Language Server uses the [DTCG](https://tr.designtokens.org/format/)
+format for design tokens. If you have a design token file in a different format, you can
+use [style-dictionary](https://styledictionary.com/info/dtcg/) to convert it to DTCG.
 
 You can configure the language server globally on on a per-project basis. Per-project
 configuration is done via a `designTokensLanguageServer` block in your project's
@@ -95,26 +108,36 @@ or an object with `path` and `prefix` properties. The `path` property can be a
 relative path or a deno-style npm specifier.
 
 ```json
-"designTokensLanguageServer": {
-  "prefix": "my-ds",
-  "tokensFiles": [
-     "npm:/@my-design-system/tokens/tokens.json",
-    {
-      "path": "npm:/@his-design-system/tokens/tokens.json",
-      "prefix": "his-ds",
-      "groupMarkers": ["GROUP"]
-    },
-    {
-      "path": "./docs/docs-site-tokens.json",
-      "prefix": "docs-site"
-    }
-  ]
-},
+{
+  "name": "@my-design-system/elements",
+  "designTokensLanguageServer": {
+    "prefix": "my-ds",
+    "tokensFiles": [
+      "npm:@my-design-system/tokens/tokens.json",
+      {
+        "path": "npm:@his-design-system/tokens/tokens.json",
+        "prefix": "his-ds",
+        "groupMarkers": ["GROUP"]
+      },
+      {
+        "path": "./docs/docs-site-tokens.json",
+        "prefix": "docs-site"
+      },
+      {
+        "path": "~/secret-projects/fanciest-tokens.json",
+        "prefix": "shh"
+      }
+    ]
+  }
+}
 ```
 
-#### Global configuration
+### Global configuration
 
 You can set up global configuration in your editor's LSP settings for DTLS.
+This configuration will be used as fallbacks for all projects. There's no need
+to set them if your project already has a `designTokensLanguageServer` block in
+its `package.json`.
 
 For example, in your lsp config for neovim:
 
@@ -136,14 +159,14 @@ return {
 }
 ```
 
-#### Token Prefixes
+### Token Prefixes
 
 The DTCG format does not require a prefix for tokens, but it is recommended to
 use a prefix to avoid conflicts with other design systems.
 if your token files do not nest all of their tokens under a common prefix,
 you can pass one yourself in the `prefix` property of the token file object.
 
-#### Group Markers
+### Group Markers
 
 Because the DTCG format is nested, a conflict can emerge when the token file
 author wants to define a group of tokens, but have the group name also be a
@@ -185,7 +208,8 @@ For example, if you have a token file with the following tokens:
 ```
 
 Then, set the `groupMarkers` property to `["GROUP"]` in your `package.json` for
-that particular token file, or globally for all token files
+that particular token file, or globally for all token files in your editor 
+settings.
 
 ```json
 "designTokensLanguageServer": {
@@ -209,10 +233,36 @@ and install the binary to `~/.local/bin/design-tokens-language-server`:
 deno task install
 ```
 
-Read the logs at `~/.local/state/design-tokens-language-server/dtls.log`.
+### 🧪 Testing
+
+Run tests with:
+
+```sh
+deno task test
+```
+
+Watch tests with:
+
+```sh
+deno task test:watch
+```
+
+Generate coverage reports with:
+
+```sh
+deno task coverage
+```
+
+### 🪲 Debugging
+
+The server logs to `~/.local/state/design-tokens-language-server/dtls.log` by
+default. 
 
 ```sh
 tail -f ~/.local/state/design-tokens-language-server/dtls.log
 ```
+
+If you'd like to trace lsp messages in real time, try 
+[lsp-devtools](https://lsp-devtools.readthedocs.io/en/latest/lsp-devtools/guide/inspect-command.html)
 
 [dtcg]: https://tr.designtokens.org/format/
