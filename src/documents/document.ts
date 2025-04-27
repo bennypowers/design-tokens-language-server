@@ -3,6 +3,7 @@ import { FullTextDocument } from "./textDocument.ts";
 
 export abstract class DTLSTextDocument extends FullTextDocument {
   abstract diagnostics: LSP.Diagnostic[];
+  abstract colors: LSP.ColorInformation[];
   abstract language: "json" | "css";
 
   get identifier(): LSP.VersionedTextDocumentIdentifier {

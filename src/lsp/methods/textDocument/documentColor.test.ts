@@ -54,8 +54,6 @@ describe("textDocument/documentColor", () => {
     ],
   });
 
-  console.log(ctx.tokens);
-
   describe("in a css document", () => {
     describe("with a single token with type color", () => {
       const textDocument = ctx.documents.createCssDocument(/*css*/ `
@@ -138,16 +136,40 @@ describe("textDocument/documentColor", () => {
     });
   });
 
-  describe("in a json document", () => {
+  describe("in a json document with internal references", () => {
     const textDocument = ctx.documents.createJsonDocument(/*json*/ `
       {
-        "color": "var(--token-color-red)"
+        "color": {
+          "$type": "color",
+          "blue": {
+            "light": { "$value": "#0000ff" },
+            "dark": { "$value": "darkblue" },
+            "lightdark": { "$value": "light-dark({color.blue.light}, {color.blue.dark})" }
+          }
+        }
       }
     `);
 
+    const doc = ctx.documents.get(textDocument.uri);
+
     it("should return an empty array", () => {
       const results = documentColor({ textDocument }, ctx);
-      expect(results).toHaveLength(0);
+      expect(results).toEqual([
+        {
+          color: cssColorToLspColor("#0000ff"),
+          range: {
+            start: { line: 5, character: 13 },
+            end: { line: 5, character: 13 },
+          },
+        },
+        {
+          color: cssColorToLspColor("darkblue"),
+          range: {
+            start: { line: 6, character: 13 },
+            end: { line: 6, character: 13 },
+          },
+        },
+      ]);
     });
   });
 });
