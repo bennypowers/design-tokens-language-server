@@ -54,6 +54,8 @@ describe("textDocument/documentColor", () => {
     ],
   });
 
+  console.log(ctx.tokens);
+
   describe("in a css document", () => {
     describe("with a single token with type color", () => {
       const textDocument = ctx.documents.createCssDocument(/*css*/ `
