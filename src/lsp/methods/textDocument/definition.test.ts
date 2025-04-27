@@ -13,21 +13,20 @@ describe("textDocument/definition", () => {
       spec,
       tokens: {
         color: {
+          $type: "color",
           red: {
             _: {
               $value: "#ff0000",
-              $type: "color",
             },
             hex: {
               $value: "#ff0000",
-              $type: "color",
             },
           },
         },
         space: {
+          $type: "size",
           small: {
             $value: "4px",
-            $type: "size",
           },
         },
       },
@@ -53,8 +52,8 @@ describe("textDocument/definition", () => {
         {
           uri: spec,
           range: {
-            start: { line: 2, character: 11 },
-            end: { line: 11, character: 5 },
+            start: { line: 3, character: 11 },
+            end: { line: 10, character: 5 },
           },
         },
       ]);
@@ -68,7 +67,7 @@ describe("textDocument/definition", () => {
           uri: spec,
           range: {
             start: { line: 7, character: 13 },
-            end: { line: 10, character: 7 },
+            end: { line: 9, character: 7 },
           },
         },
       ]);

@@ -15,28 +15,27 @@ describe("textDocument/completion", () => {
         spec: "file:///tokens.json",
         tokens: {
           color: {
+            $type: "color",
             red: {
               _: {
                 $value: "#ff0000",
-                $type: "color",
               },
               hex: {
                 $value: "#ff0000",
-                $type: "color",
               },
             },
           },
           space: {
+            $type: "size",
             small: {
               $value: "4px",
-              $type: "size",
             },
           },
           font: {
             weight: {
+              $type: "fontWeight",
               thin: {
                 $value: 100,
-                $type: "fontWeight",
               },
             },
           },

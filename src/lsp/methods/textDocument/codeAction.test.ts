@@ -18,17 +18,16 @@ describe("textDocument/codeAction", () => {
         spec: "file:///tokens.json",
         tokens: {
           color: {
+            $type: "color",
             red: {
               _: {
                 $value: "red",
-                $type: "color",
               },
             },
             blue: {
               lightdark: {
                 $value: "light-dark(lightblue, darkblue)",
                 $description: "Color scheme color",
-                $type: "color",
               },
             },
           },

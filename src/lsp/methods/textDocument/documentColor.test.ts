@@ -15,36 +15,38 @@ describe("textDocument/documentColor", () => {
         spec: "file:///tokens.json",
         tokens: {
           color: {
+            $type: "color",
             red: {
               _: {
                 $value: "#ff0000",
-                $type: "color",
               },
               hex: {
                 $value: "#ff0000",
-                $type: "color",
               },
             },
             blue: {
               light: {
                 $value: "#0000ff",
-                $type: "color",
               },
               dark: {
                 $value: "darkblue",
-                $type: "color",
               },
               lightdark: {
                 $value:
                   "light-dark(var(--token-blue-light, #0000ff), var(--token-blue-dark, darkblue))",
-                $type: "color",
+              },
+              reference: {
+                $value: "{color.blue.light}",
+              },
+              callreference: {
+                $value: "light-dark({color.blue.light}, {color.blue.dark})",
               },
             },
           },
           space: {
+            $type: "size",
             small: {
               $value: "4px",
-              $type: "size",
             },
           },
         },

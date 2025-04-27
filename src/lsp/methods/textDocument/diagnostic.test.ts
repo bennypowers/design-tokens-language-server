@@ -15,29 +15,27 @@ describe("textDocument/diagnostic", () => {
         spec: "file:///tokens.json",
         tokens: {
           color: {
+            $type: "color",
             red: {
               _: {
                 $value: "red",
-                $type: "color",
                 $description: "Red colour",
               },
               hex: {
                 $value: "#ff0000",
-                $type: "color",
               },
             },
             blue: {
               lightdark: {
                 $value: "light-dark(lightblue, darkblue)",
                 $description: "Color scheme color",
-                $type: "color",
               },
             },
           },
           space: {
+            $type: "size",
             small: {
               $value: "4px",
-              $type: "size",
             },
           },
           font: {

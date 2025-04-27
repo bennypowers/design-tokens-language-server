@@ -15,18 +15,16 @@ describe("textDocument/colorPresentation", () => {
         spec: "file:///tokens.json",
         tokens: {
           color: {
+            $type: "color",
             red: {
               _: {
                 $value: "#ff0000",
-                $type: "color",
               },
               hex: {
                 $value: "#ff0000",
-                $type: "color",
               },
               malformed: {
                 $value: "ff 00 00",
-                $type: "color",
               },
               wrongtype: {
                 $value: "red",
@@ -35,9 +33,9 @@ describe("textDocument/colorPresentation", () => {
             },
           },
           space: {
+            $type: "dimension",
             small: {
               $value: "4px",
-              $type: "dimension",
             },
           },
         },

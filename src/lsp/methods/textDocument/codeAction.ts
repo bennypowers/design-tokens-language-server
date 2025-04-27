@@ -29,7 +29,7 @@ export enum DTLSCodeAction {
   toggleRangeFallbacks = "Toggle design token fallback values (in range)",
 }
 
-function getEditFromTSArgumentsNode(
+function getEditFromTokenVarCall(
   call: TokenVarCall,
   context: DTLSContext,
 ): TextEdit | undefined {
@@ -96,7 +96,7 @@ export function codeAction(
           edit: {
             changes: {
               [textDocument.uri]: doc.varCalls.map((call) =>
-                getEditFromTSArgumentsNode(call, context)
+                getEditFromTokenVarCall(call, context)
               ).filter((x) => !!x),
             },
           },
@@ -107,7 +107,7 @@ export function codeAction(
         lspRangeContains(call.range, params.range)
       );
       if (call) {
-        const edit = getEditFromTSArgumentsNode(call, context);
+        const edit = getEditFromTokenVarCall(call, context);
         if (edit) {
           actions.push({
             title: DTLSCodeAction.toggleFallback,

@@ -2,9 +2,14 @@ import type { Token } from "style-dictionary";
 
 import { getLightDarkValues } from "#css";
 
-import { convertTokenData } from "style-dictionary/utils";
+import {
+  convertTokenData,
+  resolveReferences,
+  typeDtcgDelegate,
+  usesReferences,
+} from "style-dictionary/utils";
 
-import { TokenFileSpec } from "#lsp";
+import { TokenFileSpec } from "#lsp/lsp.ts";
 import { Logger } from "#logger";
 
 export class Tokens extends Map<string, Token> {
@@ -25,10 +30,13 @@ export class Tokens extends Map<string, Token> {
   meta = new Map<Token, TokenFileSpec>();
 
   populateFromDtcg(dtcgTokens: Record<string, Token>, spec: TokenFileSpec) {
-    const flat = convertTokenData(structuredClone(dtcgTokens), {
-      output: "map",
-      usesDtcg: true,
-    });
+    const flat = convertTokenData(
+      typeDtcgDelegate(structuredClone(dtcgTokens)),
+      {
+        output: "map",
+        usesDtcg: true,
+      },
+    );
     // hack for dtcg tokens-that-are-also-groups
     const groupMarkers = new Set(spec.groupMarkers ?? ["_", "@", "DEFAULT"]);
     for (const [key, token] of flat) {
@@ -40,6 +48,11 @@ export class Tokens extends Map<string, Token> {
           .join("-");
         const name = spec.prefix ? `${spec.prefix}-${joined}` : joined;
         this.meta.set(token, spec);
+        if (usesReferences(token.$value)) {
+          token.$value = resolveReferences(token.$value, dtcgTokens, {
+            usesDtcg: true,
+          });
+        }
         this.set(name, token);
       }
     }
