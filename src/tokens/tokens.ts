@@ -27,9 +27,17 @@ export class Tokens extends Map<string, Token> {
     return super.has(key.replace(/^-+/, ""));
   }
 
+  #dtcg: Record<string, Token> = {};
   meta = new Map<Token, TokenFileSpec>();
 
+  resolve(reference: string) {
+    return resolveReferences(reference, this.#dtcg, {
+      usesDtcg: true,
+    }) as string | number | Record<string, Token>;
+  }
+
   populateFromDtcg(dtcgTokens: Record<string, Token>, spec: TokenFileSpec) {
+    this.#dtcg = dtcgTokens;
     const flat = convertTokenData(
       typeDtcgDelegate(structuredClone(dtcgTokens)),
       {
