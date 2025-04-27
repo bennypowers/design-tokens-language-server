@@ -7,9 +7,7 @@ Editor tools for working with [<abbr title="design tokens community
   group">DTCG</abbr> formatted design tokens][dtcg] in CSS and JSON files.
 
 > [!NOTE]
-> This pre-release software. Features may be buggy or incomplete. Before 
-> relying on this software, consider contacting the developers to contribute
-> features, tests, etc.
+> This pre-release software. If you encounter bugs or unexpected behavior, please file a detailed [issue](https://github.com/bennypowers/issues/new). 
 
 ## ✨ Features
 
