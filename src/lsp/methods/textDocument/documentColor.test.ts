@@ -136,7 +136,7 @@ describe("textDocument/documentColor", () => {
     });
   });
 
-  describe("in a json document with internal references", () => {
+  describe("in a json document with 2 internal references to 2 colors", () => {
     const textDocument = ctx.documents.createJsonDocument(/*json*/ `
       {
         "color": {
@@ -152,22 +152,24 @@ describe("textDocument/documentColor", () => {
 
     const doc = ctx.documents.get(textDocument.uri);
 
-    it("should return an empty array", () => {
+    it("should return 4 colors", () => {
       const results = documentColor({ textDocument }, ctx);
       expect(results).toEqual([
         {
           color: cssColorToLspColor("#0000ff"),
-          range: {
-            start: { line: 5, character: 13 },
-            end: { line: 5, character: 13 },
-          },
+          range: doc.rangeForSubstring("#0000ff"),
         },
         {
           color: cssColorToLspColor("darkblue"),
-          range: {
-            start: { line: 6, character: 13 },
-            end: { line: 6, character: 13 },
-          },
+          range: doc.rangeForSubstring("darkblue"),
+        },
+        {
+          color: cssColorToLspColor("#0000ff"),
+          range: doc.rangeForSubstring("color.blue.light"),
+        },
+        {
+          color: cssColorToLspColor("darkblue"),
+          range: doc.rangeForSubstring("color.blue.dark"),
         },
       ]);
     });

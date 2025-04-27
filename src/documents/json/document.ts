@@ -47,7 +47,17 @@ export class JsonDocument extends DTLSTextDocument {
       const valueNode = findNodeAtLocation(node, ["$value"]);
       const content = valueNode?.value;
       if (valueNode && typeof content === "string") {
-        const range = this.#getRangeForNode(valueNode)!;
+        const _range = this.#getRangeForNode(valueNode)!;
+        const range = {
+          start: {
+            line: _range.start.line,
+            character: _range.start.character + 1,
+          },
+          end: {
+            line: _range.end.line,
+            character: _range.end.character - 1,
+          },
+        };
         if (usesReferences(content)) {
           const references = content.match(/{[^}]*}/g);
           for (const reference of references ?? []) {
@@ -55,7 +65,7 @@ export class JsonDocument extends DTLSTextDocument {
             if (resolved) {
               const line = range.start.line;
               const character = range.start.character +
-                content.indexOf(reference) + 2;
+                content.indexOf(reference) + 1;
               colors.push({
                 color: cssColorToLspColor(resolved.toString()),
                 range: {
