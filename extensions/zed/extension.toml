@@ -1,11 +1,11 @@
 id = "design-tokens"
 name = "Design Tokens"
 description = "Design Tokens Language Support"
-version = "0.0.21"
+version = "0.0.22"
 schema_version = 1
 authors = ["Benny Powers <web@bennypowers.com>"]
 repository = "https://github.com/bennypowers/design-tokens-language-server"
 
 [language_servers.design-tokens-language-server]
 name = "Design Tokens Language Server"
-languages = ["CSS", "JSON"]
+languages = ["CSS","JSON"]
