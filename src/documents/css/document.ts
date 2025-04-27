@@ -260,6 +260,22 @@ export class CssDocument extends DTLSTextDocument {
       null;
   }
 
+  getTokenAtPosition(
+    position: LSP.Position,
+    offset?: Partial<LSP.Position>,
+  ) {
+    const node = this.getNodeAtPosition(position, offset);
+    if (node) {
+      const name = `--${node.text}`.replace("----", "--");
+      const token = this.#context.tokens.get(name);
+      if (token) {
+        const range = tsRangeToLspRange(node);
+        return { name, token, range };
+      }
+    }
+    return null;
+  }
+
   /**
    * Checks if the given position is within a specific node type in the document.
    *

@@ -6,7 +6,6 @@ import {
 } from "vscode-languageserver-protocol";
 
 import { getTokenMarkdown } from "#tokens";
-import { tsRangeToLspRange } from "#css";
 import { DTLSContext } from "#lsp";
 
 /**
@@ -18,20 +17,15 @@ import { DTLSContext } from "#lsp";
  */
 export function hover(params: HoverParams, context: DTLSContext): null | Hover {
   const doc = context.documents.get(params.textDocument.uri);
-  if (doc.language === "css") {
-    const node = doc.getNodeAtPosition(params.position);
-    if (node) {
-      if (context.tokens.has(node.text)) {
-        const contents: MarkupContent = {
-          value: getTokenMarkdown(node.text, context.tokens.get(node.text)!),
-          kind: MarkupKind.Markdown,
-        };
-        return {
-          contents,
-          range: tsRangeToLspRange(node),
-        };
-      }
-    }
+  const result = doc.getTokenAtPosition(params.position);
+  if (result) {
+    const { name, token, range } = result;
+    const contents: MarkupContent = {
+      value: getTokenMarkdown(name, token),
+      kind: MarkupKind.Markdown,
+    };
+    return { contents, range };
+  } else {
+    return null;
   }
-  return null;
 }

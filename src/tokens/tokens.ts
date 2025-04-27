@@ -96,8 +96,11 @@ export function getTokenMarkdown(
   name: string,
   { $description, $value, $type }: Token,
 ) {
+  const fancyName = name.startsWith("{")
+    ? name.replace(/^\{(.*)}$/, "$1")
+    : `--${name.replace(/^--/, "")}`;
   return [
-    `# \`--${name.replace(/^--/, "")}\``,
+    `# \`${fancyName}\``,
     "",
     // TODO: convert DTCG types to CSS syntax
     // const type = $type ? ` *<\`${$type}\`>*` : "";
