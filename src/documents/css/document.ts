@@ -232,6 +232,27 @@ export class CssDocument extends DTLSTextDocument {
     this.#diagnostics = this.#computeDiagnostics();
   }
 
+  definition(
+    params: LSP.DefinitionParams,
+    context: DTLSContext,
+  ) {
+    const node = this.getNodeAtPosition(params.position);
+    const tokenName = node?.text;
+    const token = context.tokens.get(tokenName);
+    const spec = token && context.tokens.meta.get(token);
+    if (tokenName && spec) {
+      const uri = new URL(spec.path, params.textDocument.uri).href;
+      const doc = context.documents.get(uri);
+      if (doc.language === "json") {
+        const range = doc.getRangeForTokenName(tokenName, spec.prefix);
+        if (range) {
+          return [{ uri, range }];
+        }
+      }
+    }
+    return [];
+  }
+
   /**
    * Queries the document for a specific query.
    *
