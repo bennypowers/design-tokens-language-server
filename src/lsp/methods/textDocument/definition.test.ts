@@ -119,7 +119,7 @@ describe("textDocument/definition", () => {
       );
       expect(result).toEqual([{
         uri: textDocument.uri,
-        range: doc.getRangeForTokenName("color-red-_")
+        range: doc.getRangeForTokenName("color-red-_"),
       }]);
     });
   });
