@@ -4,7 +4,7 @@
 [![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
 
 Editor tools for working with [<abbr title="design tokens community 
-  group">DTCG</abbr> formatted design tokens][dtcg] in CSS files.
+  group">DTCG</abbr> formatted design tokens][dtcg] in CSS and JSON files.
 
 > [!NOTE]
 > This pre-release software. Features may be buggy or incomplete. Before 
@@ -69,7 +69,7 @@ Download the latest release for your platform and place the binary in your
 return {
   cmd = { 'design-tokens-language-server' },
   root_markers = { 'package.json', '.git' },
-  filetypes = { 'css' },
+  filetypes = { 'css', 'json' },
 }
 ```
 

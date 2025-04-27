@@ -8,4 +8,4 @@ repository = "https://github.com/bennypowers/design-tokens-language-server"
 
 [language_servers.design-tokens-language-server]
 name = "Design Tokens Language Server"
-language = "CSS"
+languages = ["CSS", "JSON"]
