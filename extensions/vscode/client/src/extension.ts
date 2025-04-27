@@ -46,7 +46,10 @@ export async function activate(context: ExtensionContext) {
   );
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: "file", language: "css" }],
+    documentSelector: [
+      { scheme: "file", language: "css" },
+      { scheme: "file", language: "json" },
+    ],
   };
 
   client = new LanguageClient(
