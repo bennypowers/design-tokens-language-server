@@ -4,7 +4,6 @@ import type {
 } from "vscode-languageserver-protocol";
 
 import { DTLSContext } from "#lsp";
-import { Logger } from "#logger";
 
 /**
  * Generates color information for design tokens.
@@ -17,7 +16,5 @@ export function documentColor(
   params: DocumentColorParams,
   context: DTLSContext,
 ): ColorInformation[] {
-  const doc = context.documents.get(params.textDocument.uri);
-  Logger.debug`json document color: ${doc.colors}`;
-  return doc.colors;
+  return context.documents.get(params.textDocument.uri).colors;
 }

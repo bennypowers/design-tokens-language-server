@@ -4,6 +4,7 @@ import { expect } from "@std/expect";
 import { createTestContext } from "#test-helpers";
 
 import { definition } from "./definition.ts";
+import { JsonDocument } from "#json";
 
 describe("textDocument/definition", () => {
   const spec = "file:///tokens.json";
@@ -101,15 +102,25 @@ describe("textDocument/definition", () => {
       }
     `);
 
-    it("throws", () => {
+    it("does not throw", () => {
       expect(() =>
         definition({
           textDocument,
           position: { line: 2, character: 11 },
         }, ctx)
-      ).toThrow(
-        "textDocument/definition not implemented for JSON documents",
+      ).not.toThrow();
+    });
+
+    it("returns a reference within the document", () => {
+      const doc = ctx.documents.get(textDocument.uri) as JsonDocument;
+      const result = definition(
+        { textDocument, position: doc.rangeForSubstring("color.red._").start },
+        ctx,
       );
+      expect(result).toEqual([{
+        uri: textDocument.uri,
+        range: doc.getRangeForTokenName("color-red-_")
+      }]);
     });
   });
 });
