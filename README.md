@@ -15,7 +15,8 @@ Editor tools for working with [<abbr title="design tokens community
 
 ### ⛸️ Hover Docs
 
-Display markdown-formatter token description and value
+Display markdown-formatted token descriptions and value when hovering over
+token names.
 
 ![Hover screenshot](./docs/hover.png)
 
@@ -41,13 +42,15 @@ wrong token definitions in Diagnostics.
 ![Code actions menu open for a diagnostic](./docs/autofix.png)
 
 ### 🎨 Document Color
-Display token color values in your source, e.g. as swatches
+Display token color values in your source, e.g. as swatches.
 
 ![Document color swatches](./docs/document-color.png)
 
 ### 🗺️ Go to Definition
 
 Jump to the position in the tokens file where the token is defined.
+Can also jump from a token reference in a JSON file to the token's
+definition.
 
 ![Json file jump in neovim](./docs/goto-definition.png)
 
