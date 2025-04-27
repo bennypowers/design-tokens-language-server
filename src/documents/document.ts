@@ -1,11 +1,13 @@
 import * as LSP from "vscode-languageserver-protocol";
 import { FullTextDocument } from "./textDocument.ts";
 import { Token } from "style-dictionary";
+import { DTLSContext } from "#lsp/lsp.ts";
 
 export abstract class DTLSTextDocument extends FullTextDocument {
   abstract diagnostics: LSP.Diagnostic[];
   abstract colors: LSP.ColorInformation[];
   abstract language: "json" | "css";
+
   abstract getTokenAtPosition(
     position: LSP.Position,
     offset?: Partial<LSP.Position>,
@@ -14,6 +16,11 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     token: Token;
     range: LSP.Range;
   } | null;
+
+  abstract definition(
+    params: LSP.DefinitionParams,
+    context: DTLSContext,
+  ): LSP.Location[];
 
   get identifier(): LSP.VersionedTextDocumentIdentifier {
     return {

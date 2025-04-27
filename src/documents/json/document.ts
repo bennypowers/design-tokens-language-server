@@ -243,6 +243,17 @@ export class JsonDocument extends DTLSTextDocument {
     }
   }
 
+  definition(
+    params: LSP.DefinitionParams,
+    context: DTLSContext,
+  ) {
+    const result = this.getTokenAtPosition(params.position);
+    if (result) {
+      return [{ uri: this.uri, range: result.range }];
+    }
+    return [];
+  }
+
   override update(
     changes: LSP.TextDocumentContentChangeEvent[],
     version: number,
