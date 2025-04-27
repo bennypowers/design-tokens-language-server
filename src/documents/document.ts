@@ -1,10 +1,19 @@
 import * as LSP from "vscode-languageserver-protocol";
 import { FullTextDocument } from "./textDocument.ts";
+import { Token } from "style-dictionary";
 
 export abstract class DTLSTextDocument extends FullTextDocument {
   abstract diagnostics: LSP.Diagnostic[];
   abstract colors: LSP.ColorInformation[];
   abstract language: "json" | "css";
+  abstract getTokenAtPosition(
+    position: LSP.Position,
+    offset?: Partial<LSP.Position>,
+  ): {
+    name: string;
+    token: Token;
+    range: LSP.Range;
+  } | null;
 
   get identifier(): LSP.VersionedTextDocumentIdentifier {
     return {
