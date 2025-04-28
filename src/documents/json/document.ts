@@ -210,6 +210,10 @@ export class JsonDocument extends DTLSTextDocument {
     return this.#getRangeForNode(this.#getNodeForTokenName(tokenName, prefix));
   }
 
+  getRangeForPath(path: JSONC.Segment[]): LSP.Range | null {
+    return this.#getRangeForNode(this.#getNodeAtJSONPath(path));
+  }
+
   getTokenAtPosition(
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
@@ -250,14 +254,38 @@ export class JsonDocument extends DTLSTextDocument {
     }
   }
 
+  #getStringAtPosition(position: LSP.Position) {
+    const node = this.#getNodeAtPosition(position);
+    if (node?.type === "string") {
+      return node.value;
+    }
+    return null;
+  }
+
   definition(
     params: LSP.DefinitionParams,
     context: DTLSContext,
   ) {
-    const result = this.getTokenAtPosition(params.position);
-    if (result) {
-      return [{ uri: this.uri, range: result.range }];
-    }
+    const reference = this.#getStringAtPosition(params.position);
+    const path = reference?.replace(/{|}/g, "").split(".");
+    const node = this.#getNodeAtJSONPath(path);
+
+    if (node) {
+      const range = this.#getRangeForNode(node);
+      if (range) {
+        return [{ uri: this.uri, range }];
+      }
+    } else {for (const referree of context.documents.getAll("json")) {
+        const token = referree.#getTokenForPath(path);
+        if (token) {
+          const range = referree.#getRangeForNode(
+            referree.#getNodeAtJSONPath(path),
+          );
+          if (range) {
+            return [{ uri: referree.uri, range }];
+          }
+        }
+      }}
     return [];
   }
 

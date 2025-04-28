@@ -13,6 +13,8 @@ export function definition(
   params: LSP.DefinitionParams,
   context: DTLSContext,
 ): LSP.Location[] {
-  const doc = context.documents.get(params.textDocument.uri);
-  return doc.definition(params, context);
+  return context
+    .documents
+    .get(params.textDocument.uri)
+    .definition(params, context);
 }

@@ -1,53 +1,59 @@
-import { describe, it } from "@std/testing/bdd";
+import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { definition } from "./definition.ts";
 import { JsonDocument } from "#json";
 
 describe("textDocument/definition", () => {
-  const spec = "file:///tokens.json";
-  const ctx = createTestContext({
-    testTokensSpecs: [{
-      prefix: "token",
-      spec,
-      tokens: {
-        color: {
-          $type: "color",
-          red: {
-            _: {
-              $value: "#ff0000",
-            },
-            hex: {
-              $value: "#ff0000",
-            },
-          },
-        },
-        space: {
-          $type: "size",
-          small: {
-            $value: "4px",
-          },
-        },
-      },
-    }],
-  });
-
   describe("in a css document", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
-      a {
-        color: var(--token-color-red);
-        border-color: var(--token-color-red-hex);
-        border-width: var(--token-space-small);
-        handedness: var(--token-sinister);
-      }
-    `);
+    const spec = "file:///tokens.json";
+    let ctx: DTLSTestContext;
+    let textDocument: ReturnType<
+      DTLSTestContext["documents"]["createCssDocument"]
+    >;
+    beforeEach(() => {
+      ctx = createTestContext({
+        testTokensSpecs: [{
+          prefix: "token",
+          spec,
+          tokens: {
+            color: {
+              $type: "color",
+              red: {
+                _: {
+                  $value: "#ff0000",
+                },
+                hex: {
+                  $value: "#ff0000",
+                },
+              },
+            },
+            space: {
+              $type: "size",
+              small: {
+                $value: "4px",
+              },
+            },
+          },
+        }],
+      });
+      textDocument = ctx.documents.createCssDocument(/*css*/ `
+        a {
+          color: var(--token-color-red);
+          border-color: var(--token-color-red-hex);
+          border-width: var(--token-space-small);
+          handedness: var(--token-sinister);
+        }
+      `);
+    });
 
-    const doc = ctx.documents.get(textDocument.uri);
+    afterEach(() => ctx.clear());
 
     it("returns color presentation for a known token name", () => {
-      const range = doc.rangeForSubstring("--token-color-red");
+      const doc = ctx.documents.get(textDocument.uri);
+      const range = doc.getRangeForSubstring("--token-color-red");
       const position = range.start;
       expect(definition({ textDocument, position }, ctx)).toEqual([
         {
@@ -61,7 +67,8 @@ describe("textDocument/definition", () => {
     });
 
     it("returns matching range for nested token", () => {
-      const range = doc.rangeForSubstring("--token-color-red-hex");
+      const doc = ctx.documents.get(textDocument.uri);
+      const range = doc.getRangeForSubstring("--token-color-red-hex");
       const position = range.start;
       expect(definition({ textDocument, position }, ctx)).toEqual([
         {
@@ -75,7 +82,8 @@ describe("textDocument/definition", () => {
     });
 
     it("returns an empty list for undeclared tokens", () => {
-      const range = doc.rangeForSubstring("--token-sinister");
+      const doc = ctx.documents.get(textDocument.uri);
+      const range = doc.getRangeForSubstring("--token-sinister");
       const location = definition(
         { textDocument, position: range.start },
         ctx,
@@ -85,22 +93,30 @@ describe("textDocument/definition", () => {
   });
 
   describe("in a json document", () => {
-    const textDocument = ctx.documents.createJsonDocument(/*json*/ `
-      {
-        "color": {
-          "red": {
-            "_": {
-              "$value": "#ff0000",
-              "$type": "color"
+    let ctx: DTLSTestContext;
+    let textDocument: { uri: string };
+
+    beforeEach(() => {
+      ctx = createTestContext({
+        testTokensSpecs: [
+          {
+            spec: "tokens-single-file.json",
+            tokens: {
+              color: {
+                $type: "color",
+                red: {
+                  _: { $value: "#ff0000" },
+                  hex: { $value: "{color.red._}" },
+                },
+              },
             },
-            "hex": {
-              "$value": "{color.red._}",
-              "$type": "color"
-            }
-          }
-        }
-      }
-    `);
+          },
+        ],
+      });
+      textDocument = { uri: "file:///tokens-single-file.json" };
+    });
+
+    afterEach(() => ctx.clear());
 
     it("does not throw", () => {
       expect(() =>
@@ -108,18 +124,65 @@ describe("textDocument/definition", () => {
           textDocument,
           position: { line: 2, character: 11 },
         }, ctx)
-      ).not.toThrow();
+      ).not.toThrow("hi");
     });
 
     it("returns a reference within the document", () => {
       const doc = ctx.documents.get(textDocument.uri) as JsonDocument;
-      const result = definition(
-        { textDocument, position: doc.rangeForSubstring("color.red._").start },
-        ctx,
-      );
+      const position = doc.getRangeForSubstring("color.red._").start;
+      const result = definition({ textDocument, position }, ctx);
       expect(result).toEqual([{
         uri: textDocument.uri,
-        range: doc.getRangeForTokenName("color-red-_"),
+        range: doc.getRangeForPath(["color", "red", "_"]),
+      }]);
+    });
+  });
+
+  describe("with multiple json documents", () => {
+    let ctx: DTLSTestContext;
+    let referee: JsonDocument;
+    let referer: JsonDocument;
+    beforeEach(() => {
+      ctx = createTestContext({
+        testTokensSpecs: [
+          {
+            spec: "referee.json",
+            tokens: {
+              color: {
+                $type: "color",
+                red: {
+                  $value: "#ff0000",
+                  $description: "Red color",
+                },
+              },
+            },
+          },
+          {
+            spec: "referer.json",
+            tokens: {
+              color: {
+                $type: "color",
+                roit: {
+                  $value: "{color.red}",
+                  $description: "Red color",
+                },
+              },
+            },
+          },
+        ],
+      });
+      referee = ctx.documents.get("file:///referee.json") as JsonDocument;
+      referer = ctx.documents.get("file:///referer.json") as JsonDocument;
+    });
+
+    afterEach(() => ctx.clear());
+
+    it("returns a reference outside the document", () => {
+      const position = referer.getRangeForSubstring("color.red").start;
+      const result = definition({ textDocument: referer, position }, ctx);
+      expect(result).toEqual([{
+        uri: referee.uri,
+        range: referee.getRangeForPath(["color", "red"]),
       }]);
     });
   });

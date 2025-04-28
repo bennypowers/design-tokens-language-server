@@ -4,6 +4,7 @@ import { getLightDarkValues } from "#css";
 
 import {
   convertTokenData,
+  flattenTokens,
   resolveReferences,
   typeDtcgDelegate,
   usesReferences,
@@ -11,13 +12,18 @@ import {
 
 import { TokenFileSpec } from "#lsp/lsp.ts";
 import { Logger } from "#logger";
+import { PreprocessedTokens } from "style-dictionary";
 
 export class Tokens extends Map<string, Token> {
   override get(key?: string) {
     if (key === undefined) {
       return undefined;
     }
-    return super.get(key.replace(/^-+/, ""));
+    const token = super.get(key.replace(/^-+/, ""));
+    if (token && usesReferences(token.$value)) {
+      return { ...token, $value: this.resolve(token.$value) };
+    }
+    return token;
   }
 
   override has(key?: string) {
@@ -27,27 +33,43 @@ export class Tokens extends Map<string, Token> {
     return super.has(key.replace(/^-+/, ""));
   }
 
-  #dtcg: Record<string, Token> = {};
+  #dtcg?: Token;
   specs = new Map<Token, TokenFileSpec>();
 
   resolve(reference: string) {
-    return resolveReferences(reference, this.#dtcg, {
+    return resolveReferences(reference, this.#dtcg as PreprocessedTokens, {
       usesDtcg: true,
-    }) as string | number | Record<string, Token>;
+    }) as
+      | string
+      | number
+      | Record<string, Token>;
   }
 
   populateFromDtcg(dtcgTokens: Record<string, Token>, spec: TokenFileSpec) {
-    this.#dtcg = dtcgTokens;
-    const flat = convertTokenData(
+    const incoming = convertTokenData(
       typeDtcgDelegate(structuredClone(dtcgTokens)),
       {
-        output: "map",
+        output: "array",
         usesDtcg: true,
       },
     );
+    const previous = convertTokenData(this.#dtcg ?? {}, {
+      output: "array",
+      usesDtcg: true,
+    });
+    this.#dtcg = convertTokenData([...previous, ...incoming], {
+      output: "object",
+      usesDtcg: true,
+    });
     // hack for dtcg tokens-that-are-also-groups
     const groupMarkers = new Set(spec.groupMarkers ?? ["_", "@", "DEFAULT"]);
-    for (const [key, token] of flat) {
+    const map = convertTokenData(this.#dtcg, {
+      output: "map",
+      usesDtcg: true,
+    });
+    for (
+      const [key, token] of map
+    ) {
       if (key) {
         const joined = key
           .replace(/^\{(.*)}$/, "$1")
@@ -55,11 +77,6 @@ export class Tokens extends Map<string, Token> {
           .filter((x) => !groupMarkers.has(x))
           .join("-");
         const name = spec.prefix ? `${spec.prefix}-${joined}` : joined;
-        if (usesReferences(token.$value)) {
-          token.$value = resolveReferences(token.$value, dtcgTokens, {
-            usesDtcg: true,
-          });
-        }
         this.specs.set(token, spec);
         this.set(name, token);
       }
