@@ -17,7 +17,7 @@ import { DTLSContext } from "#lsp";
  */
 export function hover(params: HoverParams, context: DTLSContext): null | Hover {
   const doc = context.documents.get(params.textDocument.uri);
-  const result = doc.getTokenAtPosition(params.position);
+  const result = doc.getHoverTokenAtPosition(params.position);
   if (result) {
     const { name, token, range } = result;
     const contents: MarkupContent = {

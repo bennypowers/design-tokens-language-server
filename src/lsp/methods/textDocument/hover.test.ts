@@ -1,46 +1,63 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { MarkupContent } from "vscode-languageserver-protocol";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { hover } from "./hover.ts";
+import { JsonDocument } from "#json";
 
 describe("textDocument/hover", () => {
-  const ctx = createTestContext({
-    testTokensSpecs: [
-      {
-        prefix: "token",
-        spec: "file:///tokens.json",
-        tokens: {
-          color: {
-            $type: "color",
-            red: {
-              _: {
-                $value: "red",
-                $description: "Red colour",
+  let ctx: DTLSTestContext;
+  beforeEach(() => {
+    ctx = createTestContext({
+      testTokensSpecs: [
+        {
+          prefix: "token",
+          spec: "file:///tokens.json",
+          tokens: {
+            color: {
+              $type: "color",
+              red: {
+                _: {
+                  $value: "#ff0000",
+                  $description: "Red colour",
+                },
+                hex: {
+                  $value: "{color.red._}",
+                  $description: "Red colour (by reference)",
+                },
               },
-              hex: {
-                $value: "#ff0000",
+              blue: {
+                lightdark: {
+                  $value: "light-dark(lightblue, darkblue)",
+                  $description: "Color scheme color",
+                },
               },
             },
-            blue: {
-              lightdark: {
-                $value: "light-dark(lightblue, darkblue)",
-                $description: "Color scheme color",
+            space: {
+              $type: "size",
+              small: {
+                $value: "4px",
               },
-            },
-          },
-          space: {
-            $type: "size",
-            small: {
-              $value: "4px",
             },
           },
         },
-      },
-    ],
+        {
+          prefix: "token",
+          spec: "file:///referer.json",
+          tokens: {
+            color: {
+              $type: "color",
+              hexref: {
+                $value: "{color.red.hex}",
+              },
+            },
+          },
+        },
+      ],
+    });
   });
 
   it("should return hover information for a token", () => {
@@ -55,7 +72,9 @@ describe("textDocument/hover", () => {
     const result = hover({ textDocument, position }, ctx);
 
     expect(result).not.toBeNull();
-    expect(result?.range).toEqual(doc.getRangeForSubstring("--token-color-red"));
+    expect(result?.range).toEqual(
+      doc.getRangeForSubstring("--token-color-red"),
+    );
     expect(result?.contents).toHaveProperty("kind", "markdown");
     expect(result?.contents).toHaveProperty("value");
     expect((result?.contents as MarkupContent).value).toEqual(`\
@@ -65,7 +84,7 @@ describe("textDocument/hover", () => {
       Red colour
 
       \`\`\`css
-      red
+      #ff0000
       \`\`\``.replaceAll(/^ {6}/gm, ""));
   });
 
@@ -108,5 +127,51 @@ describe("textDocument/hover", () => {
         darkblue
       )
       \`\`\``.replaceAll(/^ {6}/gm, ""));
+  });
+
+  describe("in a json file with local references", () => {
+    it("should return hover information for a token", () => {
+      const doc = ctx.documents.get("file:///tokens.json") as JsonDocument;
+      const range = doc.getRangeForSubstring("color.red._");
+      const position = range.start;
+      const result = hover({ textDocument: doc, position }, ctx);
+      expect(result).toEqual({
+        range,
+        contents: {
+          kind: "markdown",
+          value: `# \`color.red._\`
+
+            Type: \`color\`
+            Red colour
+
+            \`\`\`css
+            #ff0000
+            \`\`\``.replace(/^ {12}/gm, ""),
+        },
+      });
+    });
+  });
+
+  describe("in a json file with foreign references", () => {
+    it("should return hover information for a token", () => {
+      const doc = ctx.documents.get("file:///referer.json") as JsonDocument;
+      const range = doc.getRangeForSubstring("color.red.hex");
+      const position = range.start;
+      const result = hover({ textDocument: doc, position }, ctx);
+      expect(result).toEqual({
+        range,
+        contents: {
+          kind: "markdown",
+          value: `# \`color.red.hex\`
+
+            Type: \`color\`
+            Red colour (by reference)
+
+            \`\`\`css
+            #ff0000
+            \`\`\``.replace(/^ {12}/gm, ""),
+        },
+      });
+    });
   });
 });

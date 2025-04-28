@@ -8,7 +8,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   abstract colors: LSP.ColorInformation[];
   abstract language: "json" | "css";
 
-  abstract getTokenAtPosition(
+  abstract getHoverTokenAtPosition(
     position: LSP.Position,
     offset?: Partial<LSP.Position>,
   ): {

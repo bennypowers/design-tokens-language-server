@@ -11,6 +11,8 @@ import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
 import { Token } from "style-dictionary";
 
+const REF_RE = /{([^}]+)}/g;
+
 export class JsonDocument extends DTLSTextDocument {
   language = "json" as const;
 
@@ -197,10 +199,13 @@ export class JsonDocument extends DTLSTextDocument {
       startingNode = startingNode.parent;
       typeNode = JSONC.findNodeAtLocation(startingNode, ["$type"]);
     }
-    const $value = valueNode?.value;
+    let $value = valueNode?.value;
     const $type = typeNode?.value;
     const $description = descriptionNode?.value;
     if ($value) {
+      if (usesReferences($value)) {
+        $value = this.#context.tokens.resolve($value)?.toString();
+      }
       return { $value, $type, $description };
     }
     return null;
@@ -214,37 +219,47 @@ export class JsonDocument extends DTLSTextDocument {
     return this.#getRangeForNode(this.#getNodeAtJSONPath(path));
   }
 
-  getTokenAtPosition(
+  getHoverTokenAtPosition(
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
   ) {
-    const REF_RE = /{([^}]+)}/g;
-    const node = this.#getNodeAtPosition(position, offset);
-    switch (node?.type) {
+    const stringNode = this.#getNodeAtPosition(position, offset);
+    switch (stringNode?.type) {
       case "string": {
-        const matches = `${node.value}`.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
+        const matches = `${stringNode.value}`.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
         // because it's json, we only need to check the current line
-        const line = this.getText().split("\n")[position.line]; // "$value": "light-dark({color.blue._}, {color.blue.dark})"
+        const currentLine = this.getText().split("\n")[position.line]; // "$value": "light-dark({color.blue._}, {color.blue.dark})"
 
         // get the match that contains the current position
-        const match = matches?.find((match) => {
-          const matchOffsetInLine = line.indexOf(match);
+        const name = matches?.find((match) => {
+          const matchOffsetInLine = currentLine.indexOf(match);
           return (
             position.character >= matchOffsetInLine &&
             position.character <= matchOffsetInLine + match.length
           );
         });
 
-        if (match) {
-          const path = match.replace(REF_RE, "$1").split(".");
-          const node = JSONC.findNodeAtLocation(this.#root, path) ?? null;
+        if (name) {
+          const stringRange = this.#getRangeForNode(stringNode)!;
+          const nameWithoutBraces = name.replace(REF_RE, "$1");
+          const line = stringRange.start.line;
+          const character = currentLine.indexOf(nameWithoutBraces);
+          const path = nameWithoutBraces.split(".");
+          const range = {
+            start: { line, character },
+            end: { line, character: character + name.length - 2 },
+          };
+          const tokenNode = JSONC.findNodeAtLocation(this.#root, path) ?? null;
           const token = this.#getTokenForPath(path);
-          if (node && token) {
-            return {
-              name: match,
-              range: this.#getRangeForNode(node)!,
-              token,
-            };
+          if (tokenNode && token && range) {
+            return { name, range, token };
+          } else {
+            for (const referree of this.#context.documents.getAll("json")) {
+              const token = referree.#getTokenForPath(path);
+              if (token) {
+                return { name, range, token };
+              }
+            }
           }
         }
         return null;
