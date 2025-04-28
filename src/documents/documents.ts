@@ -73,4 +73,14 @@ export class Documents {
     }
     return doc;
   }
+
+  getAll(languageId: "json"): JsonDocument[];
+  getAll(languageId: "css"): JsonDocument[];
+  getAll(): (CssDocument | JsonDocument)[];
+  getAll(languageId?: "json" | "css"): (CssDocument | JsonDocument)[] {
+    if (languageId) {
+      return this.allDocuments.filter((doc) => doc.language === languageId);
+    }
+    return this.allDocuments;
+  }
 }
