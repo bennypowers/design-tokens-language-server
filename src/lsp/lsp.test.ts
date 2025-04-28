@@ -65,6 +65,7 @@ describe("Lsp", () => {
                 workspaceDiagnostics: false,
               },
               textDocumentSync: LSP.TextDocumentSyncKind.Incremental,
+              referencesProvider: true,
               hoverProvider: true,
               definitionProvider: true,
             },

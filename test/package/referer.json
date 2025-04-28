@@ -4,6 +4,12 @@
     "red": {
       "hexref": {
         "$value": "{color.red.hex}"
+      },
+      "rexhef": {
+        "$value": "{color.red.hex}"
+      },
+      "vexref": {
+        "$value": "{color.red.vex}"
       }
     }
   }

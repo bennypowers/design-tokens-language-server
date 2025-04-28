@@ -7,6 +7,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   abstract language: "json" | "css";
 
   abstract getDiagnostics(context: DTLSContext): LSP.Diagnostic[];
+
   abstract getColors(context: DTLSContext): LSP.ColorInformation[];
 
   abstract getHoverTokenAtPosition(
@@ -30,17 +31,16 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     };
   }
 
-  #startOfSubstring(substring: string) {
+  #startOfSubstrings(substring: string) {
     const text = this.getText();
-    // get the position of the string in doc
     const rows = text.split("\n");
-    const line = rows.findIndex((line) => line.includes(substring));
-    const row = rows[line];
-    if (row == null) {
-      throw new Error(`Could not find string "${substring}" in document`);
-    }
-    const character = row.indexOf(substring);
-    return { line, character };
+    return rows
+      .filter((line) => line.includes(substring))
+      .map((row) => {
+        const line = rows.indexOf(row);
+        const character = row.indexOf(substring);
+        return { line, character };
+      });
   }
 
   /**
@@ -54,7 +54,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     substring: string,
     position: "start" | "end" = "start",
   ): LSP.Position {
-    let { line, character } = this.#startOfSubstring(substring);
+    let [{ line, character }] = this.#startOfSubstrings(substring);
     if (position === "end") {
       character += substring.length;
     }
@@ -68,11 +68,17 @@ export abstract class DTLSTextDocument extends FullTextDocument {
    * @returns The range of the string in the document
    */
   getRangeForSubstring(substring: string): LSP.Range {
-    const { line, character } = this.#startOfSubstring(substring);
-    return {
-      start: { line, character },
-      end: { line, character: character + substring.length },
-    };
+    const [range] = this.getRangesForSubstring(substring);
+    return range;
+  }
+
+  getRangesForSubstring(substring: string): LSP.Range[] {
+    return this.#startOfSubstrings(substring).map(({ line, character }) => {
+      return {
+        start: { line, character },
+        end: { line, character: character + substring.length },
+      };
+    });
   }
 
   /** Get the range of the full document */

@@ -268,7 +268,7 @@ export class JsonDocument extends DTLSTextDocument {
             for (const referree of this.#context.documents.getAll("json")) {
               const token = referree.#getTokenForPath(path);
               if (token) {
-                return { name, range, token };
+                return { name, range, token, path };
               }
             }
           }
@@ -278,6 +278,14 @@ export class JsonDocument extends DTLSTextDocument {
       default:
         return null;
     }
+  }
+
+  getPathAtPosition(
+    position: LSP.Position,
+    offset: Partial<LSP.Position> = {},
+  ): JSONC.Segment[] | null {
+    const node = this.#getNodeAtPosition(position, offset);
+    return node && JSONC.getNodePath(node);
   }
 
   #getStringAtPosition(position: LSP.Position) {
