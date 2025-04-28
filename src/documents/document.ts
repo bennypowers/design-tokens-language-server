@@ -66,7 +66,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
    * @param substring - The string to find in the document
    * @returns The range of the string in the document
    */
-  rangeForSubstring(substring: string): LSP.Range {
+  getRangeForSubstring(substring: string): LSP.Range {
     const { line, character } = this.#startOfSubstring(substring);
     return {
       start: { line, character },

@@ -70,7 +70,7 @@ describe("textDocument/documentColor", () => {
         const [result] = results;
         expect(result.color).toEqual(cssColorToLspColor("red"));
         expect(result.range).toEqual(
-          doc.rangeForSubstring("--token-color-red"),
+          doc.getRangeForSubstring("--token-color-red"),
         );
       });
     });
@@ -104,7 +104,7 @@ describe("textDocument/documentColor", () => {
         const [result] = results;
         expect(result.color).toEqual(cssColorToLspColor("red"));
         expect(result.range).toEqual(
-          doc.rangeForSubstring("--token-color-red"),
+          doc.getRangeForSubstring("--token-color-red"),
         );
       });
     });
@@ -119,7 +119,7 @@ describe("textDocument/documentColor", () => {
       it("should return two DocumentColors for the same token", () => {
         const results = documentColor({ textDocument }, ctx);
         const doc = ctx.documents.get(textDocument.uri);
-        const range = doc.rangeForSubstring(
+        const range = doc.getRangeForSubstring(
           "--token-color-blue-lightdark",
         );
         expect(results).toEqual([
@@ -157,19 +157,19 @@ describe("textDocument/documentColor", () => {
       expect(results).toEqual([
         {
           color: cssColorToLspColor("#0000ff"),
-          range: doc.rangeForSubstring("#0000ff"),
+          range: doc.getRangeForSubstring("#0000ff"),
         },
         {
           color: cssColorToLspColor("darkblue"),
-          range: doc.rangeForSubstring("darkblue"),
+          range: doc.getRangeForSubstring("darkblue"),
         },
         {
           color: cssColorToLspColor("#0000ff"),
-          range: doc.rangeForSubstring("color.blue.light"),
+          range: doc.getRangeForSubstring("color.blue.light"),
         },
         {
           color: cssColorToLspColor("darkblue"),
-          range: doc.rangeForSubstring("color.blue.dark"),
+          range: doc.getRangeForSubstring("color.blue.dark"),
         },
       ]);
     });

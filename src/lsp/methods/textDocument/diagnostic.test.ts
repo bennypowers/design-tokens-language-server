@@ -158,7 +158,7 @@ describe("textDocument/diagnostic", () => {
           tokenName: "--token-font-heft",
         },
         message: "Token fallback does not match expected value: 400",
-        range: doc.rangeForSubstring("'400'"),
+        range: doc.getRangeForSubstring("'400'"),
       }]);
     });
   });

@@ -76,7 +76,7 @@ describe("textDocument/codeAction", () => {
       });
       it("should return a single-token refactor action", () => {
         const newText = "var(--token-color-red, red)";
-        const range = doc.rangeForSubstring("var(--token-color-red)");
+        const range = doc.getRangeForSubstring("var(--token-color-red)");
         expect(result).toEqual([
           {
             title: DTLSCodeAction.toggleFallback,
@@ -155,7 +155,7 @@ describe("textDocument/codeAction", () => {
       });
 
       it("should return a single refactor action for a token call with fallback", () => {
-        const range = doc.rangeForSubstring("var(--token-color-red, red)");
+        const range = doc.getRangeForSubstring("var(--token-color-red, red)");
         const newText = "var(--token-color-red)";
         expect(result).toEqual([
           {
@@ -290,14 +290,14 @@ describe("textDocument/codeAction", () => {
                 changes: {
                   [textDocument.uri]: [
                     {
-                      range: doc.rangeForSubstring(
+                      range: doc.getRangeForSubstring(
                         "var(--token-color-red, red)",
                       ),
                       newText: "var(--token-color-red)",
                     },
                     {
                       newText: "var(--token-color-blue-lightdark)",
-                      range: doc.rangeForSubstring(
+                      range: doc.getRangeForSubstring(
                         "var(--token-color-blue-lightdark, light-dark(lightblue, darkblue))",
                       ),
                     },
