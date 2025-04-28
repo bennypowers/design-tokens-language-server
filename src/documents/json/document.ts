@@ -200,7 +200,10 @@ export class JsonDocument extends DTLSTextDocument {
     const $value = valueNode?.value;
     const $type = typeNode?.value;
     const $description = descriptionNode?.value;
-    return { $value, $type, $description };
+    if ($value) {
+      return { $value, $type, $description };
+    }
+    return null;
   }
 
   getRangeForTokenName(tokenName: string, prefix?: string): LSP.Range | null {
