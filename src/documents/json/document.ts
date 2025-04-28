@@ -18,7 +18,6 @@ export class JsonDocument extends DTLSTextDocument {
 
   #root: JSONC.Node;
   #context!: DTLSContext;
-  #diagnostics: LSP.Diagnostic[] = [];
 
   static create(
     context: DTLSContext,
@@ -28,12 +27,7 @@ export class JsonDocument extends DTLSTextDocument {
   ) {
     const doc = new JsonDocument(uri, version, text);
     doc.#context = context;
-    doc.#diagnostics = doc.#computeDiagnostics();
     return doc;
-  }
-
-  get diagnostics() {
-    return this.#diagnostics;
   }
 
   get #allStringValueNodes() {
@@ -50,7 +44,7 @@ export class JsonDocument extends DTLSTextDocument {
     return nodes;
   }
 
-  get colors(): LSP.ColorInformation[] {
+  getColors(context: DTLSContext): LSP.ColorInformation[] {
     const colors: LSP.ColorInformation[] = [];
     const context = this.#context;
     const nodes = this.#allStringValueNodes;

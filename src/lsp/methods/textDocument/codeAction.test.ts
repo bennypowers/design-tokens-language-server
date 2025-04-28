@@ -56,7 +56,7 @@ describe("textDocument/codeAction", () => {
             end: { line: 0, character: 0 },
           },
           context: {
-            diagnostics: doc.diagnostics,
+            diagnostics: doc.getDiagnostics(ctx),
           },
         }, ctx);
       });
@@ -71,7 +71,7 @@ describe("textDocument/codeAction", () => {
         result = codeAction({
           textDocument,
           range: { start: position, end: position },
-          context: { diagnostics: doc.diagnostics },
+          context: { diagnostics: doc.getDiagnostics(ctx) },
         }, ctx);
       });
       it("should return a single-token refactor action", () => {
@@ -111,18 +111,20 @@ describe("textDocument/codeAction", () => {
 
       beforeEach(() => {
         const position = doc.positionForSubstring("blue");
+        const diagnostics = doc.getDiagnostics(ctx);
         result = codeAction({
           textDocument,
           range: { start: position, end: position },
-          context: { diagnostics: doc.diagnostics },
+          context: { diagnostics },
         }, ctx);
       });
 
       it("should return a fix for the incorrect fallback", () => {
+        const diagnostics = doc.getDiagnostics(ctx);
         expect(result?.at(0)).toEqual({
           title: DTLSCodeAction.fixFallback,
           kind: CodeActionKind.QuickFix,
-          diagnostics: doc.diagnostics,
+          diagnostics,
           data: { textDocument },
         });
       });
@@ -147,10 +149,11 @@ describe("textDocument/codeAction", () => {
 
       beforeEach(() => {
         const position = doc.positionForSubstring("red");
+        const diagnostics = doc.getDiagnostics(ctx);
         result = codeAction({
           textDocument,
           range: { start: position, end: position },
-          context: { diagnostics: doc.diagnostics },
+          context: { diagnostics },
         }, ctx);
       });
 
@@ -190,26 +193,28 @@ describe("textDocument/codeAction", () => {
     let result: ReturnType<typeof codeAction>;
 
     beforeEach(() => {
+      const diagnostics = doc.getDiagnostics(ctx);
       result = codeAction({
         textDocument,
         range: { start: doc.positionAt(0), end: doc.positionAt(0) },
-        context: { diagnostics: doc.diagnostics },
+        context: { diagnostics },
       }, ctx);
     });
 
     it("should return two fixes for the incorrect fallbacks and a fixall fix", () => {
+      const diagnostics = doc.getDiagnostics(ctx);
       expect(result).toEqual([
         {
           title: DTLSCodeAction.fixFallback,
           kind: CodeActionKind.QuickFix,
           data: { textDocument },
-          diagnostics: [doc.diagnostics[0]],
+          diagnostics: [diagnostics[0]],
         },
         {
           title: DTLSCodeAction.fixFallback,
           kind: CodeActionKind.QuickFix,
           data: { textDocument },
-          diagnostics: [doc.diagnostics[1]],
+          diagnostics: [diagnostics[1]],
         },
         {
           title: DTLSCodeAction.fixAllFallbacks,
@@ -271,13 +276,14 @@ describe("textDocument/codeAction", () => {
         let result: ReturnType<typeof codeAction>;
 
         beforeEach(() => {
+          const diagnostics = doc.getDiagnostics(ctx);
           result = codeAction({
             textDocument: doc.identifier,
             range: {
               start: doc.positionForSubstring("color:", "start"),
               end: doc.positionForSubstring("darkblue));", "end"),
             },
-            context: { diagnostics: doc.diagnostics },
+            context: { diagnostics },
           }, ctx);
         });
 

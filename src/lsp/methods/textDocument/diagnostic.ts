@@ -15,10 +15,13 @@ import { DTLSContext } from "#lsp";
  */
 export function diagnostic(
   params: DocumentDiagnosticParams,
-  { documents }: DTLSContext,
+  context: DTLSContext,
 ): RelatedFullDocumentDiagnosticReport {
   return {
     kind: DocumentDiagnosticReportKind.Full,
-    items: documents.get(params.textDocument.uri).diagnostics,
+    items: context
+      .documents
+      .get(params.textDocument.uri)
+      .getDiagnostics(context),
   };
 }

@@ -16,5 +16,8 @@ export function documentColor(
   params: DocumentColorParams,
   context: DTLSContext,
 ): ColorInformation[] {
-  return context.documents.get(params.textDocument.uri).colors;
+  return context
+    .documents
+    .get(params.textDocument.uri)
+    .getColors(context);
 }

@@ -146,6 +146,10 @@ describe("textDocument/documentColor", () => {
             "dark": { "$value": "darkblue" },
             "lightdark": { "$value": "light-dark({color.blue.light}, {color.blue.dark})" }
           }
+        },
+        "noncolor": {
+          "$type": "dimension",
+          "small": { "$value": "red" }
         }
       }
     `);

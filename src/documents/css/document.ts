@@ -148,10 +148,10 @@ export class CssDocument extends DTLSTextDocument {
     return doc;
   }
 
-  #diagnostics: LSP.Diagnostic[] = [];
   #tree!: Tree | null;
   #context!: DTLSContext;
   #varCalls: TokenVarCall[] = [];
+  #diagnostics: LSP.Diagnostic[] = [];
 
   language = "css" as const;
 
@@ -163,7 +163,8 @@ export class CssDocument extends DTLSTextDocument {
     return this.#varCalls;
   }
 
-  get colors(): LSP.ColorInformation[] {
+  getColors(context: DTLSContext): LSP.ColorInformation[] {
+    this.#context = context;
     return this.#varCalls.flatMap((call) => {
       const token = call.token.token;
 
@@ -181,19 +182,18 @@ export class CssDocument extends DTLSTextDocument {
         colors.push(token.$value);
       }
       return colors.flatMap((match) => {
-        const color = extractColor(match, this.#context);
-        return [
-          {
-            color: cssColorToLspColor(color),
+        const colorMatch = extractColor(match, this.#context);
+        const color = cssColorToLspColor(colorMatch);
+        if (!color) {
+          return [];
+        } else {
+          return [{
+            color,
             range: call.token.range,
-          } satisfies LSP.ColorInformation,
-        ];
+          }];
+        }
       });
     });
-  }
-
-  get diagnostics() {
-    return this.#diagnostics;
   }
 
   private constructor(
@@ -236,6 +236,7 @@ export class CssDocument extends DTLSTextDocument {
     params: LSP.DefinitionParams,
     context: DTLSContext,
   ) {
+    this.#context = context;
     const node = this.getNodeAtPosition(params.position);
     const tokenName = node?.text;
     const token = context.tokens.get(tokenName);
@@ -401,5 +402,10 @@ export class CssDocument extends DTLSTextDocument {
         }];
       }
     });
+  }
+
+  getDiagnostics(context: DTLSContext) {
+    this.#context = context;
+    return this.#diagnostics ?? this.#computeDiagnostics();
   }
 }
