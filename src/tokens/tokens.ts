@@ -20,7 +20,9 @@ export class Tokens extends Map<string, Token> {
     }
     const token = super.get(key.replace(/^-+/, ""));
     if (token && usesReferences(token.$value)) {
-      return { ...token, $value: this.resolveValue(token.$value) };
+      const resolved = this.resolveValue(token.$value);
+      const $value = resolved ?? token.$value;
+      return { ...token, $value };
     }
     return token;
   }
@@ -36,12 +38,13 @@ export class Tokens extends Map<string, Token> {
   specs = new Map<Token, TokenFileSpec>();
 
   resolveValue(reference: string) {
-    return resolveReferences(reference, this.#dtcg as PreprocessedTokens, {
-      usesDtcg: true,
-    }) as
-      | string
-      | number
-      | Record<string, Token>;
+    try {
+      return resolveReferences(reference, this.#dtcg as PreprocessedTokens, {
+        usesDtcg: true,
+      }) as string | number;
+    } catch {
+      return null;
+    }
   }
 
   populateFromDtcg(dtcgTokens: Record<string, Token>, spec: TokenFileSpec) {

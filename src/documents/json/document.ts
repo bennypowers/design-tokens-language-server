@@ -102,8 +102,8 @@ export class JsonDocument extends DTLSTextDocument {
           }
         }
       } else {
-        const match = context.tokens.resolveValue(content)?.toString() ??
-          content;
+        const resolved = context.tokens.resolveValue(content);
+        const match = resolved?.toString() ?? content;
         const color = cssColorToLspColor(match);
         if (color) {
           colors.push({ range, color });
@@ -215,7 +215,10 @@ export class JsonDocument extends DTLSTextDocument {
     const $description = descriptionNode?.value;
     if ($value) {
       if (usesReferences($value)) {
-        $value = this.#context.tokens.resolveValue($value)?.toString();
+        const resolved = this.#context.tokens.resolveValue($value)?.toString();
+        if (resolved) {
+          $value = resolved;
+        }
       }
       return { $value, $type, $description };
     }
@@ -342,12 +345,9 @@ export class JsonDocument extends DTLSTextDocument {
       if (usesReferences(content)) {
         const matches = content.match(REF_RE);
         for (const name of matches ?? []) {
-          try {
-            context.tokens.resolveValue(name);
-          } catch (error) {
-            if (error instanceof Error) {
-              errors.push(name);
-            } else throw error;
+          const resolved = context.tokens.resolveValue(name);
+          if (!resolved) {
+            errors.push(name);
           }
         }
       }
