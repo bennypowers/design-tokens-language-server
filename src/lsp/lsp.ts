@@ -169,6 +169,8 @@ export interface DTLSContextWithWorkspaces extends DTLSContext {
 export enum DTLSErrorCodes {
   /** The fallback value of a design token is incorrect. */
   incorrectFallback = "incorrect-fallback",
+  /** The reference target does not appear to exist */
+  unknownReference = "unknown-reference",
 }
 
 function requestMethodTypeGuard<M extends SupportedMethod>(

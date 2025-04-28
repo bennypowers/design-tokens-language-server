@@ -2,7 +2,7 @@ import * as LSP from "vscode-languageserver-protocol";
 
 import { DTLSTextDocument } from "#document";
 
-import { DTLSContext } from "#lsp/lsp.ts";
+import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
 import * as JSONC from "npm:jsonc-parser";
 
@@ -27,8 +27,8 @@ export class JsonDocument extends DTLSTextDocument {
     version = 0,
   ) {
     const doc = new JsonDocument(uri, version, text);
-    doc.#diagnostics = doc.#computeDiagnostics();
     doc.#context = context;
+    doc.#diagnostics = doc.#computeDiagnostics();
     return doc;
   }
 
@@ -36,13 +36,31 @@ export class JsonDocument extends DTLSTextDocument {
     return this.#diagnostics;
   }
 
-  get colors(): LSP.ColorInformation[] {
-    const colors: LSP.ColorInformation[] = [];
-    const context = this.#context;
-    const getTypeColorValues = (node: JSONC.Node) => {
+  get #allStringValueNodes() {
+    const nodes: JSONC.Node[] = [];
+    const getStringValueNodesInNode = (node: JSONC.Node) => {
       const valueNode = JSONC.findNodeAtLocation(node, ["$value"]);
       const content = valueNode?.value;
       if (valueNode && typeof content === "string") {
+        nodes.push(valueNode);
+      }
+      node.children?.forEach(getStringValueNodesInNode);
+    };
+    this.#root?.children?.forEach(getStringValueNodesInNode);
+    return nodes;
+  }
+
+  get colors(): LSP.ColorInformation[] {
+    const colors: LSP.ColorInformation[] = [];
+    const context = this.#context;
+    const nodes = this.#allStringValueNodes;
+    for (const valueNode of nodes) {
+      if (
+        valueNode.parent &&
+        JSONC.findNodeAtLocation(valueNode.parent!, ["$type"])?.value ===
+          "color"
+      ) {
+        const content = valueNode?.value;
         const _range = this.#getRangeForNode(valueNode)!;
         const range = {
           start: {
@@ -90,15 +108,7 @@ export class JsonDocument extends DTLSTextDocument {
           });
         }
       }
-      node.children?.forEach(getTypeColorValues);
-    };
-    const getColors = (node: JSONC.Node) => {
-      if (JSONC.findNodeAtLocation(node, ["$type"])?.value === "color") {
-        getTypeColorValues(node);
-      }
-      node.children?.forEach(getColors);
-    };
-    this.#root?.children?.forEach(getColors);
+    }
     return colors;
   }
 
@@ -313,7 +323,33 @@ export class JsonDocument extends DTLSTextDocument {
     this.#diagnostics = this.#computeDiagnostics();
   }
 
-  #computeDiagnostics(): LSP.Diagnostic[] {
-    return [];
+  #computeDiagnostics() {
+    const context = this.#context;
+    if (!context.tokens) {
+      throw new Error("No tokens found in context");
+    }
+    // all nodes which are string values of $value properties in the #root
+    return this.#allStringValueNodes.flatMap((valueNode) => {
+      const content = valueNode.value;
+      const errors: string[] = [];
+      if (usesReferences(content)) {
+        const matches = content.match(REF_RE);
+        for (const name of matches ?? []) {
+          try {
+            context.tokens.resolve(name);
+          } catch (error) {
+            if (error instanceof Error) {
+              errors.push(name);
+            } else throw error;
+          }
+        }
+      }
+      return errors.map((name) => ({
+        range: this.#getRangeForNode(valueNode)!,
+        severity: LSP.DiagnosticSeverity.Error,
+        message: `Token reference does not exist: ${name}`,
+        code: DTLSErrorCodes.unknownReference,
+      }));
+    });
   }
 }

@@ -4,7 +4,6 @@ import { getLightDarkValues } from "#css";
 
 import {
   convertTokenData,
-  flattenTokens,
   resolveReferences,
   typeDtcgDelegate,
   usesReferences,
