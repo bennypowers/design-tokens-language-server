@@ -34,8 +34,11 @@ interface TestContextOptions {
 export interface DTLSTestContext {
   documents: TestDocuments;
   tokens: TestTokens;
+  specs: Map<DocumentUri, TokenFileSpec>;
   clear(): void;
 }
+
+const specs = new Map<DocumentUri, TokenFileSpec>();
 
 /**
  * Test Documents for managing text documents.
@@ -47,11 +50,18 @@ export interface DTLSTestContext {
  */
 class TestDocuments extends Documents {
   #tokens: Tokens;
+  #options?: TestContextOptions;
+  #context!: DTLSTestContext;
 
   constructor(tokens: Tokens, options?: TestContextOptions) {
     super();
     this.#tokens = tokens;
-    for (const [uri, text] of Object.entries(options?.documents ?? {})) {
+    this.#options = options;
+  }
+
+  init(context: DTLSTestContext) {
+    this.#context = context;
+    for (const [uri, text] of Object.entries(this.#options?.documents ?? {})) {
       switch (uri.split(".").pop()) {
         case "json":
           this.createJsonDocument(text, uri);
@@ -77,10 +87,8 @@ class TestDocuments extends Documents {
       version: 1,
       text,
     };
-    this.onDidOpen({ textDocument }, {
-      documents: this,
-      tokens: this.#tokens,
-    });
+    this.onDidOpen({ textDocument }, this.#context);
+    console.log("SPEC", this.#context.specs.get(uri));
     return textDocument;
   }
 
@@ -97,20 +105,14 @@ class TestDocuments extends Documents {
       text,
     };
 
-    this.onDidOpen({ textDocument }, {
-      documents: this,
-      tokens: this.#tokens,
-    });
+    this.onDidOpen({ textDocument }, this.#context);
 
     return textDocument;
   }
 
   tearDown() {
     for (const doc of this.allDocuments) {
-      this.onDidClose({ textDocument: { uri: doc.uri } }, {
-        documents: this,
-        tokens: this.#tokens,
-      });
+      this.onDidClose({ textDocument: { uri: doc.uri } }, this.#context);
     }
   }
 }
@@ -288,16 +290,21 @@ export function createTestContext(
   const context = {
     documents,
     tokens,
+    specs,
     clear: () => {
       tokens.reset();
       documents.tearDown();
+      specs.clear();
     },
   };
 
+  documents.init(context);
+
   for (const definition of tokens.normalizedTestTokenDefinitions) {
+    specs.set(definition.spec.path, definition.spec);
     const uri = `file:///${definition.spec.path.replace("file:///", "")}`;
     const content = JSON.stringify(definition.tokens, null, 2);
-    documents.add(JsonDocument.create(context, uri, content));
+    documents.add(JsonDocument.create(context, uri, content), definition.spec);
   }
 
   return context;
