@@ -28,7 +28,7 @@ export class Tokens extends Map<string, Token> {
   }
 
   #dtcg: Record<string, Token> = {};
-  meta = new Map<Token, TokenFileSpec>();
+  specs = new Map<Token, TokenFileSpec>();
 
   resolve(reference: string) {
     return resolveReferences(reference, this.#dtcg, {
@@ -55,12 +55,12 @@ export class Tokens extends Map<string, Token> {
           .filter((x) => !groupMarkers.has(x))
           .join("-");
         const name = spec.prefix ? `${spec.prefix}-${joined}` : joined;
-        this.meta.set(token, spec);
         if (usesReferences(token.$value)) {
           token.$value = resolveReferences(token.$value, dtcgTokens, {
             usesDtcg: true,
           });
         }
+        this.specs.set(token, spec);
         this.set(name, token);
       }
     }

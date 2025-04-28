@@ -239,7 +239,7 @@ export class CssDocument extends DTLSTextDocument {
     const node = this.getNodeAtPosition(params.position);
     const tokenName = node?.text;
     const token = context.tokens.get(tokenName);
-    const spec = token && context.tokens.meta.get(token);
+    const spec = token && context.tokens.specs.get(token);
     if (tokenName && spec) {
       const uri = new URL(spec.path, params.textDocument.uri).href;
       const doc = context.documents.get(uri);
