@@ -281,7 +281,7 @@ export class CssDocument extends DTLSTextDocument {
       null;
   }
 
-  getTokenAtPosition(
+  getHoverTokenAtPosition(
     position: LSP.Position,
     offset?: Partial<LSP.Position>,
   ) {
