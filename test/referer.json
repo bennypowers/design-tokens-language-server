@@ -1,0 +1,10 @@
+{
+  "color": {
+    "$type": "color",
+    "red": {
+      "hexref": {
+        "$value": "{color.red.hex}"
+      }
+    }
+  }
+}

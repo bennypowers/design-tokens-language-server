@@ -3,6 +3,7 @@ good {
   border-color: var(--token-color-green, green);
   font-weight: var(--token-font-weight, 400);
   column-rule-color: var(--token-color-red-hex, #F00);
+  column-rule-color: var(--token-color-red-hexref, #F00);
   outline: 1px solid var(--token-color-blue-lightdark, light-dark(lightblue, darkblue));
   color: var(--token-color-blue-lightdark);
 }
