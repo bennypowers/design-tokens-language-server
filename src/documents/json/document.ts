@@ -2,7 +2,7 @@ import * as LSP from "vscode-languageserver-protocol";
 
 import { DTLSTextDocument } from "#document";
 
-import { DTLSContext } from "#lsp/lsp.ts";
+import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
 import * as JSONC from "npm:jsonc-parser";
 
@@ -18,7 +18,6 @@ export class JsonDocument extends DTLSTextDocument {
 
   #root: JSONC.Node;
   #context!: DTLSContext;
-  #diagnostics: LSP.Diagnostic[] = [];
 
   static create(
     context: DTLSContext,
@@ -27,43 +26,66 @@ export class JsonDocument extends DTLSTextDocument {
     version = 0,
   ) {
     const doc = new JsonDocument(uri, version, text);
-    doc.#diagnostics = doc.#computeDiagnostics();
     doc.#context = context;
     return doc;
   }
 
-  get diagnostics() {
-    return this.#diagnostics;
-  }
-
-  get colors(): LSP.ColorInformation[] {
-    const colors: LSP.ColorInformation[] = [];
-    const context = this.#context;
-    const getTypeColorValues = (node: JSONC.Node) => {
+  get #allStringValueNodes() {
+    const nodes: JSONC.Node[] = [];
+    const getStringValueNodesInNode = (node: JSONC.Node) => {
       const valueNode = JSONC.findNodeAtLocation(node, ["$value"]);
       const content = valueNode?.value;
       if (valueNode && typeof content === "string") {
-        const _range = this.#getRangeForNode(valueNode)!;
-        const range = {
-          start: {
-            line: _range.start.line,
-            character: _range.start.character + 1,
-          },
-          end: {
-            line: _range.end.line,
-            character: _range.end.character - 1,
-          },
-        };
-        if (usesReferences(content)) {
-          const references = content.match(/{[^}]*}/g);
-          for (const reference of references ?? []) {
-            const resolved = context.tokens.resolve(reference);
-            if (resolved) {
-              const line = range.start.line;
-              const character = range.start.character +
-                content.indexOf(reference) + 1;
+        nodes.push(valueNode);
+      }
+      node.children?.forEach(getStringValueNodesInNode);
+    };
+    this.#root?.children?.forEach(getStringValueNodesInNode);
+    return nodes;
+  }
+
+  getColors(context: DTLSContext): LSP.ColorInformation[] {
+    const colors: LSP.ColorInformation[] = [];
+    for (const valueNode of this.#allStringValueNodes) {
+      // cheap hack to avoid marking up non-color values
+      // a more comprehensive solution would be to associate each json document
+      // with a token spec, and get the token object *with prefix* from the context
+      // based on the *non-prefixed* json path, then check the type from the token object
+      let parent = valueNode.parent;
+      let type = JSONC.findNodeAtLocation(parent!, ["$type"])?.value;
+      while (!type && parent) {
+        parent = parent.parent;
+        if (parent) {
+          type = JSONC.findNodeAtLocation(parent, ["$type"])?.value;
+        }
+      }
+      if (type && type !== "color") {
+        continue;
+      }
+      const content = valueNode.value;
+      const _range = this.#getRangeForNode(valueNode)!;
+      const range = {
+        start: {
+          line: _range.start.line,
+          character: _range.start.character + 1,
+        },
+        end: {
+          line: _range.end.line,
+          character: _range.end.character - 1,
+        },
+      };
+      if (usesReferences(content)) {
+        const references = content.match(/{[^}]*}/g);
+        for (const reference of references ?? []) {
+          const resolved = context.tokens.resolveValue(reference);
+          if (resolved) {
+            const line = range.start.line;
+            const character = range.start.character +
+              content.indexOf(reference) + 1;
+            const color = cssColorToLspColor(resolved.toString());
+            if (color) {
               colors.push({
-                color: cssColorToLspColor(resolved.toString()),
+                color,
                 range: {
                   start: { line, character },
                   end: { line, character: character + reference.length - 2 },
@@ -71,34 +93,23 @@ export class JsonDocument extends DTLSTextDocument {
               });
             }
           }
-        } else if (content.startsWith("light-dark(")) {
-          const [light, dark] = getLightDarkValues(content);
-          colors.push({
-            range,
-            color: cssColorToLspColor(light),
-          });
-          colors.push({
-            range,
-            color: cssColorToLspColor(dark),
-          });
-        } else {
-          colors.push({
-            range,
-            color: cssColorToLspColor(
-              context.tokens.resolve(content)?.toString() ?? content,
-            ),
-          });
+        }
+      } else if (content.startsWith("light-dark(")) {
+        for (const match of getLightDarkValues(content)) {
+          const color = cssColorToLspColor(match);
+          if (color) {
+            colors.push({ range, color });
+          }
+        }
+      } else {
+        const match = context.tokens.resolveValue(content)?.toString() ??
+          content;
+        const color = cssColorToLspColor(match);
+        if (color) {
+          colors.push({ range, color });
         }
       }
-      node.children?.forEach(getTypeColorValues);
-    };
-    const getColors = (node: JSONC.Node) => {
-      if (JSONC.findNodeAtLocation(node, ["$type"])?.value === "color") {
-        getTypeColorValues(node);
-      }
-      node.children?.forEach(getColors);
-    };
-    this.#root?.children?.forEach(getColors);
+    }
     return colors;
   }
 
@@ -204,7 +215,7 @@ export class JsonDocument extends DTLSTextDocument {
     const $description = descriptionNode?.value;
     if ($value) {
       if (usesReferences($value)) {
-        $value = this.#context.tokens.resolve($value)?.toString();
+        $value = this.#context.tokens.resolveValue($value)?.toString();
       }
       return { $value, $type, $description };
     }
@@ -310,10 +321,34 @@ export class JsonDocument extends DTLSTextDocument {
   ) {
     super.update(changes, version);
     this.#root = this.#parse();
-    this.#diagnostics = this.#computeDiagnostics();
   }
 
-  #computeDiagnostics(): LSP.Diagnostic[] {
-    return [];
+  getDiagnostics(context: DTLSContext) {
+    if (!context.tokens) {
+      throw new Error("No tokens found in context");
+    }
+    // all nodes which are string values of $value properties in the #root
+    return this.#allStringValueNodes.flatMap((valueNode) => {
+      const content = valueNode.value;
+      const errors: string[] = [];
+      if (usesReferences(content)) {
+        const matches = content.match(REF_RE);
+        for (const name of matches ?? []) {
+          try {
+            context.tokens.resolveValue(name);
+          } catch (error) {
+            if (error instanceof Error) {
+              errors.push(name);
+            } else throw error;
+          }
+        }
+      }
+      return errors.map((name) => ({
+        range: this.#getRangeForNode(valueNode)!,
+        severity: LSP.DiagnosticSeverity.Error,
+        message: `Token reference does not exist: ${name}`,
+        code: DTLSErrorCodes.unknownReference,
+      }));
+    });
   }
 }

@@ -4,9 +4,10 @@ import { Token } from "style-dictionary";
 import { DTLSContext } from "#lsp/lsp.ts";
 
 export abstract class DTLSTextDocument extends FullTextDocument {
-  abstract diagnostics: LSP.Diagnostic[];
-  abstract colors: LSP.ColorInformation[];
   abstract language: "json" | "css";
+
+  abstract getDiagnostics(context: DTLSContext): LSP.Diagnostic[];
+  abstract getColors(context: DTLSContext): LSP.ColorInformation[];
 
   abstract getHoverTokenAtPosition(
     position: LSP.Position,

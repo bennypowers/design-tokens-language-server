@@ -57,7 +57,7 @@ describe("textDocument/colorPresentation", () => {
 
   it("should return color presentations for matching colors", () => {
     const range = doc.getRangeForSubstring("--token-color-red");
-    const color = cssColorToLspColor("red");
+    const color = cssColorToLspColor("red")!;
     const result = colorPresentation({ textDocument, color, range }, ctx);
     expect(result).toEqual([
       { label: "token-color-red" },
