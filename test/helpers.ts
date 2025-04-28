@@ -8,7 +8,7 @@ import {
   ResponseFor,
   SupportedMethod,
   TokenFileSpec,
-} from "#lsp";
+} from "#lsp/lsp.ts";
 
 import { normalizeTokenFile } from "../src/tokens/utils.ts";
 
@@ -31,9 +31,10 @@ interface TestContextOptions {
   testTokensSpecs: TestSpec[];
 }
 
-interface DTLSTestContext {
+export interface DTLSTestContext {
   documents: TestDocuments;
   tokens: TestTokens;
+  clear(): void;
 }
 
 /**
@@ -284,10 +285,17 @@ export function createTestContext(
 ): DTLSTestContext {
   const tokens = new TestTokens(options);
   const documents = new TestDocuments(tokens, options);
-  const context = { documents, tokens };
+  const context = {
+    documents,
+    tokens,
+    clear: () => {
+      tokens.reset();
+      documents.tearDown();
+    },
+  };
 
   for (const definition of tokens.normalizedTestTokenDefinitions) {
-    const uri = `file://${definition.spec.path.replace("file://", "")}`;
+    const uri = `file:///${definition.spec.path.replace("file:///", "")}`;
     const content = JSON.stringify(definition.tokens, null, 2);
     documents.add(JsonDocument.create(context, uri, content));
   }
