@@ -1,0 +1,17 @@
+{
+  "name": "dtls-test",
+  "private": true,
+  "version": "0.0.0",
+  "designTokensLanguageServer": {
+    "tokensFiles": [
+      {
+        "prefix": "token",
+        "path": "./tokens.json"
+      },
+      {
+        "prefix": "token",
+        "path": "./referer.json"
+      }
+    ]
+  }
+}

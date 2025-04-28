@@ -1,15 +1,7 @@
 {
-  "name": "dtls-test",
+  "name": "design-tokens-language-server",
   "private": true,
   "version": "0.0.22",
-  "designTokensLanguageServer": {
-    "tokensFiles": [
-      {
-        "prefix": "token",
-        "path": "./test/tokens.json"
-      }
-    ]
-  },
   "devDependencies": {
     "esbuild": "^0.25.2"
   },
