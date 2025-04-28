@@ -4,13 +4,7 @@ import { DTLSTextDocument } from "#document";
 
 import { DTLSContext } from "#lsp/lsp.ts";
 
-import {
-  findNodeAtLocation,
-  findNodeAtOffset,
-  type Node,
-  parseTree,
-  Segment,
-} from "npm:jsonc-parser";
+import * as JSONC from "npm:jsonc-parser";
 
 import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";
@@ -20,7 +14,7 @@ import { Token } from "style-dictionary";
 export class JsonDocument extends DTLSTextDocument {
   language = "json" as const;
 
-  #root: Node;
+  #root: JSONC.Node;
   #context!: DTLSContext;
   #diagnostics: LSP.Diagnostic[] = [];
 
@@ -43,8 +37,8 @@ export class JsonDocument extends DTLSTextDocument {
   get colors(): LSP.ColorInformation[] {
     const colors: LSP.ColorInformation[] = [];
     const context = this.#context;
-    const getTypeColorValues = (node: Node) => {
-      const valueNode = findNodeAtLocation(node, ["$value"]);
+    const getTypeColorValues = (node: JSONC.Node) => {
+      const valueNode = JSONC.findNodeAtLocation(node, ["$value"]);
       const content = valueNode?.value;
       if (valueNode && typeof content === "string") {
         const _range = this.#getRangeForNode(valueNode)!;
@@ -96,8 +90,8 @@ export class JsonDocument extends DTLSTextDocument {
       }
       node.children?.forEach(getTypeColorValues);
     };
-    const getColors = (node: Node) => {
-      if (findNodeAtLocation(node, ["$type"])?.value === "color") {
+    const getColors = (node: JSONC.Node) => {
+      if (JSONC.findNodeAtLocation(node, ["$type"])?.value === "color") {
         getTypeColorValues(node);
       }
       node.children?.forEach(getColors);
@@ -115,8 +109,8 @@ export class JsonDocument extends DTLSTextDocument {
     this.#root = this.#parse();
   }
 
-  #parse(): Node {
-    const root = parseTree(this.getText());
+  #parse(): JSONC.Node {
+    const root = JSONC.parseTree(this.getText());
     if (!root) {
       throw new Error("Failed to parse JSON");
     }
@@ -151,15 +145,15 @@ export class JsonDocument extends DTLSTextDocument {
     return { line, character: column };
   }
 
-  #getNodeAtJSONPath(path: Segment[]): Node | null {
-    return findNodeAtLocation(this.#root, path) ?? null;
+  #getNodeAtJSONPath(path: JSONC.Segment[]): JSONC.Node | null {
+    return JSONC.findNodeAtLocation(this.#root, path) ?? null;
   }
 
   #getNodeAtPosition(
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
-  ): Node | null {
-    return findNodeAtOffset(
+  ): JSONC.Node | null {
+    return JSONC.findNodeAtOffset(
       this.#root,
       this.#positionToOffset({
         line: position.line + (offset.line ?? 0),
@@ -168,7 +162,7 @@ export class JsonDocument extends DTLSTextDocument {
     ) ?? null;
   }
 
-  #getNodeForTokenName(tokenName: string, prefix?: string): Node | null {
+  #getNodeForTokenName(tokenName: string, prefix?: string): JSONC.Node | null {
     const tokenPath = tokenName.replace(/^--/, "")
       .split("-")
       .filter((x) => !!x)
@@ -177,7 +171,7 @@ export class JsonDocument extends DTLSTextDocument {
     return node ?? null;
   }
 
-  #getRangeForNode(node: Node | null): LSP.Range | null {
+  #getRangeForNode(node: JSONC.Node | null): LSP.Range | null {
     if (node) {
       const start = node.offset;
       const end = start + node.length;
@@ -190,18 +184,18 @@ export class JsonDocument extends DTLSTextDocument {
     return null;
   }
 
-  #getTokenForPath(path: Segment[]): Token | null {
+  #getTokenForPath(path: JSONC.Segment[]): Token | null {
     const node = this.#getNodeAtJSONPath(path);
     if (!node) {
       return null;
     }
-    const valueNode = findNodeAtLocation(node, ["$value"]);
-    const descriptionNode = findNodeAtLocation(node, ["$description"]);
+    const valueNode = JSONC.findNodeAtLocation(node, ["$value"]);
+    const descriptionNode = JSONC.findNodeAtLocation(node, ["$description"]);
     let startingNode = node;
-    let typeNode = findNodeAtLocation(node, ["$type"]);
+    let typeNode = JSONC.findNodeAtLocation(node, ["$type"]);
     while (!typeNode && startingNode?.parent) {
       startingNode = startingNode.parent;
-      typeNode = findNodeAtLocation(startingNode, ["$type"]);
+      typeNode = JSONC.findNodeAtLocation(startingNode, ["$type"]);
     }
     const $value = valueNode?.value;
     const $type = typeNode?.value;
@@ -236,7 +230,7 @@ export class JsonDocument extends DTLSTextDocument {
 
         if (match) {
           const path = match.replace(REF_RE, "$1").split(".");
-          const node = findNodeAtLocation(this.#root, path) ?? null;
+          const node = JSONC.findNodeAtLocation(this.#root, path) ?? null;
           const token = this.#getTokenForPath(path);
           if (node && token) {
             return {
