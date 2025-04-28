@@ -3,10 +3,15 @@ import {
   HoverParams,
   MarkupContent,
   MarkupKind,
+  ServerCapabilities,
 } from "vscode-languageserver-protocol";
 
 import { getTokenMarkdown } from "#tokens";
 import { DTLSContext } from "#lsp";
+
+export const capabilities: Partial<ServerCapabilities> = {
+  hoverProvider: true,
+};
 
 /**
  * Generates hover information for design tokens.

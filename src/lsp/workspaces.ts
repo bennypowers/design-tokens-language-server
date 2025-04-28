@@ -86,7 +86,8 @@ export class Workspaces {
           const tokenfileContent = decoder.decode(
             await Deno.readFile(spec.path),
           );
-          const doc = JsonDocument.create(context, spec.path, tokenfileContent);
+          const uri = `file://${spec.path.replace("file://", "")}`;
+          const doc = JsonDocument.create(context, uri, tokenfileContent);
           context.documents.add(doc);
         } catch (e) {
           Logger.error`Could not read token file ${spec.path}: ${

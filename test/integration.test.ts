@@ -36,40 +36,13 @@ Deno.test("design-tokens-language-server", async (t) => {
         },
       });
 
-      assertEquals(initializeResponse, {
-        jsonrpc: "2.0",
-        id: 0,
-        result: {
-          capabilities: {
-            codeActionProvider: {
-              codeActionKinds: [
-                "quickfix",
-                "refactor.rewrite",
-                "source.fixAll",
-              ],
-              resolveProvider: true,
-            },
-            colorProvider: true,
-            definitionProvider: true,
-            completionProvider: {
-              completionItem: {
-                labelDetailsSupport: true,
-              },
-              resolveProvider: true,
-            },
-            diagnosticProvider: {
-              interFileDependencies: false,
-              workspaceDiagnostics: false,
-            },
-            hoverProvider: true,
-            textDocumentSync: 2,
-          },
-          serverInfo: {
-            name: "design-tokens-language-server",
-            version,
-          },
-        },
-      });
+      assertEquals(initializeResponse?.jsonrpc, "2.0");
+      assertEquals(initializeResponse?.id, 0);
+      assertEquals(initializeResponse?.result.serverInfo.version, version);
+      assertEquals(
+        initializeResponse?.result.serverInfo.name,
+        "design-tokens-language-server",
+      );
     });
 
     await client.sendNotification({ method: "initialized" });

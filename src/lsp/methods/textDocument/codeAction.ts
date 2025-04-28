@@ -2,6 +2,7 @@ import {
   type CodeAction,
   CodeActionKind,
   type CodeActionParams,
+  InitializeResult,
   Range,
   TextEdit,
 } from "vscode-languageserver-protocol";
@@ -129,3 +130,14 @@ export function codeAction(
 
   return null;
 }
+
+export const capabilities: Partial<InitializeResult> = {
+  codeActionProvider: {
+    codeActionKinds: [
+      CodeActionKind.QuickFix,
+      CodeActionKind.RefactorRewrite,
+      CodeActionKind.SourceFixAll,
+    ],
+    resolveProvider: true,
+  },
+};

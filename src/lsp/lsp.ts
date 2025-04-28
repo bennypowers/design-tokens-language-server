@@ -5,15 +5,16 @@ import { Logger } from "#logger";
 import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
 
-import { documentColor } from "./methods/textDocument/documentColor.ts";
-import { codeAction } from "./methods/textDocument/codeAction.ts";
-import { diagnostic } from "./methods/textDocument/diagnostic.ts";
-import { hover } from "./methods/textDocument/hover.ts";
-import { completion } from "./methods/textDocument/completion.ts";
+import * as DocumentColor from "./methods/textDocument/documentColor.ts";
+import * as CodeAction from "./methods/textDocument/codeAction.ts";
+import * as Diagnostic from "./methods/textDocument/diagnostic.ts";
+import * as Hover from "./methods/textDocument/hover.ts";
+import * as Completion from "./methods/textDocument/completion.ts";
 import { colorPresentation } from "./methods/textDocument/colorPresentation.ts";
 import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
-import { definition } from "./methods/textDocument/definition.ts";
+import * as Definition from "./methods/textDocument/definition.ts";
+import * as References from "./methods/textDocument/references.ts";
 
 import manifest from "../../package.json" with { type: "json" };
 
@@ -22,13 +23,14 @@ const { version } = manifest;
 const handlers = {
   "codeAction/resolve": codeActionResolve,
   "completionItem/resolve": completionItemResolve,
-  "textDocument/codeAction": codeAction,
-  "textDocument/definition": definition,
+  "textDocument/codeAction": CodeAction.codeAction,
+  "textDocument/definition": Definition.definition,
   "textDocument/colorPresentation": colorPresentation,
-  "textDocument/completion": completion,
-  "textDocument/diagnostic": diagnostic,
-  "textDocument/documentColor": documentColor,
-  "textDocument/hover": hover,
+  "textDocument/completion": Completion.completion,
+  "textDocument/diagnostic": Diagnostic.diagnostic,
+  "textDocument/documentColor": DocumentColor.documentColor,
+  "textDocument/hover": Hover.hover,
+  "textDocument/references": References.references,
 };
 
 type Handlers =
@@ -262,34 +264,20 @@ export class Lsp {
 
     return {
       capabilities: {
-        colorProvider: true,
-        hoverProvider: true,
         textDocumentSync: LSP.TextDocumentSyncKind.Incremental,
-        definitionProvider: true,
-        completionProvider: {
-          resolveProvider: true,
-          completionItem: {
-            labelDetailsSupport: true,
-          },
-        },
-        codeActionProvider: {
-          codeActionKinds: [
-            LSP.CodeActionKind.QuickFix,
-            LSP.CodeActionKind.RefactorRewrite,
-            LSP.CodeActionKind.SourceFixAll,
-          ],
-          resolveProvider: true,
-        },
-        diagnosticProvider: {
-          interFileDependencies: false,
-          workspaceDiagnostics: false,
-        },
+        ...DocumentColor.capabilities,
+        ...Hover.capabilities,
+        ...Definition.capabilities,
+        ...References.capabilities,
+        ...Completion.capabilities,
+        ...CodeAction.capabilities,
+        ...Diagnostic.capabilities,
       },
       serverInfo: {
         name: "design-tokens-language-server",
         version,
       },
-    };
+    } satisfies LSP.InitializeResult;
   }
 
   /**

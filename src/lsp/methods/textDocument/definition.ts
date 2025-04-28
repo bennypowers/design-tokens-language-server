@@ -18,3 +18,7 @@ export function definition(
     .get(params.textDocument.uri)
     .definition(params, context);
 }
+
+export const capabilities: Partial<LSP.ServerCapabilities> = {
+  definitionProvider: true,
+};

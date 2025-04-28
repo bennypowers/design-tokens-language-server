@@ -2,6 +2,7 @@ import {
   DocumentDiagnosticParams,
   DocumentDiagnosticReportKind,
   RelatedFullDocumentDiagnosticReport,
+  ServerCapabilities,
 } from "vscode-languageserver-protocol";
 
 import { DTLSContext } from "#lsp";
@@ -25,3 +26,10 @@ export function diagnostic(
       .getDiagnostics(context),
   };
 }
+
+export const capabilities: Partial<ServerCapabilities> = {
+  diagnosticProvider: {
+    interFileDependencies: false,
+    workspaceDiagnostics: false,
+  },
+};

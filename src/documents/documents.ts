@@ -41,6 +41,8 @@ export class Documents {
 
   onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
     const { uri, languageId, version, text } = params.textDocument;
+    if (!uri.includes("://")) throw new Error(`Invalid URI: ${uri}`);
+
     switch (languageId) {
       case "json":
         this.add(JsonDocument.create(context, uri, text, version));

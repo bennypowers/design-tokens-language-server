@@ -98,3 +98,12 @@ export function completion(
   }
   return null;
 }
+
+export const capabilities: Partial<LSP.ServerCapabilities> = {
+  completionProvider: {
+    resolveProvider: true,
+    completionItem: {
+      labelDetailsSupport: true,
+    },
+  },
+};

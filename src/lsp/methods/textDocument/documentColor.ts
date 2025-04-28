@@ -4,6 +4,7 @@ import type {
 } from "vscode-languageserver-protocol";
 
 import { DTLSContext } from "#lsp";
+import { ServerCapabilities } from "vscode-languageserver-protocol";
 
 /**
  * Generates color information for design tokens.
@@ -21,3 +22,7 @@ export function documentColor(
     .get(params.textDocument.uri)
     .getColors(context);
 }
+
+export const capabilities: Partial<ServerCapabilities> = {
+  colorProvider: true,
+};
