@@ -55,7 +55,7 @@ describe("textDocument/hover", () => {
     const result = hover({ textDocument, position }, ctx);
 
     expect(result).not.toBeNull();
-    expect(result?.range).toEqual(doc.rangeForSubstring("--token-color-red"));
+    expect(result?.range).toEqual(doc.getRangeForSubstring("--token-color-red"));
     expect(result?.contents).toHaveProperty("kind", "markdown");
     expect(result?.contents).toHaveProperty("value");
     expect((result?.contents as MarkupContent).value).toEqual(`\
@@ -90,7 +90,7 @@ describe("textDocument/hover", () => {
 
     const doc = ctx.documents.get(textDocument.uri);
     const position = doc.positionForSubstring("--token-color-blue-lightdark");
-    const range = doc.rangeForSubstring("--token-color-blue-lightdark");
+    const range = doc.getRangeForSubstring("--token-color-blue-lightdark");
     const result = hover({ textDocument, position }, ctx);
     expect(result).not.toBeNull();
     expect(result?.range).toEqual(range);
