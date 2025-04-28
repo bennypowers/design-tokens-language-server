@@ -88,7 +88,6 @@ class TestDocuments extends Documents {
       text,
     };
     this.onDidOpen({ textDocument }, this.#context);
-    console.log("SPEC", this.#context.specs.get(uri));
     return textDocument;
   }
 
@@ -304,7 +303,7 @@ export function createTestContext(
     specs.set(definition.spec.path, definition.spec);
     const uri = `file:///${definition.spec.path.replace("file:///", "")}`;
     const content = JSON.stringify(definition.tokens, null, 2);
-    documents.add(JsonDocument.create(context, uri, content), definition.spec);
+    documents.add(JsonDocument.create(context, uri, content));
   }
 
   return context;
