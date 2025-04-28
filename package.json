@@ -1,7 +1,7 @@
 {
   "name": "design-tokens-language-server",
   "private": true,
-  "version": "0.0.22",
+  "version": "0.0.23",
   "devDependencies": {
     "esbuild": "^0.25.2"
   },
