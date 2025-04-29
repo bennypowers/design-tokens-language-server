@@ -3,17 +3,13 @@ import { URI } from "vscode-languageserver-protocol";
 
 import { createRequire } from "node:module";
 
-function normalizePath(
-  path: string,
-  workspaceRoot: URI,
-  require = createRequire(import.meta.url),
-) {
+function normalizePath(path: string, workspaceRoot: URI) {
   if (path.startsWith("~")) {
     return path.replace("~", Deno.env.get("HOME")!);
   } else if (path.startsWith(".")) {
     return path.replace(".", workspaceRoot.replace("file://", ""));
   } else if (path.startsWith("npm:")) {
-    return require.resolve(path.replace("npm:", ""), {
+    return createRequire(import.meta.url).resolve(path.replace("npm:", ""), {
       paths: [workspaceRoot],
     });
   } else {
