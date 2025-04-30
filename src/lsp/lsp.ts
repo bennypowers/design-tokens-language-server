@@ -253,7 +253,6 @@ export class Lsp {
       if (trace) this.#setTrace(trace);
       this.#clientCapabilities = capabilities;
       this.#initializationOptions = initializationOptions;
-      Logger.debug`📁 workspaceFolders: ${workspaceFolders}`;
       await this.#workspaces.add(workspaceFolders, {
         documents: this.#documents,
         tokens: this.#tokens,

@@ -10,10 +10,19 @@ import {
   TokenFileSpec,
 } from "#lsp";
 
-import { normalizeTokenFile } from "../tokens/utils.ts";
 import { JsonDocument } from "#json";
 
+import { normalizeTokenFile } from "../tokens/utils.ts";
+
 const decoder = new TextDecoder();
+
+function logSpecAdd(spec: TokenFileSpec) {
+  const { prefix, path, groupMarkers } = spec;
+  Logger.debug`🪙 Adding token spec`;
+  Logger.debug`  from ${path}`;
+  if (prefix) Logger.debug`  with prefix ${prefix}`;
+  if (groupMarkers) Logger.debug`  and groupMarkers ${groupMarkers}`;
+}
 
 async function tryToLoadSettingsFromPackageJson(
   uri: LSP.DocumentUri,
@@ -65,8 +74,7 @@ export class Workspaces {
     tokenFile: TokenFile,
     workspaceRoot: LSP.URI,
     settings: DTLSClientSettings | null,
-  ): TokenFileSpec {
-    Logger.debug`Normalizing token file at root ${workspaceRoot} ${tokenFile}`;
+  ): Promise<TokenFileSpec[]> {
     return normalizeTokenFile(
       tokenFile,
       workspaceRoot,
@@ -79,21 +87,23 @@ export class Workspaces {
       const { uri } = ws;
       const settings = await tryToLoadSettingsFromPackageJson(uri);
       for (const file of settings?.tokensFiles ?? []) {
-        const spec = this.#normalizeTokenFile(file, uri, settings);
-        Logger.debug`Adding token spec ${spec}`;
-        this.#tokenSpecs.add(spec);
-        try {
-          const tokenfileContent = decoder.decode(
-            await Deno.readFile(spec.path),
-          );
-          const uri = `file://${spec.path.replace("file://", "")}`;
-          const doc = JsonDocument.create(context, uri, tokenfileContent);
-          context.documents.add(doc);
-        } catch (e) {
-          Logger.error`Could not read token file ${spec.path}: ${
-            (e as Error).message
-          }`;
-          this.#tokenSpecs.delete(spec);
+        const specs = await this.#normalizeTokenFile(file, uri, settings);
+        for (const spec of specs) {
+          logSpecAdd(spec);
+          this.#tokenSpecs.add(spec);
+          try {
+            const tokenfileContent = decoder.decode(
+              await Deno.readFile(spec.path),
+            );
+            const uri = `file://${spec.path.replace("file://", "")}`;
+            const doc = JsonDocument.create(context, uri, tokenfileContent);
+            context.documents.add(doc);
+          } catch (e) {
+            Logger.error`Could not read token file ${spec.path}: ${
+              (e as Error).message
+            }`;
+            this.#tokenSpecs.delete(spec);
+          }
         }
       }
     }
@@ -119,15 +129,16 @@ export class Workspaces {
     params: LSP.DidChangeConfigurationParams,
     context: DTLSContextWithWorkspaces,
   ) => {
-    Logger.debug`User settings ${params.settings}`;
-    this.#settings = params.settings;
-    for (const file of params.settings?.dtls?.tokensFiles ?? []) {
-      const spec = this.#normalizeTokenFile(
+    const { settings } = params;
+    Logger.debug`User settings ${settings}`;
+    this.#settings = settings;
+    for (const file of settings?.dtls?.tokensFiles ?? []) {
+      const specs = await this.#normalizeTokenFile(
         file,
-        params.settings?.workspaceRoot ?? "",
-        params.settings,
+        settings?.workspaceRoot ?? "",
+        settings,
       );
-      this.#tokenSpecs.add(spec);
+      for (const spec of specs) this.#tokenSpecs.add(spec);
     }
     await this.#updateConfiguration(context);
   };
@@ -141,7 +152,10 @@ export class Workspaces {
     folders: LSP.WorkspaceFolder[] | null | undefined,
     context: DTLSContext,
   ) {
-    for (const folder of folders ?? []) this.#workspaces.add(folder);
+    for (const folder of folders ?? []) {
+      Logger.debug`📁 Adding workspace folder ${folder.name}@${folder.uri}`;
+      this.#workspaces.add(folder);
+    }
     await this.#updateConfiguration(context);
   }
 

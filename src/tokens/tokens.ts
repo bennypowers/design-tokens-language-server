@@ -91,8 +91,9 @@ export class Tokens extends Map<string, Token> {
         with: { type: "json" },
       });
       this.populateFromDtcg(json, spec);
-      Logger
-        .info`✍️ Registered ${this.size} tokens with prefix ${spec.prefix} from: ${spec.path}`;
+      Logger.info`✍️ Registered ${this.size} tokens`;
+      Logger.info`  with prefix ${spec.prefix}`;
+      Logger.info`  from: ${spec.path}`;
     } catch {
       Logger.error`Could not load tokens for ${spec}`;
     }

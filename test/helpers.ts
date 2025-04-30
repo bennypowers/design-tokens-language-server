@@ -52,56 +52,33 @@ class TestDocuments extends Documents {
     super();
     this.#tokens = tokens;
     for (const [uri, text] of Object.entries(options?.documents ?? {})) {
-      switch (uri.split(".").pop()) {
-        case "json":
-          this.createJsonDocument(text, uri);
+      const id = uri.split(".").pop();
+      switch (id) {
+        case "yml":
+          this.createDocument("yaml", text, uri);
           break;
+        case "yaml":
+        case "json":
         case "css":
-          this.createCssDocument(text, uri);
+          this.createDocument(id, text, uri);
           break;
         default:
-          throw new Error(`Unsupported file type: ${uri}`);
+          throw new Error(`Unsupported file type ${id} for ${uri}`);
       }
     }
   }
 
-  createJsonDocument(
+  createDocument(
+    languageId: "css" | "json" | "yaml",
     text: string,
     uri?: DocumentUri,
   ) {
     const id = this.allDocuments.length;
-    uri ??= `file:///test-${id}.json`;
-    const textDocument = {
-      uri,
-      languageId: "json",
-      version: 1,
-      text,
-    };
-    this.onDidOpen({ textDocument }, {
-      documents: this,
-      tokens: this.#tokens,
-    });
-    return textDocument;
-  }
-
-  createCssDocument(
-    text: string,
-    uri?: DocumentUri,
-  ) {
-    const id = this.allDocuments.length;
-    uri ??= `file:///test-${id}.css`;
-    const textDocument = {
-      uri,
-      languageId: "css",
-      version: 1,
-      text,
-    };
-
-    this.onDidOpen({ textDocument }, {
-      documents: this,
-      tokens: this.#tokens,
-    });
-
+    const tokens = this.#tokens;
+    const version = 1;
+    uri ??= `file:///test-${id}.${languageId}`;
+    const textDocument = { uri, languageId, version, text };
+    this.onDidOpen({ textDocument }, { documents: this, tokens });
     return textDocument;
   }
 
@@ -121,27 +98,12 @@ class TestDocuments extends Documents {
 class TestTokens extends Tokens {
   docs: JsonDocument[] = [];
 
-  normalizedTestTokenDefinitions: NormalizedTestTokenSpec[];
-
   constructor(options: TestContextOptions) {
     super();
-    this.normalizedTestTokenDefinitions = options.testTokensSpecs.map((x) => ({
-      ...x,
-      spec: normalizeTokenFile(x.spec, "file:///test-root/", x),
-    }));
-    this.reset();
   }
 
   reset() {
     this.clear();
-    for (
-      const { tokens, prefix, spec } of this.normalizedTestTokenDefinitions
-    ) {
-      this.populateFromDtcg(
-        tokens,
-        normalizeTokenFile(spec, "file:///test-root/", { prefix }),
-      );
-    }
   }
 
   override get(key: string) {
@@ -280,11 +242,12 @@ class TestLspClient {
 /**
  * Create a test context for the language server.
  */
-export function createTestContext(
+export async function createTestContext(
   options: TestContextOptions,
-): DTLSTestContext {
+): Promise<DTLSTestContext> {
   const tokens = new TestTokens(options);
   const documents = new TestDocuments(tokens, options);
+
   const context = {
     documents,
     tokens,
@@ -294,10 +257,14 @@ export function createTestContext(
     },
   };
 
-  for (const definition of tokens.normalizedTestTokenDefinitions) {
-    const uri = `file:///${definition.spec.path.replace("file:///", "")}`;
-    const content = JSON.stringify(definition.tokens, null, 2);
-    documents.add(JsonDocument.create(context, uri, content));
+  for (const x of options.testTokensSpecs) {
+    for (
+      const spec of await normalizeTokenFile(x.spec, "file:///test-root/", x)
+    ) {
+      const uri = `file:///${spec.path.replace("file:///", "")}`;
+      const content = JSON.stringify(x.tokens, null, 2);
+      documents.add(JsonDocument.create(context, uri, content));
+    }
   }
 
   return context;

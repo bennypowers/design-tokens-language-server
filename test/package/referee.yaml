@@ -1,0 +1,4 @@
+color:
+  $type: color
+  purple:
+    $value: rebeccapurple
