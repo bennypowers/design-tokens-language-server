@@ -4,7 +4,7 @@ import { DTLSTextDocument } from "#document";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
-import * as JSONC from "npm:jsonc-parser";
+import * as JSONC from "jsonc-parser";
 
 import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";

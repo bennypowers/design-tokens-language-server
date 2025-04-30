@@ -6,6 +6,7 @@ import { CssDocument } from "#css";
 import { JsonDocument } from "#json";
 
 import { createTestContext } from "#test-helpers";
+import { YamlDocument } from "#yaml";
 
 /** a comprehensive test suite for the Documents class */
 describe("Documents", () => {
@@ -52,6 +53,60 @@ describe("Documents", () => {
           .toThrow(
             "Unsupported language: txt",
           );
+      });
+    });
+  });
+
+  describe("for a css file", () => {
+    const uri = "file:///test.css";
+    const languageId = "css";
+    const initialText = "body { color: red; }";
+
+    beforeEach(() => {
+      onDidOpen({
+        textDocument: { uri, languageId, version: 1, text: initialText },
+      }, ctx);
+    });
+
+    it("should add a CssDocument to the documents map", () => {
+      const doc = documents.get(uri);
+      expect(doc).toBeInstanceOf(CssDocument as unknown as AnyConstructor);
+      expect(doc.uri).toEqual(uri);
+      expect(doc.version).toEqual(1);
+      expect(doc.languageId).toEqual(languageId);
+      expect(doc.getText()).toEqual(initialText);
+    });
+
+    describe("textDocument/didChange", () => {
+      it("should update the document", () => {
+        onDidChange({
+          textDocument: {
+            uri,
+            version: 2,
+          },
+          contentChanges: [
+            {
+              text: "body { color: blue; }",
+            },
+          ],
+        }, ctx);
+        const doc = documents.get(uri);
+        expect(doc.version).toEqual(2);
+        expect(doc.getText()).toEqual("body { color: blue; }");
+      });
+    });
+
+    describe("textDocument/didClose", () => {
+      beforeEach(() => {
+        onDidClose({
+          textDocument: { uri },
+        }, ctx);
+      });
+
+      it("should remove the document from the map", () => {
+        expect(() => documents.get(uri)).toThrow(
+          `ENOENT: no Document found for ${uri}`,
+        );
       });
     });
   });
@@ -110,56 +165,56 @@ describe("Documents", () => {
     });
   });
 
-  describe("for a css file", () => {
-    const uri = "file:///test.css";
-    const languageId = "css";
-    const initialText = "body { color: red; }";
+  describe("for a yaml file", () => {
+    const uri = "file:///test.yaml";
+    const languageId = "yaml";
+    const initialText = 'key: "value"';
 
-    beforeEach(() => {
-      onDidOpen({
-        textDocument: { uri, languageId, version: 1, text: initialText },
-      }, ctx);
-    });
-
-    it("should add a CssDocument to the documents map", () => {
-      const doc = documents.get(uri);
-      expect(doc).toBeInstanceOf(CssDocument as unknown as AnyConstructor);
-      expect(doc.uri).toEqual(uri);
-      expect(doc.version).toEqual(1);
-      expect(doc.languageId).toEqual(languageId);
-      expect(doc.getText()).toEqual(initialText);
-    });
-
-    describe("textDocument/didChange", () => {
-      it("should update the document", () => {
-        onDidChange({
-          textDocument: {
-            uri,
-            version: 2,
-          },
-          contentChanges: [
-            {
-              text: "body { color: blue; }",
-            },
-          ],
-        }, ctx);
-        const doc = documents.get(uri);
-        expect(doc.version).toEqual(2);
-        expect(doc.getText()).toEqual("body { color: blue; }");
-      });
-    });
-
-    describe("textDocument/didClose", () => {
+    describe("textDocument/didOpen", () => {
       beforeEach(() => {
-        onDidClose({
-          textDocument: { uri },
+        onDidOpen({
+          textDocument: { uri, languageId, version: 1, text: initialText },
         }, ctx);
       });
 
-      it("should remove the document from the map", () => {
-        expect(() => documents.get(uri)).toThrow(
-          `ENOENT: no Document found for ${uri}`,
-        );
+      it("should add a YamlDocument to the documents map", () => {
+        const doc = documents.get(uri);
+        expect(doc).toBeInstanceOf(YamlDocument as unknown as AnyConstructor);
+        expect(doc.uri).toEqual(uri);
+        expect(doc.version).toEqual(1);
+        expect(doc.languageId).toEqual(languageId);
+        expect(doc.getText()).toEqual(initialText);
+      });
+
+      describe("textDocument/didChange", () => {
+        it("should update the document", () => {
+          onDidChange({
+            textDocument: {
+              uri,
+              version: 2,
+            },
+            contentChanges: [
+              {
+                text: 'key: "new value"',
+              },
+            ],
+          }, ctx);
+          const doc = documents.get(uri);
+          expect(doc.version).toEqual(2);
+          expect(doc.getText()).toEqual('key: "new value"');
+        });
+      });
+
+      describe("textDocument/didClose", () => {
+        beforeEach(() => {
+          onDidClose({ textDocument: { uri } }, ctx);
+        });
+
+        it("should remove the document from the map", () => {
+          expect(() => documents.get(uri)).toThrow(
+            `ENOENT: no Document found for ${uri}`,
+          );
+        });
       });
     });
   });

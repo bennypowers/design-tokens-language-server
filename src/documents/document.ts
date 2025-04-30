@@ -4,7 +4,7 @@ import { Token } from "style-dictionary";
 import { DTLSContext } from "#lsp/lsp.ts";
 
 export abstract class DTLSTextDocument extends FullTextDocument {
-  abstract language: "json" | "css";
+  abstract language: "json" | "css" | "yaml";
 
   abstract getDiagnostics(context: DTLSContext): LSP.Diagnostic[];
 
@@ -93,4 +93,27 @@ export abstract class DTLSTextDocument extends FullTextDocument {
       end: { line, character },
     };
   }
+}
+
+export function isPositionInRange(position: LSP.Position, range: LSP.Range) {
+  const { start, end } = range;
+  return (
+    position.line >= start.line &&
+    position.line <= end.line &&
+    (position.line === start.line
+      ? position.character >= start.character
+      : true) &&
+    (position.line === end.line ? position.character <= end.character : true)
+  );
+}
+
+export function adjustPosition(
+  position: LSP.Position,
+  offset?: Partial<LSP.Position>,
+) {
+  if (!offset) return position;
+  return {
+    line: position.line + (offset.line ?? 0),
+    character: position.character + (offset.character ?? 0),
+  };
 }

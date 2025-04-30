@@ -1,9 +1,17 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { JsonDocument } from "#json";
 import { CssDocument } from "#css";
+import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
+
 import { DTLSContext } from "#lsp";
+
 import { Logger } from "#logger";
+
+type Document =
+  | CssDocument
+  | JsonDocument
+  | YamlDocument;
 
 class ENODOCError extends Error {
   constructor(public uri: LSP.DocumentUri) {
@@ -12,7 +20,7 @@ class ENODOCError extends Error {
 }
 
 export class Documents {
-  #map = new Map<LSP.DocumentUri, CssDocument | JsonDocument>();
+  #map = new Map<LSP.DocumentUri, Document>();
 
   get handlers() {
     return {
@@ -31,24 +39,28 @@ export class Documents {
     } as const;
   }
 
-  protected get allDocuments() {
-    return [...this.#map.values()];
+  protected get allDocuments(): Document[] {
+    return [
+      ...this.#map.values(),
+    ];
   }
 
-  add(doc: CssDocument | JsonDocument) {
+  add(doc: Document) {
     this.#map.set(doc.uri, doc);
   }
 
   onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
     const { uri, languageId, version, text } = params.textDocument;
     if (!uri.includes("://")) throw new Error(`Invalid URI: ${uri}`);
-
     switch (languageId) {
+      case "css":
+        this.add(CssDocument.create(context, uri, text, version));
+        break;
       case "json":
         this.add(JsonDocument.create(context, uri, text, version));
         break;
-      case "css":
-        this.add(CssDocument.create(context, uri, text, version));
+      case "yaml":
+        this.add(YamlDocument.create(context, uri, text, version));
         break;
       default:
         throw new Error(
@@ -76,10 +88,11 @@ export class Documents {
     return doc;
   }
 
+  getAll(languageId: "css"): CssDocument[];
   getAll(languageId: "json"): JsonDocument[];
-  getAll(languageId: "css"): JsonDocument[];
-  getAll(): (CssDocument | JsonDocument)[];
-  getAll(languageId?: "json" | "css"): (CssDocument | JsonDocument)[] {
+  getAll(languageId: "yaml"): YamlDocument[];
+  getAll(): Document[];
+  getAll(languageId?: "json" | "css" | "yaml"): Document[] {
     if (languageId) {
       return this.allDocuments.filter((doc) => doc.language === languageId);
     }
