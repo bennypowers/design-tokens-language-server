@@ -11,20 +11,14 @@ import {
 } from "#lsp";
 
 import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
 
 import { normalizeTokenFile } from "../tokens/utils.ts";
 import { isGlob } from "@std/path";
 import { expandGlob } from "@std/fs/expand-glob";
+import { DTLSDocument } from "#documents";
 
 const decoder = new TextDecoder();
-
-function logSpecAdd(spec: TokenFileSpec) {
-  const { prefix, path, groupMarkers } = spec;
-  Logger.debug`🪙 Adding token spec`;
-  Logger.debug`  from ${path}`;
-  if (prefix) Logger.debug`  with prefix ${prefix}`;
-  if (groupMarkers) Logger.debug`  and groupMarkers ${groupMarkers}`;
-}
 
 async function tryToLoadSettingsFromPackageJson(
   uri: LSP.DocumentUri,
@@ -84,13 +78,37 @@ export class Workspaces {
     );
   }
 
-  async #loadSpec(context: DTLSContext, spec: TokenFileSpec) {
-    logSpecAdd(spec);
+  #loadedSpecs = new Set();
+
+  async #loadSpec(
+    context: DTLSContext,
+    spec: TokenFileSpec,
+    { force = false } = {},
+  ) {
+    const { prefix, path, groupMarkers } = spec;
+    if (!force && this.#loadedSpecs.has(path)) return;
+    Logger.debug`🪙 Adding token spec`;
+    Logger.debug`  from ${path}`;
+    if (prefix) Logger.debug`  with prefix ${prefix}`;
+    if (groupMarkers) Logger.debug`  and groupMarkers ${groupMarkers}`;
     this.#tokenSpecs.add(spec);
     try {
       const tokenfileContent = decoder.decode(await Deno.readFile(spec.path));
       const uri = `file://${spec.path.replace("file://", "")}`;
-      const doc = JsonDocument.create(context, uri, tokenfileContent);
+      const language = uri.split(".").pop()?.replace("yml", "yaml");
+      if (!language) throw new Error(`Could not identify language for ${uri}`);
+      let doc: DTLSDocument;
+      switch (language) {
+        case "json":
+          doc = JsonDocument.create(context, uri, tokenfileContent);
+          break;
+        case "yaml":
+          doc = YamlDocument.create(context, uri, tokenfileContent);
+          break;
+        default:
+          throw new Error(`Unknown language: ${language}`);
+      }
+      this.#loadedSpecs.add(spec.path);
       context.documents.add(doc);
     } catch (e) {
       Logger.error`Could not read token file ${spec.path}: ${
@@ -118,14 +136,17 @@ export class Workspaces {
     }
   }
 
-  async #updateConfiguration(context: DTLSContext) {
+  async #updateConfiguration(
+    context: DTLSContext,
+    { force }: { force: boolean },
+  ) {
     for (const ws of this.#workspaces) {
       const settings = await tryToLoadSettingsFromPackageJson(ws.uri);
       await this.#updateWorkspaceSettings(context, ws.uri, settings);
     }
 
     for (const tokensFile of this.#tokenSpecs) {
-      await context.tokens.register(tokensFile);
+      await context.tokens.register(tokensFile, { force });
     }
   }
 
@@ -150,7 +171,7 @@ export class Workspaces {
     this.#settings = settings;
     const uri = settings.workspaceRoot ?? "";
     await this.#updateWorkspaceSettings(context, uri, settings);
-    await this.#updateConfiguration(context);
+    await this.#updateConfiguration(context, { force: true });
   };
 
   /**
@@ -166,11 +187,11 @@ export class Workspaces {
       Logger.debug`📁 Adding workspace folder ${folder.name}@${folder.uri}`;
       this.#workspaces.add(folder);
     }
-    await this.#updateConfiguration(context);
+    await this.#updateConfiguration(context, { force: false });
   }
 
   public async initialize(context: DTLSContext) {
-    await this.#updateConfiguration(context);
+    await this.#updateConfiguration(context, { force: false });
   }
 
   public get handlers() {

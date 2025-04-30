@@ -1,5 +1,7 @@
 import type { Token } from "style-dictionary";
 
+import * as YAML from "yaml";
+
 import { getLightDarkValues } from "#css";
 
 import {
@@ -83,17 +85,38 @@ export class Tokens extends Map<string, Token> {
         this.set(name, token);
       }
     }
+    return incoming.length;
   }
 
-  public async register(spec: TokenFileSpec) {
+  async #importSpec(path: string) {
+    const language = path.split(".").pop();
+    // TODO: handle this with ctx.documents
+    switch (language) {
+      case "yaml":
+      case "yml":
+        return YAML.parse(await Deno.readTextFile(path));
+      default:
+        return await import(path, { with: { type: "json" } })
+          .then((m) => m.default);
+    }
+  }
+
+  #importedSpecs = new Set();
+
+  public async register(spec: TokenFileSpec, { force = false } = {}) {
+    if (!force && this.#importedSpecs.has(spec.path)) {
+      return;
+    }
+
     try {
-      const { default: json } = await import(spec.path, {
-        with: { type: "json" },
-      });
-      this.populateFromDtcg(json, spec);
-      Logger.info`✍️ Registered ${this.size} tokens`;
-      Logger.info`  with prefix ${spec.prefix}`;
+      const tokens = await this.#importSpec(spec.path);
+      const amt = this.populateFromDtcg(tokens, spec);
+      this.#importedSpecs.add(spec.path);
+      Logger.info`✍️ Registered ${amt} tokens`;
       Logger.info`  from: ${spec.path}`;
+      if (spec.prefix) {
+        Logger.info`  with prefix ${spec.prefix}`;
+      }
     } catch {
       Logger.error`Could not load tokens for ${spec}`;
     }

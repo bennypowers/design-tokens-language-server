@@ -8,7 +8,7 @@ import { DTLSContext } from "#lsp";
 
 import { Logger } from "#logger";
 
-type Document =
+export type DTLSDocument =
   | CssDocument
   | JsonDocument
   | YamlDocument;
@@ -20,7 +20,7 @@ class ENODOCError extends Error {
 }
 
 export class Documents {
-  #map = new Map<LSP.DocumentUri, Document>();
+  #map = new Map<LSP.DocumentUri, DTLSDocument>();
 
   get handlers() {
     return {
@@ -39,13 +39,13 @@ export class Documents {
     } as const;
   }
 
-  protected get allDocuments(): Document[] {
+  protected get allDocuments(): DTLSDocument[] {
     return [
       ...this.#map.values(),
     ];
   }
 
-  add(doc: Document) {
+  add(doc: DTLSDocument) {
     this.#map.set(doc.uri, doc);
   }
 
@@ -91,8 +91,8 @@ export class Documents {
   getAll(languageId: "css"): CssDocument[];
   getAll(languageId: "json"): JsonDocument[];
   getAll(languageId: "yaml"): YamlDocument[];
-  getAll(): Document[];
-  getAll(languageId?: "json" | "css" | "yaml"): Document[] {
+  getAll(): DTLSDocument[];
+  getAll(languageId?: "json" | "css" | "yaml"): DTLSDocument[] {
     if (languageId) {
       return this.allDocuments.filter((doc) => doc.language === languageId);
     }
