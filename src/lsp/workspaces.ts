@@ -13,6 +13,8 @@ import {
 import { JsonDocument } from "#json";
 
 import { normalizeTokenFile } from "../tokens/utils.ts";
+import { isGlob } from "@std/path";
+import { expandGlob } from "@std/fs/expand-glob";
 
 const decoder = new TextDecoder();
 
@@ -74,7 +76,7 @@ export class Workspaces {
     tokenFile: TokenFile,
     workspaceRoot: LSP.URI,
     settings: DTLSClientSettings | null,
-  ): Promise<TokenFileSpec[]> {
+  ): TokenFileSpec {
     return normalizeTokenFile(
       tokenFile,
       workspaceRoot,
@@ -82,30 +84,44 @@ export class Workspaces {
     );
   }
 
+  async #loadSpec(context: DTLSContext, spec: TokenFileSpec) {
+    logSpecAdd(spec);
+    this.#tokenSpecs.add(spec);
+    try {
+      const tokenfileContent = decoder.decode(await Deno.readFile(spec.path));
+      const uri = `file://${spec.path.replace("file://", "")}`;
+      const doc = JsonDocument.create(context, uri, tokenfileContent);
+      context.documents.add(doc);
+    } catch (e) {
+      Logger.error`Could not read token file ${spec.path}: ${
+        (e as Error).message
+      }`;
+      this.#tokenSpecs.delete(spec);
+    }
+  }
+
+  async #updateWorkspaceSettings(
+    context: DTLSContext,
+    uri: string,
+    settings: DTLSClientSettings | null,
+  ) {
+    for (const file of settings?.tokensFiles ?? []) {
+      const spec = this.#normalizeTokenFile(file, uri, settings);
+      if (isGlob(spec.path)) {
+        const specs = expandGlob(spec.path, { includeDirs: false });
+        for await (const { path } of specs) {
+          await this.#loadSpec(context, { ...spec, path });
+        }
+      } else {
+        await this.#loadSpec(context, spec);
+      }
+    }
+  }
+
   async #updateConfiguration(context: DTLSContext) {
     for (const ws of this.#workspaces) {
-      const { uri } = ws;
-      const settings = await tryToLoadSettingsFromPackageJson(uri);
-      for (const file of settings?.tokensFiles ?? []) {
-        const specs = await this.#normalizeTokenFile(file, uri, settings);
-        for (const spec of specs) {
-          logSpecAdd(spec);
-          this.#tokenSpecs.add(spec);
-          try {
-            const tokenfileContent = decoder.decode(
-              await Deno.readFile(spec.path),
-            );
-            const uri = `file://${spec.path.replace("file://", "")}`;
-            const doc = JsonDocument.create(context, uri, tokenfileContent);
-            context.documents.add(doc);
-          } catch (e) {
-            Logger.error`Could not read token file ${spec.path}: ${
-              (e as Error).message
-            }`;
-            this.#tokenSpecs.delete(spec);
-          }
-        }
-      }
+      const settings = await tryToLoadSettingsFromPackageJson(ws.uri);
+      await this.#updateWorkspaceSettings(context, ws.uri, settings);
     }
 
     for (const tokensFile of this.#tokenSpecs) {
@@ -132,14 +148,8 @@ export class Workspaces {
     const { settings } = params;
     Logger.debug`User settings ${settings}`;
     this.#settings = settings;
-    for (const file of settings?.dtls?.tokensFiles ?? []) {
-      const specs = await this.#normalizeTokenFile(
-        file,
-        settings?.workspaceRoot ?? "",
-        settings,
-      );
-      for (const spec of specs) this.#tokenSpecs.add(spec);
-    }
+    const uri = settings.workspaceRoot ?? "";
+    await this.#updateWorkspaceSettings(context, uri, settings);
     await this.#updateConfiguration(context);
   };
 
