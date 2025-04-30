@@ -5,10 +5,9 @@
   "designTokensLanguageServer": {
     "prefix": "token",
     "tokensFiles": [
-      "./tokens.json",
-      "./referer.json",
-      "./referer.yaml",
-      "./referee.yaml"
+      "./tokens/*.json",
+      "./tokens/*.yaml",
+      "./tokens/*.yml"
     ]
   }
 }

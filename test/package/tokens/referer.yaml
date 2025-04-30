@@ -1,3 +1,4 @@
 color:
+  $type: color
   becky:
     $value: '{color.purple}'
