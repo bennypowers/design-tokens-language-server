@@ -1,15 +1,19 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { resolve } from "./resolve.ts";
 import { CodeAction } from "vscode-languageserver-protocol";
 
 describe("codeAction/resolve", () => {
-  const ctx = createTestContext({
-    // NOTE: truthy path is tested in codeAction.test.ts
-    testTokensSpecs: [],
+  let ctx: DTLSTestContext;
+
+  beforeEach(async () => {
+    ctx = await createTestContext({
+      // NOTE: truthy path is tested in codeAction.test.ts
+      testTokensSpecs: [],
+    });
   });
 
   describe("given a code action that somehow represents a non-token", () => {

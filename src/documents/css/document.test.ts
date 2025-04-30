@@ -16,44 +16,44 @@ describe("getLightDarkValues", () => {
   });
 });
 
-describe("CssDocument", () => {
-  const ctx = createTestContext({
-    testTokensSpecs: [
-      {
-        prefix: "token",
-        spec: "file:///tokens.json",
-        tokens: {
-          color: {
-            red: {
-              _: {
-                $value: "#ff0000",
-                $type: "color",
-              },
-              hex: {
-                $value: "#ff0000",
-                $type: "color",
-              },
+const ctx = await createTestContext({
+  testTokensSpecs: [
+    {
+      prefix: "token",
+      spec: "file:///tokens.json",
+      tokens: {
+        color: {
+          red: {
+            _: {
+              $value: "#ff0000",
+              $type: "color",
+            },
+            hex: {
+              $value: "#ff0000",
+              $type: "color",
             },
           },
-          space: {
-            small: {
-              $value: "4px",
-              $type: "size",
-            },
+        },
+        space: {
+          small: {
+            $value: "4px",
+            $type: "size",
           },
-          font: {
-            weight: {
-              thin: {
-                $value: 100,
-                $type: "fontWeight",
-              },
+        },
+        font: {
+          weight: {
+            thin: {
+              $value: 100,
+              $type: "fontWeight",
             },
           },
         },
       },
-    ],
-  });
+    },
+  ],
+});
 
+describe("CssDocument", () => {
   it("should create a CssDocument instance", () => {
     const uri = "file:///test.css";
     const languageId = "css";

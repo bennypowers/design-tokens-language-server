@@ -1,3 +1,5 @@
+import { TextDocumentIdentifier } from "vscode-languageserver-protocol";
+
 import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -10,11 +12,9 @@ describe("textDocument/definition", () => {
   describe("in a css document", () => {
     const spec = "file:///tokens.json";
     let ctx: DTLSTestContext;
-    let textDocument: ReturnType<
-      DTLSTestContext["documents"]["createCssDocument"]
-    >;
-    beforeEach(() => {
-      ctx = createTestContext({
+    let textDocument: TextDocumentIdentifier;
+    beforeEach(async () => {
+      ctx = await createTestContext({
         testTokensSpecs: [{
           prefix: "token",
           spec,
@@ -39,14 +39,17 @@ describe("textDocument/definition", () => {
           },
         }],
       });
-      textDocument = ctx.documents.createCssDocument(/*css*/ `
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         a {
           color: var(--token-color-red);
           border-color: var(--token-color-red-hex);
           border-width: var(--token-space-small);
           handedness: var(--token-sinister);
         }
-      `);
+      `,
+      );
     });
 
     afterEach(() => ctx.clear());
@@ -68,15 +71,13 @@ describe("textDocument/definition", () => {
 
     it("returns matching range for nested token", () => {
       const doc = ctx.documents.get(textDocument.uri);
-      const range = doc.getRangeForSubstring("--token-color-red-hex");
-      const position = range.start;
-      expect(definition({ textDocument, position }, ctx)).toEqual([
+      const jsonDoc = ctx.documents.get("file:///tokens.json") as JsonDocument;
+      const position = doc.getRangeForSubstring("--token-color-red-hex").start;
+      const result = definition({ textDocument, position }, ctx);
+      expect(result).toEqual([
         {
           uri: spec,
-          range: {
-            start: { line: 7, character: 13 },
-            end: { line: 9, character: 7 },
-          },
+          range: jsonDoc.getRangeForPath(["color", "red", "hex"]),
         },
       ]);
     });
@@ -96,8 +97,8 @@ describe("textDocument/definition", () => {
     let ctx: DTLSTestContext;
     let textDocument: { uri: string };
 
-    beforeEach(() => {
-      ctx = createTestContext({
+    beforeEach(async () => {
+      ctx = await createTestContext({
         testTokensSpecs: [
           {
             spec: "tokens-single-file.json",
@@ -142,8 +143,8 @@ describe("textDocument/definition", () => {
     let ctx: DTLSTestContext;
     let referee: JsonDocument;
     let referer: JsonDocument;
-    beforeEach(() => {
-      ctx = createTestContext({
+    beforeEach(async () => {
+      ctx = await createTestContext({
         testTokensSpecs: [
           {
             spec: "referee.json",

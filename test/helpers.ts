@@ -3,6 +3,8 @@ import { Documents } from "#documents";
 import { Tokens } from "#tokens";
 import { DocumentUri } from "vscode-languageserver-protocol";
 
+import * as YAML from "yaml";
+
 import {
   RequestTypeForMethod,
   ResponseFor,
@@ -13,17 +15,14 @@ import {
 import { normalizeTokenFile } from "../src/tokens/utils.ts";
 
 import { JsonDocument } from "#json";
+import { isGlob } from "@std/path";
+import { expandGlob } from "jsr:@std/fs@^1.0.16";
+import { YamlDocument } from "#yaml";
 
 interface TestSpec {
   tokens: Token;
   prefix?: string;
   spec: string | TokenFileSpec;
-}
-
-interface NormalizedTestTokenSpec {
-  tokens: Token;
-  prefix?: string;
-  spec: TokenFileSpec;
 }
 
 interface TestContextOptions {
@@ -35,84 +34,6 @@ export interface DTLSTestContext {
   documents: TestDocuments;
   tokens: TestTokens;
   clear(): void;
-}
-
-/**
- * Test Documents for managing text documents.
- *
- * This class extends the Documents class and provides methods to create
- * mock text documents.
- * It also provides methods to get the text and ranges of specific strings
- * within the documents.
- */
-class TestDocuments extends Documents {
-  #tokens: Tokens;
-
-  constructor(tokens: Tokens, options?: TestContextOptions) {
-    super();
-    this.#tokens = tokens;
-    for (const [uri, text] of Object.entries(options?.documents ?? {})) {
-      const id = uri.split(".").pop();
-      switch (id) {
-        case "yml":
-          this.createDocument("yaml", text, uri);
-          break;
-        case "yaml":
-        case "json":
-        case "css":
-          this.createDocument(id, text, uri);
-          break;
-        default:
-          throw new Error(`Unsupported file type ${id} for ${uri}`);
-      }
-    }
-  }
-
-  createDocument(
-    languageId: "css" | "json" | "yaml",
-    text: string,
-    uri?: DocumentUri,
-  ) {
-    const id = this.allDocuments.length;
-    const tokens = this.#tokens;
-    const version = 1;
-    uri ??= `file:///test-${id}.${languageId}`;
-    const textDocument = { uri, languageId, version, text };
-    this.onDidOpen({ textDocument }, { documents: this, tokens });
-    return textDocument;
-  }
-
-  tearDown() {
-    for (const doc of this.allDocuments) {
-      this.onDidClose({ textDocument: { uri: doc.uri } }, {
-        documents: this,
-        tokens: this.#tokens,
-      });
-    }
-  }
-}
-
-/**
- * Test TokenMap for managing design tokens.
- */
-class TestTokens extends Tokens {
-  docs: JsonDocument[] = [];
-
-  constructor(options: TestContextOptions) {
-    super();
-  }
-
-  reset() {
-    this.clear();
-  }
-
-  override get(key: string) {
-    return super.get(key.replace(/^-+/, ""));
-  }
-
-  override has(key: string) {
-    return super.has(key.replace(/^-+/, ""));
-  }
 }
 
 /**
@@ -240,12 +161,86 @@ class TestLspClient {
 }
 
 /**
+ * Test Documents for managing text documents.
+ *
+ * This class extends the Documents class and provides methods to create
+ * mock text documents.
+ * It also provides methods to get the text and ranges of specific strings
+ * within the documents.
+ */
+class TestDocuments extends Documents {
+  #tokens: Tokens;
+
+  constructor(tokens: Tokens, options?: TestContextOptions) {
+    super();
+    this.#tokens = tokens;
+    for (const [uri, text] of Object.entries(options?.documents ?? {})) {
+      const id = uri.split(".").pop();
+      switch (id) {
+        case "yml":
+          this.createDocument("yaml", text, uri);
+          break;
+        case "yaml":
+        case "json":
+        case "css":
+          this.createDocument(id, text, uri);
+          break;
+        default:
+          throw new Error(`Unsupported file type ${id} for ${uri}`);
+      }
+    }
+  }
+
+  createDocument(
+    languageId: "css" | "json" | "yaml",
+    text: string,
+    uri?: DocumentUri,
+  ) {
+    const id = this.allDocuments.length;
+    const tokens = this.#tokens;
+    const version = 1;
+    uri ??= `file:///test-${id}.${languageId}`;
+    const textDocument = { uri, languageId, version, text };
+    this.onDidOpen({ textDocument }, { documents: this, tokens });
+    return textDocument;
+  }
+
+  tearDown() {
+    for (const doc of this.allDocuments) {
+      this.onDidClose({ textDocument: { uri: doc.uri } }, {
+        documents: this,
+        tokens: this.#tokens,
+      });
+    }
+  }
+}
+
+/**
+ * Test TokenMap for managing design tokens.
+ */
+class TestTokens extends Tokens {
+  docs: JsonDocument[] = [];
+
+  reset() {
+    this.clear();
+  }
+
+  override get(key: string) {
+    return super.get(key.replace(/^-+/, ""));
+  }
+
+  override has(key: string) {
+    return super.has(key.replace(/^-+/, ""));
+  }
+}
+
+/**
  * Create a test context for the language server.
  */
 export async function createTestContext(
   options: TestContextOptions,
 ): Promise<DTLSTestContext> {
-  const tokens = new TestTokens(options);
+  const tokens = new TestTokens();
   const documents = new TestDocuments(tokens, options);
 
   const context = {
@@ -258,12 +253,27 @@ export async function createTestContext(
   };
 
   for (const x of options.testTokensSpecs) {
-    for (
-      const spec of await normalizeTokenFile(x.spec, "file:///test-root/", x)
-    ) {
+    const spec = normalizeTokenFile(x.spec, "file:///test-root/", x);
+    const specs = [];
+    if (isGlob(spec.path)) {
+      for await (
+        const { path } of expandGlob(spec.path, { includeDirs: false })
+      ) {
+        specs.push(path);
+      }
+    } else {
+      specs.push(spec.path);
+    }
+    for (const path of specs) {
       const uri = `file:///${spec.path.replace("file:///", "")}`;
-      const content = JSON.stringify(x.tokens, null, 2);
-      documents.add(JsonDocument.create(context, uri, content));
+      if (path.match(/ya?ml$/)) {
+        const content = YAML.stringify(x.tokens);
+        documents.add(YamlDocument.create(context, uri, content));
+      } else {
+        const content = JSON.stringify(x.tokens, null, 2);
+        documents.add(JsonDocument.create(context, uri, content));
+        tokens.populateFromDtcg(x.tokens, spec);
+      }
     }
   }
 

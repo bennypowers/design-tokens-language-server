@@ -5,18 +5,19 @@ import { Documents } from "#documents";
 import { CssDocument } from "#css";
 import { JsonDocument } from "#json";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 import { YamlDocument } from "#yaml";
 
 /** a comprehensive test suite for the Documents class */
 describe("Documents", () => {
-  const ctx = createTestContext({ testTokensSpecs: [] });
+  let ctx: DTLSTestContext;
   let documents: Documents;
   let onDidChange: Documents["handlers"]["textDocument/didChange"];
   let onDidOpen: Documents["handlers"]["textDocument/didOpen"];
   let onDidClose: Documents["handlers"]["textDocument/didClose"];
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    ctx = await createTestContext({ testTokensSpecs: [] });
     documents = new Documents();
     onDidOpen = documents.handlers["textDocument/didOpen"];
     onDidChange = documents.handlers["textDocument/didChange"];
