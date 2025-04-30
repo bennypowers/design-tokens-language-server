@@ -1,6 +1,6 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { adjustPosition, DTLSTextDocument, isPositionInRange } from "#document";
+import { adjustPosition, DTLSTextDocument } from "#document";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
@@ -64,12 +64,12 @@ export class YamlDocument extends DTLSTextDocument {
 
   #getRangeForNode(node: YAML.Node | null) {
     if (!node?.range) return null;
-    const [startOffset, valueEndOffset, nodeEndOffset] = node.range;
+    const [startOffset, valueEndOffset] = node.range;
     const startPos = this.#lineCounter.linePos(startOffset);
     const endPos = this.#lineCounter.linePos(valueEndOffset);
     return {
-      start: { line: startPos.line, character: startPos.col },
-      end: { line: endPos.line, character: endPos.col },
+      start: { line: startPos.line - 1, character: startPos.col - 1 },
+      end: { line: endPos.line - 1, character: endPos.col - 1 },
     };
   }
 
@@ -97,7 +97,7 @@ export class YamlDocument extends DTLSTextDocument {
     let type: string | undefined;
     while (type !== "color" && (parent = pathMut.pop())) {
       if (YAML.isMap(parent)) {
-        typeNode = parent.get("$type");
+        typeNode = parent.get("$type", true);
         type = YAML.isScalar<string>(typeNode) ? typeNode.value : undefined;
       }
     }
@@ -107,13 +107,13 @@ export class YamlDocument extends DTLSTextDocument {
   #getNodeAtPath(
     path: (string | number)[],
   ): YAML.Scalar | YAML.YAMLMap | YAML.YAMLSeq | null {
-    const node = this.#document.getIn(path);
+    const node = this.#document.getIn(path, true);
     if (YAML.isAlias(node)) {
       return node.resolve(this.#document) ?? null;
     } else if (YAML.isNode(node) && !YAML.isAlias(node)) {
       return node;
-    } else {
-      Logger.debug`Unknown ${node}`;
+    } else if (node) {
+      Logger.debug`Unknown ${node} ${typeof node}`;
     }
     return null;
   }
@@ -124,17 +124,31 @@ export class YamlDocument extends DTLSTextDocument {
   ): YAML.Scalar | YAML.YAMLMap | YAML.YAMLSeq | null {
     let found: YAML.Node | null = null;
     const adjustedPosition = adjustPosition(position, offset);
+    // convert the line/col position to a numeric offset
+    const offsetOfPosition = this.getText()
+      .split("\n")
+      .reduce((acc, row, i) => {
+        if (i === adjustedPosition.line) {
+          return acc + adjustedPosition.character;
+        } else if (i < adjustedPosition.line) return acc + row.length;
+        else return acc;
+      }, 0);
+    let previousRange = [-Infinity, Infinity];
     YAML.visit(this.#root, {
       Node: (_, node) => {
         let n: YAML.Node | undefined = node;
         if (YAML.isAlias(node)) {
           n = node.resolve(this.#document);
         }
-        if (n) {
-          const range = this.#getRangeForNode(n);
-          if (range && isPositionInRange(adjustedPosition, range)) {
+        if (n?.range) {
+          const [start, end] = n.range;
+          previousRange = n.range;
+          const nodeContainsOffset = start <= offsetOfPosition &&
+            end >= offsetOfPosition;
+          const isSmallerThanPreviousRange = start >= previousRange[0] &&
+            end <= previousRange[1];
+          if (nodeContainsOffset && isSmallerThanPreviousRange) {
             found = node;
-            return YAML.visit.BREAK;
           }
         }
       },
@@ -152,17 +166,14 @@ export class YamlDocument extends DTLSTextDocument {
     return node ?? null;
   }
 
-  #getTokenForPath(path: (string | number)[]): Token | null {
+  getTokenForPath(path: (string | number)[]): Token | null {
     const node = this.#getNodeAtPath(path);
     const valueNode = this.#getNodeAtPath([...path, "$value"]);
     const descriptionNode = this.#getNodeAtPath([...path, "$description"]);
-    if (!YAML.isScalar(descriptionNode)) {
-      throw new Error("$description is not a string");
-    }
     if (!node || !valueNode) {
       return null;
     }
-    const $type = this.#getDTCGTypeForNode(valueNode);
+    const $type = this.#getDTCGTypeForNode(node);
     const getValues = (node?: YAML.Node): unknown[] => {
       if (YAML.isScalar(node)) return [node?.value];
       else if (YAML.isAlias(node)) {
@@ -174,10 +185,8 @@ export class YamlDocument extends DTLSTextDocument {
       } else return [];
     };
 
-    let $value = getValues(valueNode).join(""); // XXX: this may come back to bite me
-    const $description = typeof descriptionNode?.value === "string"
-      ? descriptionNode.value
-      : undefined;
+    let $value = getValues(valueNode).join(""); // XXX: this join may come back to bite me
+    const $description = getValues(descriptionNode ?? undefined).join("");
     if ($value) {
       if (usesReferences($value)) {
         const resolved = this.#context.tokens.resolveValue($value)?.toString();
@@ -265,50 +274,52 @@ export class YamlDocument extends DTLSTextDocument {
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
   ) {
-    const stringNode = this.#getNodeAtPosition(position, offset);
+    const adjusted = adjustPosition(position, offset);
+    const stringNode = this.#getNodeAtPosition(adjusted, offset);
     if (!YAML.isScalar(stringNode)) return null;
     if (typeof stringNode.value === "string") {
       const valueRange = this.#getRangeForNode(stringNode);
 
       if (!valueRange) return null;
-      const valueLines = this.getText().split("\n").slice(
-        valueRange.start.line,
-        valueRange.end.line,
-      );
 
-      const matches = `${stringNode.value}`.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
-
-      if (!matches) return null;
+      const valueLines = this.getText()
+        .split("\n")
+        .slice(valueRange.start.line, valueRange.end.line + 1);
 
       // get the match that contains the current position
       for (const valueLine of valueLines) {
-        for (const match of matches) {
+        const matches = valueLine.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
+        for (const match of matches ?? []) {
           const matchOffsetInLine = valueLine.indexOf(match);
           if (
-            position.character >= matchOffsetInLine &&
-            position.character <= matchOffsetInLine + match.length
+            adjusted.character >= matchOffsetInLine &&
+            adjusted.character <= matchOffsetInLine + match.length
           ) {
-            const name = match;
-            const stringRange = this.#getRangeForNode(stringNode)!;
-            const nameWithoutBraces = name.replace(REF_RE, "$1");
-            const line = stringRange.start.line;
-            const character = valueLine.indexOf(nameWithoutBraces);
-            const path = nameWithoutBraces.split(".");
+            const nameWithBraces = match;
+            const name = nameWithBraces.replace(REF_RE, "$1");
+            const line = valueLines.indexOf(valueLine) + valueRange.start.line;
+            const character = valueLine.indexOf(name);
+            const path = name.split(".");
             const range = {
               start: { line, character },
-              end: { line, character: character + name.length - 2 },
+              end: { line, character: character + nameWithBraces.length - 2 },
             };
-            const tokenNode = this.#document.getIn(path);
-            const token = this.#getTokenForPath(path);
-            if (tokenNode && token && range) {
-              return { name, range, token };
-            } else {
-              for (const referree of this.#context.documents.getAll("yaml")) {
-                const token = referree.#getTokenForPath(path);
-                if (token) {
-                  return { name, range, token, path };
+            const token = this.getTokenForPath(path) ?? [
+              ...this.#context.documents.getAll("yaml"),
+              ...this.#context.documents.getAll("json"),
+            ].reduce(
+              (acc, doc) => {
+                if (acc) return acc;
+                const tok = doc.getTokenForPath(path);
+                if (tok) {
+                  return tok;
                 }
-              }
+                return null;
+              },
+              null as Token | null,
+            );
+            if (token && range) {
+              return { name, range, token };
             }
           }
         }
@@ -328,16 +339,28 @@ export class YamlDocument extends DTLSTextDocument {
         return [{ uri: this.uri, range }];
       }
     } else {
-      for (const referree of context.documents.getAll("yaml")) {
-        const token = referree.#getTokenForPath(path);
-        if (token) {
-          const range = referree.#getRangeForNode(
-            referree.#getNodeAtPath(path),
-          );
-          if (range) {
-            return [{ uri: referree.uri, range }];
+      const { token, range, uri } = this.getTokenForPath(path) ?? [
+        ...context.documents.getAll("yaml"),
+        ...context.documents.getAll("json"),
+      ].reduce(
+        (acc, doc) => {
+          if (acc.token && acc.range) return acc;
+          else {
+            return {
+              token: doc.getTokenForPath(path),
+              range: doc.getRangeForPath(path),
+              uri: doc.uri,
+            };
           }
-        }
+        },
+        { token: null, range: null } as {
+          token: Token | null;
+          range: LSP.Range | null;
+          uri: string;
+        },
+      );
+      if (token && range && uri) {
+        return [{ uri, range }];
       }
     }
     return [];
@@ -363,12 +386,14 @@ export class YamlDocument extends DTLSTextDocument {
             }
           }
         }
-        diagnostics.push(...errors.map((name) => ({
-          range,
-          severity: LSP.DiagnosticSeverity.Error,
-          message: `Token reference does not exist: ${name}`,
-          code: DTLSErrorCodes.unknownReference,
-        })));
+        diagnostics.push(
+          ...errors.map((name) => ({
+            range,
+            severity: LSP.DiagnosticSeverity.Error,
+            message: `Token reference does not exist: ${name}`,
+            code: DTLSErrorCodes.unknownReference,
+          })),
+        );
       },
     });
     return diagnostics;

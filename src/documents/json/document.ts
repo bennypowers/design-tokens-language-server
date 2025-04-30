@@ -197,7 +197,7 @@ export class JsonDocument extends DTLSTextDocument {
     return null;
   }
 
-  #getTokenForPath(path: JSONC.Segment[]): Token | null {
+  getTokenForPath(path: JSONC.Segment[]): Token | null {
     const node = this.#getNodeAtJSONPath(path);
     if (!node) {
       return null;
@@ -264,12 +264,12 @@ export class JsonDocument extends DTLSTextDocument {
             end: { line, character: character + name.length - 2 },
           };
           const tokenNode = JSONC.findNodeAtLocation(this.#root, path) ?? null;
-          const token = this.#getTokenForPath(path);
+          const token = this.getTokenForPath(path);
           if (tokenNode && token && range) {
             return { name, range, token };
           } else {
             for (const referree of this.#context.documents.getAll("json")) {
-              const token = referree.#getTokenForPath(path);
+              const token = referree.getTokenForPath(path);
               if (token) {
                 return { name, range, token, path };
               }
@@ -313,7 +313,7 @@ export class JsonDocument extends DTLSTextDocument {
         return [{ uri: this.uri, range }];
       }
     } else {for (const referree of context.documents.getAll("json")) {
-        const token = referree.#getTokenForPath(path);
+        const token = referree.getTokenForPath(path);
         if (token) {
           const range = referree.#getRangeForNode(
             referree.#getNodeAtJSONPath(path),

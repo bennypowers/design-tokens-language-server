@@ -2,3 +2,5 @@ color:
   $type: color
   becky:
     $value: '{color.purple}'
+  karen:
+    $value: '{color.grape}'
