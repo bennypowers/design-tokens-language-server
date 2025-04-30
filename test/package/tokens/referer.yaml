@@ -1,6 +1,9 @@
 color:
   $type: color
-  becky:
-    $value: '{color.purple}'
   karen:
     $value: '{color.grape}'
+  becky:
+    $value: '{color.purple}'
+  susan:
+    $value: '{color.red.hex}'
+    $description: referenced from a json file

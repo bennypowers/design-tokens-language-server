@@ -36,7 +36,9 @@ export class Tokens extends Map<string, Token> {
     return super.has(key.replace(/^-+/, ""));
   }
 
+  #importedSpecs = new Set();
   #dtcg?: Token;
+
   specs = new Map<Token, TokenFileSpec>();
 
   resolveValue(reference: string) {
@@ -101,24 +103,20 @@ export class Tokens extends Map<string, Token> {
     }
   }
 
-  #importedSpecs = new Set();
-
   public async register(spec: TokenFileSpec, { force = false } = {}) {
-    if (!force && this.#importedSpecs.has(spec.path)) {
-      return;
-    }
-
-    try {
-      const tokens = await this.#importSpec(spec.path);
-      const amt = this.populateFromDtcg(tokens, spec);
-      this.#importedSpecs.add(spec.path);
-      Logger.info`✍️ Registered ${amt} tokens`;
-      Logger.info`  from: ${spec.path}`;
-      if (spec.prefix) {
-        Logger.info`  with prefix ${spec.prefix}`;
+    if (force || !this.#importedSpecs.has(spec.path)) {
+      try {
+        const tokens = await this.#importSpec(spec.path);
+        const amt = this.populateFromDtcg(tokens, spec);
+        this.#importedSpecs.add(spec.path);
+        Logger.info`✍️ Registered ${amt} tokens`;
+        Logger.info`  from: ${spec.path}`;
+        if (spec.prefix) {
+          Logger.info`  with prefix ${spec.prefix}`;
+        }
+      } catch {
+        Logger.error`Could not load tokens for ${spec}`;
       }
-    } catch {
-      Logger.error`Could not load tokens for ${spec}`;
     }
   }
 }
