@@ -9,10 +9,8 @@ import * as JSONC from "jsonc-parser";
 import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
-import { Token } from "style-dictionary";
 import { Logger } from "#logger";
 import { DTLSToken } from "#tokens";
-import { YamlDocument } from "#yaml";
 
 const REF_RE = /{([^}]+)}/g;
 

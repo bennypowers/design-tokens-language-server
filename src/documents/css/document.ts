@@ -1,7 +1,7 @@
 import { Node, Point, Query, Tree } from "web-tree-sitter";
 
-import { DTLSContext, DTLSErrorCodes } from "#lsp";
-import { adjustPosition, DTLSTextDocument, TokenReference } from "#document";
+import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
+import { DTLSTextDocument, TokenReference } from "#document";
 
 import * as LSP from "vscode-languageserver-protocol";
 

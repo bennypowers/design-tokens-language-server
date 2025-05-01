@@ -4,8 +4,6 @@ import { adjustPosition, DTLSTextDocument } from "#document";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
-import { Token } from "style-dictionary";
-
 import * as YAML from "yaml";
 
 import { cssColorToLspColor } from "#color";
