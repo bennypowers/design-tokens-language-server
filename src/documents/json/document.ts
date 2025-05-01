@@ -10,6 +10,7 @@ import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
 import { Token } from "style-dictionary";
+import { Logger } from "#logger";
 
 const REF_RE = /{([^}]+)}/g;
 
@@ -203,7 +204,6 @@ export class JsonDocument extends DTLSTextDocument {
       return null;
     }
     const valueNode = JSONC.findNodeAtLocation(node, ["$value"]);
-    const descriptionNode = JSONC.findNodeAtLocation(node, ["$description"]);
     let startingNode = node;
     let typeNode = JSONC.findNodeAtLocation(node, ["$type"]);
     while (!typeNode && startingNode?.parent) {
@@ -211,8 +211,6 @@ export class JsonDocument extends DTLSTextDocument {
       typeNode = JSONC.findNodeAtLocation(startingNode, ["$type"]);
     }
     let $value = valueNode?.value;
-    const $type = typeNode?.value;
-    const $description = descriptionNode?.value;
     if ($value) {
       if (usesReferences($value)) {
         const resolved = this.#context.tokens.resolveValue($value)?.toString();
@@ -220,7 +218,10 @@ export class JsonDocument extends DTLSTextDocument {
           $value = resolved;
         }
       }
-      return { $value, $type, $description };
+      const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+      return this.#context.tokens.get(
+        [prefix, ...path].filter((x) => !!x).join("-"),
+      ) ?? null;
     }
     return null;
   }
@@ -245,7 +246,7 @@ export class JsonDocument extends DTLSTextDocument {
         const currentLine = this.getText().split("\n")[position.line]; // "$value": "light-dark({color.blue._}, {color.blue.dark})"
 
         // get the match that contains the current position
-        const name = matches?.find((match) => {
+        const reference = matches?.find((match) => {
           const matchOffsetInLine = currentLine.indexOf(match);
           return (
             position.character >= matchOffsetInLine &&
@@ -253,34 +254,29 @@ export class JsonDocument extends DTLSTextDocument {
           );
         });
 
-        if (name) {
+        if (reference) {
           const stringRange = this.#getRangeForNode(stringNode)!;
-          const nameWithoutBraces = name.replace(REF_RE, "$1");
+          const nameWithoutBraces = reference.replace(REF_RE, "$1");
           const line = stringRange.start.line;
           const character = currentLine.indexOf(nameWithoutBraces);
-          const path = nameWithoutBraces.split(".");
+          const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+          const path = [prefix, ...nameWithoutBraces.split(".")].filter((x) =>
+            !!x
+          );
           const range = {
             start: { line, character },
-            end: { line, character: character + name.length - 2 },
+            end: { line, character: character + reference.length - 2 },
           };
-          const tokenNode = JSONC.findNodeAtLocation(this.#root, path) ?? null;
-          const token = this.getTokenForPath(path);
-          if (tokenNode && token && range) {
-            return { name, range, token };
-          } else {
-            for (const referree of this.#context.documents.getAll("json")) {
-              const token = referree.getTokenForPath(path);
-              if (token) {
-                return { name, range, token, path };
-              }
-            }
+
+          const name = `--${path.join("-")}`;
+          const token = this.#context.tokens.get(name) ?? null;
+          if (token && range) {
+            return { name, range, token, path };
           }
         }
-        return null;
       }
-      default:
-        return null;
     }
+    return null;
   }
 
   getPathAtPosition(

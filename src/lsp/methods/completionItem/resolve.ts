@@ -28,7 +28,7 @@ export function resolve(
         detail: `: ${token.$value}`,
       },
       documentation: {
-        value: getTokenMarkdown(params.label, token),
+        value: getTokenMarkdown(token),
         kind: "markdown" satisfies typeof MarkupKind.Markdown,
       },
     };

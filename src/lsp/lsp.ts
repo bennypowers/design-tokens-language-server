@@ -152,6 +152,10 @@ export interface DTLSContext {
    * All tokens available to the server.
    */
   tokens: Tokens;
+  /**
+   * The Workspaces manager that represents the state of all workspaces.
+   */
+  workspaces: Workspaces;
 }
 
 export interface DTLSContextWithLsp extends DTLSContext {
@@ -159,13 +163,6 @@ export interface DTLSContextWithLsp extends DTLSContext {
    * The LSP server protocol implementation.
    */
   lsp: Lsp;
-}
-
-export interface DTLSContextWithWorkspaces extends DTLSContext {
-  /**
-   * The Workspaces manager that represents the state of all workspaces.
-   */
-  workspaces: Workspaces;
 }
 
 export enum DTLSErrorCodes {
@@ -256,6 +253,7 @@ export class Lsp {
       await this.#workspaces.add(workspaceFolders, {
         documents: this.#documents,
         tokens: this.#tokens,
+        workspaces: this.#workspaces,
       });
     } catch (error) {
       Logger.error`Failed to initialize the server: ${error}`;

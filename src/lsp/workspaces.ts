@@ -5,7 +5,6 @@ import { Logger } from "#logger";
 import {
   DTLSClientSettings,
   DTLSContext,
-  DTLSContextWithWorkspaces,
   TokenFile,
   TokenFileSpec,
 } from "#lsp";
@@ -47,6 +46,7 @@ async function tryToLoadSettingsFromPackageJson(
  * - handles workspace/didChangeConfiguration
  */
 export class Workspaces {
+  #specs = new Map<LSP.DocumentUri, TokenFileSpec>();
   #settings: { dtls: DTLSClientSettings } | null = null;
   #tokenSpecs = new Set<TokenFileSpec>();
   #workspaces = new Set<LSP.WorkspaceFolder>();
@@ -108,6 +108,7 @@ export class Workspaces {
         default:
           throw new Error(`Unknown language: ${language}`);
       }
+      this.#specs.set(uri, spec);
       this.#loadedSpecs.add(spec.path);
       context.documents.add(doc);
     } catch (e) {
@@ -116,6 +117,10 @@ export class Workspaces {
       }`;
       this.#tokenSpecs.delete(spec);
     }
+  }
+
+  getPrefixForUri(uri: LSP.DocumentUri) {
+    return this.#specs.get(uri)?.prefix ?? null;
   }
 
   async #updateWorkspaceSettings(
@@ -164,7 +169,7 @@ export class Workspaces {
    */
   #didChangeConfiguration = async (
     params: LSP.DidChangeConfigurationParams,
-    context: DTLSContextWithWorkspaces,
+    context: DTLSContext,
   ) => {
     const { settings } = params;
     Logger.debug`User settings ${settings}`;

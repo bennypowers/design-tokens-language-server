@@ -8,6 +8,7 @@ import {
 
 import { getTokenMarkdown } from "#tokens";
 import { DTLSContext } from "#lsp";
+import { Logger } from "#logger";
 
 export const capabilities: Partial<ServerCapabilities> = {
   hoverProvider: true,
@@ -24,13 +25,16 @@ export function hover(params: HoverParams, context: DTLSContext): null | Hover {
   const doc = context.documents.get(params.textDocument.uri);
   const result = doc.getHoverTokenAtPosition(params.position);
   if (result) {
-    const { name, token, range } = result;
-    const contents: MarkupContent = {
-      value: getTokenMarkdown(name, token),
-      kind: MarkupKind.Markdown,
-    };
-    return { contents, range };
-  } else {
-    return null;
+    const { name, range } = result;
+    const token = context.tokens.get(name);
+    if (token) {
+      Logger.debug`hover ${token}`;
+      const contents: MarkupContent = {
+        value: getTokenMarkdown(token),
+        kind: MarkupKind.Markdown,
+      };
+      return { contents, range };
+    }
   }
+  return null;
 }

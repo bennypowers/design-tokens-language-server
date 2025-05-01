@@ -18,6 +18,7 @@ import { JsonDocument } from "#json";
 import { isGlob } from "@std/path";
 import { expandGlob } from "jsr:@std/fs@^1.0.16";
 import { YamlDocument } from "#yaml";
+import { Workspaces } from "#workspaces";
 
 interface TestSpec {
   tokens: Token;
@@ -27,12 +28,14 @@ interface TestSpec {
 
 interface TestContextOptions {
   documents?: Record<DocumentUri, string>;
+  workspaces?: [];
   testTokensSpecs: TestSpec[];
 }
 
 export interface DTLSTestContext {
   documents: TestDocuments;
   tokens: TestTokens;
+  workspaces: TestWorkspaces;
   clear(): void;
 }
 
@@ -160,6 +163,8 @@ class TestLspClient {
   }
 }
 
+class TestWorkspaces extends Workspaces {}
+
 /**
  * Test Documents for managing text documents.
  *
@@ -169,11 +174,17 @@ class TestLspClient {
  * within the documents.
  */
 class TestDocuments extends Documents {
-  #tokens: Tokens;
+  #tokens: TestTokens;
+  #workspaces: TestWorkspaces;
 
-  constructor(tokens: Tokens, options?: TestContextOptions) {
+  constructor(
+    tokens: TestTokens,
+    workspaces: TestWorkspaces,
+    options?: TestContextOptions,
+  ) {
     super();
     this.#tokens = tokens;
+    this.#workspaces = workspaces;
     for (const [uri, text] of Object.entries(options?.documents ?? {})) {
       const id = uri.split(".").pop();
       switch (id) {
@@ -198,10 +209,11 @@ class TestDocuments extends Documents {
   ) {
     const id = this.allDocuments.length;
     const tokens = this.#tokens;
+    const workspaces = this.#workspaces;
     const version = 1;
     uri ??= `file:///test-${id}.${languageId}`;
     const textDocument = { uri, languageId, version, text };
-    this.onDidOpen({ textDocument }, { documents: this, tokens });
+    this.onDidOpen({ textDocument }, { documents: this, tokens, workspaces });
     return textDocument;
   }
 
@@ -210,6 +222,7 @@ class TestDocuments extends Documents {
       this.onDidClose({ textDocument: { uri: doc.uri } }, {
         documents: this,
         tokens: this.#tokens,
+        workspaces: this.#workspaces,
       });
     }
   }
@@ -241,11 +254,13 @@ export async function createTestContext(
   options: TestContextOptions,
 ): Promise<DTLSTestContext> {
   const tokens = new TestTokens();
-  const documents = new TestDocuments(tokens, options);
+  const workspaces = new TestWorkspaces();
+  const documents = new TestDocuments(tokens, workspaces, options);
 
   const context = {
     documents,
     tokens,
+    workspaces,
     clear: () => {
       tokens.reset();
       documents.tearDown();
