@@ -114,10 +114,9 @@ export class Tokens extends Map<string, DTLSToken> {
           .filter((x) => !groupMarkers.has(x));
         const modified = this.#getDTLSToken(token, spec, path);
         this.specs.set(modified, spec);
-        this.set(
-          modified.$extensions.designTokensLanguageServer.name,
-          modified,
-        );
+        const normalizedKey =
+          modified.$extensions.designTokensLanguageServer.name;
+        if (!this.has(normalizedKey)) this.set(normalizedKey, modified);
       }
     }
     return incoming.length;
