@@ -200,15 +200,64 @@ export class YamlDocument extends DTLSTextDocument {
     return null;
   }
 
-  #getStringAtPosition(position: LSP.Position) {
-    const node = this.#getNodeAtPosition(position);
-    if (YAML.isScalar(node) && typeof node.value === "string") {
-      return node.value;
+  getRangeForTokenName(tokenName: string, prefix?: string): LSP.Range | null {
+    return this.#getRangeForNode(this.#getNodeForTokenName(tokenName, prefix));
+  }
+
+  getRangeForPath(path: (string | number)[]): LSP.Range | null {
+    return this.#getRangeForNode(this.#getNodeAtPath(path));
+  }
+
+  getTokenReferenceAtPosition(
+    position: LSP.Position,
+    offset: Partial<LSP.Position> = {},
+  ) {
+    const adjusted = adjustPosition(position, offset);
+    const stringNode = this.#getNodeAtPosition(adjusted, offset);
+    if (!YAML.isScalar(stringNode)) return null;
+    if (typeof stringNode.value === "string") {
+      const valueRange = this.#getRangeForNode(stringNode);
+
+      if (!valueRange) return null;
+
+      const valueLines = this.getText()
+        .split("\n")
+        .slice(valueRange.start.line, valueRange.end.line + 1);
+
+      // get the match that contains the current position
+      for (const currentLine of valueLines) {
+        const matches = currentLine.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
+        for (const reference of matches ?? []) {
+          const matchOffsetInLine = currentLine.indexOf(reference);
+          if (
+            adjusted.character >= matchOffsetInLine &&
+            adjusted.character <= matchOffsetInLine + reference.length
+          ) {
+            const stringRange = this.#getRangeForNode(stringNode)!;
+            const refUnpacked = reference.replace(REF_RE, "$1");
+            const line = stringRange.start.line;
+            const character = currentLine.indexOf(refUnpacked);
+            const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+            const path = [prefix, ...refUnpacked.split(".")].filter((x) => !!x);
+            const name = `--${path.join("-")}`;
+            Logger.debug`name:${name} ${this.#context.tokens.get(name)}`;
+            if (this.#context.tokens.has(name)) {
+              return {
+                name,
+                range: {
+                  start: { line, character },
+                  end: { line, character: character + reference.length - 2 },
+                },
+              };
+            }
+          }
+        }
+      }
     }
     return null;
   }
 
-  getColors(context: DTLSContext): LSP.ColorInformation[] {
+  public getColors(context: DTLSContext): LSP.ColorInformation[] {
     const colors: LSP.ColorInformation[] = [];
     YAML.visit(this.#root, {
       Scalar: (_key, node, path) => {
@@ -263,111 +312,7 @@ export class YamlDocument extends DTLSTextDocument {
     return colors;
   }
 
-  getRangeForTokenName(tokenName: string, prefix?: string): LSP.Range | null {
-    return this.#getRangeForNode(this.#getNodeForTokenName(tokenName, prefix));
-  }
-
-  getRangeForPath(path: (string | number)[]): LSP.Range | null {
-    return this.#getRangeForNode(this.#getNodeAtPath(path));
-  }
-
-  getTokenReferenceAtPosition(
-    position: LSP.Position,
-    offset: Partial<LSP.Position> = {},
-  ) {
-    const adjusted = adjustPosition(position, offset);
-    const stringNode = this.#getNodeAtPosition(adjusted, offset);
-    if (!YAML.isScalar(stringNode)) return null;
-    if (typeof stringNode.value === "string") {
-      const valueRange = this.#getRangeForNode(stringNode);
-
-      if (!valueRange) return null;
-
-      const valueLines = this.getText()
-        .split("\n")
-        .slice(valueRange.start.line, valueRange.end.line + 1);
-
-      // get the match that contains the current position
-      for (const valueLine of valueLines) {
-        const matches = valueLine.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
-        for (const match of matches ?? []) {
-          const matchOffsetInLine = valueLine.indexOf(match);
-          if (
-            adjusted.character >= matchOffsetInLine &&
-            adjusted.character <= matchOffsetInLine + match.length
-          ) {
-            const nameWithBraces = match;
-            const name = nameWithBraces.replace(REF_RE, "$1");
-            const line = valueLines.indexOf(valueLine) + valueRange.start.line;
-            const character = valueLine.indexOf(name);
-            const path = name.split(".");
-            const range = {
-              start: { line, character },
-              end: { line, character: character + nameWithBraces.length - 2 },
-            };
-            const token = this.getTokenForPath(path) ?? [
-              ...this.#context.documents.getAll("yaml"),
-              ...this.#context.documents.getAll("json"),
-            ].reduce(
-              (acc, doc) => {
-                if (acc) return acc;
-                const tok = doc.getTokenForPath(path);
-                if (tok) {
-                  return tok;
-                }
-                return null;
-              },
-              null as Token | null,
-            );
-            if (token && range) {
-              return { name, range, token };
-            }
-          }
-        }
-      }
-    }
-    return null;
-  }
-
-  getDefinitions(params: LSP.DefinitionParams, context: DTLSContext) {
-    const reference = this.#getStringAtPosition(params.position);
-    const path = reference?.replace(/{|}/g, "").split(".");
-    if (!path) return [];
-    const node = this.#getNodeAtPath(path);
-    if (node) {
-      const range = this.#getRangeForNode(node);
-      if (range) {
-        return [{ uri: this.uri, range }];
-      }
-    } else {
-      const { token, range, uri } = this.getTokenForPath(path) ?? [
-        ...context.documents.getAll("yaml"),
-        ...context.documents.getAll("json"),
-      ].reduce(
-        (acc, doc) => {
-          if (acc.token && acc.range) return acc;
-          else {
-            return {
-              token: doc.getTokenForPath(path),
-              range: doc.getRangeForPath(path),
-              uri: doc.uri,
-            };
-          }
-        },
-        { token: null, range: null } as {
-          token: Token | null;
-          range: LSP.Range | null;
-          uri: string;
-        },
-      );
-      if (token && range && uri) {
-        return [{ uri, range }];
-      }
-    }
-    return [];
-  }
-
-  getDiagnostics(context: DTLSContext) {
+  public getDiagnostics(context: DTLSContext) {
     if (!context.tokens) {
       throw new Error("No tokens found in context");
     }

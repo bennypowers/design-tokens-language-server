@@ -1,6 +1,8 @@
 import * as LSP from "vscode-languageserver-protocol";
 import { FullTextDocument } from "./textDocument.ts";
 import { DTLSContext } from "#lsp/lsp.ts";
+import { DTLSToken } from "#tokens";
+import { Logger } from "#logger";
 
 /**
  * Represents an occurrence of a token name in a file
@@ -46,13 +48,9 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     offset?: Offset,
   ): TokenReference | null;
 
-  /**
-   * Get definitions for a token referenced in a document
-   */
-  abstract getDefinitions(
-    params: LSP.DefinitionParams,
-    context: DTLSContext,
-  ): LSP.Location[];
+  abstract getRangeForPath(path: string[]): LSP.Range | null;
+
+  abstract getTokenForPath(path: string[]): DTLSToken | null;
 
   get identifier(): LSP.VersionedTextDocumentIdentifier {
     return {
@@ -109,6 +107,31 @@ export abstract class DTLSTextDocument extends FullTextDocument {
         end: { line, character: character + substring.length },
       };
     });
+  }
+
+  /**
+   * Get definition for a token referenced in a document
+   */
+  getDefinition(
+    params: LSP.DefinitionParams,
+    context: DTLSContext,
+  ): LSP.Location | null {
+    const ref = this.getTokenReferenceAtPosition(params.position);
+    if (!ref) return null;
+    const { name } = ref;
+    const token = context.tokens.get(name);
+    if (!token) return null;
+    const ext = token.$extensions.designTokensLanguageServer;
+    if (ext.definitionUri) {
+      Logger.debug`Definition of ${name} in ${ext.definitionUri}`;
+      const doc = context.documents.get(ext.definitionUri);
+      const uri = ext.definitionUri;
+      const range = doc.getRangeForPath(ext.path);
+      if (range) {
+        return { uri, range };
+      }
+    }
+    return null;
   }
 
   /** Get the range of the full document */

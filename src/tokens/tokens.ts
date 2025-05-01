@@ -134,6 +134,9 @@ export class Tokens extends Map<string, DTLSToken> {
     );
     const ext = { name, spec, path, reference, definitionUri };
     const existing = clone?.$extensions?.designTokensLanguageServer ?? {};
+    // BUG: definitionUri is getting overwritten.
+    // check stack to ensure that token is only called with the spec which actually defines it.
+    Logger.debug`Set definition for ${name} to ${ext.definitionUri}`;
     return {
       ...clone,
       $extensions: {
