@@ -128,7 +128,11 @@ export class Tokens extends Map<string, DTLSToken> {
     const prefixedPath = [spec.prefix, ...path].filter((x) => !!x);
     const name = `--${prefixedPath.join("-")}` as const;
     const reference = `{${path.join(".")}}` as const;
-    const ext = { name, spec, path, reference };
+    const definitionUri = `file://${spec.path}`.replace(
+      "file://file://",
+      "file://",
+    );
+    const ext = { name, spec, path, reference, definitionUri };
     const existing = clone?.$extensions?.designTokensLanguageServer ?? {};
     return {
       ...clone,

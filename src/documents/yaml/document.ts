@@ -12,6 +12,7 @@ import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
+import { DTLSToken } from "#tokens";
 
 const REF_RE = /{([^}]+)}/g;
 
@@ -166,14 +167,12 @@ export class YamlDocument extends DTLSTextDocument {
     return node ?? null;
   }
 
-  getTokenForPath(path: (string | number)[]): Token | null {
+  getTokenForPath(path: (string | number)[]): DTLSToken | null {
     const node = this.#getNodeAtPath(path);
     const valueNode = this.#getNodeAtPath([...path, "$value"]);
-    const descriptionNode = this.#getNodeAtPath([...path, "$description"]);
     if (!node || !valueNode) {
       return null;
     }
-    const $type = this.#getDTCGTypeForNode(node);
     const getValues = (node?: YAML.Node): unknown[] => {
       if (YAML.isScalar(node)) return [node?.value];
       else if (YAML.isAlias(node)) {
@@ -186,7 +185,6 @@ export class YamlDocument extends DTLSTextDocument {
     };
 
     let $value = getValues(valueNode).join(""); // XXX: this join may come back to bite me
-    const $description = getValues(descriptionNode ?? undefined).join("");
     if ($value) {
       if (usesReferences($value)) {
         const resolved = this.#context.tokens.resolveValue($value)?.toString();
@@ -194,7 +192,10 @@ export class YamlDocument extends DTLSTextDocument {
           $value = resolved;
         }
       }
-      return { $value, $type, $description };
+      const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+      return this.#context.tokens.get(
+        [prefix, ...path].filter((x) => !!x).join("-"),
+      ) ?? null;
     }
     return null;
   }

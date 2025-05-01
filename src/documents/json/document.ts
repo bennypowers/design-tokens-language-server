@@ -11,6 +11,8 @@ import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
 import { Token } from "style-dictionary";
 import { Logger } from "#logger";
+import { DTLSToken } from "#tokens";
+import { YamlDocument } from "#yaml";
 
 const REF_RE = /{([^}]+)}/g;
 
@@ -137,6 +139,14 @@ export class JsonDocument extends DTLSTextDocument {
     return null;
   }
 
+  override update(
+    changes: LSP.TextDocumentContentChangeEvent[],
+    version: number,
+  ) {
+    super.update(changes, version);
+    this.#root = this.#parse();
+  }
+
   getColors(context: DTLSContext): LSP.ColorInformation[] {
     const colors: LSP.ColorInformation[] = [];
     for (const valueNode of this.#allStringValueNodes) {
@@ -206,7 +216,7 @@ export class JsonDocument extends DTLSTextDocument {
     return colors;
   }
 
-  getTokenForPath(path: JSONC.Segment[]): Token | null {
+  getTokenForPath(path: JSONC.Segment[]): DTLSToken | null {
     const node = this.#getNodeAtJSONPath(path);
     if (!node) {
       return null;
@@ -300,33 +310,26 @@ export class JsonDocument extends DTLSTextDocument {
   ) {
     const reference = this.#getStringAtPosition(params.position);
     const path = reference?.replace(/{|}/g, "").split(".");
-    const node = this.#getNodeAtJSONPath(path);
-
-    if (node) {
-      const range = this.#getRangeForNode(node);
+    const token = this.getTokenForPath(path) ?? [
+      ...context.documents.getAll("yaml"),
+      ...context.documents.getAll("json"),
+    ].reduce(
+      (acc, doc) => {
+        if (acc) return acc;
+        else return doc.getTokenForPath(path);
+      },
+      null as DTLSToken | null,
+    );
+    if (token) {
+      const uri = token.$extensions.designTokensLanguageServer.definitionUri;
+      Logger.debug`token uri: ${uri}`;
+      const doc = context.documents.get(uri) as JsonDocument | YamlDocument;
+      const range = doc.getRangeForPath(path);
       if (range) {
-        return [{ uri: this.uri, range }];
+        return [{ uri, range }];
       }
-    } else {for (const referree of context.documents.getAll("json")) {
-        const token = referree.getTokenForPath(path);
-        if (token) {
-          const range = referree.#getRangeForNode(
-            referree.#getNodeAtJSONPath(path),
-          );
-          if (range) {
-            return [{ uri: referree.uri, range }];
-          }
-        }
-      }}
+    }
     return [];
-  }
-
-  override update(
-    changes: LSP.TextDocumentContentChangeEvent[],
-    version: number,
-  ) {
-    super.update(changes, version);
-    this.#root = this.#parse();
   }
 
   getDiagnostics(context: DTLSContext) {
