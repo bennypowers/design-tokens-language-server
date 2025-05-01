@@ -1,7 +1,7 @@
 import { Node, Point, Query, Tree } from "web-tree-sitter";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp";
-import { DTLSTextDocument } from "#document";
+import { DTLSTextDocument, TokenReference } from "#document";
 
 import * as LSP from "vscode-languageserver-protocol";
 
@@ -232,7 +232,7 @@ export class CssDocument extends DTLSTextDocument {
     this.#diagnostics = this.#computeDiagnostics();
   }
 
-  definition(
+  getDefinitions(
     params: LSP.DefinitionParams,
     context: DTLSContext,
   ) {
@@ -282,17 +282,15 @@ export class CssDocument extends DTLSTextDocument {
       null;
   }
 
-  getHoverTokenAtPosition(
+  getTokenReferenceAtPosition(
     position: LSP.Position,
     offset?: Partial<LSP.Position>,
-  ) {
+  ): TokenReference | null {
     const node = this.getNodeAtPosition(position, offset);
     if (node) {
       const name = `--${node.text}`.replace("----", "--");
-      const token = this.#context.tokens.get(name);
-      if (token) {
-        const range = tsRangeToLspRange(node);
-        return { name, token, range };
+      if (this.#context.tokens.has(name)) {
+        return { name, range: tsRangeToLspRange(node) };
       }
     }
     return null;

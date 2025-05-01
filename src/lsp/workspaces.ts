@@ -119,10 +119,6 @@ export class Workspaces {
     }
   }
 
-  getPrefixForUri(uri: LSP.DocumentUri) {
-    return this.#specs.get(uri)?.prefix ?? null;
-  }
-
   async #updateWorkspaceSettings(
     context: DTLSContext,
     uri: string,
@@ -178,6 +174,13 @@ export class Workspaces {
     await this.#updateWorkspaceSettings(context, uri, settings);
     await this.#updateConfiguration(context, { force: true });
   };
+
+  /**
+   * Get the configured token prefix for a given document uri
+   */
+  public getPrefixForUri(uri: LSP.DocumentUri) {
+    return this.#specs.get(uri)?.prefix ?? null;
+  }
 
   /**
    * Adds the given workspace folder to the list of workspaces.

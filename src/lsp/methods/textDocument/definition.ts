@@ -16,7 +16,7 @@ export function definition(
   return context
     .documents
     .get(params.textDocument.uri)
-    .definition(params, context);
+    .getDefinitions(params, context);
 }
 
 export const capabilities: Partial<LSP.ServerCapabilities> = {

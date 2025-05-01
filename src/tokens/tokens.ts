@@ -1,3 +1,4 @@
+import type * as LSP from "vscode-languageserver-protocol";
 import type { Token } from "style-dictionary";
 
 import * as YAML from "yaml";
@@ -16,22 +17,43 @@ import { Logger } from "#logger";
 import { PreprocessedTokens } from "style-dictionary";
 import { deepMerge } from "@std/collections/deep-merge";
 
+interface DTLSExtensions {
+  /** The CSS var name for this token */
+  name: `--${string}`;
+  /** The file spec for this token's defining file */
+  spec: TokenFileSpec;
+  /** The path to this token e.g. ['color', 'red'] */
+  path: string[];
+  /** The string which references this token from another token e.g. `{color.red}` */
+  reference: `{${string}}`;
+  /** URI to the document which defines this token */
+  definitionUri: LSP.DocumentUri;
+}
+
 export type DTLSToken = Omit<Token, "$extensions"> & {
   $extensions: {
-    designTokensLanguageServer: {
-      name: `--${string}`;
-      spec: TokenFileSpec;
-      path: string[];
-    };
+    designTokensLanguageServer: DTLSExtensions;
   };
 };
 
 export class Tokens extends Map<string, DTLSToken> {
+  /**
+   * token-color-red => --token-color-red
+   * {color.red} => --color-red
+   */
+  #normalizeKey(key: string) {
+    if (key.startsWith(`{`)) {
+      return `--${key.replace(/{|}/g, "").split(".").join("-")}`;
+    } else {
+      return `--${key}`.replace(/^-{4}/, "--");
+    }
+  }
+
   override get(key?: string) {
     if (key === undefined) {
       return undefined;
     }
-    const token = super.get(`--${key}`.replace(/^-{4}/, "--"));
+    const token = super.get(this.#normalizeKey(key));
     if (token && usesReferences(token.$value)) {
       const resolved = this.resolveValue(token.$value);
       const $value = resolved ?? token.$value;
@@ -44,7 +66,7 @@ export class Tokens extends Map<string, DTLSToken> {
     if (key === undefined) {
       return false;
     }
-    return super.has(key.replace(/^-+/, ""));
+    return super.has(this.#normalizeKey(key));
   }
 
   #importedSpecs = new Set();
@@ -103,14 +125,19 @@ export class Tokens extends Map<string, DTLSToken> {
 
   #getDTLSToken(token: Token, spec: TokenFileSpec, path: string[]): DTLSToken {
     const clone = structuredClone(token);
-    const name = `--${[spec.prefix, ...path].filter((x) => !!x).join("-")}`;
-    const ext = { name, spec, path };
+    const prefixedPath = [spec.prefix, ...path].filter((x) => !!x);
+    const name = `--${prefixedPath.join("-")}` as const;
+    const reference = `{${path.join(".")}}` as const;
+    const ext = { name, spec, path, reference };
     const existing = clone?.$extensions?.designTokensLanguageServer ?? {};
     return {
       ...clone,
       $extensions: {
         ...clone.$extensions ?? {},
-        designTokensLanguageServer: deepMerge(existing, ext),
+        designTokensLanguageServer: deepMerge<Partial<DTLSExtensions>>(
+          existing,
+          ext,
+        ),
       },
     };
   }

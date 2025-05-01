@@ -45,75 +45,6 @@ export class JsonDocument extends DTLSTextDocument {
     return nodes;
   }
 
-  getColors(context: DTLSContext): LSP.ColorInformation[] {
-    const colors: LSP.ColorInformation[] = [];
-    for (const valueNode of this.#allStringValueNodes) {
-      // cheap hack to avoid marking up non-color values
-      // a more comprehensive solution would be to associate each json document
-      // with a token spec, and get the token object *with prefix* from the context
-      // based on the *non-prefixed* json path, then check the type from the token object
-      let parent = valueNode.parent;
-      let type = JSONC.findNodeAtLocation(parent!, ["$type"])?.value;
-      while (!type && parent) {
-        parent = parent.parent;
-        if (parent) {
-          type = JSONC.findNodeAtLocation(parent, ["$type"])?.value;
-        }
-      }
-      if (type && type !== "color") {
-        continue;
-      }
-      const content = valueNode.value;
-      const _range = this.#getRangeForNode(valueNode)!;
-      const range = {
-        start: {
-          line: _range.start.line,
-          character: _range.start.character + 1,
-        },
-        end: {
-          line: _range.end.line,
-          character: _range.end.character - 1,
-        },
-      };
-      if (usesReferences(content)) {
-        const references = content.match(/{[^}]*}/g);
-        for (const reference of references ?? []) {
-          const resolved = context.tokens.resolveValue(reference);
-          if (resolved) {
-            const line = range.start.line;
-            const character = range.start.character +
-              content.indexOf(reference) + 1;
-            const color = cssColorToLspColor(resolved.toString());
-            if (color) {
-              colors.push({
-                color,
-                range: {
-                  start: { line, character },
-                  end: { line, character: character + reference.length - 2 },
-                },
-              });
-            }
-          }
-        }
-      } else if (content.startsWith("light-dark(")) {
-        for (const match of getLightDarkValues(content)) {
-          const color = cssColorToLspColor(match);
-          if (color) {
-            colors.push({ range, color });
-          }
-        }
-      } else {
-        const resolved = context.tokens.resolveValue(content);
-        const match = resolved?.toString() ?? content;
-        const color = cssColorToLspColor(match);
-        if (color) {
-          colors.push({ range, color });
-        }
-      }
-    }
-    return colors;
-  }
-
   private constructor(
     uri: string,
     version: number,
@@ -198,6 +129,83 @@ export class JsonDocument extends DTLSTextDocument {
     return null;
   }
 
+  #getStringAtPosition(position: LSP.Position) {
+    const node = this.#getNodeAtPosition(position);
+    if (node?.type === "string") {
+      return node.value;
+    }
+    return null;
+  }
+
+  getColors(context: DTLSContext): LSP.ColorInformation[] {
+    const colors: LSP.ColorInformation[] = [];
+    for (const valueNode of this.#allStringValueNodes) {
+      // cheap hack to avoid marking up non-color values
+      // a more comprehensive solution would be to associate each json document
+      // with a token spec, and get the token object *with prefix* from the context
+      // based on the *non-prefixed* json path, then check the type from the token object
+      let parent = valueNode.parent;
+      let type = JSONC.findNodeAtLocation(parent!, ["$type"])?.value;
+      while (!type && parent) {
+        parent = parent.parent;
+        if (parent) {
+          type = JSONC.findNodeAtLocation(parent, ["$type"])?.value;
+        }
+      }
+      if (type && type !== "color") {
+        continue;
+      }
+      const content = valueNode.value;
+      const _range = this.#getRangeForNode(valueNode)!;
+      const range = {
+        start: {
+          line: _range.start.line,
+          character: _range.start.character + 1,
+        },
+        end: {
+          line: _range.end.line,
+          character: _range.end.character - 1,
+        },
+      };
+      if (usesReferences(content)) {
+        const references = content.match(/{[^}]*}/g);
+        for (const reference of references ?? []) {
+          const resolved = context.tokens.resolveValue(reference);
+          if (resolved) {
+            const line = range.start.line;
+            const character = range.start.character +
+              content.indexOf(reference) + 1;
+            const color = cssColorToLspColor(resolved.toString());
+            if (color) {
+              colors.push({
+                color,
+                range: {
+                  start: { line, character },
+                  end: { line, character: character + reference.length - 2 },
+                },
+              });
+            }
+          }
+        }
+      } else if (content.startsWith("light-dark(")) {
+        for (const match of getLightDarkValues(content)) {
+          const color = cssColorToLspColor(match);
+          if (color) {
+            colors.push({ range, color });
+          }
+        }
+      } else {
+        const resolved = context.tokens.resolveValue(content);
+        const match = resolved?.toString() ?? content;
+        const color = cssColorToLspColor(match);
+        if (color) {
+          colors.push({ range, color });
+        }
+      }
+    }
+    return colors;
+  }
+
   getTokenForPath(path: JSONC.Segment[]): Token | null {
     const node = this.#getNodeAtJSONPath(path);
     if (!node) {
@@ -234,7 +242,7 @@ export class JsonDocument extends DTLSTextDocument {
     return this.#getRangeForNode(this.#getNodeAtJSONPath(path));
   }
 
-  getHoverTokenAtPosition(
+  getTokenReferenceAtPosition(
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
   ) {
@@ -256,22 +264,21 @@ export class JsonDocument extends DTLSTextDocument {
 
         if (reference) {
           const stringRange = this.#getRangeForNode(stringNode)!;
-          const nameWithoutBraces = reference.replace(REF_RE, "$1");
+          const refUnpacked = reference.replace(REF_RE, "$1");
           const line = stringRange.start.line;
-          const character = currentLine.indexOf(nameWithoutBraces);
+          const character = currentLine.indexOf(refUnpacked);
           const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
-          const path = [prefix, ...nameWithoutBraces.split(".")].filter((x) =>
-            !!x
-          );
-          const range = {
-            start: { line, character },
-            end: { line, character: character + reference.length - 2 },
-          };
-
+          const path = [prefix, ...refUnpacked.split(".")].filter((x) => !!x);
           const name = `--${path.join("-")}`;
-          const token = this.#context.tokens.get(name) ?? null;
-          if (token && range) {
-            return { name, range, token, path };
+          Logger.debug`name:${name} ${this.#context.tokens.get(name)}`;
+          if (this.#context.tokens.has(name)) {
+            return {
+              name,
+              range: {
+                start: { line, character },
+                end: { line, character: character + reference.length - 2 },
+              },
+            };
           }
         }
       }
@@ -287,15 +294,7 @@ export class JsonDocument extends DTLSTextDocument {
     return node && JSONC.getNodePath(node);
   }
 
-  #getStringAtPosition(position: LSP.Position) {
-    const node = this.#getNodeAtPosition(position);
-    if (node?.type === "string") {
-      return node.value;
-    }
-    return null;
-  }
-
-  definition(
+  getDefinitions(
     params: LSP.DefinitionParams,
     context: DTLSContext,
   ) {

@@ -270,7 +270,7 @@ export class YamlDocument extends DTLSTextDocument {
     return this.#getRangeForNode(this.#getNodeAtPath(path));
   }
 
-  getHoverTokenAtPosition(
+  getTokenReferenceAtPosition(
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
   ) {
@@ -328,7 +328,7 @@ export class YamlDocument extends DTLSTextDocument {
     return null;
   }
 
-  definition(params: LSP.DefinitionParams, context: DTLSContext) {
+  getDefinitions(params: LSP.DefinitionParams, context: DTLSContext) {
     const reference = this.#getStringAtPosition(params.position);
     const path = reference?.replace(/{|}/g, "").split(".");
     if (!path) return [];

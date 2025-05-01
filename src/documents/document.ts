@@ -1,25 +1,55 @@
 import * as LSP from "vscode-languageserver-protocol";
 import { FullTextDocument } from "./textDocument.ts";
-import { Token } from "style-dictionary";
 import { DTLSContext } from "#lsp/lsp.ts";
+
+/**
+ * Represents an occurrence of a token name in a file
+ */
+export interface TokenReference {
+  /**
+   * The referenced token name.
+   *
+   * Not necessarily the same as the file substring,
+   * e.g. `{color.red}` might reference a name `--token-color-red`
+   */
+  name: string;
+  /**
+   * The range in the document which refers to the token
+   * Not necessarily the range for the referenced token name
+   * e.g. the range for `{color.red}`, not `--token-color-red`
+   */
+  range: LSP.Range;
+}
+
+type Offset = Partial<LSP.Position>;
 
 export abstract class DTLSTextDocument extends FullTextDocument {
   abstract language: "json" | "css" | "yaml";
 
+  /**
+   * Get diagnostics for the document
+   */
   abstract getDiagnostics(context: DTLSContext): LSP.Diagnostic[];
 
+  /**
+   * Get a list of ColorInformation objects representing the occurences of a
+   * color token name in the document.
+   */
   abstract getColors(context: DTLSContext): LSP.ColorInformation[];
 
-  abstract getHoverTokenAtPosition(
+  /**
+   * Get a range and the referenced token name for a position in a document
+   * e.g. `{color.red}` => the range for `{color.red}` and the token name `--token-color-red`
+   */
+  abstract getTokenReferenceAtPosition(
     position: LSP.Position,
-    offset?: Partial<LSP.Position>,
-  ): {
-    name: string;
-    token: Token;
-    range: LSP.Range;
-  } | null;
+    offset?: Offset,
+  ): TokenReference | null;
 
-  abstract definition(
+  /**
+   * Get definitions for a token referenced in a document
+   */
+  abstract getDefinitions(
     params: LSP.DefinitionParams,
     context: DTLSContext,
   ): LSP.Location[];
