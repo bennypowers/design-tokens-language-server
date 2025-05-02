@@ -106,7 +106,7 @@
     "#server": "./src/server/server.ts",
     "#test-helpers": "./test/helpers.ts",
     "#tokens": "./src/tokens/tokens.ts",
-    "#workspaces": "./src/lsp/workspaces.ts",
+    "#workspaces": "./src/workspaces/workspaces.ts",
     "@henrygd/queue": "jsr:@henrygd/queue@^1.0.7",
     "@logtape/file": "jsr:@logtape/file@^0.9.0",
     "@logtape/logtape": "jsr:@logtape/logtape@^0.9.0",

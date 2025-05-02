@@ -1,19 +1,26 @@
-import { Token } from 'style-dictionary';
-import { Documents } from '#documents';
-import { Tokens } from '#tokens';
-import { DocumentUri } from 'vscode-languageserver-protocol';
+// deno-coverage-ignore-file
+import { Token } from "style-dictionary";
+import { Documents } from "#documents";
+import { Tokens } from "#tokens";
+import { DocumentUri } from "vscode-languageserver-protocol";
 
-import * as YAML from 'yaml';
+import { isGlob, toFileUrl } from "@std/path";
+import { expandGlob } from "@std/fs";
 
-import { RequestTypeForMethod, ResponseFor, SupportedMethod, TokenFileSpec } from '#lsp/lsp.ts';
+import * as YAML from "yaml";
 
-import { normalizeTokenFile } from '../src/tokens/utils.ts';
+import {
+  RequestTypeForMethod,
+  ResponseFor,
+  SupportedMethod,
+  TokenFileSpec,
+} from "#lsp/lsp.ts";
 
-import { JsonDocument } from '#json';
-import { isGlob, toFileUrl } from '@std/path';
-import { expandGlob } from 'jsr:@std/fs@^1.0.16';
-import { YamlDocument } from '#yaml';
-import { Workspaces } from '#workspaces';
+import { normalizeTokenFile } from "../src/tokens/utils.ts";
+
+import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
+import { Workspaces } from "#workspaces";
 
 interface TestSpec {
   tokens: Token;
@@ -23,7 +30,7 @@ interface TestSpec {
 
 interface TestContextOptions {
   documents?: Record<DocumentUri, string>;
-  workspaces?: [];
+  workspaces?: Workspaces;
   testTokensSpecs: TestSpec[];
 }
 
@@ -49,7 +56,7 @@ class TestLspClient {
 
   async #readMessage<M extends SupportedMethod>(): Promise<ResponseFor<M>> {
     const reader = this.server.stdout.getReader();
-    let buffer = '';
+    let buffer = "";
 
     try {
       while (true) {
@@ -90,7 +97,7 @@ class TestLspClient {
         const { value } = await stderr.read();
         console.error(this.decoder.decode(value, { stream: true }));
       } catch (e) {
-        console.log('When logging stderr:', e);
+        console.log("When logging stderr:", e);
       } finally {
         stderr?.releaseLock();
       }
@@ -108,7 +115,7 @@ class TestLspClient {
    * @returns The response from the server.
    */
   public async sendMessage<M extends SupportedMethod>(
-    message: { method: M } & Omit<RequestTypeForMethod<M>, 'jsonrpc' | 'id'>,
+    message: { method: M } & Omit<RequestTypeForMethod<M>, "jsonrpc" | "id">,
   ): Promise<ResponseFor<M> | null | undefined> {
     const id = this.#lastId++;
     this.sendNotification(message, id);
@@ -132,7 +139,7 @@ class TestLspClient {
   public async sendNotification(message: object, id?: number) {
     const writer = this.server.stdin.getWriter();
     try {
-      const bundle = { jsonrpc: '2.0', id, ...message };
+      const bundle = { jsonrpc: "2.0", id, ...message };
       if (id === undefined) delete bundle.id;
       const pkg = JSON.stringify(bundle);
       const encoder = new TextEncoder();
@@ -185,14 +192,14 @@ class TestDocuments extends Documents {
     this.#tokens = tokens;
     this.#workspaces = workspaces;
     for (const [uri, text] of Object.entries(options?.documents ?? {})) {
-      const id = uri.split('.').pop();
+      const id = uri.split(".").pop();
       switch (id) {
-        case 'yml':
-          this.createDocument('yaml', text, uri);
+        case "yml":
+          this.createDocument("yaml", text, uri);
           break;
-        case 'yaml':
-        case 'json':
-        case 'css':
+        case "yaml":
+        case "json":
+        case "css":
           this.createDocument(id, text, uri);
           break;
         default:
@@ -202,7 +209,7 @@ class TestDocuments extends Documents {
   }
 
   createDocument(
-    languageId: 'css' | 'json' | 'yaml',
+    languageId: "css" | "json" | "yaml",
     text: string,
     uri?: DocumentUri,
   ) {
@@ -238,11 +245,11 @@ class TestTokens extends Tokens {
   }
 
   override get(key: string) {
-    return super.get(key.replace(/^-+/, ''));
+    return super.get(key.replace(/^-+/, ""));
   }
 
   override has(key: string) {
-    return super.has(key.replace(/^-+/, ''));
+    return super.has(key.replace(/^-+/, ""));
   }
 }
 
@@ -267,7 +274,7 @@ export async function createTestContext(
   };
 
   for (const x of options.testTokensSpecs) {
-    const spec = normalizeTokenFile(x.spec, toFileUrl('/test-root/').href, x);
+    const spec = normalizeTokenFile(x.spec, toFileUrl("/test-root/").href, x);
     const specs = [];
     if (isGlob(spec.path)) {
       for await (
@@ -279,7 +286,7 @@ export async function createTestContext(
       specs.push(spec.path);
     }
     for (const path of specs) {
-      const uri = toFileUrl(spec.path.replace('file://', '')).href;
+      const uri = toFileUrl(spec.path.replace("file://", "")).href;
       workspaces.addSpec(uri, spec);
       if (path.match(/ya?ml$/)) {
         const content = YAML.stringify(x.tokens);
@@ -301,10 +308,10 @@ export async function createTestContext(
  */
 export function createTestLspClient() {
   const server = new Deno.Command(Deno.execPath(), {
-    stdin: 'piped',
-    stdout: 'piped',
-    stderr: 'piped',
-    args: ['-A', '--quiet', './src/main.ts'],
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "piped",
+    args: ["-A", "--quiet", "./src/main.ts"],
   }).spawn();
 
   const client = new TestLspClient(server);
