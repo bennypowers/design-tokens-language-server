@@ -1,14 +1,11 @@
-import type { Token } from "style-dictionary";
-import type { DTLSContext } from "#lsp";
+import type { Token } from 'style-dictionary';
+import type { DTLSContext } from '#lsp';
 
-import type {
-  ColorPresentation,
-  ColorPresentationParams,
-} from "vscode-languageserver-protocol";
+import type { ColorPresentation, ColorPresentationParams } from 'vscode-languageserver-protocol';
 
-import Color from "tinycolor2";
+import Color from 'tinycolor2';
 
-import { lspColorToTinyColor } from "#color";
+import { lspColorToTinyColor } from '#color';
 
 function compareColors(
   token: Token,
@@ -32,8 +29,6 @@ export function colorPresentation(
   const instance = lspColorToTinyColor(color);
   return tokens
     .entries()
-    .flatMap(([label, t]) =>
-      t.$type === "color" && compareColors(t, instance) ? [{ label }] : []
-    )
+    .flatMap(([label, t]) => t.$type === 'color' && compareColors(t, instance) ? [{ label }] : [])
     .toArray();
 }

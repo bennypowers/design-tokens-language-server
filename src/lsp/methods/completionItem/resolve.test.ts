@@ -1,29 +1,29 @@
-import { beforeEach, describe, it } from "@std/testing/bdd";
-import { expect } from "@std/expect";
+import { beforeEach, describe, it } from '@std/testing/bdd';
+import { expect } from '@std/expect';
 
-import { createTestContext, DTLSTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from '#test-helpers';
 
-import { resolve } from "./resolve.ts";
+import { resolve } from './resolve.ts';
 
-describe("completionItem/resolve", () => {
+describe('completionItem/resolve', () => {
   let ctx: DTLSTestContext;
 
   beforeEach(async () => {
     ctx = await createTestContext({
       testTokensSpecs: [
         {
-          prefix: "token",
-          spec: "file:///tokens.json",
+          prefix: 'token',
+          spec: 'file:///tokens.json',
           tokens: {
             color: {
               red: {
-                $value: "#ff0000",
-                $type: "color",
-                $description: "A red color",
+                $value: '#ff0000',
+                $type: 'color',
+                $description: 'A red color',
               },
               blue: {
-                $value: "#0000ff",
-                $type: "color",
+                $value: '#0000ff',
+                $type: 'color',
               },
             },
           },
@@ -32,51 +32,49 @@ describe("completionItem/resolve", () => {
     });
   });
 
-  describe("given a completion item with a token", () => {
+  describe('given a completion item with a token', () => {
     const completionItem = {
-      label: "--token-color-red",
+      label: '--token-color-red',
     };
-    it("should resolve the completion item with details and documentation", () => {
+    it('should resolve the completion item with details and documentation', () => {
       const resolvedItem = resolve(completionItem, ctx);
       expect(resolvedItem).toEqual({
         ...completionItem,
         labelDetails: {
-          detail: ": #ff0000",
+          detail: ': #ff0000',
         },
         documentation: {
-          kind: "markdown",
-          value:
-            "# `--token-color-red`\n\nType: `color`\nA red color\n\n```css\n#ff0000\n```",
+          kind: 'markdown',
+          value: '# `--token-color-red`\n\nType: `color`\nA red color\n\n```css\n#ff0000\n```',
         },
       });
     });
   });
 
-  describe("given a completion item with a token that has no description", () => {
+  describe('given a completion item with a token that has no description', () => {
     const completionItem = {
-      label: "--token-color-blue",
+      label: '--token-color-blue',
     };
-    it("should resolve the completion item with details and documentation", () => {
+    it('should resolve the completion item with details and documentation', () => {
       const resolvedItem = resolve(completionItem, ctx);
       expect(resolvedItem).toEqual({
         ...completionItem,
         labelDetails: {
-          detail: ": #0000ff",
+          detail: ': #0000ff',
         },
         documentation: {
-          kind: "markdown",
-          value:
-            "# `--token-color-blue`\n\nType: `color`\n\n```css\n#0000ff\n```",
+          kind: 'markdown',
+          value: '# `--token-color-blue`\n\nType: `color`\n\n```css\n#0000ff\n```',
         },
       });
     });
   });
 
-  describe("given a completion item that somehow represents a non-token", () => {
+  describe('given a completion item that somehow represents a non-token', () => {
     const completionItem = {
-      label: "--token-bogus",
+      label: '--token-bogus',
     };
-    it("should resolve the completion item with details and documentation", () => {
+    it('should resolve the completion item with details and documentation', () => {
       const resolvedItem = resolve(completionItem, ctx);
       expect(resolvedItem).toEqual(completionItem);
     });

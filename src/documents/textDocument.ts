@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import * as LSP from "vscode-languageserver-protocol";
+import * as LSP from 'vscode-languageserver-protocol';
 
 interface IncrementalEvent {
   range: LSP.Range;
@@ -123,12 +123,10 @@ function mergeSort<T>(data: T[], compare: (a: T, b: T) => number): T[] {
       data[i++] = right[rightIdx++];
     }
   }
-  while (leftIdx < left.length) {
+  while (leftIdx < left.length)
     data[i++] = left[leftIdx++];
-  }
-  while (rightIdx < right.length) {
+  while (rightIdx < right.length)
     data[i++] = right[rightIdx++];
-  }
   return data;
 }
 
@@ -171,9 +169,8 @@ function getWellformedRange(range: LSP.Range): LSP.Range {
 
 function getWellformedEdit(textEdit: LSP.TextEdit): LSP.TextEdit {
   const range = getWellformedRange(textEdit.range);
-  if (range !== textEdit.range) {
+  if (range !== textEdit.range)
     return { newText: textEdit.newText, range };
-  }
   return textEdit;
 }
 
@@ -182,27 +179,24 @@ export class FullTextDocument implements TextDocument {
     const text = document.getText();
     const sortedEdits = mergeSort(edits.map(getWellformedEdit), (a, b) => {
       const diff = a.range.start.line - b.range.start.line;
-      if (diff === 0) {
+      if (diff === 0)
         return a.range.start.character - b.range.start.character;
-      }
       return diff;
     });
     let lastModifiedOffset = 0;
     const spans = [];
     for (const e of sortedEdits) {
       const startOffset = document.offsetAt(e.range.start);
-      if (startOffset < lastModifiedOffset) {
-        throw new Error("Overlapping edit");
-      } else if (startOffset > lastModifiedOffset) {
+      if (startOffset < lastModifiedOffset)
+        throw new Error('Overlapping edit');
+      else if (startOffset > lastModifiedOffset)
         spans.push(text.substring(lastModifiedOffset, startOffset));
-      }
-      if (e.newText.length) {
+      if (e.newText.length)
         spans.push(e.newText);
-      }
       lastModifiedOffset = document.offsetAt(e.range.end);
     }
     spans.push(text.substr(lastModifiedOffset));
-    return spans.join("");
+    return spans.join('');
   }
 
   private _uri: LSP.DocumentUri;
@@ -270,9 +264,8 @@ export class FullTextDocument implements TextDocument {
           startOffset,
         );
         if (endLine - startLine === addedLineOffsets.length) {
-          for (let i = 0, len = addedLineOffsets.length; i < len; i++) {
+          for (let i = 0, len = addedLineOffsets.length; i < len; i++)
             lineOffsets[i + startLine + 1] = addedLineOffsets[i];
-          }
         } else {
           if (addedLineOffsets.length < 10000) {
             lineOffsets.splice(
@@ -302,16 +295,15 @@ export class FullTextDocument implements TextDocument {
         this._content = change.text;
         this._lineOffsets = undefined;
       } else {
-        throw new Error("Unknown change event received");
+        throw new Error('Unknown change event received');
       }
     }
     this._version = version;
   }
 
   private getLineOffsets(): number[] {
-    if (this._lineOffsets === undefined) {
+    if (this._lineOffsets === undefined)
       this._lineOffsets = computeLineOffsets(this._content, true);
-    }
     return this._lineOffsets;
   }
 
@@ -320,16 +312,14 @@ export class FullTextDocument implements TextDocument {
 
     const lineOffsets = this.getLineOffsets();
     let low = 0, high = lineOffsets.length;
-    if (high === 0) {
+    if (high === 0)
       return { line: 0, character: offset };
-    }
     while (low < high) {
       const mid = Math.floor((low + high) / 2);
-      if (lineOffsets[mid] > offset) {
+      if (lineOffsets[mid] > offset)
         high = mid;
-      } else {
+      else
         low = mid + 1;
-      }
     }
     // low is the least x for which the line offset is larger than the current offset
     // or array.length if no line offset is larger than the current offset
@@ -341,15 +331,13 @@ export class FullTextDocument implements TextDocument {
 
   public offsetAt(position: LSP.Position) {
     const lineOffsets = this.getLineOffsets();
-    if (position.line >= lineOffsets.length) {
+    if (position.line >= lineOffsets.length)
       return this._content.length;
-    } else if (position.line < 0) {
+    else if (position.line < 0)
       return 0;
-    }
     const lineOffset = lineOffsets[position.line];
-    if (position.character <= 0) {
+    if (position.character <= 0)
       return lineOffset;
-    }
 
     const nextLineOffset = (position.line + 1 < lineOffsets.length)
       ? lineOffsets[position.line + 1]
@@ -359,9 +347,8 @@ export class FullTextDocument implements TextDocument {
   }
 
   private ensureBeforeEOL(offset: number, lineOffset: number): number {
-    while (offset > lineOffset && isEOL(this._content.charCodeAt(offset - 1))) {
+    while (offset > lineOffset && isEOL(this._content.charCodeAt(offset - 1)))
       offset--;
-    }
     return offset;
   }
 
@@ -374,9 +361,9 @@ export class FullTextDocument implements TextDocument {
   ): event is { range: LSP.Range; rangeLength?: number; text: string } {
     const candidate: IncrementalEvent = event as IncrementalEvent;
     return candidate !== undefined && candidate !== null &&
-      typeof candidate.text === "string" && candidate.range !== undefined &&
+      typeof candidate.text === 'string' && candidate.range !== undefined &&
       (candidate.rangeLength === undefined ||
-        typeof candidate.rangeLength === "number");
+        typeof candidate.rangeLength === 'number');
   }
 
   private static isFull(
@@ -384,7 +371,7 @@ export class FullTextDocument implements TextDocument {
   ): event is { text: string } {
     const candidate: IncrementalEvent = event as IncrementalEvent;
     return candidate !== undefined && candidate !== null &&
-      typeof candidate.text === "string" && candidate.range === undefined &&
+      typeof candidate.text === 'string' && candidate.range === undefined &&
       candidate.rangeLength === undefined;
   }
 }

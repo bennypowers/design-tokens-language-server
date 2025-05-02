@@ -1,16 +1,16 @@
-import * as LSP from "vscode-languageserver-protocol";
+import * as LSP from 'vscode-languageserver-protocol';
 
-import { adjustPosition, DTLSTextDocument } from "#document";
+import { adjustPosition, DTLSTextDocument } from '#document';
 
-import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
+import { DTLSContext, DTLSErrorCodes } from '#lsp/lsp.ts';
 
-import * as YAML from "yaml";
+import * as YAML from 'yaml';
 
-import { cssColorToLspColor } from "#color";
-import { usesReferences } from "style-dictionary/utils";
-import { getLightDarkValues } from "#css";
-import { Logger } from "#logger";
-import { DTLSToken } from "#tokens";
+import { cssColorToLspColor } from '#color';
+import { usesReferences } from 'style-dictionary/utils';
+import { getLightDarkValues } from '#css';
+import { Logger } from '#logger';
+import { DTLSToken } from '#tokens';
 
 const REF_RE = /{([^}]+)}/g;
 
@@ -21,7 +21,7 @@ type YAMLPath = readonly (
 )[];
 
 export class YamlDocument extends DTLSTextDocument {
-  language = "yaml" as const;
+  language = 'yaml' as const;
 
   #root!: YAML.Node;
   #document!: YAML.Document.Parsed;
@@ -36,7 +36,7 @@ export class YamlDocument extends DTLSTextDocument {
   }
 
   private constructor(uri: string, version: number, text: string) {
-    super(uri, "yaml", version, text);
+    super(uri, 'yaml', version, text);
     this.#root = this.#parse();
   }
 
@@ -55,9 +55,8 @@ export class YamlDocument extends DTLSTextDocument {
     });
     this.#lineCounter = lineCounter;
     const root = this.#document.contents;
-    if (!root) {
-      throw new Error("Failed to parse YAML");
-    }
+    if (!root)
+      throw new Error('Failed to parse YAML');
     return root;
   }
 
@@ -89,14 +88,14 @@ export class YamlDocument extends DTLSTextDocument {
         },
       });
     }
-    if (!path) throw new Error("Could not find node");
+    if (!path) throw new Error('Could not find node');
     const pathMut = [...path];
     let parent: unknown = node;
     let typeNode;
     let type: string | undefined;
-    while (type !== "color" && (parent = pathMut.pop())) {
+    while (type !== 'color' && (parent = pathMut.pop())) {
       if (YAML.isMap(parent)) {
-        typeNode = parent.get("$type", true);
+        typeNode = parent.get('$type', true);
         type = YAML.isScalar<string>(typeNode) ? typeNode.value : undefined;
       }
     }
@@ -107,13 +106,12 @@ export class YamlDocument extends DTLSTextDocument {
     path: (string | number)[],
   ): YAML.Scalar | YAML.YAMLMap | YAML.YAMLSeq | null {
     const node = this.#document.getIn(path, true);
-    if (YAML.isAlias(node)) {
+    if (YAML.isAlias(node))
       return node.resolve(this.#document) ?? null;
-    } else if (YAML.isNode(node) && !YAML.isAlias(node)) {
+    else if (YAML.isNode(node) && !YAML.isAlias(node))
       return node;
-    } else if (node) {
+    else if (node)
       Logger.debug`Unknown ${node} ${typeof node}`;
-    }
     return null;
   }
 
@@ -125,20 +123,19 @@ export class YamlDocument extends DTLSTextDocument {
     const adjustedPosition = adjustPosition(position, offset);
     // convert the line/col position to a numeric offset
     const offsetOfPosition = this.getText()
-      .split("\n")
+      .split('\n')
       .reduce((acc, row, i) => {
-        if (i === adjustedPosition.line) {
+        if (i === adjustedPosition.line)
           return acc + adjustedPosition.character;
-        } else if (i < adjustedPosition.line) return acc + row.length;
+        else if (i < adjustedPosition.line) return acc + row.length;
         else return acc;
       }, 0);
     let previousRange = [-Infinity, Infinity];
     YAML.visit(this.#root, {
       Node: (_, node) => {
         let n: YAML.Node | undefined = node;
-        if (YAML.isAlias(node)) {
+        if (YAML.isAlias(node))
           n = node.resolve(this.#document);
-        }
         if (n?.range) {
           const [start, end] = n.range;
           previousRange = n.range;
@@ -146,9 +143,8 @@ export class YamlDocument extends DTLSTextDocument {
             end >= offsetOfPosition;
           const isSmallerThanPreviousRange = start >= previousRange[0] &&
             end <= previousRange[1];
-          if (nodeContainsOffset && isSmallerThanPreviousRange) {
+          if (nodeContainsOffset && isSmallerThanPreviousRange)
             found = node;
-          }
         }
       },
     });
@@ -157,8 +153,8 @@ export class YamlDocument extends DTLSTextDocument {
 
   #getNodeForTokenName(tokenName: string, prefix?: string): YAML.Node | null {
     const tokenPath = tokenName
-      .replace(/^--/, "")
-      .split("-")
+      .replace(/^--/, '')
+      .split('-')
       .filter((x) => !!x)
       .filter((x) => (prefix ? x !== prefix : true));
     const node = this.#getNodeAtPath(tokenPath);
@@ -167,32 +163,30 @@ export class YamlDocument extends DTLSTextDocument {
 
   getTokenForPath(path: (string | number)[]): DTLSToken | null {
     const node = this.#getNodeAtPath(path);
-    const valueNode = this.#getNodeAtPath([...path, "$value"]);
-    if (!node || !valueNode) {
+    const valueNode = this.#getNodeAtPath([...path, '$value']);
+    if (!node || !valueNode)
       return null;
-    }
     const getValues = (node?: YAML.Node): unknown[] => {
       if (YAML.isScalar(node)) return [node?.value];
-      else if (YAML.isAlias(node)) {
+      else if (YAML.isAlias(node))
         return getValues(node.resolve(this.#document));
-      } else if (YAML.isMap(node)) {
+      else if (YAML.isMap(node))
         return node.items.flatMap((pair) => getValues(pair.value as YAML.Node));
-      } else if (YAML.isSeq(node)) {
+      else if (YAML.isSeq(node))
         return node.items.flatMap((item) => getValues(item as YAML.Node));
-      } else return [];
+      else return [];
     };
 
-    let $value = getValues(valueNode).join(""); // XXX: this join may come back to bite me
+    let $value = getValues(valueNode).join(''); // XXX: this join may come back to bite me
     if ($value) {
       if (usesReferences($value)) {
         const resolved = this.#context.tokens.resolveValue($value)?.toString();
-        if (resolved) {
+        if (resolved)
           $value = resolved;
-        }
       }
       const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
       return this.#context.tokens.get(
-        [prefix, ...path].filter((x) => !!x).join("-"),
+        [prefix, ...path].filter((x) => !!x).join('-'),
       ) ?? null;
     }
     return null;
@@ -213,13 +207,13 @@ export class YamlDocument extends DTLSTextDocument {
     const adjusted = adjustPosition(position, offset);
     const stringNode = this.#getNodeAtPosition(adjusted, offset);
     if (!YAML.isScalar(stringNode)) return null;
-    if (typeof stringNode.value === "string") {
+    if (typeof stringNode.value === 'string') {
       const valueRange = this.#getRangeForNode(stringNode);
 
       if (!valueRange) return null;
 
       const valueLines = this.getText()
-        .split("\n")
+        .split('\n')
         .slice(valueRange.start.line, valueRange.end.line + 1);
 
       // get the match that contains the current position
@@ -232,12 +226,12 @@ export class YamlDocument extends DTLSTextDocument {
             adjusted.character <= matchOffsetInLine + reference.length
           ) {
             const stringRange = this.#getRangeForNode(stringNode)!;
-            const refUnpacked = reference.replace(REF_RE, "$1");
+            const refUnpacked = reference.replace(REF_RE, '$1');
             const line = stringRange.start.line;
             const character = currentLine.indexOf(refUnpacked);
             const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
-            const path = [prefix, ...refUnpacked.split(".")].filter((x) => !!x);
-            const name = `--${path.join("-")}`;
+            const path = [prefix, ...refUnpacked.split('.')].filter((x) => !!x);
+            const name = `--${path.join('-')}`;
             Logger.debug`name:${name} ${this.#context.tokens.get(name)}`;
             if (this.#context.tokens.has(name)) {
               return {
@@ -260,9 +254,9 @@ export class YamlDocument extends DTLSTextDocument {
     YAML.visit(this.#root, {
       Scalar: (_key, node, path) => {
         const content = node.value;
-        if (typeof content === "string") {
+        if (typeof content === 'string') {
           const type = this.#getDTCGTypeForNode(node, path);
-          if (type === "color" && node.range) {
+          if (type === 'color' && node.range) {
             const range = this.#getRangeForNode(node);
             if (!range) return;
             if (range && usesReferences(content)) {
@@ -288,20 +282,18 @@ export class YamlDocument extends DTLSTextDocument {
                   }
                 }
               }
-            } else if (content.startsWith("light-dark(")) {
+            } else if (content.startsWith('light-dark(')) {
               for (const match of getLightDarkValues(content)) {
                 const color = cssColorToLspColor(match);
-                if (color) {
+                if (color)
                   colors.push({ range, color });
-                }
               }
             } else {
               const resolved = context.tokens.resolveValue(content);
               const match = resolved?.toString() ?? content;
               const color = cssColorToLspColor(match);
-              if (color) {
+              if (color)
                 colors.push({ range, color });
-              }
             }
           }
         }
@@ -311,23 +303,21 @@ export class YamlDocument extends DTLSTextDocument {
   }
 
   public getDiagnostics(context: DTLSContext) {
-    if (!context.tokens) {
-      throw new Error("No tokens found in context");
-    }
+    if (!context.tokens)
+      throw new Error('No tokens found in context');
     const diagnostics: LSP.Diagnostic[] = [];
     YAML.visit(this.#root, {
       Scalar: (_, node) => {
         const range = this.#getRangeForNode(node);
         const content = node.value;
-        if (!range || typeof content !== "string") return;
+        if (!range || typeof content !== 'string') return;
         const errors: string[] = [];
         if (usesReferences(content)) {
           const matches = content.match(REF_RE);
           for (const name of matches ?? []) {
             const resolved = context.tokens.resolveValue(name);
-            if (!resolved) {
+            if (!resolved)
               errors.push(name);
-            }
           }
         }
         diagnostics.push(

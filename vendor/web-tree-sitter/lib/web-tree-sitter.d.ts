@@ -1,68 +1,70 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
-    function AsciiToString(ptr: number): string;
-    function stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): number;
-    /**
-     * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
-     * emscripten HEAP, returns a copy of that string as a Javascript String object.
-     *
-     * @param {number} ptr
-     * @param {number=} maxBytesToRead - An optional length that specifies the
-     *   maximum number of bytes to read. You can omit this parameter to scan the
-     *   string until the first 0 byte. If maxBytesToRead is passed, and the string
-     *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
-     *   string will cut short at that byte index (i.e. maxBytesToRead will not
-     *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
-     *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
-     *   JS JIT optimizations off, so it is worth to consider consistently using one
-     * @return {string}
-     */
-    function UTF8ToString(ptr: number, maxBytesToRead?: number): string;
-    function lengthBytesUTF8(str: string): number;
-    function stringToUTF16(str: string, outPtr: number, maxBytesToWrite: number): number;
-    /**
-     * @param {string=} libName
-     * @param {Object=} localScope
-     * @param {number=} handle
-     */
-    function loadWebAssemblyModule(
-      binary: Uint8Array,
-      flags: {
-        allowUndefined?: boolean,
-        loadAsync?: boolean,
-        global?: boolean,
-        nodelete?: boolean;
-      },
-      libName?: string,
-      localScope?: Record<string, any>,
-      handle?: number
-    ): Promise<Record<string, () => number>>;
-    /**
-     * @param {number} ptr
-     * @param {string} type
-     */
-    function getValue(ptr: number, type?: string): number;
-    /**
-     * @param {number} ptr
-     * @param {number} value
-     * @param {string} type
-     */
-    function setValue(ptr: number, value: number, type?: string): void;
-    let currentParseCallback: ((index: number, position: {row: number, column: number}) => string | undefined) | null;
-    let currentLogCallback: ((message: string, isLex: boolean) => void) | null;
-    let currentProgressCallback: ((state: {currentOffset: number}) => void) | null;
-    let currentQueryProgressCallback: ((state: {currentOffset: number}) => void) | null;
-    let HEAPF32: Float32Array;
-    let HEAPF64: Float64Array;
-    let HEAP_DATA_VIEW: DataView;
-    let HEAP8: Int8Array
-    let HEAPU8: Uint8Array;
-    let HEAP16: Int16Array;
-    let HEAPU16: Uint16Array;
-    let HEAP32: Int32Array;
-    let HEAPU32: Uint32Array;
-    let HEAP64: BigInt64Array;
-    let HEAPU64: BigUint64Array;
+  function AsciiToString(ptr: number): string;
+  function stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): number;
+  /**
+   * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
+   * emscripten HEAP, returns a copy of that string as a Javascript String object.
+   *
+   * @param {number} ptr
+   * @param {number=} maxBytesToRead - An optional length that specifies the
+   *   maximum number of bytes to read. You can omit this parameter to scan the
+   *   string until the first 0 byte. If maxBytesToRead is passed, and the string
+   *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
+   *   string will cut short at that byte index (i.e. maxBytesToRead will not
+   *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
+   *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
+   *   JS JIT optimizations off, so it is worth to consider consistently using one
+   * @return {string}
+   */
+  function UTF8ToString(ptr: number, maxBytesToRead?: number): string;
+  function lengthBytesUTF8(str: string): number;
+  function stringToUTF16(str: string, outPtr: number, maxBytesToWrite: number): number;
+  /**
+   * @param {string=} libName
+   * @param {Object=} localScope
+   * @param {number=} handle
+   */
+  function loadWebAssemblyModule(
+    binary: Uint8Array,
+    flags: {
+      allowUndefined?: boolean;
+      loadAsync?: boolean;
+      global?: boolean;
+      nodelete?: boolean;
+    },
+    libName?: string,
+    localScope?: Record<string, any>,
+    handle?: number,
+  ): Promise<Record<string, () => number>>;
+  /**
+   * @param {number} ptr
+   * @param {string} type
+   */
+  function getValue(ptr: number, type?: string): number;
+  /**
+   * @param {number} ptr
+   * @param {number} value
+   * @param {string} type
+   */
+  function setValue(ptr: number, value: number, type?: string): void;
+  let currentParseCallback:
+    | ((index: number, position: { row: number; column: number }) => string | undefined)
+    | null;
+  let currentLogCallback: ((message: string, isLex: boolean) => void) | null;
+  let currentProgressCallback: ((state: { currentOffset: number }) => void) | null;
+  let currentQueryProgressCallback: ((state: { currentOffset: number }) => void) | null;
+  let HEAPF32: Float32Array;
+  let HEAPF64: Float64Array;
+  let HEAP_DATA_VIEW: DataView;
+  let HEAP8: Int8Array;
+  let HEAPU8: Uint8Array;
+  let HEAP16: Int16Array;
+  let HEAPU16: Uint16Array;
+  let HEAP32: Int32Array;
+  let HEAPU32: Uint32Array;
+  let HEAP64: BigInt64Array;
+  let HEAPU64: BigUint64Array;
 }
 interface WasmModule {
   _malloc(_0: number): number;
@@ -188,7 +190,15 @@ interface WasmModule {
   _ts_node_to_string_wasm(_0: number): number;
   _ts_node_children_wasm(_0: number): void;
   _ts_node_named_children_wasm(_0: number): void;
-  _ts_node_descendants_of_type_wasm(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number, _6: number): void;
+  _ts_node_descendants_of_type_wasm(
+    _0: number,
+    _1: number,
+    _2: number,
+    _3: number,
+    _4: number,
+    _5: number,
+    _6: number,
+  ): void;
   _ts_node_is_named_wasm(_0: number): number;
   _ts_node_has_changes_wasm(_0: number): number;
   _ts_node_has_error_wasm(_0: number): number;
@@ -197,8 +207,32 @@ interface WasmModule {
   _ts_node_is_extra_wasm(_0: number): number;
   _ts_node_parse_state_wasm(_0: number): number;
   _ts_node_next_parse_state_wasm(_0: number): number;
-  _ts_query_matches_wasm(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number, _6: number, _7: number, _8: number, _9: number, _10: number): void;
-  _ts_query_captures_wasm(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number, _6: number, _7: number, _8: number, _9: number, _10: number): void;
+  _ts_query_matches_wasm(
+    _0: number,
+    _1: number,
+    _2: number,
+    _3: number,
+    _4: number,
+    _5: number,
+    _6: number,
+    _7: number,
+    _8: number,
+    _9: number,
+    _10: number,
+  ): void;
+  _ts_query_captures_wasm(
+    _0: number,
+    _1: number,
+    _2: number,
+    _3: number,
+    _4: number,
+    _5: number,
+    _6: number,
+    _7: number,
+    _8: number,
+    _9: number,
+    _10: number,
+  ): void;
   _iswalpha(_0: number): number;
   _iswblank(_0: number): number;
   _iswdigit(_0: number): number;
@@ -217,4 +251,4 @@ interface WasmModule {
 }
 
 export type MainModule = WasmModule & typeof RuntimeExports;
-export default function MainModuleFactory (options?: EmscriptenModule): Promise<MainModule>;
+export default function MainModuleFactory(options?: EmscriptenModule): Promise<MainModule>;

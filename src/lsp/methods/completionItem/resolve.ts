@@ -1,11 +1,8 @@
-import type {
-  CompletionItem,
-  MarkupKind,
-} from "vscode-languageserver-protocol";
+import type { CompletionItem, MarkupKind } from 'vscode-languageserver-protocol';
 
-import { getTokenMarkdown } from "#tokens";
+import { getTokenMarkdown } from '#tokens';
 
-import { DTLSContext } from "#lsp";
+import { DTLSContext } from '#lsp';
 
 /**
  * Resolves a completion item by adding details and documentation.
@@ -19,9 +16,9 @@ export function resolve(
   context: DTLSContext,
 ): CompletionItem {
   const token = context.tokens.get(params.label);
-  if (!token) {
+  if (!token)
     return params;
-  } else {
+  else {
     return {
       ...params,
       labelDetails: {
@@ -29,7 +26,7 @@ export function resolve(
       },
       documentation: {
         value: getTokenMarkdown(token),
-        kind: "markdown" satisfies typeof MarkupKind.Markdown,
+        kind: 'markdown' satisfies typeof MarkupKind.Markdown,
       },
     };
   }

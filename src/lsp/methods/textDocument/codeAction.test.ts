@@ -1,39 +1,36 @@
-import { beforeEach, describe, it } from "@std/testing/bdd";
-import { expect } from "@std/expect";
+import { beforeEach, describe, it } from '@std/testing/bdd';
+import { expect } from '@std/expect';
 
-import { createTestContext, DTLSTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from '#test-helpers';
 
-import { codeAction, DTLSCodeAction } from "./codeAction.ts";
+import { codeAction, DTLSCodeAction } from './codeAction.ts';
 
-import { resolve } from "../codeAction/resolve.ts";
+import { resolve } from '../codeAction/resolve.ts';
 
-import {
-  CodeActionKind,
-  TextDocumentIdentifier,
-} from "vscode-languageserver-protocol";
-import { DTLSTextDocument } from "#document";
-import { CssDocument } from "#css";
+import { CodeActionKind, TextDocumentIdentifier } from 'vscode-languageserver-protocol';
+import { DTLSTextDocument } from '#document';
+import { CssDocument } from '#css';
 
-describe("textDocument/codeAction", () => {
+describe('textDocument/codeAction', () => {
   let ctx: DTLSTestContext;
   beforeEach(async () => {
     ctx = await createTestContext({
       testTokensSpecs: [
         {
-          prefix: "token",
-          spec: "file:///tokens.json",
+          prefix: 'token',
+          spec: 'file:///tokens.json',
           tokens: {
             color: {
-              $type: "color",
+              $type: 'color',
               red: {
                 _: {
-                  $value: "red",
+                  $value: 'red',
                 },
               },
               blue: {
                 lightdark: {
-                  $value: "light-dark(lightblue, darkblue)",
-                  $description: "Color scheme color",
+                  $value: 'light-dark(lightblue, darkblue)',
+                  $description: 'Color scheme color',
                 },
               },
             },
@@ -43,14 +40,14 @@ describe("textDocument/codeAction", () => {
     });
   });
 
-  describe("in a css document with one token var call and no fallback", () => {
+  describe('in a css document with one token var call and no fallback', () => {
     let result: ReturnType<typeof codeAction>;
     let textDocument: TextDocumentIdentifier;
     let doc: CssDocument;
 
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
-        "css",
+        'css',
         /*css*/ `
         a {
           color: var(--token-color-red);
@@ -60,7 +57,7 @@ describe("textDocument/codeAction", () => {
       doc = ctx.documents.get(textDocument.uri) as CssDocument;
     });
 
-    describe("called on the first character of the file", () => {
+    describe('called on the first character of the file', () => {
       beforeEach(() => {
         result = codeAction({
           textDocument,
@@ -73,23 +70,23 @@ describe("textDocument/codeAction", () => {
           },
         }, ctx);
       });
-      it("should return null", () => {
+      it('should return null', () => {
         expect(result).toBeNull();
       });
     });
 
-    describe("calling codeAction on the first character of the token name", () => {
+    describe('calling codeAction on the first character of the token name', () => {
       beforeEach(() => {
-        const position = doc.positionForSubstring("--token-color-red");
+        const position = doc.positionForSubstring('--token-color-red');
         result = codeAction({
           textDocument,
           range: { start: position, end: position },
           context: { diagnostics: doc.getDiagnostics(ctx) },
         }, ctx);
       });
-      it("should return a single-token refactor action", () => {
-        const newText = "var(--token-color-red, red)";
-        const range = doc.getRangeForSubstring("var(--token-color-red)");
+      it('should return a single-token refactor action', () => {
+        const newText = 'var(--token-color-red, red)';
+        const range = doc.getRangeForSubstring('var(--token-color-red)');
         expect(result).toEqual([
           {
             title: DTLSCodeAction.toggleFallback,
@@ -110,13 +107,13 @@ describe("textDocument/codeAction", () => {
     });
   });
 
-  describe("in a css document with one token var call that has an incorrect fallback", () => {
+  describe('in a css document with one token var call that has an incorrect fallback', () => {
     let textDocument: TextDocumentIdentifier;
     let doc: CssDocument;
 
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
-        "css",
+        'css',
         /*css*/ `
           a {
             color: var(--token-color-red, blue);
@@ -126,11 +123,11 @@ describe("textDocument/codeAction", () => {
       doc = ctx.documents.get(textDocument.uri) as CssDocument;
     });
 
-    describe("called on the first character of the fallback", () => {
+    describe('called on the first character of the fallback', () => {
       let result: ReturnType<typeof codeAction>;
 
       beforeEach(() => {
-        const position = doc.positionForSubstring("blue");
+        const position = doc.positionForSubstring('blue');
         const diagnostics = doc.getDiagnostics(ctx);
         result = codeAction({
           textDocument,
@@ -139,7 +136,7 @@ describe("textDocument/codeAction", () => {
         }, ctx);
       });
 
-      it("should return a fix for the incorrect fallback", () => {
+      it('should return a fix for the incorrect fallback', () => {
         const diagnostics = doc.getDiagnostics(ctx);
         expect(result?.at(0)).toEqual({
           title: DTLSCodeAction.fixFallback,
@@ -148,20 +145,20 @@ describe("textDocument/codeAction", () => {
           data: { textDocument },
         });
       });
-      it("should not return a fixall", () => {
+      it('should not return a fixall', () => {
         expect(result?.find((x) => x.kind === CodeActionKind.SourceFixAll))
           .toBeUndefined();
       });
     });
   });
 
-  describe("in a css document with one token var call that has a correct fallback", () => {
+  describe('in a css document with one token var call that has a correct fallback', () => {
     let textDocument: TextDocumentIdentifier;
     let doc: CssDocument;
 
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
-        "css",
+        'css',
         /*css*/ `
           a {
             color: var(--token-color-red, red);
@@ -171,11 +168,11 @@ describe("textDocument/codeAction", () => {
       doc = ctx.documents.get(textDocument.uri) as CssDocument;
     });
 
-    describe("called on the first character of the fallback", () => {
+    describe('called on the first character of the fallback', () => {
       let result: ReturnType<typeof codeAction>;
 
       beforeEach(() => {
-        const position = doc.positionForSubstring("red");
+        const position = doc.positionForSubstring('red');
         const diagnostics = doc.getDiagnostics(ctx);
         result = codeAction({
           textDocument,
@@ -184,9 +181,9 @@ describe("textDocument/codeAction", () => {
         }, ctx);
       });
 
-      it("should return a single refactor action for a token call with fallback", () => {
-        const range = doc.getRangeForSubstring("var(--token-color-red, red)");
-        const newText = "var(--token-color-red)";
+      it('should return a single refactor action for a token call with fallback', () => {
+        const range = doc.getRangeForSubstring('var(--token-color-red, red)');
+        const newText = 'var(--token-color-red)';
         expect(result).toEqual([
           {
             title: DTLSCodeAction.toggleFallback,
@@ -207,13 +204,13 @@ describe("textDocument/codeAction", () => {
     });
   });
 
-  describe("in a css document with two token var calls with incorrect fallbacks", () => {
+  describe('in a css document with two token var calls with incorrect fallbacks', () => {
     let textDocument: TextDocumentIdentifier;
     let doc: CssDocument;
 
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
-        "css",
+        'css',
         /*css*/ `
           a {
             color: var(--token-color-red, blue);
@@ -235,7 +232,7 @@ describe("textDocument/codeAction", () => {
       }, ctx);
     });
 
-    it("should return two fixes for the incorrect fallbacks and a fixall fix", () => {
+    it('should return two fixes for the incorrect fallbacks and a fixall fix', () => {
       const diagnostics = doc.getDiagnostics(ctx);
       expect(result).toEqual([
         {
@@ -258,11 +255,9 @@ describe("textDocument/codeAction", () => {
       ]);
     });
 
-    describe("then performing one of the fixes", () => {
+    describe('then performing one of the fixes', () => {
       beforeEach(() => {
-        const action = result?.find(({ kind }) =>
-          kind === CodeActionKind.QuickFix
-        );
+        const action = result?.find(({ kind }) => kind === CodeActionKind.QuickFix);
         if (action) {
           const edits = resolve(action!, ctx)?.edit?.changes?.[doc.uri];
           if (edits) {
@@ -272,7 +267,7 @@ describe("textDocument/codeAction", () => {
         }
       });
 
-      it("fixes that part of the file", () => {
+      it('fixes that part of the file', () => {
         const text = ctx.documents.get(textDocument.uri).getText();
         expect(text).toEqual(/*css*/ `
           a {
@@ -283,7 +278,7 @@ describe("textDocument/codeAction", () => {
       });
     });
 
-    describe("then performing the fixall", () => {
+    describe('then performing the fixall', () => {
       beforeEach(() => {
         const edits = resolve(
           result!
@@ -296,7 +291,7 @@ describe("textDocument/codeAction", () => {
         }
       });
 
-      it("fixes the file", () => {
+      it('fixes the file', () => {
         const text = ctx.documents.get(textDocument.uri).getText();
         expect(text).toEqual(/*css*/ `
           a {
@@ -306,7 +301,7 @@ describe("textDocument/codeAction", () => {
         `);
       });
 
-      describe("and then calling codeAction on the range inside the {}", () => {
+      describe('and then calling codeAction on the range inside the {}', () => {
         let result: ReturnType<typeof codeAction>;
 
         beforeEach(() => {
@@ -314,14 +309,14 @@ describe("textDocument/codeAction", () => {
           result = codeAction({
             textDocument: doc.identifier,
             range: {
-              start: doc.positionForSubstring("color:", "start"),
-              end: doc.positionForSubstring("darkblue));", "end"),
+              start: doc.positionForSubstring('color:', 'start'),
+              end: doc.positionForSubstring('darkblue));', 'end'),
             },
             context: { diagnostics },
           }, ctx);
         });
 
-        it("should return a single fallback-toggle range refactor", () => {
+        it('should return a single fallback-toggle range refactor', () => {
           expect(result).toEqual([
             {
               kind: CodeActionKind.RefactorRewrite,
@@ -331,14 +326,14 @@ describe("textDocument/codeAction", () => {
                   [textDocument.uri]: [
                     {
                       range: doc.getRangeForSubstring(
-                        "var(--token-color-red, red)",
+                        'var(--token-color-red, red)',
                       ),
-                      newText: "var(--token-color-red)",
+                      newText: 'var(--token-color-red)',
                     },
                     {
-                      newText: "var(--token-color-blue-lightdark)",
+                      newText: 'var(--token-color-blue-lightdark)',
                       range: doc.getRangeForSubstring(
-                        "var(--token-color-blue-lightdark, light-dark(lightblue, darkblue))",
+                        'var(--token-color-blue-lightdark, light-dark(lightblue, darkblue))',
                       ),
                     },
                   ],

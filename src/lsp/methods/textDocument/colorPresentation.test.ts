@@ -1,45 +1,45 @@
-import { beforeEach, describe, it } from "@std/testing/bdd";
-import { expect } from "@std/expect";
+import { beforeEach, describe, it } from '@std/testing/bdd';
+import { expect } from '@std/expect';
 
-import { cssColorToLspColor } from "#color";
+import { cssColorToLspColor } from '#color';
 
-import { createTestContext, DTLSTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from '#test-helpers';
 
-import { colorPresentation } from "./colorPresentation.ts";
-import { TextDocumentIdentifier } from "vscode-languageserver-protocol";
-import { CssDocument } from "#css";
+import { colorPresentation } from './colorPresentation.ts';
+import { TextDocumentIdentifier } from 'vscode-languageserver-protocol';
+import { CssDocument } from '#css';
 
-describe("textDocument/colorPresentation", () => {
+describe('textDocument/colorPresentation', () => {
   let ctx: DTLSTestContext;
   beforeEach(async () => {
     ctx = await createTestContext({
       testTokensSpecs: [
         {
-          prefix: "token",
-          spec: "file:///tokens.json",
+          prefix: 'token',
+          spec: 'file:///tokens.json',
           tokens: {
             color: {
-              $type: "color",
+              $type: 'color',
               red: {
                 _: {
-                  $value: "#ff0000",
+                  $value: '#ff0000',
                 },
                 hex: {
-                  $value: "#ff0000",
+                  $value: '#ff0000',
                 },
                 malformed: {
-                  $value: "ff 00 00",
+                  $value: 'ff 00 00',
                 },
                 wrongtype: {
-                  $value: "red",
-                  $type: "dimension",
+                  $value: 'red',
+                  $type: 'dimension',
                 },
               },
             },
             space: {
-              $type: "dimension",
+              $type: 'dimension',
               small: {
-                $value: "4px",
+                $value: '4px',
               },
             },
           },
@@ -48,12 +48,12 @@ describe("textDocument/colorPresentation", () => {
     });
   });
 
-  describe("in a document with tokens and non-tokens", () => {
+  describe('in a document with tokens and non-tokens', () => {
     let textDocument: TextDocumentIdentifier;
     let doc: CssDocument;
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
-        "css",
+        'css',
         /*css*/ `
           a {
             color: var(--token-color-red);
@@ -66,13 +66,13 @@ describe("textDocument/colorPresentation", () => {
       );
       doc = ctx.documents.get(textDocument.uri) as CssDocument;
     });
-    it("should return color presentations for matching colors", () => {
-      const range = doc.getRangeForSubstring("--token-color-red");
-      const color = cssColorToLspColor("red")!;
+    it('should return color presentations for matching colors', () => {
+      const range = doc.getRangeForSubstring('--token-color-red');
+      const color = cssColorToLspColor('red')!;
       const result = colorPresentation({ textDocument, color, range }, ctx);
       expect(result).toEqual([
-        { label: "--token-color-red" },
-        { label: "--token-color-red-hex" },
+        { label: '--token-color-red' },
+        { label: '--token-color-red-hex' },
       ]);
     });
   });

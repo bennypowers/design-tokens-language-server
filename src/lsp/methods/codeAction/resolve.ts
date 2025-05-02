@@ -1,16 +1,12 @@
-import {
-  CodeAction,
-  Diagnostic,
-  TextEdit,
-} from "vscode-languageserver-protocol";
+import { CodeAction, Diagnostic, TextEdit } from 'vscode-languageserver-protocol';
 
-import { DTLSCodeAction } from "../textDocument/codeAction.ts";
-import { TokenVarCall } from "#css";
-import { DTLSContext } from "#lsp";
+import { DTLSCodeAction } from '../textDocument/codeAction.ts';
+import { TokenVarCall } from '#css';
+import { DTLSContext } from '#lsp';
 
 function fixFallback(action: CodeAction, context: DTLSContext): CodeAction {
   if (
-    typeof action.data?.textDocument?.uri === "string" && action.diagnostics
+    typeof action.data?.textDocument?.uri === 'string' && action.diagnostics
   ) {
     return {
       ...action,
@@ -44,9 +40,9 @@ function hasInvalidFallback(
 }
 
 function fixAllFallbacks(action: CodeAction, context: DTLSContext): CodeAction {
-  if (typeof action.data?.textDocument?.uri === "string") {
+  if (typeof action.data?.textDocument?.uri === 'string') {
     const doc = context.documents.get(action.data.textDocument.uri);
-    if (doc.language === "css") {
+    if (doc.language === 'css') {
       return {
         ...action,
         edit: {

@@ -24,16 +24,14 @@ mergeInto(LibraryManager.library, {
   },
 
   tree_sitter_progress_callback(currentOffset, hasError) {
-    if (Module.currentProgressCallback) {
+    if (Module.currentProgressCallback)
       return Module.currentProgressCallback({ currentOffset, hasError });
-    }
     return false;
   },
 
   tree_sitter_query_progress_callback(currentOffset) {
-    if (Module.currentQueryProgressCallback) {
+    if (Module.currentQueryProgressCallback)
       return Module.currentQueryProgressCallback({ currentOffset });
-    }
     return false;
   },
 });

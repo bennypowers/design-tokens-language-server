@@ -5,12 +5,12 @@ import {
   InitializeResult,
   Range,
   TextEdit,
-} from "vscode-languageserver-protocol";
+} from 'vscode-languageserver-protocol';
 
-import { TokenVarCall } from "#css";
+import { TokenVarCall } from '#css';
 
-import { DTLSContext, DTLSErrorCodes } from "#lsp";
-import { lspRangeContains } from "#lsp/utils.ts";
+import { DTLSContext, DTLSErrorCodes } from '#lsp';
+import { lspRangeContains } from '#lsp/utils.ts';
 
 function rangeIsSingleChar(range: Range): boolean {
   return (
@@ -21,13 +21,13 @@ function rangeIsSingleChar(range: Range): boolean {
 
 export enum DTLSCodeAction {
   /** Fix the fallback value of a design token.*/
-  fixFallback = "Fix token fallback value",
+  fixFallback = 'Fix token fallback value',
   /** Fix all fallback values of design tokens. */
-  fixAllFallbacks = "Fix all token fallback values",
+  fixAllFallbacks = 'Fix all token fallback values',
   /** Toggle the fallback value of a design token.* */
-  toggleFallback = "Toggle design token fallback value",
+  toggleFallback = 'Toggle design token fallback value',
   /** Toggle the fallback value of a design token in a range. */
-  toggleRangeFallbacks = "Toggle design token fallback values (in range)",
+  toggleRangeFallbacks = 'Toggle design token fallback values (in range)',
 }
 
 function getEditFromTokenVarCall(
@@ -40,9 +40,7 @@ function getEditFromTokenVarCall(
     if (token) {
       const hasFallback = !!fallback;
       // TODO: preserve whitespace
-      const newText = hasFallback
-        ? `var(${token.name})`
-        : `var(${token.name}, ${$value})`;
+      const newText = hasFallback ? `var(${token.name})` : `var(${token.name}, ${$value})`;
       return { range, newText };
     }
   }
@@ -87,7 +85,7 @@ export function codeAction(
 
   const doc = context.documents.get(textDocument.uri);
 
-  if (doc.language === "css") {
+  if (doc.language === 'css') {
     // TODO: resolve the edits for the tokenCallCaptures
     if (!rangeIsSingleChar(params.range)) {
       if (doc.varCalls.length) {
@@ -96,17 +94,14 @@ export function codeAction(
           kind: CodeActionKind.RefactorRewrite,
           edit: {
             changes: {
-              [textDocument.uri]: doc.varCalls.map((call) =>
-                getEditFromTokenVarCall(call, context)
-              ).filter((x) => !!x),
+              [textDocument.uri]: doc.varCalls.map((call) => getEditFromTokenVarCall(call, context))
+                .filter((x) => !!x),
             },
           },
         });
       }
     } else {
-      const call = doc.varCalls.find((call) =>
-        lspRangeContains(call.range, params.range)
-      );
+      const call = doc.varCalls.find((call) => lspRangeContains(call.range, params.range));
       if (call) {
         const edit = getEditFromTokenVarCall(call, context);
         if (edit) {
@@ -123,9 +118,8 @@ export function codeAction(
       }
     }
 
-    if (actions.length) {
+    if (actions.length)
       return actions;
-    }
   }
 
   return null;

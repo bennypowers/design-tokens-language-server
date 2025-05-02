@@ -17,12 +17,12 @@ async function main() {
     logLevel: 'warning',
     plugins: [
       /* add to the end of plugins array */
-      esbuildProblemMatcherPlugin
-    ]
+      esbuildProblemMatcherPlugin,
+    ],
   });
-  if (watch) {
+  if (watch)
     await ctx.watch();
-  } else {
+  else {
     await ctx.rebuild();
     await ctx.dispose();
   }
@@ -38,7 +38,7 @@ const esbuildProblemMatcherPlugin = {
     build.onStart(() => {
       console.log('[watch] build started');
     });
-    build.onEnd(result => {
+    build.onEnd((result) => {
       result.errors.forEach(({ text, location }) => {
         console.error(`✘ [ERROR] ${text}`);
         if (location == null) return;
@@ -46,11 +46,10 @@ const esbuildProblemMatcherPlugin = {
       });
       console.log('[watch] build finished');
     });
-  }
+  },
 };
 
-main().catch(e => {
+main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-

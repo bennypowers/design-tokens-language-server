@@ -1,21 +1,17 @@
-import {
-  Location,
-  ReferenceParams,
-  ServerCapabilities,
-} from "vscode-languageserver-protocol";
-import { DTLSContext } from "#lsp/lsp.ts";
-import { JsonDocument } from "#json";
-import { YamlDocument } from "#yaml";
+import { Location, ReferenceParams, ServerCapabilities } from 'vscode-languageserver-protocol';
+import { DTLSContext } from '#lsp/lsp.ts';
+import { JsonDocument } from '#json';
+import { YamlDocument } from '#yaml';
 
 export function references(
   params: ReferenceParams,
   context: DTLSContext,
 ): Location[] | null {
   const doc = context.documents.get(params.textDocument.uri);
-  if (doc.language === "css") {
+  if (doc.language === 'css') {
     // let css-ls handle it, at least for now
     return null;
-  } else if (doc.language === "json") {
+  } else if (doc.language === 'json') {
     const reference = doc.getTokenReferenceAtPosition(params.position);
     if (!reference) return [];
     const { name } = reference;
@@ -25,15 +21,15 @@ export function references(
       const { uri } = doc;
       const locations: Location[] = [];
       switch (doc.language) {
-        case "css":
+        case 'css':
           locations.push(
             ...doc
               .getRangesForSubstring(name)
               .map((range) => ({ uri, range })),
           );
           break;
-        case "json":
-        case "yaml":
+        case 'json':
+        case 'yaml':
           locations.push(
             ...doc
               .getRangesForSubstring(
@@ -48,9 +44,8 @@ export function references(
         const uri = ext.definitionUri;
         const doc = context.documents.get(uri) as JsonDocument | YamlDocument;
         const range = doc.getRangeForPath(ext.path);
-        if (uri && range) {
+        if (uri && range)
           locations.push({ uri, range });
-        }
       }
       return locations;
     });

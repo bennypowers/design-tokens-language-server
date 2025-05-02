@@ -1,19 +1,19 @@
-import { Node, Point, Query, Tree } from "web-tree-sitter";
+import { Node, Point, Query, Tree } from 'web-tree-sitter';
 
-import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
-import { DTLSTextDocument, TokenReference } from "#document";
+import { DTLSContext, DTLSErrorCodes } from '#lsp/lsp.ts';
+import { DTLSTextDocument, TokenReference } from '#document';
 
-import * as LSP from "vscode-languageserver-protocol";
+import * as LSP from 'vscode-languageserver-protocol';
 
-import * as Queries from "./tree-sitter/queries.ts";
+import * as Queries from './tree-sitter/queries.ts';
 
-import { parser } from "./tree-sitter/parser.ts";
-import { Token } from "style-dictionary";
+import { parser } from './tree-sitter/parser.ts';
+import { Token } from 'style-dictionary';
 
-import { cssColorToLspColor } from "#color";
-import { DTLSToken } from "#tokens";
+import { cssColorToLspColor } from '#color';
+import { DTLSToken } from '#tokens';
 
-type TsRange = Pick<Node, "startPosition" | "endPosition">;
+type TsRange = Pick<Node, 'startPosition' | 'endPosition'>;
 
 export interface TokenVarCall {
   range: LSP.Range;
@@ -38,23 +38,21 @@ export function getLightDarkValues(value: string) {
   const tree = parser.parse(`a{b:${value}}`)!;
   const query = new Query(tree.language, Queries.VarCallWithLightDarkFallback);
   const captures = query.captures(tree.rootNode);
-  const lightNode = captures.find((cap) => cap.name === "lightValue");
-  const darkNode = captures.find((cap) => cap.name === "darkValue");
-  return [lightNode?.node.text, darkNode?.node.text].filter((x) =>
-    x !== undefined
-  );
+  const lightNode = captures.find((cap) => cap.name === 'lightValue');
+  const darkNode = captures.find((cap) => cap.name === 'darkValue');
+  return [lightNode?.node.text, darkNode?.node.text].filter((x) => x !== undefined);
 }
 
 export function getVarCallArguments(value: string) {
   const tree = parser.parse(`a{b:${value}}`)!;
   const query = new Query(tree.language, Queries.VarCallWithOrWithoutFallback);
   const captures = query.captures(tree.rootNode);
-  const tokenNameNode = captures.find((cap) => cap.name === "tokenName");
+  const tokenNameNode = captures.find((cap) => cap.name === 'tokenName');
   const fallback = value.replace(
     new RegExp(`^var\\(${tokenNameNode?.node.text}(, *)`),
-    "",
+    '',
   )
-    .replace(/\)$/, "")
+    .replace(/\)$/, '')
     .trim();
   return {
     variable: tokenNameNode?.node.text,
@@ -123,13 +121,12 @@ const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
  * return the value of the token.
  */
 function extractColor(match: string, context: DTLSContext): string {
-  if (match.startsWith("var(")) {
+  if (match.startsWith('var(')) {
     const { variable, fallback } = getVarCallArguments(match);
-    if (context.tokens.has(variable)) {
+    if (context.tokens.has(variable))
       return extractColor(context.tokens.get(variable)!.$value, context);
-    } else if (fallback) {
+    else if (fallback)
       return extractColor(fallback, context);
-    }
   }
   return match;
 }
@@ -154,7 +151,7 @@ export class CssDocument extends DTLSTextDocument {
   #varCalls: TokenVarCall[] = [];
   #diagnostics: LSP.Diagnostic[] = [];
 
-  language = "css" as const;
+  language = 'css' as const;
 
   /**
    * TODO: having this on CSSDocument and not JsonDocument is a code smell
@@ -171,7 +168,7 @@ export class CssDocument extends DTLSTextDocument {
     version: number,
     text: string,
   ) {
-    super(uri, "css", version, text);
+    super(uri, 'css', version, text);
   }
 
   override update(
@@ -181,10 +178,9 @@ export class CssDocument extends DTLSTextDocument {
     const old = this.getText();
     super.update(changes, version);
     const newText = this.getText();
-    const newRows = newText.split("\n");
-    if (!this.#tree) {
+    const newRows = newText.split('\n');
+    if (!this.#tree)
       return;
-    }
     const oldEndPosition = this.#tree.rootNode.endPosition;
     this.#tree.edit({
       startIndex: 0,
@@ -216,7 +212,7 @@ export class CssDocument extends DTLSTextDocument {
     >();
 
     for (const cap of captures) {
-      if (cap.name === "VarCallWithOrWithoutFallback") {
+      if (cap.name === 'VarCallWithOrWithoutFallback') {
         const { fallback } = getVarCallArguments(cap.node.text);
         callNodes.set(cap.node.id, {
           tokenNameNode: {} as Node,
@@ -230,16 +226,15 @@ export class CssDocument extends DTLSTextDocument {
     for (const cap of captures) {
       let node = cap.node;
       let callNode = node.parent;
-      while (callNode?.type !== "call_expression" && node.parent) {
+      while (callNode?.type !== 'call_expression' && node.parent) {
         callNode = node.parent;
         node = node.parent;
       }
-      if (callNode?.type === "call_expression") {
-        if (cap.name === "tokenName") {
+      if (callNode?.type === 'call_expression') {
+        if (cap.name === 'tokenName')
           callNodes.get(callNode.id)!.tokenNameNode = cap.node;
-        } else if (cap.name === "fallback") {
+        else if (cap.name === 'fallback')
           callNodes.get(callNode.id)!.fallbacks.push(cap.node);
-        }
       }
     }
 
@@ -278,8 +273,7 @@ export class CssDocument extends DTLSTextDocument {
         return [{
           range: call.fallback.range,
           severity: LSP.DiagnosticSeverity.Error,
-          message:
-            `Token fallback does not match expected value: ${call.token.token.$value}`,
+          message: `Token fallback does not match expected value: ${call.token.token.$value}`,
           code: DTLSErrorCodes.incorrectFallback,
           data: {
             tokenName: call.token.name,
@@ -296,9 +290,8 @@ export class CssDocument extends DTLSTextDocument {
    * @param options - The options to pass to the query.
    */
   query(query: string, options?: TSNodePosition) {
-    if (!this.#tree) {
+    if (!this.#tree)
       return [];
-    }
     const q = new Query(this.#tree.language, query);
     return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
   }
@@ -308,25 +301,23 @@ export class CssDocument extends DTLSTextDocument {
     return this.#varCalls.flatMap((call) => {
       const token = call.token.token;
 
-      if (!token || token.$type !== "color") {
+      if (!token || token.$type !== 'color')
         return [];
-      }
       const colors = [];
       const hexMatches = `${token.$value}`.match(HEX_RE);
       const [light, dark] = getLightDarkValues(token.$value);
-      if (light && dark) {
+      if (light && dark)
         colors.push(light, dark);
-      } else if (hexMatches) {
+      else if (hexMatches)
         colors.push(...hexMatches);
-      } else {
+      else
         colors.push(token.$value);
-      }
       return colors.flatMap((match) => {
         const colorMatch = extractColor(match, this.#context);
         const color = cssColorToLspColor(colorMatch);
-        if (!color) {
+        if (!color)
           return [];
-        } else {
+        else {
           return [{
             color,
             range: call.token.range,
@@ -356,20 +347,19 @@ export class CssDocument extends DTLSTextDocument {
   ): TokenReference | null {
     const node = this.getNodeAtPosition(position, offset);
     if (node) {
-      const name = `--${node.text}`.replace("----", "--");
-      if (this.#context.tokens.has(name)) {
+      const name = `--${node.text}`.replace('----', '--');
+      if (this.#context.tokens.has(name))
         return { name, range: tsRangeToLspRange(node) };
-      }
     }
     return null;
   }
 
   getRangeForPath(_: string[]): LSP.Range | null {
-    throw new Error("Cannot perform range operations in CSS documents");
+    throw new Error('Cannot perform path operations in CSS documents');
   }
 
   getTokenForPath(_: string[]): DTLSToken | null {
-    throw new Error("Cannot perform range operations in CSS documents");
+    throw new Error('Cannot perform path operations in CSS documents');
   }
 
   /**
@@ -381,12 +371,11 @@ export class CssDocument extends DTLSTextDocument {
    */
   positionIsInNodeType(position: LSP.Position, type: string): boolean {
     let node = this.getNodeAtPosition(position);
-    while (node && node.type !== "stylesheet") {
-      if (node.type === type) {
+    while (node && node.type !== 'stylesheet') {
+      if (node.type === type)
         return true;
-      } else {
+      else
         node = node.parent;
-      }
     }
     return false;
   }

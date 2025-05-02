@@ -3,9 +3,9 @@ import {
   DocumentDiagnosticReportKind,
   RelatedFullDocumentDiagnosticReport,
   ServerCapabilities,
-} from "vscode-languageserver-protocol";
+} from 'vscode-languageserver-protocol';
 
-import { DTLSContext } from "#lsp";
+import { DTLSContext } from '#lsp';
 
 /**
  * Generates a full document diagnostic report.

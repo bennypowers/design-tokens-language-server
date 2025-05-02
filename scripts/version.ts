@@ -1,21 +1,21 @@
-import * as ParseArgs from "@std/cli/parse-args";
-import * as SemVer from "jsr:@std/semver";
-import * as Toml from "jsr:@std/toml";
+import * as ParseArgs from '@std/cli/parse-args';
+import * as SemVer from 'jsr:@std/semver';
+import * as Toml from 'jsr:@std/toml';
 const { _: [arg] } = ParseArgs.parseArgs(Deno.args);
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 async function getVersion(arg: string | number): Promise<string | null> {
-  if (typeof arg !== "string") return null;
-  if (arg === "help") return null;
+  if (typeof arg !== 'string') return null;
+  if (arg === 'help') return null;
   switch (arg) {
-    case "major":
-    case "minor":
-    case "patch":
+    case 'major':
+    case 'minor':
+    case 'patch':
       try {
-        const { default: manifest } = await import("../package.json", {
-          with: { type: "json" },
+        const { default: manifest } = await import('../package.json', {
+          with: { type: 'json' },
         });
         const currentVersion = manifest.version;
         const semver = SemVer.parse(currentVersion);
@@ -52,21 +52,21 @@ const updatedPaths: string[] = [];
 
 for (
   const file of [
-    "../package.json",
-    "../extensions/vscode/client/package.json",
-    "../extensions/vscode/package.json",
+    '../package.json',
+    '../extensions/vscode/client/package.json',
+    '../extensions/vscode/package.json',
   ]
 ) {
   const { default: manifest } = await import(file, {
-    with: { type: "json" },
+    with: { type: 'json' },
   });
   if (manifest.version === version) continue;
-  const path = file.replace("../", "");
+  const path = file.replace('../', '');
   console.log(
     `  ... in ${path} from ${manifest.version} to ${version}`,
   );
-  manifest.version = version.toString().replace(/^v/, "");
-  const content = JSON.stringify(manifest, null, 2) + "\n";
+  manifest.version = version.toString().replace(/^v/, '');
+  const content = JSON.stringify(manifest, null, 2) + '\n';
   await Deno.writeFile(
     new URL(file, import.meta.url),
     encoder.encode(content),
@@ -75,12 +75,12 @@ for (
 }
 
 extension: {
-  const url = new URL("../extensions/zed/extension.toml", import.meta.url);
+  const url = new URL('../extensions/zed/extension.toml', import.meta.url);
   const content = await Deno.readTextFile(url);
   const parsed = Toml.parse(content);
   if (parsed.version === version) break extension;
-  parsed.version = version.toString().replace(/^v/, "");
-  const path = url.pathname.replace(Deno.cwd() + "/", "");
+  parsed.version = version.toString().replace(/^v/, '');
+  const path = url.pathname.replace(Deno.cwd() + '/', '');
   console.log(
     `  ... in ${path} from ${parsed.version} to ${version}`,
   );
@@ -89,12 +89,12 @@ extension: {
 }
 
 cargo: {
-  const url = new URL("../extensions/zed/Cargo.toml", import.meta.url);
+  const url = new URL('../extensions/zed/Cargo.toml', import.meta.url);
   const content = await Deno.readTextFile(url);
   const parsed = Toml.parse(content) as { package: { version: string } };
   if (parsed.package.version == version) break cargo;
-  parsed.package.version = version.toString().replace(/^v/, "");
-  const path = url.pathname.replace(Deno.cwd() + "/", "");
+  parsed.package.version = version.toString().replace(/^v/, '');
+  const path = url.pathname.replace(Deno.cwd() + '/', '');
   console.log(
     `  ... in ${path} from ${parsed.package.version} to ${version}`,
   );
@@ -116,12 +116,12 @@ async function $(
    * @example $`git commit -m "chore: prepare version v${version}"` => `git commit -m "chore: prepare version v0.1.0"`
    */
   const fullCommand = strings
-    .map((str, i) => str + (values[i] || ""))
-    .join("")
+    .map((str, i) => str + (values[i] || ''))
+    .join('')
     // ensure that quoted strings are preserved
-    .replace(/(["'])/g, "$1");
+    .replace(/(["'])/g, '$1');
 
-  const [commandName] = fullCommand.split(" ");
+  const [commandName] = fullCommand.split(' ');
 
   console.log(`$ ${fullCommand}`);
 
@@ -132,12 +132,10 @@ async function $(
    */
   const [, ...args] = fullCommand.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((arg) => {
     // remove quotes from args
-    if (arg.startsWith('"') && arg.endsWith('"')) {
+    if (arg.startsWith('"') && arg.endsWith('"'))
       return arg.slice(1, -1);
-    }
-    if (arg.startsWith("'") && arg.endsWith("'")) {
+    if (arg.startsWith("'") && arg.endsWith("'"))
       return arg.slice(1, -1);
-    }
     return arg;
   }) ?? [];
 
@@ -145,7 +143,7 @@ async function $(
   const output = await command.output();
   if (output.code !== 0) {
     console.log(
-      `failed to run command: ${commandName} ${args.join(" ")}`,
+      `failed to run command: ${commandName} ${args.join(' ')}`,
       decoder.decode(output.stdout),
       decoder.decode(output.stderr),
     );
@@ -153,6 +151,6 @@ async function $(
   }
 }
 
-await $`git add ${updatedPaths.join(" ")}`;
+await $`git add ${updatedPaths.join(' ')}`;
 await $`git commit -m "chore: prepare version ${version}"`;
 await $`git tag v${version}`;

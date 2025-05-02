@@ -1,5 +1,5 @@
-import { Color } from "vscode-languageserver-protocol";
-import TinyColor from "tinycolor2";
+import { Color } from 'vscode-languageserver-protocol';
+import TinyColor from 'tinycolor2';
 
 export function cssColorToLspColor(color: string): Color | null {
   const colorObj = TinyColor(color);
