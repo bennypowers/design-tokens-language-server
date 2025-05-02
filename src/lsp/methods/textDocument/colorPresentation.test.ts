@@ -71,8 +71,8 @@ describe("textDocument/colorPresentation", () => {
       const color = cssColorToLspColor("red")!;
       const result = colorPresentation({ textDocument, color, range }, ctx);
       expect(result).toEqual([
-        { label: "token-color-red" },
-        { label: "token-color-red-hex" },
+        { label: "--token-color-red" },
+        { label: "--token-color-red-hex" },
       ]);
     });
   });

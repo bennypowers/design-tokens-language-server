@@ -1,16 +1,16 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { DTLSTextDocument } from "#document";
-
 import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
+import { usesReferences } from "style-dictionary/utils";
 import * as JSONC from "jsonc-parser";
 
 import { cssColorToLspColor } from "#color";
-import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
-import { DTLSToken } from "#tokens";
+import { DTLSTextDocument } from "#document";
+
+import { DEFAULT_GROUP_MARKERS, DTLSToken } from "#tokens";
 
 const REF_RE = /{([^}]+)}/g;
 
@@ -170,7 +170,8 @@ export class JsonDocument extends DTLSTextDocument {
   }
 
   getRangeForPath(path: JSONC.Segment[]): LSP.Range | null {
-    return this.#getRangeForNode(this.#getNodeAtJSONPath(path));
+    const node = this.#getNodeAtJSONPath(path);
+    return this.#getRangeForNode(node);
   }
 
   getTokenReferenceAtPosition(
@@ -198,8 +199,15 @@ export class JsonDocument extends DTLSTextDocument {
           const refUnpacked = reference.replace(REF_RE, "$1");
           const line = stringRange.start.line;
           const character = currentLine.indexOf(refUnpacked);
-          const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
-          const path = [prefix, ...refUnpacked.split(".")].filter((x) => !!x);
+          const spec = this.#context.workspaces.getSpecForUri(this.uri);
+          const parts = refUnpacked.split(".");
+          const pathIncludingMarkers = spec?.prefix
+            ? [spec.prefix, ...parts]
+            : parts;
+          const groupMarkers = spec?.groupMarkers ?? DEFAULT_GROUP_MARKERS;
+          const path = pathIncludingMarkers.filter((x) =>
+            !groupMarkers.includes(x)
+          );
           const name = `--${path.join("-")}`;
           Logger.debug`name:${name} ${this.#context.tokens.get(name)}`;
           if (this.#context.tokens.has(name)) {

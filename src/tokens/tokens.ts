@@ -16,6 +16,7 @@ import { TokenFileSpec } from "#lsp/lsp.ts";
 import { Logger } from "#logger";
 import { PreprocessedTokens } from "style-dictionary";
 import { deepMerge } from "@std/collections/deep-merge";
+import { toFileUrl } from "@std/path";
 
 interface DTLSExtensions {
   /** The CSS var name for this token */
@@ -24,6 +25,8 @@ interface DTLSExtensions {
   spec: TokenFileSpec;
   /** The path to this token e.g. ['color', 'red'] */
   path: string[];
+  /** In the event that this is a group token, the group marker to include at the end of the path */
+  groupMarker?: string;
   /** The string which references this token from another token e.g. `{color.red}` */
   reference: `{${string}}`;
   /** URI to the document which defines this token */
@@ -35,6 +38,12 @@ export type DTLSToken = Omit<Token, "$extensions"> & {
     designTokensLanguageServer: DTLSExtensions;
   };
 };
+
+export const DEFAULT_GROUP_MARKERS = [
+  "_",
+  "@",
+  "DEFAULT",
+];
 
 export class Tokens extends Map<string, DTLSToken> {
   /**
@@ -101,7 +110,7 @@ export class Tokens extends Map<string, DTLSToken> {
       usesDtcg: true,
     });
     // hack for dtcg tokens-that-are-also-groups
-    const groupMarkers = new Set(spec.groupMarkers ?? ["_", "@", "DEFAULT"]);
+    const groupMarkers = new Set(spec.groupMarkers ?? DEFAULT_GROUP_MARKERS);
     const map = convertTokenData(this.#dtcg, {
       output: "map",
       usesDtcg: true,
@@ -127,11 +136,14 @@ export class Tokens extends Map<string, DTLSToken> {
     const prefixedPath = [spec.prefix, ...path].filter((x) => !!x);
     const name = `--${prefixedPath.join("-")}` as const;
     const reference = `{${path.join(".")}}` as const;
-    const definitionUri = `file://${spec.path}`.replace(
-      "file://file://",
-      "file://",
-    );
-    const ext = { name, spec, path, reference, definitionUri };
+    const definitionUri = toFileUrl(spec.path.replace("file://", "")).href;
+    const groupMarkers = spec.groupMarkers ?? DEFAULT_GROUP_MARKERS;
+    const keyPath = token.key?.replace(/{|}/g, "").split(".");
+    const terminator = keyPath?.at(-1);
+    const groupMarker = terminator && groupMarkers.includes(terminator)
+      ? terminator
+      : undefined;
+    const ext = { name, spec, path, reference, definitionUri, groupMarker };
     const existing = clone?.$extensions?.designTokensLanguageServer ?? {};
     return {
       ...clone,

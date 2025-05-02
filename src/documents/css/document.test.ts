@@ -20,7 +20,7 @@ const ctx = await createTestContext({
   testTokensSpecs: [
     {
       prefix: "token",
-      spec: "file:///tokens.json",
+      spec: "/tokens.json",
       tokens: {
         color: {
           red: {
@@ -66,7 +66,7 @@ describe("CssDocument", () => {
     expect(doc.languageId).toEqual(languageId);
     expect(doc.version).toEqual(version);
     expect(doc.getText()).toEqual(text);
-    expect(doc.fullRange()).toEqual({
+    expect(doc.getFullRange()).toEqual({
       start: { line: 0, character: 0 },
       end: { line: 0, character: 20 },
     });

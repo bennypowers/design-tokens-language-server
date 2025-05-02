@@ -95,12 +95,12 @@ export abstract class DTLSTextDocument extends FullTextDocument {
    * @param substring - The string to find in the document
    * @returns The range of the string in the document
    */
-  getRangeForSubstring(substring: string): LSP.Range {
+  public getRangeForSubstring(substring: string): LSP.Range {
     const [range] = this.getRangesForSubstring(substring);
     return range;
   }
 
-  getRangesForSubstring(substring: string): LSP.Range[] {
+  public getRangesForSubstring(substring: string): LSP.Range[] {
     return this.#startOfSubstrings(substring).map(({ line, character }) => {
       return {
         start: { line, character },
@@ -112,7 +112,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   /**
    * Get definition for a token referenced in a document
    */
-  getDefinition(
+  public getDefinition(
     params: LSP.DefinitionParams,
     context: DTLSContext,
   ): LSP.Location | null {
@@ -123,10 +123,12 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     if (!token) return null;
     const ext = token.$extensions.designTokensLanguageServer;
     if (ext.definitionUri) {
-      Logger.debug`Definition of ${name} in ${ext.definitionUri}`;
       const doc = context.documents.get(ext.definitionUri);
       const uri = ext.definitionUri;
-      const range = doc.getRangeForPath(ext.path);
+      const realPath = ext.groupMarker
+        ? [...ext.path, ext.groupMarker]
+        : ext.path;
+      const range = doc.getRangeForPath(realPath);
       if (range) {
         return { uri, range };
       }
@@ -135,7 +137,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   }
 
   /** Get the range of the full document */
-  fullRange() {
+  public getFullRange() {
     const text = this.getText();
     // get the range of the string in doc
     const rows = text.split("\n");

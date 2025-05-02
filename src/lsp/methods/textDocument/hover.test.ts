@@ -15,7 +15,7 @@ describe("textDocument/hover", () => {
       testTokensSpecs: [
         {
           prefix: "token",
-          spec: "file:///tokens.json",
+          spec: "/tokens.json",
           tokens: {
             color: {
               $type: "color",
@@ -46,7 +46,7 @@ describe("textDocument/hover", () => {
         },
         {
           prefix: "token",
-          spec: "file:///referer.json",
+          spec: "/referer.json",
           tokens: {
             color: {
               $type: "color",
@@ -148,7 +148,7 @@ describe("textDocument/hover", () => {
         range,
         contents: {
           kind: "markdown",
-          value: `# \`color.red._\`
+          value: `# \`--token-color-red\`
 
             Type: \`color\`
             Red colour
@@ -171,7 +171,7 @@ describe("textDocument/hover", () => {
         range,
         contents: {
           kind: "markdown",
-          value: `# \`color.red.hex\`
+          value: `# \`--token-color-red-hex\`
 
             Type: \`color\`
             Red colour (by reference)

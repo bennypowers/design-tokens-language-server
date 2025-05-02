@@ -13,7 +13,7 @@ import { JsonDocument } from "#json";
 import { YamlDocument } from "#yaml";
 
 import { normalizeTokenFile } from "../tokens/utils.ts";
-import { isGlob } from "@std/path";
+import { isGlob, toFileUrl } from "@std/path";
 import { expandGlob } from "@std/fs/expand-glob";
 import { DTLSDocument } from "#documents";
 
@@ -94,7 +94,7 @@ export class Workspaces {
     this.#tokenSpecs.add(spec);
     try {
       const tokenfileContent = decoder.decode(await Deno.readFile(spec.path));
-      const uri = `file://${spec.path.replace("file://", "")}`;
+      const uri = toFileUrl(spec.path.replace("file://", "")).href;
       const language = uri.split(".").pop()?.replace("yml", "yaml");
       if (!language) throw new Error(`Could not identify language for ${uri}`);
       let doc: DTLSDocument;
@@ -180,6 +180,17 @@ export class Workspaces {
    */
   public getPrefixForUri(uri: LSP.DocumentUri) {
     return this.#specs.get(uri)?.prefix ?? null;
+  }
+
+  /**
+   * Get the token file spec for a given document uri
+   */
+  public getSpecForUri(uri: LSP.DocumentUri) {
+    return this.#specs.get(uri) ?? null;
+  }
+
+  protected _addSpec(uri: LSP.DocumentUri, spec: TokenFileSpec) {
+    this.#specs.set(uri, spec);
   }
 
   /**

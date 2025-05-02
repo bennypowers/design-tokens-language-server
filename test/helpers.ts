@@ -15,7 +15,7 @@ import {
 import { normalizeTokenFile } from "../src/tokens/utils.ts";
 
 import { JsonDocument } from "#json";
-import { isGlob } from "@std/path";
+import { isGlob, toFileUrl } from "@std/path";
 import { expandGlob } from "jsr:@std/fs@^1.0.16";
 import { YamlDocument } from "#yaml";
 import { Workspaces } from "#workspaces";
@@ -163,7 +163,11 @@ class TestLspClient {
   }
 }
 
-class TestWorkspaces extends Workspaces {}
+class TestWorkspaces extends Workspaces {
+  addSpec(uri: DocumentUri, spec: TokenFileSpec) {
+    this._addSpec(uri, spec);
+  }
+}
 
 /**
  * Test Documents for managing text documents.
@@ -211,7 +215,7 @@ class TestDocuments extends Documents {
     const tokens = this.#tokens;
     const workspaces = this.#workspaces;
     const version = 1;
-    uri ??= `file:///test-${id}.${languageId}`;
+    uri ??= toFileUrl(`/test-${id}.${languageId}`).href;
     const textDocument = { uri, languageId, version, text };
     this.onDidOpen({ textDocument }, { documents: this, tokens, workspaces });
     return textDocument;
@@ -268,7 +272,7 @@ export async function createTestContext(
   };
 
   for (const x of options.testTokensSpecs) {
-    const spec = normalizeTokenFile(x.spec, "file:///test-root/", x);
+    const spec = normalizeTokenFile(x.spec, toFileUrl("/test-root/").href, x);
     const specs = [];
     if (isGlob(spec.path)) {
       for await (
@@ -280,7 +284,8 @@ export async function createTestContext(
       specs.push(spec.path);
     }
     for (const path of specs) {
-      const uri = `file:///${spec.path.replace("file:///", "")}`;
+      const uri = toFileUrl(spec.path.replace("file://", "")).href;
+      workspaces.addSpec(uri, spec);
       if (path.match(/ya?ml$/)) {
         const content = YAML.stringify(x.tokens);
         documents.add(YamlDocument.create(context, uri, content));
