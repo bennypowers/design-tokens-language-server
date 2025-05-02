@@ -10,6 +10,7 @@ await esbuild.build({
   entryPoints: ["src/main.ts"],
   outfile: "./dist/main.js",
   bundle: true,
+  sourcemap: true,
   format: "esm",
 });
 
@@ -24,7 +25,7 @@ enum Arch {
 }
 
 const includes = await Array.fromAsync(
-  expandGlob("dist/*.wasm"),
+  expandGlob("dist/*.{wasm,js.map}"),
   (file) => `--include=${file.path}`,
 );
 
@@ -43,11 +44,13 @@ async function compile(arch?: Arch) {
     "dist/main.js",
     "--stdio",
   ].filter((x) => typeof x === "string");
+  console.log(`deno ${args.join(" ")}`);
   const { code, stdout, stderr } = await new Deno.Command(Deno.execPath(), {
     stdout: "piped",
     args,
   }).output();
   if (code === 0) {
+    console.log(decoder.decode(stdout));
     console.log(`Built ${arch ?? "native"}`);
   } else {
     console.log(`deno ${args.join(" ")}\n`);
@@ -57,6 +60,5 @@ async function compile(arch?: Arch) {
   }
 }
 
-Deno.env.has("CI") || await compile();
-
-await Promise.all(Object.values(Arch).map(compile));
+if (Deno.env.has("CI")) await Promise.all(Object.values(Arch).map(compile));
+else await compile();
