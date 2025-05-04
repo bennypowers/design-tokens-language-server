@@ -134,33 +134,12 @@ Deno.test("design-tokens-language-server", async (t) => {
       }); // Replace with expected diagnostics
     });
 
-    const jsonRefereeUri = new URL(
-      "../test/package/tokens/referee.json",
-      import.meta.url,
-    );
-
-    const jsonContent = await Deno.readTextFile(jsonRefereeUri);
-
     const yamlRefererUri = new URL(
       "../test/package/tokens/referer.yaml",
       import.meta.url,
     );
 
     const yamlContent = await Deno.readTextFile(yamlRefererUri);
-
-    await t.step("open json referee", async () => {
-      await client.sendNotification({
-        method: "textDocument/didOpen",
-        params: {
-          textDocument: {
-            uri: jsonRefereeUri.href,
-            languageId: "json",
-            version: 1,
-            text: jsonContent,
-          },
-        },
-      });
-    });
 
     await t.step("open yaml referer", async () => {
       await client.sendNotification({
@@ -176,11 +155,11 @@ Deno.test("design-tokens-language-server", async (t) => {
       });
     });
 
-    await t.step("references from yaml", async () => {
+    await t.step("references from yaml to yaml and json", async () => {
       const position = yamlContent.split("\n").reduce<any>((acc, line, i) => {
         if (acc) {
           return acc;
-        } else if (line.includes("{color.purple")) {
+        } else if (line.includes("{color.red.hex")) {
           return {
             line: i,
             character: line.indexOf("color.") + 1,
@@ -194,7 +173,7 @@ Deno.test("design-tokens-language-server", async (t) => {
             uri: yamlRefererUri.href,
           },
           context: {
-            includeDeclaration: false,
+            includeDeclaration: true,
           },
           position,
         },
@@ -204,17 +183,60 @@ Deno.test("design-tokens-language-server", async (t) => {
         id: 3,
         result: [
           {
-            uri: jsonRefereeUri.href,
             range: {
-              start: {
-                line: 0,
-                character: 0,
-              },
               end: {
-                line: 0,
-                character: 0,
+                character: 34,
+                line: 5,
+              },
+              start: {
+                character: 19,
+                line: 5,
               },
             },
+            uri:
+              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referer.json",
+          },
+          {
+            range: {
+              end: {
+                character: 34,
+                line: 5,
+              },
+              start: {
+                character: 19,
+                line: 5,
+              },
+            },
+            uri:
+              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referer.json",
+          },
+          {
+            range: {
+              end: {
+                character: 28,
+                line: 7,
+              },
+              start: {
+                character: 13,
+                line: 7,
+              },
+            },
+            uri:
+              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referer.yaml",
+          },
+          {
+            range: {
+              end: {
+                character: 7,
+                line: 42,
+              },
+              start: {
+                character: 13,
+                line: 39,
+              },
+            },
+            uri:
+              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referee.json",
           },
         ],
       });
