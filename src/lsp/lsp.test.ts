@@ -1,16 +1,16 @@
-import * as LSP from 'vscode-languageserver-protocol';
-import { beforeEach, describe, it } from '@std/testing/bdd';
-import { expect } from '@std/expect';
+import * as LSP from "vscode-languageserver-protocol";
+import { beforeEach, describe, it } from "@std/testing/bdd";
+import { expect } from "@std/expect";
 
-import { Documents } from '#documents';
-import { Workspaces } from '#workspaces';
-import { Tokens } from '#tokens';
+import { Documents } from "#documents";
+import { Workspaces } from "#workspaces";
+import { Tokens } from "#tokens";
 
-import { Lsp } from '#lsp';
-import { Server } from '#server';
+import { Lsp } from "#lsp";
+import { Server } from "#server";
 
-describe('Lsp', () => {
-  describe('with default options', () => {
+describe("Lsp", () => {
+  describe("with default options", () => {
     let lsp: Lsp;
 
     beforeEach(() => {
@@ -20,7 +20,7 @@ describe('Lsp', () => {
       lsp = new Lsp(documents, workspaces, tokens);
     });
 
-    it('should create an instance of Lsp', () => {
+    it("should create an instance of Lsp", () => {
       expect(lsp).toBeInstanceOf(Lsp);
     });
 
@@ -28,21 +28,21 @@ describe('Lsp', () => {
       let initializeResult: LSP.InitializeResult;
       beforeEach(async () => {
         initializeResult = await lsp.process({
-          jsonrpc: '2.0',
+          jsonrpc: "2.0",
           id: 0,
-          method: 'initialize',
+          method: "initialize",
           params: {
             processId: 1000,
-            rootUri: 'file:///path/to/root',
+            rootUri: "file:///path/to/root",
             capabilities: {},
           } satisfies LSP.InitializeParams,
         }) as LSP.InitializeResult;
       });
-      it('should return an InitializeResult', () => {
+      it("should return an InitializeResult", () => {
         expect(initializeResult).toEqual(
           {
             serverInfo: {
-              name: 'design-tokens-language-server',
+              name: "design-tokens-language-server",
               version: initializeResult.serverInfo?.version,
             },
             capabilities: {

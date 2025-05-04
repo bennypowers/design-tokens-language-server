@@ -4,10 +4,10 @@ import {
   MarkupContent,
   MarkupKind,
   ServerCapabilities,
-} from 'vscode-languageserver-protocol';
+} from "vscode-languageserver-protocol";
 
-import { getTokenMarkdown } from '#tokens';
-import { DTLSContext } from '#lsp';
+import { getTokenMarkdown } from "#tokens";
+import { DTLSContext } from "#lsp";
 
 export const capabilities: Partial<ServerCapabilities> = {
   hoverProvider: true,

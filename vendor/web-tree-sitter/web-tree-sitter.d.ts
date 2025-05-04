@@ -1,4 +1,4 @@
-declare module 'web-tree-sitter' {
+declare module "web-tree-sitter" {
   /**
    * A position in a multi-line text document, in terms of rows and columns.
    *
@@ -44,7 +44,10 @@ declare module 'web-tree-sitter' {
   /**
    * A callback for parsing that takes an index and point, and should return a string.
    */
-  export type ParseCallback = (index: number, position: Point) => string | undefined;
+  export type ParseCallback = (
+    index: number,
+    position: Point,
+  ) => string | undefined;
   /**
    * A callback that receives the parse state during parsing.
    */
@@ -549,7 +552,11 @@ declare module 'web-tree-sitter' {
      *
      * Additionally, a `startPosition` and `endPosition` can be passed in to restrict the search to a byte range.
      */
-    descendantsOfType(types: string | string[], startPosition?: Point, endPosition?: Point): Node[];
+    descendantsOfType(
+      types: string | string[],
+      startPosition?: Point,
+      endPosition?: Point,
+    ): Node[];
     /** Get this node's next sibling. */
     get nextSibling(): Node | null;
     /** Get this node's previous sibling. */
@@ -863,7 +870,8 @@ declare module 'web-tree-sitter' {
     readonly OneOrMore: 4;
   };
   /** A quantifier for captures */
-  export type CaptureQuantifier = typeof CaptureQuantifier[keyof typeof CaptureQuantifier];
+  export type CaptureQuantifier =
+    typeof CaptureQuantifier[keyof typeof CaptureQuantifier];
   /**
    * Predicates are represented as a single array of steps. There are two
    * types of steps, which correspond to the two legal values for
@@ -882,7 +890,7 @@ declare module 'web-tree-sitter' {
    * The `name` field is the name of the capture.
    */
   interface CapturePredicateStep {
-    type: 'capture';
+    type: "capture";
     name: string;
   }
   /**
@@ -891,7 +899,7 @@ declare module 'web-tree-sitter' {
    * The `value` field is the string value.
    */
   interface StringPredicateStep {
-    type: 'string';
+    type: "string";
     value: string;
   }
   export class Query {

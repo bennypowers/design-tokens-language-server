@@ -1,22 +1,22 @@
-import type * as LSP from 'vscode-languageserver-protocol';
-import type { Token } from 'style-dictionary';
+import type * as LSP from "vscode-languageserver-protocol";
+import type { Token } from "style-dictionary";
 
-import * as YAML from 'yaml';
+import * as YAML from "yaml";
 
-import { getLightDarkValues } from '#css';
+import { getLightDarkValues } from "#css";
 
 import {
   convertTokenData,
   resolveReferences,
   typeDtcgDelegate,
   usesReferences,
-} from 'style-dictionary/utils';
+} from "style-dictionary/utils";
 
-import { DTLSContext, TokenFileSpec } from '#lsp/lsp.ts';
-import { Logger } from '#logger';
-import { PreprocessedTokens } from 'style-dictionary';
-import { deepMerge } from '@std/collections/deep-merge';
-import { toFileUrl } from '@std/path';
+import { DTLSContext, TokenFileSpec } from "#lsp/lsp.ts";
+import { Logger } from "#logger";
+import { PreprocessedTokens } from "style-dictionary";
+import { deepMerge } from "@std/collections/deep-merge";
+import { toFileUrl } from "@std/path";
 
 interface DTLSExtensions {
   /** The CSS var name for this token */
@@ -33,16 +33,16 @@ interface DTLSExtensions {
   definitionUri: LSP.DocumentUri;
 }
 
-export type DTLSToken = Omit<Token, '$extensions'> & {
+export type DTLSToken = Omit<Token, "$extensions"> & {
   $extensions: {
     designTokensLanguageServer: DTLSExtensions;
   };
 };
 
 export const DEFAULT_GROUP_MARKERS = [
-  '_',
-  '@',
-  'DEFAULT',
+  "_",
+  "@",
+  "DEFAULT",
 ];
 
 export class Tokens extends Map<string, DTLSToken> {
@@ -51,15 +51,17 @@ export class Tokens extends Map<string, DTLSToken> {
    * {color.red} => --color-red
    */
   #normalizeKey(key: string) {
-    if (key.startsWith(`{`))
-      return `--${key.replace(/{|}/g, '').split('.').join('-')}`;
-    else
-      return `--${key}`.replace(/^-{4}/, '--');
+    if (key.startsWith(`{`)) {
+      return `--${key.replace(/{|}/g, "").split(".").join("-")}`;
+    } else {
+      return `--${key}`.replace(/^-{4}/, "--");
+    }
   }
 
   override get(key?: string) {
-    if (key === undefined)
+    if (key === undefined) {
       return undefined;
+    }
     const token = super.get(this.#normalizeKey(key));
     if (token && usesReferences(token.$value)) {
       const resolved = this.resolveValue(token.$value);
@@ -70,8 +72,9 @@ export class Tokens extends Map<string, DTLSToken> {
   }
 
   override has(key?: string) {
-    if (key === undefined)
+    if (key === undefined) {
       return false;
+    }
     return super.has(this.#normalizeKey(key));
   }
 
@@ -98,33 +101,34 @@ export class Tokens extends Map<string, DTLSToken> {
     const incoming = convertTokenData(
       typeDtcgDelegate(structuredClone(dtcgTokens)),
       {
-        output: 'array',
+        output: "array",
         usesDtcg: true,
       },
     );
     const previous = convertTokenData(this.#dtcg ?? {}, {
-      output: 'array',
+      output: "array",
       usesDtcg: true,
     });
     this.#dtcg = convertTokenData([...previous, ...incoming], {
-      output: 'object',
+      output: "object",
       usesDtcg: true,
     });
     // hack for dtcg tokens-that-are-also-groups
     const groupMarkers = new Set(spec.groupMarkers ?? DEFAULT_GROUP_MARKERS);
     const map = convertTokenData(this.#dtcg, {
-      output: 'map',
+      output: "map",
       usesDtcg: true,
     });
     for (const [key, token] of map) {
       if (key) {
         const path = key
-          .replace(/^\{(.*)}$/, '$1')
-          .split('.')
+          .replace(/^\{(.*)}$/, "$1")
+          .split(".")
           .filter((x) => !groupMarkers.has(x));
         const modified = this.#getDTLSToken(token, spec, path, context);
         this.specs.set(modified, spec);
-        const normalizedKey = modified.$extensions.designTokensLanguageServer.name;
+        const normalizedKey =
+          modified.$extensions.designTokensLanguageServer.name;
         if (!this.has(normalizedKey)) this.set(normalizedKey, modified);
       }
     }
@@ -140,16 +144,18 @@ export class Tokens extends Map<string, DTLSToken> {
     const clone = structuredClone(token);
     const prefix = spec.prefix ??
       context.workspaces.getSpecForUri(
-        toFileUrl(spec.path.replace('file://', '')).href,
+        toFileUrl(spec.path.replace("file://", "")).href,
       )?.prefix;
     const prefixedPath = [prefix, ...path].filter((x) => !!x);
-    const name = `--${prefixedPath.join('-')}` as const;
-    const reference = `{${path.join('.')}}` as const;
-    const definitionUri = toFileUrl(spec.path.replace('file://', '')).href;
+    const name = `--${prefixedPath.join("-")}` as const;
+    const reference = `{${path.join(".")}}` as const;
+    const definitionUri = toFileUrl(spec.path.replace("file://", "")).href;
     const groupMarkers = spec.groupMarkers ?? DEFAULT_GROUP_MARKERS;
-    const keyPath = token.key?.replace(/{|}/g, '').split('.');
+    const keyPath = token.key?.replace(/{|}/g, "").split(".");
     const terminator = keyPath?.at(-1);
-    const groupMarker = terminator && groupMarkers.includes(terminator) ? terminator : undefined;
+    const groupMarker = terminator && groupMarkers.includes(terminator)
+      ? terminator
+      : undefined;
     const ext = { name, spec, path, reference, definitionUri, groupMarker };
     const existing = clone?.$extensions?.designTokensLanguageServer ?? {};
     return {
@@ -165,14 +171,14 @@ export class Tokens extends Map<string, DTLSToken> {
   }
 
   async #importSpec(path: string) {
-    const language = path.split('.').pop();
+    const language = path.split(".").pop();
     // TODO: handle this with ctx.documents
     switch (language) {
-      case 'yaml':
-      case 'yml':
+      case "yaml":
+      case "yml":
         return YAML.parse(await Deno.readTextFile(path));
       default:
-        return await import(path, { with: { type: 'json' } })
+        return await import(path, { with: { type: "json" } })
           .then((m) => m.default);
     }
   }
@@ -189,8 +195,9 @@ export class Tokens extends Map<string, DTLSToken> {
         this.#importedSpecs.add(spec.path);
         Logger.info`✍️ Registered ${amt} tokens`;
         Logger.info`  from: ${spec.path}`;
-        if (spec.prefix)
+        if (spec.prefix) {
           Logger.info`  with prefix ${spec.prefix}`;
+        }
       } catch (e) {
         Logger.error`Could not load tokens for ${spec}: ${e}`;
       }
@@ -199,7 +206,7 @@ export class Tokens extends Map<string, DTLSToken> {
 }
 
 export function format(value: string): string {
-  if (value?.startsWith?.('light-dark\(') && value.split('\n').length === 1) {
+  if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {
     const [light, dark] = getLightDarkValues(value);
     return `color: light-dark(
   ${light},
@@ -215,16 +222,16 @@ export function getTokenMarkdown(token: DTLSToken) {
   const { name } = $extensions.designTokensLanguageServer;
   return [
     `# \`${name}\``,
-    '',
+    "",
     // TODO: convert DTCG types to CSS syntax
     // const type = $type ? ` *<\`${$type}\`>*` : "";
     `Type: \`${$type}\``,
     $description,
-    '',
-    '```css',
+    "",
+    "```css",
     format($value),
-    '```',
-  ].filter((x) => x != null).join('\n');
+    "```",
+  ].filter((x) => x != null).join("\n");
 }
 
 export const tokens = new Tokens();

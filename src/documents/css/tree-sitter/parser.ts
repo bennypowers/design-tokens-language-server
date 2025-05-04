@@ -1,8 +1,8 @@
-import { Language, Parser } from 'web-tree-sitter';
+import { Language, Parser } from "web-tree-sitter";
 
-import { readAll } from 'jsr:@std/io/read-all';
+import { readAll } from "jsr:@std/io/read-all";
 
-const f = await Deno.open(new URL('./tree-sitter-css.wasm', import.meta.url));
+const f = await Deno.open(new URL("./tree-sitter-css.wasm", import.meta.url));
 
 const grammar = await readAll(f);
 

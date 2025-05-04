@@ -1,15 +1,22 @@
-import type * as LSP from 'vscode-languageserver-protocol';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from '@std/testing/bdd';
+import type * as LSP from "vscode-languageserver-protocol";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  it,
+} from "@std/testing/bdd";
 
-import { createTestContext, DTLSTestContext } from '#test-helpers';
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
-import * as YAML from 'yaml';
-import { Workspaces } from '#workspaces';
-import { expect } from '@std/expect/expect';
-import { join, toFileUrl } from '@std/path';
+import * as YAML from "yaml";
+import { Workspaces } from "#workspaces";
+import { expect } from "@std/expect/expect";
+import { join, toFileUrl } from "@std/path";
 
 /** a comprehensive test suite for the Documents class */
-describe('Workspaces', () => {
+describe("Workspaces", () => {
   let ctx: DTLSTestContext;
   let workspaces: Workspaces;
   let tmpDir: URL;
@@ -18,25 +25,25 @@ describe('Workspaces', () => {
   let refererUri: URL;
 
   beforeAll(async () => {
-    tmpDir = toFileUrl(await Deno.makeTempDir() + '/');
+    tmpDir = toFileUrl(await Deno.makeTempDir() + "/");
 
-    packageUri = new URL('./package.json', tmpDir);
-    hooliUri = new URL('./tokens/tokens.json', tmpDir);
-    refererUri = new URL('./tokens/referer.yaml', tmpDir);
+    packageUri = new URL("./package.json", tmpDir);
+    hooliUri = new URL("./tokens/tokens.json", tmpDir);
+    refererUri = new URL("./tokens/referer.yaml", tmpDir);
 
-    const tokensUri = new URL('./tokens/', tmpDir);
+    const tokensUri = new URL("./tokens/", tmpDir);
 
     await Deno.mkdir(tokensUri, { recursive: true });
 
     await Deno.writeTextFile(
       packageUri,
       JSON.stringify({
-        name: 'Workspaces#test',
-        version: '0.0.0',
+        name: "Workspaces#test",
+        version: "0.0.0",
         designTokensLanguageServer: {
           tokensFiles: [
-            { path: './tokens/*.json', prefix: 'token' },
-            './tokens/*.yaml',
+            { path: "./tokens/*.json", prefix: "token" },
+            "./tokens/*.yaml",
           ],
         },
       }),
@@ -46,8 +53,8 @@ describe('Workspaces', () => {
       hooliUri,
       JSON.stringify({
         color: {
-          $type: 'color',
-          a: { $value: '#aaa' },
+          $type: "color",
+          a: { $value: "#aaa" },
         },
       }),
     );
@@ -56,8 +63,8 @@ describe('Workspaces', () => {
       refererUri,
       YAML.stringify({
         color: {
-          $type: 'color',
-          b: { $value: '{color.a}' },
+          $type: "color",
+          b: { $value: "{color.a}" },
         },
       }),
     );
@@ -72,34 +79,35 @@ describe('Workspaces', () => {
     workspaces = ctx.workspaces;
   });
 
-  describe('add', () => {
+  describe("add", () => {
     beforeEach(async () => {
-      await workspaces.add(ctx, { uri: tmpDir.href, name: 'root' });
+      await workspaces.add(ctx, { uri: tmpDir.href, name: "root" });
     });
 
-    describe('workspaces/didChangeConfiguration', () => {
-      describe('called with some fallback settings', () => {
+    describe("workspaces/didChangeConfiguration", () => {
+      describe("called with some fallback settings", () => {
         let result: void;
         beforeEach(async () => {
-          const method = workspaces.handlers['workspace/didChangeConfiguration'];
+          const method =
+            workspaces.handlers["workspace/didChangeConfiguration"];
           result = await method(
-            { settings: { dtls: { prefix: 'global' } } },
+            { settings: { dtls: { prefix: "global" } } },
             ctx,
           );
         });
 
-        it('has no result', () => {
+        it("has no result", () => {
           expect(result).toBeUndefined();
         });
 
-        it('applies settings to tokens', () => {
+        it("applies settings to tokens", () => {
           expect(workspaces.getSpecForUri(refererUri.href))
             .toEqual({
-              path: join(tmpDir.pathname, 'tokens', 'referer.yaml'),
+              path: join(tmpDir.pathname, "tokens", "referer.yaml"),
             });
           expect(workspaces.getSpecForUri(hooliUri.href)).toEqual({
-            path: join(tmpDir.pathname, 'tokens', 'tokens.json'),
-            prefix: 'token',
+            path: join(tmpDir.pathname, "tokens", "tokens.json"),
+            prefix: "token",
           });
         });
       });

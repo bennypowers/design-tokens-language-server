@@ -1,58 +1,58 @@
-import { beforeEach, describe, it } from '@std/testing/bdd';
-import { expect } from '@std/expect';
+import { beforeEach, describe, it } from "@std/testing/bdd";
+import { expect } from "@std/expect";
 
-import { cssColorToLspColor } from '#color';
+import { cssColorToLspColor } from "#color";
 
-import { createTestContext, DTLSTestContext } from '#test-helpers';
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
-import { documentColor } from './documentColor.ts';
-import { CssDocument } from '#css';
-import { TextDocumentIdentifier } from 'vscode-languageserver-protocol';
-import { JsonDocument } from '#json';
+import { documentColor } from "./documentColor.ts";
+import { CssDocument } from "#css";
+import { TextDocumentIdentifier } from "vscode-languageserver-protocol";
+import { JsonDocument } from "#json";
 
-describe('textDocument/documentColor', () => {
+describe("textDocument/documentColor", () => {
   let ctx: DTLSTestContext;
 
   beforeEach(async () => {
     ctx = await createTestContext({
       testTokensSpecs: [
         {
-          prefix: 'token',
-          spec: 'file:///tokens.json',
+          prefix: "token",
+          spec: "file:///tokens.json",
           tokens: {
             color: {
-              $type: 'color',
+              $type: "color",
               red: {
                 _: {
-                  $value: '#ff0000',
+                  $value: "#ff0000",
                 },
                 hex: {
-                  $value: '#ff0000',
+                  $value: "#ff0000",
                 },
               },
               blue: {
                 light: {
-                  $value: '#0000ff',
+                  $value: "#0000ff",
                 },
                 dark: {
-                  $value: 'darkblue',
+                  $value: "darkblue",
                 },
                 lightdark: {
                   $value:
-                    'light-dark(var(--token-blue-light, #0000ff), var(--token-blue-dark, darkblue))',
+                    "light-dark(var(--token-blue-light, #0000ff), var(--token-blue-dark, darkblue))",
                 },
                 reference: {
-                  $value: '{color.blue.light}',
+                  $value: "{color.blue.light}",
                 },
                 callreference: {
-                  $value: 'light-dark({color.blue.light}, {color.blue.dark})',
+                  $value: "light-dark({color.blue.light}, {color.blue.dark})",
                 },
               },
             },
             space: {
-              $type: 'size',
+              $type: "size",
               small: {
-                $value: '4px',
+                $value: "4px",
               },
             },
           },
@@ -61,13 +61,13 @@ describe('textDocument/documentColor', () => {
     });
   });
 
-  describe('in a css document', () => {
-    describe('with a single token with type color', () => {
+  describe("in a css document", () => {
+    describe("with a single token with type color", () => {
       let textDocument: TextDocumentIdentifier;
       let doc: CssDocument;
       beforeEach(() => {
         textDocument = ctx.documents.createDocument(
-          'css',
+          "css",
           /*css*/ `
             a {
               color: var(--token-color-red);
@@ -76,23 +76,23 @@ describe('textDocument/documentColor', () => {
         );
         doc = ctx.documents.get(textDocument.uri) as CssDocument;
       });
-      it('should return a single DocumentColor', () => {
+      it("should return a single DocumentColor", () => {
         const results = documentColor({ textDocument }, ctx);
         expect(results).not.toBeNull();
         expect(results).toHaveLength(1);
         const [result] = results;
-        expect(result.color).toEqual(cssColorToLspColor('red'));
+        expect(result.color).toEqual(cssColorToLspColor("red"));
         expect(result.range).toEqual(
-          doc.getRangeForSubstring('--token-color-red'),
+          doc.getRangeForSubstring("--token-color-red"),
         );
       });
     });
 
-    describe('with a single token with type dimension', () => {
+    describe("with a single token with type dimension", () => {
       let textDocument: TextDocumentIdentifier;
       beforeEach(() => {
         textDocument = ctx.documents.createDocument(
-          'css',
+          "css",
           /*css*/ `
             a{
               color: var(--token-space-small)
@@ -100,18 +100,18 @@ describe('textDocument/documentColor', () => {
           `,
         );
       });
-      it('should return an empty array', () => {
+      it("should return an empty array", () => {
         const results = documentColor({ textDocument }, ctx);
         expect(results).toHaveLength(0);
       });
     });
 
-    describe('with two tokens: one color, one dimension', () => {
+    describe("with two tokens: one color, one dimension", () => {
       let textDocument: TextDocumentIdentifier;
       let doc: CssDocument;
       beforeEach(() => {
         textDocument = ctx.documents.createDocument(
-          'css',
+          "css",
           /*css*/ `
             a {
               color: var(--token-color-red);
@@ -121,24 +121,24 @@ describe('textDocument/documentColor', () => {
         );
         doc = ctx.documents.get(textDocument.uri) as CssDocument;
       });
-      it('should return a single DocumentColor', () => {
+      it("should return a single DocumentColor", () => {
         const results = documentColor({ textDocument }, ctx);
         expect(results).not.toBeNull();
         expect(results).toHaveLength(1);
         const [result] = results;
-        expect(result.color).toEqual(cssColorToLspColor('red'));
+        expect(result.color).toEqual(cssColorToLspColor("red"));
         expect(result.range).toEqual(
-          doc.getRangeForSubstring('--token-color-red'),
+          doc.getRangeForSubstring("--token-color-red"),
         );
       });
     });
 
-    describe('with a single token with type color and light-dark values', () => {
+    describe("with a single token with type color and light-dark values", () => {
       let textDocument: TextDocumentIdentifier;
       let doc: CssDocument;
       beforeEach(() => {
         textDocument = ctx.documents.createDocument(
-          'css',
+          "css",
           /*css*/ `
             a {
               color: var(--token-color-blue-lightdark);
@@ -147,16 +147,16 @@ describe('textDocument/documentColor', () => {
         );
         doc = ctx.documents.get(textDocument.uri) as CssDocument;
       });
-      it('should return two DocumentColors for the same token', () => {
+      it("should return two DocumentColors for the same token", () => {
         const results = documentColor({ textDocument }, ctx);
-        const range = doc.getRangeForSubstring('--token-color-blue-lightdark');
+        const range = doc.getRangeForSubstring("--token-color-blue-lightdark");
         expect(results).toEqual([
           {
-            color: cssColorToLspColor('#0000ff'),
+            color: cssColorToLspColor("#0000ff"),
             range,
           },
           {
-            color: cssColorToLspColor('darkblue'),
+            color: cssColorToLspColor("darkblue"),
             range,
           },
         ]);
@@ -164,12 +164,12 @@ describe('textDocument/documentColor', () => {
     });
   });
 
-  describe('in a json document with 2 internal references to 2 colors', () => {
+  describe("in a json document with 2 internal references to 2 colors", () => {
     let textDocument: TextDocumentIdentifier;
     let doc: JsonDocument;
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
-        'json',
+        "json",
         /*json*/ `
           {
             "color": {
@@ -190,24 +190,24 @@ describe('textDocument/documentColor', () => {
       doc = ctx.documents.get(textDocument.uri) as JsonDocument;
     });
 
-    it('should return 4 colors', () => {
+    it("should return 4 colors", () => {
       const results = documentColor({ textDocument }, ctx);
       expect(results).toEqual([
         {
-          color: cssColorToLspColor('#0000ff'),
-          range: doc.getRangeForSubstring('#0000ff'),
+          color: cssColorToLspColor("#0000ff"),
+          range: doc.getRangeForSubstring("#0000ff"),
         },
         {
-          color: cssColorToLspColor('darkblue'),
-          range: doc.getRangeForSubstring('darkblue'),
+          color: cssColorToLspColor("darkblue"),
+          range: doc.getRangeForSubstring("darkblue"),
         },
         {
-          color: cssColorToLspColor('#0000ff'),
-          range: doc.getRangeForSubstring('color.blue.light'),
+          color: cssColorToLspColor("#0000ff"),
+          range: doc.getRangeForSubstring("color.blue.light"),
         },
         {
-          color: cssColorToLspColor('darkblue'),
-          range: doc.getRangeForSubstring('color.blue.dark'),
+          color: cssColorToLspColor("darkblue"),
+          range: doc.getRangeForSubstring("color.blue.dark"),
         },
       ]);
     });

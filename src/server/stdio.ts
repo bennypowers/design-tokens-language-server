@@ -3,19 +3,19 @@ import {
   NotificationMessage,
   RequestMessage,
   ResponseError,
-} from 'vscode-languageserver-protocol';
+} from "vscode-languageserver-protocol";
 
-import { Logger } from '#logger';
-import { Io } from '#server';
+import { Logger } from "#logger";
+import { Io } from "#server";
 
-import { writeAllSync } from '@std/io/write-all';
+import { writeAllSync } from "@std/io/write-all";
 
 /**
  * The Stdio class implements the Io interface for handling standard input and output.
  * It reads requests from stdin and writes responses to stdout.
  */
 export class Stdio implements Io {
-  #chunks = '';
+  #chunks = "";
   #decoder = new TextDecoder();
   #encoder = new TextEncoder();
   #lastId = 0;
@@ -25,12 +25,13 @@ export class Stdio implements Io {
       try {
         this.#chunks += this.#decoder.decode(chunk);
 
-        while (this.#chunks.includes('\r\n\r\n')) {
-          const [, lengthMatch] = this.#chunks.match(/Content-Length: (\d+)\r\n/) ?? [];
+        while (this.#chunks.includes("\r\n\r\n")) {
+          const [, lengthMatch] =
+            this.#chunks.match(/Content-Length: (\d+)\r\n/) ?? [];
           if (lengthMatch == null) break;
 
           const contentLength = parseInt(lengthMatch);
-          const messageStart = this.#chunks.indexOf('\r\n\r\n') + 4;
+          const messageStart = this.#chunks.indexOf("\r\n\r\n") + 4;
           const messageEnd = messageStart + contentLength;
 
           if (this.#chunks.length < messageEnd) break;
@@ -46,14 +47,14 @@ export class Stdio implements Io {
     }
   }
 
-  public notify(message: Omit<NotificationMessage, 'jsonrpc'>) {
-    this.#sendJsonRpcMessage({ jsonrpc: '2.0', ...message });
+  public notify(message: Omit<NotificationMessage, "jsonrpc">) {
+    this.#sendJsonRpcMessage({ jsonrpc: "2.0", ...message });
   }
 
-  public push(message: Omit<RequestMessage, 'jsonrpc' | 'id'>) {
+  public push(message: Omit<RequestMessage, "jsonrpc" | "id">) {
     const id = this.#lastId + 1;
     this.#sendJsonRpcMessage({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id,
       ...message,
     } as RequestMessage);
@@ -61,13 +62,13 @@ export class Stdio implements Io {
   }
 
   public respond(
-    id?: RequestMessage['id'],
+    id?: RequestMessage["id"],
     result?: unknown,
     error?: ResponseError,
   ) {
     if (!id && !result && !error) return;
     return this.#sendJsonRpcMessage({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       ...(id !== undefined) && { id },
       ...(result !== undefined) && { result },
       ...error && { error },
@@ -77,8 +78,9 @@ export class Stdio implements Io {
   #sendJsonRpcMessage(message: Message) {
     if (Message.isResponse(message) || Message.isRequest(message)) {
       const { id } = message;
-      if (id !== null)
-        this.#lastId = typeof id === 'number' ? id : parseInt(id);
+      if (id !== null) {
+        this.#lastId = typeof id === "number" ? id : parseInt(id);
+      }
     }
     const messageString = JSON.stringify(message);
     const messageLength = this.#encoder.encode(messageString).byteLength;

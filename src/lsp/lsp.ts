@@ -1,65 +1,66 @@
-import * as LSP from 'vscode-languageserver-protocol';
+import * as LSP from "vscode-languageserver-protocol";
 
-import { Documents } from '#documents';
-import { Logger } from '#logger';
-import { Tokens } from '#tokens';
-import { Workspaces } from '#workspaces';
+import { Documents } from "#documents";
+import { Logger } from "#logger";
+import { Tokens } from "#tokens";
+import { Workspaces } from "#workspaces";
 
-import * as DocumentColor from './methods/textDocument/documentColor.ts';
-import * as CodeAction from './methods/textDocument/codeAction.ts';
-import * as Diagnostic from './methods/textDocument/diagnostic.ts';
-import * as Hover from './methods/textDocument/hover.ts';
-import * as Completion from './methods/textDocument/completion.ts';
-import { colorPresentation } from './methods/textDocument/colorPresentation.ts';
-import { resolve as completionItemResolve } from './methods/completionItem/resolve.ts';
-import { resolve as codeActionResolve } from './methods/codeAction/resolve.ts';
-import * as Definition from './methods/textDocument/definition.ts';
-import * as References from './methods/textDocument/references.ts';
+import * as DocumentColor from "./methods/textDocument/documentColor.ts";
+import * as CodeAction from "./methods/textDocument/codeAction.ts";
+import * as Diagnostic from "./methods/textDocument/diagnostic.ts";
+import * as Hover from "./methods/textDocument/hover.ts";
+import * as Completion from "./methods/textDocument/completion.ts";
+import { colorPresentation } from "./methods/textDocument/colorPresentation.ts";
+import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
+import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
+import * as Definition from "./methods/textDocument/definition.ts";
+import * as References from "./methods/textDocument/references.ts";
 
-import manifest from '../../package.json' with { type: 'json' };
-import { Server } from '#server';
+import manifest from "../../package.json" with { type: "json" };
+import { Server } from "#server";
 
 const { version } = manifest;
 
 const handlers = {
-  'codeAction/resolve': codeActionResolve,
-  'completionItem/resolve': completionItemResolve,
-  'textDocument/codeAction': CodeAction.codeAction,
-  'textDocument/definition': Definition.definition,
-  'textDocument/colorPresentation': colorPresentation,
-  'textDocument/completion': Completion.completion,
-  'textDocument/diagnostic': Diagnostic.diagnostic,
-  'textDocument/documentColor': DocumentColor.documentColor,
-  'textDocument/hover': Hover.hover,
-  'textDocument/references': References.references,
+  "codeAction/resolve": codeActionResolve,
+  "completionItem/resolve": completionItemResolve,
+  "textDocument/codeAction": CodeAction.codeAction,
+  "textDocument/definition": Definition.definition,
+  "textDocument/colorPresentation": colorPresentation,
+  "textDocument/completion": Completion.completion,
+  "textDocument/diagnostic": Diagnostic.diagnostic,
+  "textDocument/documentColor": DocumentColor.documentColor,
+  "textDocument/hover": Hover.hover,
+  "textDocument/references": References.references,
 };
 
 type Handlers =
   & typeof handlers
-  & { initialize: Lsp['initialize'] }
-  & Documents['handlers']
-  & Workspaces['handlers'];
+  & { initialize: Lsp["initialize"] }
+  & Documents["handlers"]
+  & Workspaces["handlers"];
 
 type Handler = Handlers[keyof Handlers];
 
 type RequestMethodTypeGuard<M extends SupportedMethod> = (
-  request: Omit<LSP.NotificationMessage, 'jsonrpc'>,
+  request: Omit<LSP.NotificationMessage, "jsonrpc">,
 ) => request is RequestTypeForMethod<M>;
 
-export type RequestId = LSP.RequestMessage['id'];
+export type RequestId = LSP.RequestMessage["id"];
 
 export type SupportedMethod =
-  | 'initialized'
-  | '$/cancelRequest'
-  | '$/setTrace'
+  | "initialized"
+  | "$/cancelRequest"
+  | "$/setTrace"
   | keyof Handlers;
 
 export type SupportedParams = Parameters<Handler>[0];
 
-export type RequestTypeForMethod<M extends SupportedMethod> = M extends 'initialized' ?
-  { method: M; params: LSP.InitializedParams }
-  : M extends '$/cancelRequest' ? { method: M; params: Pick<LSP.RequestMessage, 'id'> }
-  : M extends '$/setTrace' ? { method: M; params: LSP.SetTraceParams }
+export type RequestTypeForMethod<M extends SupportedMethod> = M extends
+  "initialized" ? { method: M; params: LSP.InitializedParams }
+  : M extends "$/cancelRequest"
+    ? { method: M; params: Pick<LSP.RequestMessage, "id"> }
+  : M extends "$/setTrace" ? { method: M; params: LSP.SetTraceParams }
   : M extends keyof Handlers ? LSP.RequestMessage & {
       method: M;
       params: Parameters<Handlers[M]>[0];
@@ -67,9 +68,9 @@ export type RequestTypeForMethod<M extends SupportedMethod> = M extends 'initial
   : never;
 
 export type ResultFor<M extends SupportedMethod> = Awaited<
-  M extends 'initialized' ? null
-    : M extends '$/cancelRequest' ? null
-    : M extends '$/setTrace' ? null
+  M extends "initialized" ? null
+    : M extends "$/cancelRequest" ? null
+    : M extends "$/setTrace" ? null
     : M extends keyof Handlers ? ReturnType<Handlers[M]>
     : never
 >;
@@ -77,7 +78,7 @@ export type ResultFor<M extends SupportedMethod> = Awaited<
 export type ResponseFor<M extends SupportedMethod> =
   & Omit<
     LSP.ResponseMessage,
-    'result'
+    "result"
   >
   & { result: ResultFor<M> };
 
@@ -164,9 +165,9 @@ export interface DTLSContext {
 
 export enum DTLSErrorCodes {
   /** The fallback value of a design token is incorrect. */
-  incorrectFallback = 'incorrect-fallback',
+  incorrectFallback = "incorrect-fallback",
   /** The reference target does not appear to exist */
-  unknownReference = 'unknown-reference',
+  unknownReference = "unknown-reference",
 }
 
 function requestMethodTypeGuard<M extends SupportedMethod>(
@@ -175,10 +176,10 @@ function requestMethodTypeGuard<M extends SupportedMethod>(
   return ((request) => request.method === method) as RequestMethodTypeGuard<M>;
 }
 
-const isCancelRequest = requestMethodTypeGuard('$/cancelRequest');
-const isSetTraceRequest = requestMethodTypeGuard('$/setTrace');
-const isInitializedRequest = requestMethodTypeGuard('initialized');
-const isInitializeRequest = requestMethodTypeGuard('initialize');
+const isCancelRequest = requestMethodTypeGuard("$/cancelRequest");
+const isSetTraceRequest = requestMethodTypeGuard("$/setTrace");
+const isInitializedRequest = requestMethodTypeGuard("initialized");
+const isInitializeRequest = requestMethodTypeGuard("initialize");
 
 /**
  * The Lsp class is responsible for processing LSP requests and notifications.
@@ -247,8 +248,8 @@ export class Lsp {
    */
   public async initialize(params: LSP.InitializeParams) {
     Logger.info`\n\n🎨 DESIGN TOKENS LANGUAGE SERVER 💎: ${
-      params.clientInfo?.name ?? 'unknown-client'
-    }@${params.clientInfo?.version ?? 'unknown-version'}\n`;
+      params.clientInfo?.name ?? "unknown-client"
+    }@${params.clientInfo?.version ?? "unknown-version"}\n`;
 
     try {
       const {
@@ -260,8 +261,9 @@ export class Lsp {
       if (trace) this.#setTrace(trace);
       this.#clientCapabilities = capabilities;
       this.#initializationOptions = initializationOptions;
-      if (workspaceFolders)
+      if (workspaceFolders) {
         await this.#workspaces.add(this.#context, ...workspaceFolders);
+      }
     } catch (error) {
       Logger.error`Failed to initialize the server: ${error}`;
     }
@@ -278,7 +280,7 @@ export class Lsp {
         ...Diagnostic.capabilities,
       },
       serverInfo: {
-        name: 'design-tokens-language-server',
+        name: "design-tokens-language-server",
         version,
       },
     } satisfies LSP.InitializeResult;
@@ -305,18 +307,18 @@ export class Lsp {
    * @returns The result of the request.
    */
   public async process(request: LSP.RequestMessage): Promise<unknown> {
-    if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id))
+    if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id)) {
       return null;
-    else if (isInitializeRequest(request))
+    } else if (isInitializeRequest(request)) {
       return this.initialize(request.params);
-    else if (isInitializedRequest(request)) {
+    } else if (isInitializedRequest(request)) {
       await this.#workspaces.initialize(this.#context);
       return this.#resolveInitialized();
-    } else if (isSetTraceRequest(request))
+    } else if (isSetTraceRequest(request)) {
       return this.#setTrace(request.params.value);
-    else if (isCancelRequest(request))
+    } else if (isCancelRequest(request)) {
       return this.#cancelRequest(request);
-    else if (request.method) {
+    } else if (request.method) {
       await this.#initialized;
       if (!this.#handlers.has(request.method as SupportedMethod)) {
         Logger.debug`❌ Unsupported method: ${request.method}`;

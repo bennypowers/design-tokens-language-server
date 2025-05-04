@@ -1,7 +1,10 @@
-import type { ColorInformation, DocumentColorParams } from 'vscode-languageserver-protocol';
+import type {
+  ColorInformation,
+  DocumentColorParams,
+} from "vscode-languageserver-protocol";
 
-import { DTLSContext } from '#lsp';
-import { ServerCapabilities } from 'vscode-languageserver-protocol';
+import { DTLSContext } from "#lsp";
+import { ServerCapabilities } from "vscode-languageserver-protocol";
 
 /**
  * Generates color information for design tokens.

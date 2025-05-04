@@ -1,18 +1,23 @@
-import * as LSP from 'vscode-languageserver-protocol';
+import * as LSP from "vscode-languageserver-protocol";
 
-import { Logger } from '#logger';
+import { Logger } from "#logger";
 
-import { DTLSClientSettings, DTLSContext, TokenFile, TokenFileSpec } from '#lsp/lsp.ts';
+import {
+  DTLSClientSettings,
+  DTLSContext,
+  TokenFile,
+  TokenFileSpec,
+} from "#lsp/lsp.ts";
 
-import { JsonDocument } from '#json';
-import { YamlDocument } from '#yaml';
+import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
 
-import { normalizeTokenFile } from '../tokens/utils.ts';
-import { isGlob, toFileUrl } from '@std/path';
-import { expandGlob } from '@std/fs/expand-glob';
-import { DTLSDocument } from '#documents';
-import { deepMerge } from '@std/collections/deep-merge';
-import { Server } from '#server';
+import { normalizeTokenFile } from "../tokens/utils.ts";
+import { isGlob, toFileUrl } from "@std/path";
+import { expandGlob } from "@std/fs/expand-glob";
+import { DTLSDocument } from "#documents";
+import { deepMerge } from "@std/collections/deep-merge";
+import { Server } from "#server";
 
 /**
  * Manages LSP workspace folders and settings.
@@ -24,19 +29,19 @@ import { Server } from '#server';
 export class Workspaces {
   public get handlers() {
     return {
-      'workspace/didChangeConfiguration': this.#didChangeConfiguration,
-      'workspace/didChangeWorkspaceFolders': this.#didChangeWorkspaceFolders,
+      "workspace/didChangeConfiguration": this.#didChangeConfiguration,
+      "workspace/didChangeWorkspaceFolders": this.#didChangeWorkspaceFolders,
     };
   }
 
-  #server: Pick<typeof Server, 'request'>;
+  #server: Pick<typeof Server, "request">;
   #loadedSpecs = new Set();
   #specs = new Map<LSP.DocumentUri, TokenFileSpec>();
   #settings: Partial<DTLSClientSettings> | null = null;
   #tokenSpecs = new Set<TokenFileSpec>();
   #workspaces = new Set<LSP.WorkspaceFolder>();
 
-  constructor(server: Pick<typeof Server, 'request'>) {
+  constructor(server: Pick<typeof Server, "request">) {
     this.#server = server;
   }
 
@@ -44,7 +49,10 @@ export class Workspaces {
     uri: LSP.DocumentUri,
   ): Promise<Partial<DTLSClientSettings> | null> {
     try {
-      const pkgJsonPath = new URL('./package.json', uri);
+      const pkgJsonPath = new URL(
+        "./package.json",
+        uri.replace(/\/$/, "") + "/",
+      );
       Logger.debug`🎒 Loading package.json from ${pkgJsonPath.href}`;
       const manifest = JSON.parse(
         await Deno.readTextFile(pkgJsonPath.pathname),
@@ -54,8 +62,9 @@ export class Workspaces {
       const settings = manifest?.designTokensLanguageServer;
       return settings;
     } catch (e) {
-      if (e instanceof SyntaxError)
+      if (e instanceof SyntaxError) {
         Logger.error`Could not load package.json: ${e}`;
+      }
       throw e;
     }
   }
@@ -101,15 +110,15 @@ export class Workspaces {
     this.#tokenSpecs.add(spec);
     try {
       const tokenfileContent = await Deno.readTextFile(spec.path);
-      const uri = toFileUrl(spec.path.replace('file://', '')).href;
-      const language = uri.split('.').pop()?.replace('yml', 'yaml');
+      const uri = toFileUrl(spec.path.replace("file://", "")).href;
+      const language = uri.split(".").pop()?.replace("yml", "yaml");
       if (!language) throw new Error(`Could not identify language for ${uri}`);
       let doc: DTLSDocument;
       switch (language) {
-        case 'json':
+        case "json":
           doc = JsonDocument.create(context, uri, tokenfileContent);
           break;
-        case 'yaml':
+        case "yaml":
           doc = YamlDocument.create(context, uri, tokenfileContent);
           break;
         default:
@@ -119,7 +128,9 @@ export class Workspaces {
       this.#loadedSpecs.add(spec.path);
       context.documents.add(doc);
     } catch (e) {
-      Logger.error`Could not read token file ${spec.path}: ${(e as Error).message}`;
+      Logger.error`Could not read token file ${spec.path}: ${
+        (e as Error).message
+      }`;
       this.#tokenSpecs.delete(spec);
     }
   }
@@ -129,7 +140,7 @@ export class Workspaces {
     uri: string,
     settings: Partial<DTLSClientSettings>,
   ) {
-    const root = uri.replace('file://', '');
+    const root = uri.replace("file://", "");
     for (const file of settings?.tokensFiles ?? []) {
       const normalizedButGlobby = this.#normalizeTokenFile(
         file,
@@ -137,7 +148,7 @@ export class Workspaces {
         settings,
       );
       if (isGlob(normalizedButGlobby.path)) {
-        const norm = `file://${normalizedButGlobby.path}`.replace(uri, '');
+        const norm = `file://${normalizedButGlobby.path}`.replace(uri, "");
         const specs = expandGlob(
           norm,
           {
@@ -162,13 +173,15 @@ export class Workspaces {
   ) {
     for (const ws of this.#workspaces) {
       Logger.debug`📁 Adding workspace folder ${ws.name}@${ws.uri}`;
-      const localSettings = await this.#tryToLoadSettingsFromPackageJson(ws.uri) ?? {};
+      const localSettings =
+        await this.#tryToLoadSettingsFromPackageJson(ws.uri) ?? {};
       const settings = deepMerge(localSettings ?? {}, this.#settings ?? {});
       await this.#updateWorkspaceSettings(context, ws.uri, settings);
     }
 
-    for (const tokensFile of this.#tokenSpecs)
+    for (const tokensFile of this.#tokenSpecs) {
       await context.tokens.register(tokensFile, { force }, context);
+    }
   }
 
   /**
@@ -201,8 +214,9 @@ export class Workspaces {
     params: LSP.DidChangeWorkspaceFoldersParams,
     context: DTLSContext,
   ) => {
-    for (const folder of params.event.removed)
+    for (const folder of params.event.removed) {
       this.#workspaces.delete(folder);
+    }
     this.add(context, ...params.event.added);
     await this.#updateConfiguration(context, { force: false });
   };
@@ -211,8 +225,9 @@ export class Workspaces {
     context: DTLSContext,
     ...workspaceFolders: LSP.WorkspaceFolder[]
   ) {
-    for (const folder of workspaceFolders)
+    for (const folder of workspaceFolders) {
       this.#workspaces.add(folder);
+    }
     await this.#updateConfiguration(context, { force: false });
   }
 

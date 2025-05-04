@@ -1,12 +1,12 @@
-import * as LSP from 'vscode-languageserver-protocol';
+import * as LSP from "vscode-languageserver-protocol";
 
-import { CssDocument } from '#css';
-import { JsonDocument } from '#json';
-import { YamlDocument } from '#yaml';
+import { CssDocument } from "#css";
+import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
 
-import { DTLSContext } from '#lsp';
+import { DTLSContext } from "#lsp";
 
-import { Logger } from '#logger';
+import { Logger } from "#logger";
 
 export type DTLSDocument =
   | CssDocument
@@ -23,15 +23,15 @@ export class Documents {
   #map = new Map<LSP.DocumentUri, DTLSDocument>();
   get handlers() {
     return {
-      'textDocument/didOpen': (
+      "textDocument/didOpen": (
         params: LSP.DidOpenTextDocumentParams,
         context: DTLSContext,
       ) => this.onDidOpen(params, context),
-      'textDocument/didChange': (
+      "textDocument/didChange": (
         params: LSP.DidChangeTextDocumentParams,
         context: DTLSContext,
       ) => this.onDidChange(params, context),
-      'textDocument/didClose': (
+      "textDocument/didClose": (
         params: LSP.DidCloseTextDocumentParams,
         context: DTLSContext,
       ) => this.onDidClose(params, context),
@@ -50,15 +50,15 @@ export class Documents {
 
   onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
     const { uri, languageId, version, text } = params.textDocument;
-    if (!uri.includes('://')) throw new Error(`Invalid URI: ${uri}`);
+    if (!uri.includes("://")) throw new Error(`Invalid URI: ${uri}`);
     switch (languageId) {
-      case 'css':
+      case "css":
         this.add(CssDocument.create(context, uri, text, version));
         break;
-      case 'json':
+      case "json":
         this.add(JsonDocument.create(context, uri, text, version));
         break;
-      case 'yaml':
+      case "yaml":
         this.add(YamlDocument.create(context, uri, text, version));
         break;
       default:
@@ -81,18 +81,20 @@ export class Documents {
 
   get(uri: LSP.DocumentUri) {
     const doc = this.#map.get(uri);
-    if (!doc)
+    if (!doc) {
       throw new ENODOCError(uri);
+    }
     return doc;
   }
 
-  getAll(languageId: 'css'): CssDocument[];
-  getAll(languageId: 'json'): JsonDocument[];
-  getAll(languageId: 'yaml'): YamlDocument[];
+  getAll(languageId: "css"): CssDocument[];
+  getAll(languageId: "json"): JsonDocument[];
+  getAll(languageId: "yaml"): YamlDocument[];
   getAll(): DTLSDocument[];
-  getAll(languageId?: 'json' | 'css' | 'yaml'): DTLSDocument[] {
-    if (languageId)
+  getAll(languageId?: "json" | "css" | "yaml"): DTLSDocument[] {
+    if (languageId) {
       return this.allDocuments.filter((doc) => doc.language === languageId);
+    }
     return this.allDocuments;
   }
 }

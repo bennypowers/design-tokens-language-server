@@ -1,4 +1,4 @@
-import * as LSP from 'vscode-languageserver-protocol';
+import * as LSP from "vscode-languageserver-protocol";
 
 /**
  * Does the first range contain the second range?

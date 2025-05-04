@@ -1,7 +1,11 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
   function AsciiToString(ptr: number): string;
-  function stringToUTF8(str: string, outPtr: number, maxBytesToWrite: number): number;
+  function stringToUTF8(
+    str: string,
+    outPtr: number,
+    maxBytesToWrite: number,
+  ): number;
   /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
    * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -19,7 +23,11 @@ declare namespace RuntimeExports {
    */
   function UTF8ToString(ptr: number, maxBytesToRead?: number): string;
   function lengthBytesUTF8(str: string): number;
-  function stringToUTF16(str: string, outPtr: number, maxBytesToWrite: number): number;
+  function stringToUTF16(
+    str: string,
+    outPtr: number,
+    maxBytesToWrite: number,
+  ): number;
   /**
    * @param {string=} libName
    * @param {Object=} localScope
@@ -49,11 +57,18 @@ declare namespace RuntimeExports {
    */
   function setValue(ptr: number, value: number, type?: string): void;
   let currentParseCallback:
-    | ((index: number, position: { row: number; column: number }) => string | undefined)
+    | ((
+      index: number,
+      position: { row: number; column: number },
+    ) => string | undefined)
     | null;
   let currentLogCallback: ((message: string, isLex: boolean) => void) | null;
-  let currentProgressCallback: ((state: { currentOffset: number }) => void) | null;
-  let currentQueryProgressCallback: ((state: { currentOffset: number }) => void) | null;
+  let currentProgressCallback:
+    | ((state: { currentOffset: number }) => void)
+    | null;
+  let currentQueryProgressCallback:
+    | ((state: { currentOffset: number }) => void)
+    | null;
   let HEAPF32: Float32Array;
   let HEAPF64: Float64Array;
   let HEAP_DATA_VIEW: DataView;
@@ -80,7 +95,12 @@ interface WasmModule {
   _ts_language_field_count(_0: number): number;
   _ts_language_next_state(_0: number, _1: number, _2: number): number;
   _ts_language_symbol_name(_0: number, _1: number): number;
-  _ts_language_symbol_for_name(_0: number, _1: number, _2: number, _3: number): number;
+  _ts_language_symbol_for_name(
+    _0: number,
+    _1: number,
+    _2: number,
+    _3: number,
+  ): number;
   _strncmp(_0: number, _1: number, _2: number): number;
   _ts_language_symbol_type(_0: number, _1: number): number;
   _ts_language_field_name_for_id(_0: number, _1: number): number;
@@ -100,7 +120,13 @@ interface WasmModule {
   _ts_parser_set_included_ranges(_0: number, _1: number, _2: number): number;
   _memmove(_0: number, _1: number, _2: number): number;
   _memcmp(_0: number, _1: number, _2: number): number;
-  _ts_query_new(_0: number, _1: number, _2: number, _3: number, _4: number): number;
+  _ts_query_new(
+    _0: number,
+    _1: number,
+    _2: number,
+    _3: number,
+    _4: number,
+  ): number;
   _ts_query_delete(_0: number): void;
   _iswspace(_0: number): number;
   _iswalnum(_0: number): number;
@@ -108,7 +134,11 @@ interface WasmModule {
   _ts_query_capture_count(_0: number): number;
   _ts_query_string_count(_0: number): number;
   _ts_query_capture_name_for_id(_0: number, _1: number, _2: number): number;
-  _ts_query_capture_quantifier_for_id(_0: number, _1: number, _2: number): number;
+  _ts_query_capture_quantifier_for_id(
+    _0: number,
+    _1: number,
+    _2: number,
+  ): number;
   _ts_query_string_value_for_id(_0: number, _1: number, _2: number): number;
   _ts_query_predicates_for_pattern(_0: number, _1: number, _2: number): number;
   _ts_query_start_byte_for_pattern(_0: number, _1: number): number;
@@ -123,7 +153,13 @@ interface WasmModule {
   _ts_init(): number;
   _ts_parser_new_wasm(): void;
   _ts_parser_enable_logger_wasm(_0: number, _1: number): void;
-  _ts_parser_parse_wasm(_0: number, _1: number, _2: number, _3: number, _4: number): number;
+  _ts_parser_parse_wasm(
+    _0: number,
+    _1: number,
+    _2: number,
+    _3: number,
+    _4: number,
+  ): number;
   _ts_parser_included_ranges_wasm(_0: number): void;
   _ts_language_type_is_named_wasm(_0: number, _1: number): number;
   _ts_language_type_is_visible_wasm(_0: number, _1: number): number;
@@ -251,4 +287,6 @@ interface WasmModule {
 }
 
 export type MainModule = WasmModule & typeof RuntimeExports;
-export default function MainModuleFactory(options?: EmscriptenModule): Promise<MainModule>;
+export default function MainModuleFactory(
+  options?: EmscriptenModule,
+): Promise<MainModule>;

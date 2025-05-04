@@ -1,36 +1,39 @@
-import type { Node } from 'web-tree-sitter';
-import type { DTLSContext } from '#lsp';
-import * as LSP from 'vscode-languageserver-protocol';
-import { tsRangeToLspRange } from '#css';
+import type { Node } from "web-tree-sitter";
+import type { DTLSContext } from "#lsp";
+import * as LSP from "vscode-languageserver-protocol";
+import { tsRangeToLspRange } from "#css";
 
 interface CompletionArgs {
   node: Node;
   name: string;
   range: LSP.Range;
-  tokens: DTLSContext['tokens'];
+  tokens: DTLSContext["tokens"];
 }
 
 const matchesWord = (word: string | null) => (name: string): boolean =>
   !!word && !!name && name
-    .replaceAll('-', '')
-    .startsWith(word.replaceAll('-', ''));
+    .replaceAll("-", "")
+    .startsWith(word.replaceAll("-", ""));
 
 function escapeCommas($value: string) {
-  if (typeof $value !== 'string')
+  if (typeof $value !== "string") {
     return $value;
-  else
-    return $value.replaceAll(',', '\\,');
+  } else {
+    return $value.replaceAll(",", "\\,");
+  }
 }
 
 function getCompletionDependingOnNode(args: CompletionArgs): string {
   const { node, name, tokens } = args;
   switch (node.type) {
-    case 'identifier':
-    case 'property_name':
+    case "identifier":
+    case "property_name":
       return `${name}: $0`;
     default: {
       const token = tokens.get(name)!;
-      const value = Array.isArray(token.$value) ? token.$value.join(', ') : token.$value;
+      const value = Array.isArray(token.$value)
+        ? token.$value.join(", ")
+        : token.$value;
       return `var(${name}\${1|\\, ${escapeCommas(value)},|})$0`;
     }
   }
@@ -40,8 +43,8 @@ function getEditOrEntry(args: {
   node: Node;
   name: string;
   range: LSP.Range;
-  tokens: DTLSContext['tokens'];
-}): Pick<LSP.CompletionItem, 'insertText' | 'textEdit'> {
+  tokens: DTLSContext["tokens"];
+}): Pick<LSP.CompletionItem, "insertText" | "textEdit"> {
   const { range } = args;
   const insertText = getCompletionDependingOnNode(args);
   return { textEdit: { range, newText: insertText } };
@@ -60,13 +63,13 @@ export function completion(
 ): null | LSP.CompletionList {
   const doc = ctx.documents.get(params.textDocument.uri);
 
-  if (doc.language === 'css') {
+  if (doc.language === "css") {
     const node = doc.getNodeAtPosition(params.position, { character: -2 });
 
     if (
       !node ||
-      node.type !== 'identifier' &&
-        !doc.positionIsInNodeType(params.position, 'block')
+      node.type !== "identifier" &&
+        !doc.positionIsInNodeType(params.position, "block")
     ) {
       return null;
     }

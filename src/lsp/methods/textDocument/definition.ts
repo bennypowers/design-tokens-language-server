@@ -1,5 +1,5 @@
-import * as LSP from 'vscode-languageserver-protocol';
-import { DTLSContext } from '#lsp';
+import * as LSP from "vscode-languageserver-protocol";
+import { DTLSContext } from "#lsp";
 
 /**
  * Implements the LSP textDocument/definition request for tokens in css or json files.
