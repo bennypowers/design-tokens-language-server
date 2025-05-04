@@ -9,6 +9,7 @@ import { documentColor } from "./documentColor.ts";
 import { CssDocument } from "#css";
 import { TextDocumentIdentifier } from "vscode-languageserver-protocol";
 import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
 
 describe("textDocument/documentColor", () => {
   let ctx: DTLSTestContext;
@@ -210,6 +211,38 @@ describe("textDocument/documentColor", () => {
           range: doc.getRangeForSubstring("color.blue.dark"),
         },
       ]);
+    });
+  });
+
+  describe("in a yaml document that contains non-color values that look like colors", () => {
+    let textDocument: TextDocumentIdentifier;
+    let doc: YamlDocument;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "yaml",
+        /*yaml*/ `
+            noncolor:
+              $type: dimension
+              small:
+                $value: red
+              green:
+                $value: 1px
+            color:
+              $type: color
+              purple:
+                $value: rebeccapurple
+                $description: sentimental color
+        `,
+      );
+      doc = ctx.documents.get(textDocument.uri) as YamlDocument;
+    });
+
+    it("should return only 1 color", () => {
+      const results = documentColor({ textDocument }, ctx);
+      expect(results).toEqual([{
+        range: doc.getRangeForSubstring("rebeccapurple"),
+        color: cssColorToLspColor("rebeccapurple"),
+      }]);
     });
   });
 });

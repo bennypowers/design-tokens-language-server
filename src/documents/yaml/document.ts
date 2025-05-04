@@ -257,12 +257,15 @@ export class YamlDocument extends DTLSTextDocument {
   public getColors(context: DTLSContext): LSP.ColorInformation[] {
     const colors: LSP.ColorInformation[] = [];
     YAML.visit(this.#root, {
-      Scalar: (_key, node, path) => {
-        const content = node.value;
-        if (typeof content === "string") {
-          const type = this.#getDTCGTypeForNode(node, path);
-          if (type === "color" && node.range) {
-            const range = this.#getRangeForNode(node);
+      Pair: (_key, node, path) => {
+        if (
+          YAML.isScalar(node.key) && node.key.value === "$value" &&
+          YAML.isScalar(node.value) && typeof node.value.value === "string"
+        ) {
+          const content = node.value.value;
+          const type = this.#getDTCGTypeForNode(node.value, path);
+          if (type === "color" && node.value.range) {
+            const range = this.#getRangeForNode(node.value);
             if (!range) return;
             if (range && usesReferences(content)) {
               const references = content.match(/{[^}]*}/g);
