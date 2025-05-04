@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { ExtensionContext, window } from 'vscode';
+import { ExtensionContext } from 'vscode';
 
 import { LanguageClient, LanguageClientOptions, TransportKind } from 'vscode-languageclient/node';
 
