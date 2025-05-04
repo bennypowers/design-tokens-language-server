@@ -46,3 +46,21 @@ await configure({
 });
 
 export const Logger = getLogger("dtls");
+
+export function logged(tag?: string) {
+  return function loggedMethod<This, Args extends any[], Return>(
+    target: (this: This, ...args: Args) => Return,
+    context: ClassMethodDecoratorContext<
+      This,
+      (this: This, ...args: Args) => Return
+    >,
+  ) {
+    const methodName = String(context.name);
+    return function replacementMethod(this: This, ...args: Args): Return {
+      Logger.debug`${tag ?? ""}${target.name}.${methodName}(...${args})`;
+      const result = target.call(this, ...args);
+      Logger.debug`${tag ?? ""}${target.name}.${methodName}: ${result}`;
+      return result;
+    };
+  };
+}

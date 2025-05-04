@@ -1,0 +1,5 @@
+color:
+  $type: color
+  purple:
+    $value: rebeccapurple
+    $description: sentimental color

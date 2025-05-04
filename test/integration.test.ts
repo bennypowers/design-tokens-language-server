@@ -14,11 +14,16 @@ Deno.test("design-tokens-language-server", async (t) => {
   try {
     await t.step("initialize", async () => {
       // Step 2: Initialize the LSP server
+      const rootUri = new URL("../test/package/", import.meta.url).href;
+      console.log(rootUri);
       const initializeResponse = await client.sendMessage({
         method: "initialize",
         params: {
           processId: null,
-          rootUri: "file:///test-root/",
+          rootUri,
+          workspaceFolders: [
+            { uri: rootUri, name: "root" },
+          ],
           clientInfo: {
             name: "DENO_TEST_CLIENT",
             version: Temporal.Now.plainDateTimeISO().toString(),
@@ -47,7 +52,7 @@ Deno.test("design-tokens-language-server", async (t) => {
 
     await client.sendNotification({ method: "initialized" });
 
-    const uri = "file://test.css";
+    const uri = "file:///test.css";
 
     const initialText = "body { color: red; }";
 
@@ -127,6 +132,112 @@ Deno.test("design-tokens-language-server", async (t) => {
         id: 2,
         result: { kind: "full", items: [] },
       }); // Replace with expected diagnostics
+    });
+
+    const yamlRefererUri = new URL(
+      "../test/package/tokens/referer.yaml",
+      import.meta.url,
+    );
+
+    const yamlContent = await Deno.readTextFile(yamlRefererUri);
+
+    await t.step("open yaml referer", async () => {
+      await client.sendNotification({
+        method: "textDocument/didOpen",
+        params: {
+          textDocument: {
+            uri: yamlRefererUri.href,
+            languageId: "yaml",
+            version: 1,
+            text: yamlContent,
+          },
+        },
+      });
+    });
+
+    await t.step("references from yaml to yaml and json", async () => {
+      const position = yamlContent.split("\n").reduce<any>((acc, line, i) => {
+        if (acc) {
+          return acc;
+        } else if (line.includes("{color.red.hex")) {
+          return {
+            line: i,
+            character: line.indexOf("color.") + 1,
+          };
+        }
+      }, undefined);
+      const referencesResponse = await client.sendMessage({
+        method: "textDocument/references",
+        params: {
+          textDocument: {
+            uri: yamlRefererUri.href,
+          },
+          context: {
+            includeDeclaration: true,
+          },
+          position,
+        },
+      });
+
+      // TODO: get context from the test client and compute these values
+      assertEquals(referencesResponse, {
+        jsonrpc: "2.0",
+        id: 3,
+        result: [
+          {
+            range: {
+              end: {
+                character: 34,
+                line: 5,
+              },
+              start: {
+                character: 19,
+                line: 5,
+              },
+            },
+            uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
+          },
+          {
+            range: {
+              end: {
+                character: 34,
+                line: 5,
+              },
+              start: {
+                character: 19,
+                line: 5,
+              },
+            },
+            uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
+          },
+          {
+            range: {
+              end: {
+                character: 28,
+                line: 7,
+              },
+              start: {
+                character: 13,
+                line: 7,
+              },
+            },
+            uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
+          },
+          {
+            range: {
+              end: {
+                character: 7,
+                line: 42,
+              },
+              start: {
+                character: 13,
+                line: 39,
+              },
+            },
+            uri: `file://${Deno.cwd()}/test/package/tokens/referee.json`,
+          },
+        ],
+      });
     });
   } finally {
     await client.close();

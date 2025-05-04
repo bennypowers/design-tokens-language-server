@@ -13,10 +13,12 @@ export function definition(
   params: LSP.DefinitionParams,
   context: DTLSContext,
 ): LSP.Location[] {
-  return context
-    .documents
-    .get(params.textDocument.uri)
-    .definition(params, context);
+  return [
+    context
+      .documents
+      .get(params.textDocument.uri)
+      .getDefinition(params, context),
+  ].filter((x) => !!x);
 }
 
 export const capabilities: Partial<LSP.ServerCapabilities> = {

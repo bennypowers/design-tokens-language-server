@@ -1,9 +1,16 @@
+// deno-coverage-ignore-file
 import { Token } from "style-dictionary";
 import { Documents } from "#documents";
 import { Tokens } from "#tokens";
-import { DocumentUri } from "vscode-languageserver-protocol";
+import { DocumentUri, RequestMessage } from "vscode-languageserver-protocol";
+
+import { isGlob, toFileUrl } from "@std/path";
+import { expandGlob } from "@std/fs";
+
+import * as YAML from "yaml";
 
 import {
+  Lsp,
   RequestTypeForMethod,
   ResponseFor,
   SupportedMethod,
@@ -13,6 +20,9 @@ import {
 import { normalizeTokenFile } from "../src/tokens/utils.ts";
 
 import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
+import { Workspaces } from "#workspaces";
+import { Server } from "#server";
 
 interface TestSpec {
   tokens: Token;
@@ -20,136 +30,22 @@ interface TestSpec {
   spec: string | TokenFileSpec;
 }
 
-interface NormalizedTestTokenSpec {
-  tokens: Token;
-  prefix?: string;
-  spec: TokenFileSpec;
-}
-
 interface TestContextOptions {
   documents?: Record<DocumentUri, string>;
-  testTokensSpecs: TestSpec[];
+  workspaceRoot?: string;
+  testTokensSpecs?: TestSpec[];
 }
 
 export interface DTLSTestContext {
   documents: TestDocuments;
   tokens: TestTokens;
+  workspaces: TestWorkspaces;
   clear(): void;
 }
 
-/**
- * Test Documents for managing text documents.
- *
- * This class extends the Documents class and provides methods to create
- * mock text documents.
- * It also provides methods to get the text and ranges of specific strings
- * within the documents.
- */
-class TestDocuments extends Documents {
-  #tokens: Tokens;
-
-  constructor(tokens: Tokens, options?: TestContextOptions) {
-    super();
-    this.#tokens = tokens;
-    for (const [uri, text] of Object.entries(options?.documents ?? {})) {
-      switch (uri.split(".").pop()) {
-        case "json":
-          this.createJsonDocument(text, uri);
-          break;
-        case "css":
-          this.createCssDocument(text, uri);
-          break;
-        default:
-          throw new Error(`Unsupported file type: ${uri}`);
-      }
-    }
-  }
-
-  createJsonDocument(
-    text: string,
-    uri?: DocumentUri,
-  ) {
-    const id = this.allDocuments.length;
-    uri ??= `file:///test-${id}.json`;
-    const textDocument = {
-      uri,
-      languageId: "json",
-      version: 1,
-      text,
-    };
-    this.onDidOpen({ textDocument }, {
-      documents: this,
-      tokens: this.#tokens,
-    });
-    return textDocument;
-  }
-
-  createCssDocument(
-    text: string,
-    uri?: DocumentUri,
-  ) {
-    const id = this.allDocuments.length;
-    uri ??= `file:///test-${id}.css`;
-    const textDocument = {
-      uri,
-      languageId: "css",
-      version: 1,
-      text,
-    };
-
-    this.onDidOpen({ textDocument }, {
-      documents: this,
-      tokens: this.#tokens,
-    });
-
-    return textDocument;
-  }
-
-  tearDown() {
-    for (const doc of this.allDocuments) {
-      this.onDidClose({ textDocument: { uri: doc.uri } }, {
-        documents: this,
-        tokens: this.#tokens,
-      });
-    }
-  }
-}
-
-/**
- * Test TokenMap for managing design tokens.
- */
-class TestTokens extends Tokens {
-  docs: JsonDocument[] = [];
-
-  normalizedTestTokenDefinitions: NormalizedTestTokenSpec[];
-
-  constructor(options: TestContextOptions) {
-    super();
-    this.normalizedTestTokenDefinitions = options.testTokensSpecs.map((x) => ({
-      ...x,
-      spec: normalizeTokenFile(x.spec, "file:///test-root/", x),
-    }));
-    this.reset();
-  }
-
-  reset() {
-    this.clear();
-    for (
-      const { tokens, prefix, spec } of this.normalizedTestTokenDefinitions
-    ) {
-      this.populateFromDtcg(
-        tokens,
-        normalizeTokenFile(spec, "file:///test-root/", { prefix }),
-      );
-    }
-  }
-
-  override get(key: string) {
-    return super.get(key.replace(/^-+/, ""));
-  }
-
-  override has(key: string) {
-    return super.has(key.replace(/^-+/, ""));
+class TestServer implements Server {
+  public static async request(message: Omit<RequestMessage, "jsonrpc" | "id">) {
+    return await Promise.resolve(null);
   }
 }
 
@@ -277,27 +173,151 @@ class TestLspClient {
   }
 }
 
+class TestWorkspaces extends Workspaces {
+  constructor() {
+    super(TestServer);
+  }
+
+  addSpec(uri: DocumentUri, spec: TokenFileSpec) {
+    this._addSpec(uri, spec);
+  }
+}
+
+/**
+ * Test Documents for managing text documents.
+ *
+ * This class extends the Documents class and provides methods to create
+ * mock text documents.
+ * It also provides methods to get the text and ranges of specific strings
+ * within the documents.
+ */
+class TestDocuments extends Documents {
+  #tokens: TestTokens;
+  #workspaces: TestWorkspaces;
+
+  constructor(
+    tokens: TestTokens,
+    workspaces: TestWorkspaces,
+    options?: TestContextOptions,
+  ) {
+    super();
+    this.#tokens = tokens;
+    this.#workspaces = workspaces;
+    for (const [uri, text] of Object.entries(options?.documents ?? {})) {
+      const id = uri.split(".").pop();
+      switch (id) {
+        case "yml":
+          this.createDocument("yaml", text, uri);
+          break;
+        case "yaml":
+        case "json":
+        case "css":
+          this.createDocument(id, text, uri);
+          break;
+        default:
+          throw new Error(`Unsupported file type ${id} for ${uri}`);
+      }
+    }
+  }
+
+  createDocument(
+    languageId: "css" | "json" | "yaml",
+    text: string,
+    uri?: DocumentUri,
+  ) {
+    const id = this.allDocuments.length;
+    const tokens = this.#tokens;
+    const workspaces = this.#workspaces;
+    const version = 1;
+    uri ??= toFileUrl(`/test-${id}.${languageId}`).href;
+    const textDocument = { uri, languageId, version, text };
+    this.onDidOpen({ textDocument }, { documents: this, tokens, workspaces });
+    return textDocument;
+  }
+
+  tearDown() {
+    for (const doc of this.allDocuments) {
+      this.onDidClose({ textDocument: { uri: doc.uri } }, {
+        documents: this,
+        tokens: this.#tokens,
+        workspaces: this.#workspaces,
+      });
+    }
+  }
+}
+
+/**
+ * Test TokenMap for managing design tokens.
+ */
+class TestTokens extends Tokens {
+  docs: JsonDocument[] = [];
+
+  reset() {
+    this.clear();
+  }
+
+  override get(key: string) {
+    return super.get(key.replace(/^-+/, ""));
+  }
+
+  override has(key: string) {
+    return super.has(key.replace(/^-+/, ""));
+  }
+}
+
+class TestLsp extends Lsp {
+}
+
 /**
  * Create a test context for the language server.
  */
-export function createTestContext(
+export async function createTestContext(
   options: TestContextOptions,
-): DTLSTestContext {
-  const tokens = new TestTokens(options);
-  const documents = new TestDocuments(tokens, options);
+): Promise<DTLSTestContext> {
+  const tokens = new TestTokens();
+  const workspaces = new TestWorkspaces();
+  const documents = new TestDocuments(tokens, workspaces, options);
+  const lsp = new TestLsp(documents, workspaces, tokens);
+
   const context = {
     documents,
     tokens,
+    workspaces,
+    lsp,
     clear: () => {
       tokens.reset();
       documents.tearDown();
     },
   };
 
-  for (const definition of tokens.normalizedTestTokenDefinitions) {
-    const uri = `file:///${definition.spec.path.replace("file:///", "")}`;
-    const content = JSON.stringify(definition.tokens, null, 2);
-    documents.add(JsonDocument.create(context, uri, content));
+  await workspaces.initialize(context);
+
+  const workspaceRoot = options.workspaceRoot ?? toFileUrl("/test-root/").href;
+
+  for (const x of options.testTokensSpecs ?? []) {
+    const spec = normalizeTokenFile(x.spec, workspaceRoot, x);
+    const specs = [];
+    if (isGlob(spec.path)) {
+      for await (
+        const { path } of expandGlob(spec.path, { includeDirs: false })
+      ) {
+        specs.push(path);
+      }
+    } else {
+      specs.push(spec.path);
+    }
+    for (const path of specs) {
+      const uri = toFileUrl(spec.path.replace("file://", "")).href;
+      workspaces.addSpec(uri, spec);
+      if (path.match(/ya?ml$/)) {
+        const content = YAML.stringify(x.tokens);
+        documents.add(YamlDocument.create(context, uri, content));
+      } else {
+        const content = JSON.stringify(x.tokens, null, 2);
+        documents.add(JsonDocument.create(context, uri, content));
+        tokens.populateFromDtcg(x.tokens, spec, context);
+      }
+    }
   }
 
   return context;

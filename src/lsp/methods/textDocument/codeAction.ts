@@ -98,7 +98,8 @@ export function codeAction(
             changes: {
               [textDocument.uri]: doc.varCalls.map((call) =>
                 getEditFromTokenVarCall(call, context)
-              ).filter((x) => !!x),
+              )
+                .filter((x) => !!x),
             },
           },
         });

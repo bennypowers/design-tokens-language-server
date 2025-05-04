@@ -3,15 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "designTokensLanguageServer": {
+    "prefix": "token",
     "tokensFiles": [
-      {
-        "prefix": "token",
-        "path": "./tokens.json"
-      },
-      {
-        "prefix": "token",
-        "path": "./referer.json"
-      }
+      "./tokens/*.json",
+      "./tokens/*.yaml",
+      "./tokens/*.yml"
     ]
   }
 }

@@ -1,9 +1,17 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { JsonDocument } from "#json";
 import { CssDocument } from "#css";
+import { JsonDocument } from "#json";
+import { YamlDocument } from "#yaml";
+
 import { DTLSContext } from "#lsp";
+
 import { Logger } from "#logger";
+
+export type DTLSDocument =
+  | CssDocument
+  | JsonDocument
+  | YamlDocument;
 
 class ENODOCError extends Error {
   constructor(public uri: LSP.DocumentUri) {
@@ -12,7 +20,7 @@ class ENODOCError extends Error {
 }
 
 export class Documents {
-  #map = new Map<LSP.DocumentUri, CssDocument | JsonDocument>();
+  #map = new Map<LSP.DocumentUri, DTLSDocument>();
 
   get handlers() {
     return {
@@ -31,34 +39,38 @@ export class Documents {
     } as const;
   }
 
-  protected get allDocuments() {
-    return [...this.#map.values()];
+  protected get allDocuments(): DTLSDocument[] {
+    return [
+      ...this.#map.values(),
+    ];
   }
 
-  add(doc: CssDocument | JsonDocument) {
-    this.#map.set(doc.uri, doc);
+  add(doc: DTLSDocument) {
+    this.#map.set(doc.uri.trim(), doc);
   }
 
   onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
     const { uri, languageId, version, text } = params.textDocument;
     if (!uri.includes("://")) throw new Error(`Invalid URI: ${uri}`);
-
     switch (languageId) {
+      case "css":
+        this.add(CssDocument.create(context, uri, text, version));
+        break;
       case "json":
         this.add(JsonDocument.create(context, uri, text, version));
         break;
-      case "css":
-        this.add(CssDocument.create(context, uri, text, version));
+      case "yaml":
+        this.add(YamlDocument.create(context, uri, text, version));
         break;
       default:
         throw new Error(
           `Unsupported language: ${params.textDocument.languageId}`,
         );
     }
-    Logger.debug`📖 Opened ${uri}`;
+    Logger.info`📖 Opened ${uri}`;
   }
 
-  onDidChange(params: LSP.DidChangeTextDocumentParams, _context: DTLSContext) {
+  onDidChange(params: LSP.DidChangeTextDocumentParams, _: DTLSContext) {
     const { uri, version } = params.textDocument;
     const doc = this.get(uri);
     doc.update(params.contentChanges, version);
@@ -76,10 +88,11 @@ export class Documents {
     return doc;
   }
 
+  getAll(languageId: "css"): CssDocument[];
   getAll(languageId: "json"): JsonDocument[];
-  getAll(languageId: "css"): JsonDocument[];
-  getAll(): (CssDocument | JsonDocument)[];
-  getAll(languageId?: "json" | "css"): (CssDocument | JsonDocument)[] {
+  getAll(languageId: "yaml"): YamlDocument[];
+  getAll(): DTLSDocument[];
+  getAll(languageId?: "json" | "css" | "yaml"): DTLSDocument[] {
     if (languageId) {
       return this.allDocuments.filter((doc) => doc.language === languageId);
     }

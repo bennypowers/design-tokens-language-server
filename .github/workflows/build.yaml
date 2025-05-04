@@ -18,7 +18,6 @@ jobs:
           deno-version: v2.x
 
       - run: deno task test
-      - run: deno task test:coverage
       - run: deno task build:ci
 
       - uses: codecov/codecov-action@v5

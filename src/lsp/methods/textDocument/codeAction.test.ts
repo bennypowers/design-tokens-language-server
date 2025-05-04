@@ -1,51 +1,64 @@
-import { beforeAll, beforeEach, describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { codeAction, DTLSCodeAction } from "./codeAction.ts";
 
 import { resolve } from "../codeAction/resolve.ts";
 
-import { CodeActionKind } from "vscode-languageserver-protocol";
+import {
+  CodeActionKind,
+  TextDocumentIdentifier,
+} from "vscode-languageserver-protocol";
 import { DTLSTextDocument } from "#document";
+import { CssDocument } from "#css";
 
 describe("textDocument/codeAction", () => {
-  const ctx = createTestContext({
-    testTokensSpecs: [
-      {
-        prefix: "token",
-        spec: "file:///tokens.json",
-        tokens: {
-          color: {
-            $type: "color",
-            red: {
-              _: {
-                $value: "red",
+  let ctx: DTLSTestContext;
+  beforeEach(async () => {
+    ctx = await createTestContext({
+      testTokensSpecs: [
+        {
+          prefix: "token",
+          spec: "file:///tokens.json",
+          tokens: {
+            color: {
+              $type: "color",
+              red: {
+                _: {
+                  $value: "red",
+                },
               },
-            },
-            blue: {
-              lightdark: {
-                $value: "light-dark(lightblue, darkblue)",
-                $description: "Color scheme color",
+              blue: {
+                lightdark: {
+                  $value: "light-dark(lightblue, darkblue)",
+                  $description: "Color scheme color",
+                },
               },
             },
           },
         },
-      },
-    ],
+      ],
+    });
   });
 
   describe("in a css document with one token var call and no fallback", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+    let result: ReturnType<typeof codeAction>;
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
+
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         a {
           color: var(--token-color-red);
         }
-      `);
-
-    const doc = ctx.documents.get(textDocument.uri);
-
-    let result: ReturnType<typeof codeAction>;
+      `,
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+    });
 
     describe("called on the first character of the file", () => {
       beforeEach(() => {
@@ -98,13 +111,20 @@ describe("textDocument/codeAction", () => {
   });
 
   describe("in a css document with one token var call that has an incorrect fallback", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
-      a {
-        color: var(--token-color-red, blue);
-      }
-    `);
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
 
-    const doc = ctx.documents.get(textDocument.uri);
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+          a {
+            color: var(--token-color-red, blue);
+          }
+        `,
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+    });
 
     describe("called on the first character of the fallback", () => {
       let result: ReturnType<typeof codeAction>;
@@ -136,13 +156,20 @@ describe("textDocument/codeAction", () => {
   });
 
   describe("in a css document with one token var call that has a correct fallback", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
-      a {
-        color: var(--token-color-red, red);
-      }
-    `);
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
 
-    const doc = ctx.documents.get(textDocument.uri);
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+          a {
+            color: var(--token-color-red, red);
+          }
+        `,
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+    });
 
     describe("called on the first character of the fallback", () => {
       let result: ReturnType<typeof codeAction>;
@@ -181,14 +208,21 @@ describe("textDocument/codeAction", () => {
   });
 
   describe("in a css document with two token var calls with incorrect fallbacks", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
-      a {
-        color: var(--token-color-red, blue);
-        border-color: var(--token-color-blue-lightdark, green);
-      }
-    `);
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
 
-    const doc = ctx.documents.get(textDocument.uri);
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+          a {
+            color: var(--token-color-red, blue);
+            border-color: var(--token-color-blue-lightdark, green);
+          }
+        `,
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+    });
 
     let result: ReturnType<typeof codeAction>;
 
@@ -241,16 +275,16 @@ describe("textDocument/codeAction", () => {
       it("fixes that part of the file", () => {
         const text = ctx.documents.get(textDocument.uri).getText();
         expect(text).toEqual(/*css*/ `
-      a {
-        color: var(--token-color-red, red);
-        border-color: var(--token-color-blue-lightdark, green);
-      }
-    `);
+          a {
+            color: var(--token-color-red, red);
+            border-color: var(--token-color-blue-lightdark, green);
+          }
+        `);
       });
     });
 
     describe("then performing the fixall", () => {
-      beforeAll(() => {
+      beforeEach(() => {
         const edits = resolve(
           result!
             .find((x) => x.kind === CodeActionKind.SourceFixAll)!,
@@ -265,11 +299,11 @@ describe("textDocument/codeAction", () => {
       it("fixes the file", () => {
         const text = ctx.documents.get(textDocument.uri).getText();
         expect(text).toEqual(/*css*/ `
-      a {
-        color: var(--token-color-red, red);
-        border-color: var(--token-color-blue-lightdark, light-dark(lightblue, darkblue));
-      }
-    `);
+          a {
+            color: var(--token-color-red, red);
+            border-color: var(--token-color-blue-lightdark, light-dark(lightblue, darkblue));
+          }
+        `);
       });
 
       describe("and then calling codeAction on the range inside the {}", () => {

@@ -17,6 +17,7 @@ import * as Definition from "./methods/textDocument/definition.ts";
 import * as References from "./methods/textDocument/references.ts";
 
 import manifest from "../../package.json" with { type: "json" };
+import { Server } from "#server";
 
 const { version } = manifest;
 
@@ -152,20 +153,14 @@ export interface DTLSContext {
    * All tokens available to the server.
    */
   tokens: Tokens;
-}
-
-export interface DTLSContextWithLsp extends DTLSContext {
-  /**
-   * The LSP server protocol implementation.
-   */
-  lsp: Lsp;
-}
-
-export interface DTLSContextWithWorkspaces extends DTLSContext {
   /**
    * The Workspaces manager that represents the state of all workspaces.
    */
   workspaces: Workspaces;
+  /**
+   * The LSP server protocol implementation.
+   */
+  lsp?: Lsp;
 }
 
 export enum DTLSErrorCodes {
@@ -222,10 +217,19 @@ export class Lsp {
     );
   }
 
+  get #context() {
+    return {
+      documents: this.#documents,
+      tokens: this.#tokens,
+      workspaces: this.#workspaces,
+      lsp: this,
+    };
+  }
+
   #cancelRequest(request: LSP.RequestMessage) {
     const { id } = request;
     this.#cancelled.add(id);
-    Logger.debug`📵 Cancel ${id}`;
+    Logger.info`📵 Cancel ${id}`;
     return null;
   }
 
@@ -248,16 +252,18 @@ export class Lsp {
     }@${params.clientInfo?.version ?? "unknown-version"}\n`;
 
     try {
-      const { capabilities, workspaceFolders, initializationOptions, trace } =
-        params;
+      const {
+        capabilities,
+        workspaceFolders,
+        initializationOptions,
+        trace,
+      } = params;
       if (trace) this.#setTrace(trace);
       this.#clientCapabilities = capabilities;
       this.#initializationOptions = initializationOptions;
-      Logger.debug`📁 workspaceFolders: ${workspaceFolders}`;
-      await this.#workspaces.add(workspaceFolders, {
-        documents: this.#documents,
-        tokens: this.#tokens,
-      });
+      if (workspaceFolders) {
+        await this.#workspaces.add(this.#context, ...workspaceFolders);
+      }
     } catch (error) {
       Logger.error`Failed to initialize the server: ${error}`;
     }
@@ -301,18 +307,12 @@ export class Lsp {
    * @returns The result of the request.
    */
   public async process(request: LSP.RequestMessage): Promise<unknown> {
-    const context = {
-      lsp: this,
-      workspaces: this.#workspaces,
-      documents: this.#documents,
-      tokens: this.#tokens,
-    };
     if (LSP.Message.isRequest(request) && this.#cancelled.has(request.id)) {
       return null;
     } else if (isInitializeRequest(request)) {
       return this.initialize(request.params);
     } else if (isInitializedRequest(request)) {
-      await this.#workspaces.initialize(context);
+      await this.#workspaces.initialize(this.#context);
       return this.#resolveInitialized();
     } else if (isSetTraceRequest(request)) {
       return this.#setTrace(request.params.value);
@@ -321,11 +321,14 @@ export class Lsp {
     } else if (request.method) {
       await this.#initialized;
       if (!this.#handlers.has(request.method as SupportedMethod)) {
-        Logger.debug`❌ Unsupported method: ${request.method}`;
+        Logger.warn`❌ Unsupported method: ${request.method}`;
         return null;
       } else {
         const method = this.#handlers.get(request.method as SupportedMethod);
-        return await method?.(request.params as SupportedParams, context) ??
+        return await method?.(
+          request.params as SupportedParams,
+          this.#context,
+        ) ??
           null;
       }
     }

@@ -10,8 +10,9 @@ import { JsonDocument } from "#json";
 
 describe("textDocument/diagnostic", () => {
   let ctx: DTLSTestContext;
-  beforeEach(() => {
-    ctx = createTestContext({
+
+  beforeEach(async () => {
+    ctx = await createTestContext({
       testTokensSpecs: [
         {
           prefix: "token",
@@ -96,9 +97,12 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single token and no fallback", () => {
     it("should return no diagnostics", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body { color: var(--token-color); }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toHaveLength(0);
     });
@@ -106,11 +110,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single token and an incorrect fallback", () => {
     it("should return a single diagnostic", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           color: var(--token-color-red, blue);
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toHaveLength(1);
       const [diag] = diagnostics.items;
@@ -122,11 +129,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single token and an incorrect fallback list", () => {
     it("should return a single diagnostic", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           color: var(--token-color-red, blue, green, mango, goBuckWild);
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toHaveLength(1);
       const [diag] = diagnostics.items;
@@ -138,11 +148,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single list-value token and an incorrect fallback list", () => {
     it("should return a single diagnostic", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           color: var(--token-font-family, a, b, c, d);
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toHaveLength(1);
       const [diag] = diagnostics.items;
@@ -154,11 +167,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a saucy font-family", () => {
     it("should return no diagnostics", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           font-family: var(--token-font-mishpocha, Super, 'Pooper Duper', Helvetica, Arial, sans-serif);
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toHaveLength(0);
     });
@@ -166,11 +182,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single number-value token and a correct fallback", () => {
     it("should return an empty list", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           color: var(--token-font-weight, 400);
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toEqual([]);
     });
@@ -178,11 +197,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single stringy-number token and correct fallback", () => {
     it("should return a single diagnostic list", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           color: var(--token-font-heft, '400');
         }
-      `);
+      `,
+      );
       const doc = ctx.documents.get(textDocument.uri)!;
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toEqual([{
@@ -199,11 +221,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single stringy-number token and number fallback", () => {
     it("should return an empty list", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           color: var(--token-font-heft, 400);
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toEqual([]);
     });
@@ -211,11 +236,14 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a CSS document with a single box-shadow token and accurate fallback", () => {
     it("should return an empty list", () => {
-      const textDocument = ctx.documents.createCssDocument(/*css*/ `
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
         body {
           box-shadow: var(--token-box-shadow, 1px 2px 3px 4px rgba(2, 4, 6 / .8));
         }
-      `);
+      `,
+      );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toEqual([]);
     });

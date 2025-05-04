@@ -10,12 +10,12 @@ import { JsonDocument } from "#json";
 
 describe("textDocument/hover", () => {
   let ctx: DTLSTestContext;
-  beforeEach(() => {
-    ctx = createTestContext({
+  beforeEach(async () => {
+    ctx = await createTestContext({
       testTokensSpecs: [
         {
           prefix: "token",
-          spec: "file:///tokens.json",
+          spec: "/tokens.json",
           tokens: {
             color: {
               $type: "color",
@@ -46,7 +46,7 @@ describe("textDocument/hover", () => {
         },
         {
           prefix: "token",
-          spec: "file:///referer.json",
+          spec: "/referer.json",
           tokens: {
             color: {
               $type: "color",
@@ -61,11 +61,14 @@ describe("textDocument/hover", () => {
   });
 
   it("should return hover information for a token", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+    const textDocument = ctx.documents.createDocument(
+      "css",
+      /*css*/ `
       a {
         color:var(--token-color-red);
       }
-    `);
+    `,
+    );
     const doc = ctx.documents.get(textDocument.uri);
     const position = doc.positionForSubstring("--token-color-red");
 
@@ -89,11 +92,14 @@ describe("textDocument/hover", () => {
   });
 
   it("should return null for a non-token", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+    const textDocument = ctx.documents.createDocument(
+      "css",
+      /*css*/ `
       a {
         color: :var(--non-token);
       }
-    `);
+    `,
+    );
     const doc = ctx.documents.get(textDocument.uri);
     const position = doc.positionForSubstring("--non-token");
     const result = hover({ textDocument, position }, ctx);
@@ -101,11 +107,14 @@ describe("textDocument/hover", () => {
   });
 
   it("should return formatted hover information for a token with a light-dark value", () => {
-    const textDocument = ctx.documents.createCssDocument(/*css*/ `
+    const textDocument = ctx.documents.createDocument(
+      "css",
+      /*css*/ `
       a{
         color: var(--token-color-blue-lightdark);
       }
-    `);
+    `,
+    );
 
     const doc = ctx.documents.get(textDocument.uri);
     const position = doc.positionForSubstring("--token-color-blue-lightdark");
@@ -139,7 +148,7 @@ describe("textDocument/hover", () => {
         range,
         contents: {
           kind: "markdown",
-          value: `# \`color.red._\`
+          value: `# \`--token-color-red\`
 
             Type: \`color\`
             Red colour
@@ -162,7 +171,7 @@ describe("textDocument/hover", () => {
         range,
         contents: {
           kind: "markdown",
-          value: `# \`color.red.hex\`
+          value: `# \`--token-color-red-hex\`
 
             Type: \`color\`
             Red colour (by reference)

@@ -1,107 +1,149 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { CompletionList, Position } from "vscode-languageserver-protocol";
+import {
+  CompletionList,
+  Position,
+  TextDocumentIdentifier,
+} from "vscode-languageserver-protocol";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { completion } from "./completion.ts";
+import { DTLSTextDocument } from "#document";
+import { CssDocument } from "#css";
+
+function getCompletionsForWord(
+  ctx: DTLSTestContext,
+  word: string,
+  content: string,
+  language: DTLSTextDocument["language"] = "css",
+) {
+  const textDocument = ctx.documents.createDocument(language, content);
+  const doc = ctx.documents.get(textDocument.uri);
+  const position = doc.positionForSubstring(word, "end");
+  return completion({ textDocument, position }, ctx);
+}
 
 describe("textDocument/completion", () => {
-  const ctx = createTestContext({
-    testTokensSpecs: [
-      {
-        prefix: "token",
-        spec: "file:///tokens.json",
-        tokens: {
-          color: {
-            $type: "color",
-            red: {
-              _: {
-                $value: "#ff0000",
-              },
-              hex: {
-                $value: "#ff0000",
+  let ctx: DTLSTestContext;
+
+  beforeEach(async () => {
+    ctx = await createTestContext({
+      testTokensSpecs: [
+        {
+          prefix: "token",
+          spec: "file:///tokens.json",
+          tokens: {
+            color: {
+              $type: "color",
+              red: {
+                _: {
+                  $value: "#ff0000",
+                },
+                hex: {
+                  $value: "#ff0000",
+                },
               },
             },
-          },
-          space: {
-            $type: "size",
-            small: {
-              $value: "4px",
+            space: {
+              $type: "size",
+              small: {
+                $value: "4px",
+              },
             },
-          },
-          font: {
-            weight: {
-              $type: "fontWeight",
-              thin: {
-                $value: 100,
+            font: {
+              weight: {
+                $type: "fontWeight",
+                thin: {
+                  $value: 100,
+                },
               },
             },
           },
         },
-      },
-    ],
+      ],
+    });
   });
 
-  function getCompletions(content: string, position: Position) {
-    const textDocument = ctx.documents.createCssDocument(content);
-    return completion({ textDocument, position }, ctx);
-  }
-
-  function getCompletionsForWord(word: string, content: string) {
-    const textDocument = ctx.documents.createCssDocument(content);
-    const doc = ctx.documents.get(textDocument.uri);
-    const position = doc.positionForSubstring(word, "end");
-    return completion({ textDocument, position }, ctx);
-  }
-
   describe("in an empty document", () => {
-    const completions = getCompletions("", { line: 0, character: 0 });
+    let textDocument: TextDocumentIdentifier;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument("css", "");
+    });
     it("should return no completions", () => {
+      const completions = completion({
+        textDocument,
+        position: { line: 0, character: 0 },
+      }, ctx);
       expect(completions).toBeNull();
     });
   });
 
   describe("in a document with a css rule", () => {
-    const completions = getCompletionsForWord(
-      "a",
-      /*css*/ `
-      body {
-        a`,
-    );
-
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+          body {
+            a`,
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+    });
     it("should return no completions", () => {
+      const completions = completion({
+        textDocument,
+        position: doc.positionForSubstring("a", "end"),
+      }, ctx);
+
       expect(completions).toBeNull();
     });
   });
 
   describe("adding the token prefix in a malformed block", () => {
-    const completions = getCompletionsForWord(
-      "token",
-      /*css*/ `
-      body {
-        token
-      }
-    `,
-    );
-    it("should return all token completions", () => {
-      expect((completions as CompletionList)?.items).toHaveLength(
-        ctx.tokens.size,
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+        body {
+          token
+        }
+      `,
       );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+    });
+    it("should return all token completions", () => {
+      const completions = completion({
+        textDocument,
+        position: doc.positionForSubstring("token", "end"),
+      }, ctx);
+      expect(completions?.items).toHaveLength(ctx.tokens.size);
     });
   });
 
   describe("adding the token prefix as a property name", () => {
-    const completions = getCompletionsForWord(
-      "--token",
-      /*css*/ `
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
+    let completions: CompletionList | null;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
       body {
         --token
       }
     `,
-    );
-
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      completions = completion({
+        textDocument,
+        position: doc.positionForSubstring("--token", "end"),
+      }, ctx);
+    });
     it("should return all token completions", () => {
       expect(completions?.items).toHaveLength(ctx.tokens.size);
     });
@@ -113,14 +155,24 @@ describe("textDocument/completion", () => {
   });
 
   describe("adding the token prefix as a property value", () => {
-    const completions = getCompletionsForWord(
-      "token",
-      /*css*/ `
-      body {
-        color: token
-      }
-    `,
-    );
+    let textDocument: TextDocumentIdentifier;
+    let doc: CssDocument;
+    let completions: CompletionList | null;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+          body {
+            color: token
+          }
+        `,
+      );
+      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      completions = completion({
+        textDocument,
+        position: doc.positionForSubstring("token", "end"),
+      }, ctx);
+    });
     it("should return all token completions", () => {
       expect(completions?.items).toHaveLength(ctx.tokens.size);
     });

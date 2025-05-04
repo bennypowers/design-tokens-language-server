@@ -3,20 +3,12 @@
   "unstable": [
     "temporal"
   ],
-  "fmt": {
-    "options": {
-      "lineWidth": 100,
-      "singleQuote": true,
-      "trailingComma": "all",
-      "semiColons": true
-    }
-  },
+  "fmt": {},
   "tasks": {
     "hook": "deno run --allow-read --allow-run --allow-write https://deno.land/x/deno_hooks@0.1.1/mod.ts",
     "version": "deno -A scripts/version.ts",
     "test": "deno test -A --coverage=coverage",
     "test:watch": "deno test -A --watch",
-    "test:coverage": "deno coverage --exclude=\"test/.*.ts\\$|textDocument\\.ts\\$\" --lcov --output=coverage/lcov.info",
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
     "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
     "copy:wts:mkdir": "mkdir -p dist/documents/css/tree-sitter",
@@ -100,6 +92,7 @@
     "#document": "./src/documents/document.ts",
     "#documents": "./src/documents/documents.ts",
     "#json": "./src/documents/json/document.ts",
+    "#yaml": "./src/documents/yaml/document.ts",
     "#logger": "./src/logger.ts",
     "#lsp": "./src/lsp/lsp.ts",
     "#lsp/": "./src/lsp/",
@@ -107,7 +100,7 @@
     "#server": "./src/server/server.ts",
     "#test-helpers": "./test/helpers.ts",
     "#tokens": "./src/tokens/tokens.ts",
-    "#workspaces": "./src/lsp/workspaces.ts",
+    "#workspaces": "./src/workspaces/workspaces.ts",
     "@henrygd/queue": "jsr:@henrygd/queue@^1.0.7",
     "@logtape/file": "jsr:@logtape/file@^0.9.0",
     "@logtape/logtape": "jsr:@logtape/logtape@^0.9.0",
@@ -116,6 +109,7 @@
     "@std/cli": "jsr:@std/cli@^1.0.16",
     "@std/collections": "jsr:@std/collections@^1.0.10",
     "@std/expect": "jsr:@std/expect@^1.0.15",
+    "@std/fs": "jsr:@std/fs@^1.0.17",
     "@std/io": "jsr:@std/io@^0.225.2",
     "@std/path": "jsr:@std/path@^1.0.9",
     "@std/testing": "jsr:@std/testing@^1.0.11",

@@ -8,11 +8,11 @@ mergeInto(LibraryManager.library, {
   ) {
     const INPUT_BUFFER_SIZE = 10 * 1024;
     const string = Module.currentParseCallback(index, { row, column });
-    if (typeof string === 'string') {
-      setValue(lengthAddress, string.length, 'i32');
+    if (typeof string === "string") {
+      setValue(lengthAddress, string.length, "i32");
       stringToUTF16(string, inputBufferAddress, INPUT_BUFFER_SIZE);
     } else {
-      setValue(lengthAddress, 0, 'i32');
+      setValue(lengthAddress, 0, "i32");
     }
   },
 

@@ -1,31 +1,35 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { createTestContext } from "#test-helpers";
+import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { resolve } from "./resolve.ts";
 
 describe("completionItem/resolve", () => {
-  const ctx = createTestContext({
-    testTokensSpecs: [
-      {
-        prefix: "token",
-        spec: "file:///tokens.json",
-        tokens: {
-          color: {
-            red: {
-              $value: "#ff0000",
-              $type: "color",
-              $description: "A red color",
-            },
-            blue: {
-              $value: "#0000ff",
-              $type: "color",
+  let ctx: DTLSTestContext;
+
+  beforeEach(async () => {
+    ctx = await createTestContext({
+      testTokensSpecs: [
+        {
+          prefix: "token",
+          spec: "file:///tokens.json",
+          tokens: {
+            color: {
+              red: {
+                $value: "#ff0000",
+                $type: "color",
+                $description: "A red color",
+              },
+              blue: {
+                $value: "#0000ff",
+                $type: "color",
+              },
             },
           },
         },
-      },
-    ],
+      ],
+    });
   });
 
   describe("given a completion item with a token", () => {

@@ -28,13 +28,13 @@ function getCompletionDependingOnNode(args: CompletionArgs): string {
   switch (node.type) {
     case "identifier":
     case "property_name":
-      return `--${name}: $0`;
+      return `${name}: $0`;
     default: {
       const token = tokens.get(name)!;
       const value = Array.isArray(token.$value)
         ? token.$value.join(", ")
         : token.$value;
-      return `var(--${name}\${1|\\, ${escapeCommas(value)},|})$0`;
+      return `var(${name}\${1|\\, ${escapeCommas(value)},|})$0`;
     }
   }
 }

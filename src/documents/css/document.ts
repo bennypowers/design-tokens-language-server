@@ -1,7 +1,7 @@
 import { Node, Point, Query, Tree } from "web-tree-sitter";
 
-import { DTLSContext, DTLSErrorCodes } from "#lsp";
-import { DTLSTextDocument } from "#document";
+import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
+import { DTLSTextDocument, TokenReference } from "#document";
 
 import * as LSP from "vscode-languageserver-protocol";
 
@@ -11,6 +11,7 @@ import { parser } from "./tree-sitter/parser.ts";
 import { Token } from "style-dictionary";
 
 import { cssColorToLspColor } from "#color";
+import { DTLSToken } from "#tokens";
 
 type TsRange = Pick<Node, "startPosition" | "endPosition">;
 
@@ -155,45 +156,14 @@ export class CssDocument extends DTLSTextDocument {
 
   language = "css" as const;
 
-  // TODO: having this on CSSDocument and not JsonDocument is a code smell
-  // This is ultimately meant to get diagnostics and code actions
-  // eventually, we'll compute all of those upfront and store them here,
-  // then use code action resolve for the details
+  /**
+   * TODO: having this on CSSDocument and not JsonDocument is a code smell
+   * This is ultimately meant to get diagnostics and code actions
+   * eventually, we'll compute all of those upfront and store them here,
+   * then use code action resolve for the details
+   */
   get varCalls() {
     return this.#varCalls;
-  }
-
-  getColors(context: DTLSContext): LSP.ColorInformation[] {
-    this.#context = context;
-    return this.#varCalls.flatMap((call) => {
-      const token = call.token.token;
-
-      if (!token || token.$type !== "color") {
-        return [];
-      }
-      const colors = [];
-      const hexMatches = `${token.$value}`.match(HEX_RE);
-      const [light, dark] = getLightDarkValues(token.$value);
-      if (light && dark) {
-        colors.push(light, dark);
-      } else if (hexMatches) {
-        colors.push(...hexMatches);
-      } else {
-        colors.push(token.$value);
-      }
-      return colors.flatMap((match) => {
-        const colorMatch = extractColor(match, this.#context);
-        const color = cssColorToLspColor(colorMatch);
-        if (!color) {
-          return [];
-        } else {
-          return [{
-            color,
-            range: call.token.range,
-          }];
-        }
-      });
-    });
   }
 
   private constructor(
@@ -230,91 +200,6 @@ export class CssDocument extends DTLSTextDocument {
     this.#tree = parser.parse(newText, this.#tree);
     this.#varCalls = this.#computeVarCalls(this.#context);
     this.#diagnostics = this.#computeDiagnostics();
-  }
-
-  definition(
-    params: LSP.DefinitionParams,
-    context: DTLSContext,
-  ) {
-    this.#context = context;
-    const node = this.getNodeAtPosition(params.position);
-    const tokenName = node?.text;
-    const token = context.tokens.get(tokenName);
-    const spec = token && context.tokens.specs.get(token);
-    if (tokenName && spec) {
-      const uri = new URL(spec.path, params.textDocument.uri).href;
-      const doc = context.documents.get(uri);
-      if (doc.language === "json") {
-        const range = doc.getRangeForTokenName(tokenName, spec.prefix);
-        if (range) {
-          return [{ uri, range }];
-        }
-      }
-    }
-    return [];
-  }
-
-  /**
-   * Queries the document for a specific query.
-   *
-   * @param query - The query to run.
-   * @param options - The options to pass to the query.
-   */
-  query(query: string, options?: TSNodePosition) {
-    if (!this.#tree) {
-      return [];
-    }
-    const q = new Query(this.#tree.language, query);
-    return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
-  }
-
-  /**
-   * Gets the node at the specified position in the document.
-   *
-   * @param position - The position to check.
-   */
-  getNodeAtPosition(
-    position: LSP.Position,
-    offset?: Partial<LSP.Position>,
-  ): null | Node {
-    const pos = !offset ? position : offsetPosition(position, offset);
-    return this.#tree?.rootNode.descendantForPosition(lspPosToTsPos(pos)) ??
-      null;
-  }
-
-  getHoverTokenAtPosition(
-    position: LSP.Position,
-    offset?: Partial<LSP.Position>,
-  ) {
-    const node = this.getNodeAtPosition(position, offset);
-    if (node) {
-      const name = `--${node.text}`.replace("----", "--");
-      const token = this.#context.tokens.get(name);
-      if (token) {
-        const range = tsRangeToLspRange(node);
-        return { name, token, range };
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Checks if the given position is within a specific node type in the document.
-   *
-   * @param position - The position to check.
-   * @param type - The type of node to check against.
-   * @return whether the position is within the specified node type.
-   */
-  positionIsInNodeType(position: LSP.Position, type: string): boolean {
-    let node = this.getNodeAtPosition(position);
-    while (node && node.type !== "stylesheet") {
-      if (node.type === type) {
-        return true;
-      } else {
-        node = node.parent;
-      }
-    }
-    return false;
   }
 
   #computeVarCalls(context: DTLSContext): TokenVarCall[] {
@@ -402,6 +287,108 @@ export class CssDocument extends DTLSTextDocument {
         }];
       }
     });
+  }
+
+  /**
+   * Queries the document for a specific query.
+   *
+   * @param query - The query to run.
+   * @param options - The options to pass to the query.
+   */
+  query(query: string, options?: TSNodePosition) {
+    if (!this.#tree) {
+      return [];
+    }
+    const q = new Query(this.#tree.language, query);
+    return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
+  }
+
+  getColors(context: DTLSContext): LSP.ColorInformation[] {
+    this.#context = context;
+    return this.#varCalls.flatMap((call) => {
+      const token = call.token.token;
+
+      if (!token || token.$type !== "color") {
+        return [];
+      }
+      const colors = [];
+      const hexMatches = `${token.$value}`.match(HEX_RE);
+      const [light, dark] = getLightDarkValues(token.$value);
+      if (light && dark) {
+        colors.push(light, dark);
+      } else if (hexMatches) {
+        colors.push(...hexMatches);
+      } else {
+        colors.push(token.$value);
+      }
+      return colors.flatMap((match) => {
+        const colorMatch = extractColor(match, this.#context);
+        const color = cssColorToLspColor(colorMatch);
+        if (!color) {
+          return [];
+        } else {
+          return [{
+            color,
+            range: call.token.range,
+          }];
+        }
+      });
+    });
+  }
+
+  /**
+   * Gets the node at the specified position in the document.
+   *
+   * @param position - The position to check.
+   */
+  getNodeAtPosition(
+    position: LSP.Position,
+    offset?: Partial<LSP.Position>,
+  ): null | Node {
+    const pos = !offset ? position : offsetPosition(position, offset);
+    return this.#tree?.rootNode.descendantForPosition(lspPosToTsPos(pos)) ??
+      null;
+  }
+
+  getTokenReferenceAtPosition(
+    position: LSP.Position,
+    offset?: Partial<LSP.Position>,
+  ): TokenReference | null {
+    const node = this.getNodeAtPosition(position, offset);
+    if (node) {
+      const name = `--${node.text}`.replace("----", "--");
+      if (this.#context.tokens.has(name)) {
+        return { name, range: tsRangeToLspRange(node) };
+      }
+    }
+    return null;
+  }
+
+  getRangeForPath(_: string[]): LSP.Range | null {
+    throw new Error("Cannot perform path operations in CSS documents");
+  }
+
+  getTokenForPath(_: string[]): DTLSToken | null {
+    throw new Error("Cannot perform path operations in CSS documents");
+  }
+
+  /**
+   * Checks if the given position is within a specific node type in the document.
+   *
+   * @param position - The position to check.
+   * @param type - The type of node to check against.
+   * @return whether the position is within the specified node type.
+   */
+  positionIsInNodeType(position: LSP.Position, type: string): boolean {
+    let node = this.getNodeAtPosition(position);
+    while (node && node.type !== "stylesheet") {
+      if (node.type === type) {
+        return true;
+      } else {
+        node = node.parent;
+      }
+    }
+    return false;
   }
 
   getDiagnostics(context: DTLSContext) {
