@@ -176,7 +176,11 @@ export class Workspaces {
       const localSettings =
         await this.#tryToLoadSettingsFromPackageJson(ws.uri) ?? {};
       const settings = deepMerge(localSettings ?? {}, this.#settings ?? {});
-      await this.#updateWorkspaceSettings(context, ws.uri, settings);
+      await this.#updateWorkspaceSettings(
+        context,
+        ws.uri.replace(/\/$/, "") + "/",
+        settings,
+      );
     }
 
     for (const tokensFile of this.#tokenSpecs) {
