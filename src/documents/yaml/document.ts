@@ -112,7 +112,7 @@ export class YamlDocument extends DTLSTextDocument {
     } else if (YAML.isNode(node) && !YAML.isAlias(node)) {
       return node;
     } else if (node) {
-      Logger.debug`Unknown ${node} ${typeof node}`;
+      Logger.warn`Unknown ${node} ${typeof node}`;
     }
     return null;
   }
@@ -238,7 +238,6 @@ export class YamlDocument extends DTLSTextDocument {
             const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
             const path = [prefix, ...refUnpacked.split(".")].filter((x) => !!x);
             const name = `--${path.join("-")}`;
-            Logger.debug`name:${name} ${this.#context.tokens.get(name)}`;
             if (this.#context.tokens.has(name)) {
               return {
                 name,

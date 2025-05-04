@@ -53,12 +53,12 @@ export class Workspaces {
         "./package.json",
         uri.replace(/\/$/, "") + "/",
       );
-      Logger.debug`🎒 Loading package.json from ${pkgJsonPath.href}`;
+      Logger.info`🎒 Loading package.json from ${pkgJsonPath.href}`;
       const manifest = JSON.parse(
         await Deno.readTextFile(pkgJsonPath.pathname),
       );
       Logger
-        .debug`  ...loaded package.json for ${manifest.name}@${manifest.version}`;
+        .info`  ...loaded package.json for ${manifest.name}@${manifest.version}`;
       const settings = manifest?.designTokensLanguageServer;
       return settings;
     } catch (e) {
@@ -103,10 +103,10 @@ export class Workspaces {
   ) {
     const { prefix, path, groupMarkers } = spec;
     if (!force && this.#loadedSpecs.has(path)) return;
-    Logger.debug`🪙 Adding token spec`;
-    Logger.debug`  from ${path}`;
-    if (prefix) Logger.debug`  with prefix ${prefix}`;
-    if (groupMarkers) Logger.debug`  and groupMarkers ${groupMarkers}`;
+    Logger.info`🪙 Adding token spec`;
+    Logger.info`  from ${path}`;
+    if (prefix) Logger.info`  with prefix ${prefix}`;
+    if (groupMarkers) Logger.info`  and groupMarkers ${groupMarkers}`;
     this.#tokenSpecs.add(spec);
     try {
       const tokenfileContent = await Deno.readTextFile(spec.path);
@@ -172,7 +172,7 @@ export class Workspaces {
     { force }: { force: boolean },
   ) {
     for (const ws of this.#workspaces) {
-      Logger.debug`📁 Adding workspace folder ${ws.name}@${ws.uri}`;
+      Logger.info`📁 Adding workspace folder ${ws.name}@${ws.uri}`;
       const localSettings =
         await this.#tryToLoadSettingsFromPackageJson(ws.uri) ?? {};
       const settings = deepMerge(localSettings ?? {}, this.#settings ?? {});

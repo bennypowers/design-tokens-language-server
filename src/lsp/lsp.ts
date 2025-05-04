@@ -229,7 +229,7 @@ export class Lsp {
   #cancelRequest(request: LSP.RequestMessage) {
     const { id } = request;
     this.#cancelled.add(id);
-    Logger.debug`📵 Cancel ${id}`;
+    Logger.info`📵 Cancel ${id}`;
     return null;
   }
 
@@ -321,7 +321,7 @@ export class Lsp {
     } else if (request.method) {
       await this.#initialized;
       if (!this.#handlers.has(request.method as SupportedMethod)) {
-        Logger.debug`❌ Unsupported method: ${request.method}`;
+        Logger.warn`❌ Unsupported method: ${request.method}`;
         return null;
       } else {
         const method = this.#handlers.get(request.method as SupportedMethod);

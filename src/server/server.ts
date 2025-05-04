@@ -96,7 +96,7 @@ export class Server {
     }
 
     for await (const request of this.#io.requests()) {
-      Logger.debug`${
+      Logger.info`${
         request.id != null ? `📩 (${request.id})` : `🔔`
       }: ${request.method}`;
       // if (request.id != null && this.#serverRequests.has(request.id)) {
@@ -116,9 +116,9 @@ export class Server {
             }
             const result = await this.#lsp.process(request);
             if (request.id != null) {
-              Logger.debug`🚢 (${request.id}): ${request.method}`;
+              Logger.info`🚢 (${request.id}): ${request.method}`;
             } else {
-              Logger.debug`🚀 (${request.method}) ${result}`;
+              Logger.info`🚀 (${request.method}) ${result}`;
             }
             return this.#io.respond(request.id, result);
           } catch (error) {

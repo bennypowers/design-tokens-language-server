@@ -67,7 +67,7 @@ export class Documents {
           `Unsupported language: ${params.textDocument.languageId}`,
         );
     }
-    Logger.debug`📖 Opened ${uri}`;
+    Logger.info`📖 Opened ${uri}`;
   }
 
   onDidChange(params: LSP.DidChangeTextDocumentParams, _: DTLSContext) {
