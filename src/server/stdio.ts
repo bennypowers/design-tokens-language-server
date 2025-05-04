@@ -57,6 +57,7 @@ export class Stdio implements Io {
       id,
       ...message,
     } as RequestMessage);
+    return id;
   }
 
   public respond(

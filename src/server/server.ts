@@ -36,8 +36,9 @@ export interface Io {
 
   /**
    * Pushes a request message to the client.
+   * @returns the id of the server request
    */
-  push(message: Omit<RequestMessage, 'jsonrpc' | 'id'>): void | Promise<void>;
+  push(message: Omit<RequestMessage, 'jsonrpc' | 'id'>): number | string;
 }
 
 export interface StdioOptions {
@@ -53,13 +54,23 @@ export class Server {
   static #lsp: Lsp;
   static #io: Io;
   static #queue = createQueue({ parallelize: 5 });
+  static #serverRequests = new Map<
+    string | number,
+    ((value: unknown) => unknown)
+  >();
 
   public static notify(message: NotificationMessage) {
     this.#io.notify(message);
   }
 
-  public static push(message: Omit<RequestMessage, 'jsonrpc' | 'id'>) {
-    this.#io.push(message);
+  public static async request(message: Omit<RequestMessage, 'jsonrpc' | 'id'>) {
+    const id = this.#io.push(message);
+    const r = await new Promise((resolve) => {
+      Logger.debug`Server.request(${message})`;
+      this.#serverRequests.set(id, resolve);
+    });
+    this.#serverRequests.delete(id);
+    return r;
   }
 
   /**
@@ -69,7 +80,7 @@ export class Server {
   public static async serve(options: StdioOptions) {
     const documents = new Documents();
     const tokens = new Tokens();
-    const workspaces = new Workspaces();
+    const workspaces = new Workspaces(this);
     this.#lsp = new Lsp(documents, workspaces, tokens);
 
     switch (options.io) {
@@ -82,6 +93,11 @@ export class Server {
 
     for await (const request of this.#io.requests()) {
       Logger.debug`${request.id != null ? `📩 (${request.id})` : `🔔`}: ${request.method}`;
+      // if (request.id != null && this.#serverRequests.has(request.id)) {
+      //   const resolve = this.#serverRequests.get(request.id);
+      //   if (!resolve) throw new Error(`unexpected response ${request.method}`);
+      //   resolve?.(request.params);
+      // } else if (request.id == null) {
       if (request.id == null)
         await this.#lsp.process(request);
       else if (this.#lsp.isCancelledRequest(request.id))

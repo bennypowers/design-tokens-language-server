@@ -7,6 +7,7 @@ import { Workspaces } from '#workspaces';
 import { Tokens } from '#tokens';
 
 import { Lsp } from '#lsp';
+import { Server } from '#server';
 
 describe('Lsp', () => {
   describe('with default options', () => {
@@ -14,7 +15,7 @@ describe('Lsp', () => {
 
     beforeEach(() => {
       const documents = new Documents();
-      const workspaces = new Workspaces();
+      const workspaces = new Workspaces(Server);
       const tokens = new Tokens();
       lsp = new Lsp(documents, workspaces, tokens);
     });

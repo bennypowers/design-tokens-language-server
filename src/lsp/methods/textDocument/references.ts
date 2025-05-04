@@ -1,5 +1,5 @@
 import { Location, ReferenceParams, ServerCapabilities } from 'vscode-languageserver-protocol';
-import { DTLSContext } from '#lsp/lsp.ts';
+import { DTLSContext } from '#lsp';
 import { JsonDocument } from '#json';
 import { YamlDocument } from '#yaml';
 
@@ -11,7 +11,7 @@ export function references(
   if (doc.language === 'css') {
     // let css-ls handle it, at least for now
     return null;
-  } else if (doc.language === 'json') {
+  } else if (doc.language === 'json' || doc.language === 'yaml') {
     const reference = doc.getTokenReferenceAtPosition(params.position);
     if (!reference) return [];
     const { name } = reference;
