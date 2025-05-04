@@ -25,8 +25,17 @@ export function references(
       const ext = token.$extensions.designTokensLanguageServer;
       const locations = new Set<Location>();
       for (const doc of context.documents.getAll()) {
-        for (const range of doc.getRangesForSubstring(ext.reference)) {
-          locations.add({ uri: doc.uri, range });
+        if (doc.language === "css") {
+          for (const range of doc.getRangesForSubstring(`(${name})`)) {
+            locations.add({ uri: doc.uri, range });
+          }
+          for (const range of doc.getRangesForSubstring(`(${name},`)) {
+            locations.add({ uri: doc.uri, range });
+          }
+        } else {
+          for (const range of doc.getRangesForSubstring(ext.reference)) {
+            locations.add({ uri: doc.uri, range });
+          }
         }
       }
       if (params.context.includeDeclaration) {
