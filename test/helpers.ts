@@ -293,12 +293,6 @@ export async function createTestContext(
   await workspaces.initialize(context);
 
   const workspaceRoot = options.workspaceRoot ?? toFileUrl('/test-root/').href;
-  if (options.workspaceRoot) {
-    await workspaces.add(context, {
-      uri: options.workspaceRoot,
-      name: 'root',
-    });
-  }
 
   for (const x of options.testTokensSpecs ?? []) {
     const spec = normalizeTokenFile(x.spec, workspaceRoot, x);

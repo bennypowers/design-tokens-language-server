@@ -7,7 +7,7 @@ function normalizePath(path: string, workspaceRoot: URI) {
   if (path.startsWith('~'))
     return path.replace('~', Deno.env.get('HOME')!);
   else if (path.startsWith('.'))
-    return path.replace('.', workspaceRoot.replace('file://', ''));
+    return new URL(path, workspaceRoot).pathname;
   else if (path.startsWith('npm:')) {
     return createRequire(import.meta.url).resolve(path.replace('npm:', ''), {
       paths: [workspaceRoot],

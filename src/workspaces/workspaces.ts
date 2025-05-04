@@ -44,14 +44,11 @@ export class Workspaces {
     uri: LSP.DocumentUri,
   ): Promise<Partial<DTLSClientSettings> | null> {
     try {
-      const pkgJsonPath = new URL(
-        './package.json',
-        uri.replace(/\/$/, '') + '/',
-      );
+      const pkgJsonPath = new URL('./package.json', uri);
       Logger.debug`🎒 Loading package.json from ${pkgJsonPath.href}`;
-      const manifest = await import(pkgJsonPath.href, {
-        with: { type: 'json' },
-      }).then((x) => x.default);
+      const manifest = JSON.parse(
+        await Deno.readTextFile(pkgJsonPath.pathname),
+      );
       Logger
         .debug`  ...loaded package.json for ${manifest.name}@${manifest.version}`;
       const settings = manifest?.designTokensLanguageServer;
@@ -118,7 +115,7 @@ export class Workspaces {
         default:
           throw new Error(`Unknown language: ${language}`);
       }
-      this.#specs.set(uri, spec);
+      this._addSpec(uri, spec);
       this.#loadedSpecs.add(spec.path);
       context.documents.add(doc);
     } catch (e) {
@@ -132,14 +129,27 @@ export class Workspaces {
     uri: string,
     settings: Partial<DTLSClientSettings>,
   ) {
+    const root = uri.replace('file://', '');
     for (const file of settings?.tokensFiles ?? []) {
-      const normalizedButGlobby = this.#normalizeTokenFile(file, uri, settings);
+      const normalizedButGlobby = this.#normalizeTokenFile(
+        file,
+        uri,
+        settings,
+      );
       if (isGlob(normalizedButGlobby.path)) {
-        const specs = expandGlob(normalizedButGlobby.path, {
-          includeDirs: false,
-        });
-        for await (const { path } of specs)
+        const norm = `file://${normalizedButGlobby.path}`.replace(uri, '');
+        const specs = expandGlob(
+          norm,
+          {
+            includeDirs: false,
+            globstar: false,
+            root,
+          },
+        );
+        for await (const fspec of specs) {
+          const path = fspec.path;
           await this.#loadSpec(context, { ...normalizedButGlobby, path });
+        }
       } else {
         await this.#loadSpec(context, normalizedButGlobby);
       }

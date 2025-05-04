@@ -21,7 +21,7 @@ describe('normalizeTokenFile', () => {
   describe('when tokenFile is a relative path', () => {
     it('should return the normalized path', () => {
       const tokenFile = './relative/path/to/tokenfile';
-      const workspaceRoot = 'file:///workspace/root';
+      const workspaceRoot = 'file:///workspace/root/';
       const settings = null;
 
       const result = normalizeTokenFile(tokenFile, workspaceRoot, settings);

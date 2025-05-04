@@ -1,8 +1,8 @@
-import * as LSP from "vscode-languageserver-protocol";
-import { FullTextDocument } from "./textDocument.ts";
-import { DTLSContext } from "#lsp/lsp.ts";
-import { DTLSToken } from "#tokens";
-import { Logger } from "#logger";
+import * as LSP from 'vscode-languageserver-protocol';
+import { FullTextDocument } from './textDocument.ts';
+import { DTLSContext } from '#lsp/lsp.ts';
+import { DTLSToken } from '#tokens';
+import { Logger } from '#logger';
 
 /**
  * Represents an occurrence of a token name in a file
@@ -26,7 +26,7 @@ export interface TokenReference {
 type Offset = Partial<LSP.Position>;
 
 export abstract class DTLSTextDocument extends FullTextDocument {
-  abstract language: "json" | "css" | "yaml";
+  abstract language: 'json' | 'css' | 'yaml';
 
   /**
    * Get diagnostics for the document
@@ -61,7 +61,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
 
   #startOfSubstrings(substring: string) {
     const text = this.getText();
-    const rows = text.split("\n");
+    const rows = text.split('\n');
     return rows
       .filter((line) => line.includes(substring))
       .map((row) => {
@@ -80,12 +80,11 @@ export abstract class DTLSTextDocument extends FullTextDocument {
    */
   positionForSubstring(
     substring: string,
-    position: "start" | "end" = "start",
+    position: 'start' | 'end' = 'start',
   ): LSP.Position {
     let [{ line, character }] = this.#startOfSubstrings(substring);
-    if (position === "end") {
+    if (position === 'end')
       character += substring.length;
-    }
     return { line, character };
   }
 
@@ -125,13 +124,10 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     if (ext.definitionUri) {
       const doc = context.documents.get(ext.definitionUri);
       const uri = ext.definitionUri;
-      const realPath = ext.groupMarker
-        ? [...ext.path, ext.groupMarker]
-        : ext.path;
+      const realPath = ext.groupMarker ? [...ext.path, ext.groupMarker] : ext.path;
       const range = doc.getRangeForPath(realPath);
-      if (range) {
+      if (range)
         return { uri, range };
-      }
     }
     return null;
   }
@@ -140,7 +136,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   public getFullRange() {
     const text = this.getText();
     // get the range of the string in doc
-    const rows = text.split("\n");
+    const rows = text.split('\n');
     const line = rows.length - 1;
     const character = rows[line].length;
     return {
@@ -155,9 +151,7 @@ export function isPositionInRange(position: LSP.Position, range: LSP.Range) {
   return (
     position.line >= start.line &&
     position.line <= end.line &&
-    (position.line === start.line
-      ? position.character >= start.character
-      : true) &&
+    (position.line === start.line ? position.character >= start.character : true) &&
     (position.line === end.line ? position.character <= end.character : true)
   );
 }
