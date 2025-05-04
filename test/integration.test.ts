@@ -193,8 +193,7 @@ Deno.test("design-tokens-language-server", async (t) => {
                 line: 5,
               },
             },
-            uri:
-              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referer.json",
+            uri: `file:///${Deno.cwd()}/test/package/tokens/referer.json`,
           },
           {
             range: {
@@ -207,8 +206,7 @@ Deno.test("design-tokens-language-server", async (t) => {
                 line: 5,
               },
             },
-            uri:
-              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referer.json",
+            uri: `file:///${Deno.cwd()}/test/package/tokens/referer.json`,
           },
           {
             range: {
@@ -221,8 +219,7 @@ Deno.test("design-tokens-language-server", async (t) => {
                 line: 7,
               },
             },
-            uri:
-              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referer.yaml",
+            uri: `file:///${Deno.cwd()}/test/package/tokens/referer.yaml`,
           },
           {
             range: {
@@ -235,8 +232,7 @@ Deno.test("design-tokens-language-server", async (t) => {
                 line: 39,
               },
             },
-            uri:
-              "file:///var/home/bennyp/Developer/design-tokens-language-server/test/package/tokens/referee.json",
+            uri: `file:///${Deno.cwd()}/test/package/tokens/referee.json`,
           },
         ],
       });
