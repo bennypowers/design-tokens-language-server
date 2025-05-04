@@ -21,6 +21,7 @@ class ENODOCError extends Error {
 
 export class Documents {
   #map = new Map<LSP.DocumentUri, DTLSDocument>();
+
   get handlers() {
     return {
       "textDocument/didOpen": (
@@ -45,7 +46,7 @@ export class Documents {
   }
 
   add(doc: DTLSDocument) {
-    this.#map.set(doc.uri, doc);
+    this.#map.set(doc.uri.trim(), doc);
   }
 
   onDidOpen(params: LSP.DidOpenTextDocumentParams, context: DTLSContext) {
