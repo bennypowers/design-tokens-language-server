@@ -15,6 +15,7 @@ import { usesReferences } from "style-dictionary/utils";
 import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
 import { DTLSToken } from "#tokens";
+
 import {
   DTLSSemanticTokenIntermediate,
   DTLSTokenTypes,
@@ -247,7 +248,7 @@ export class YamlDocument extends DTLSTextDocument {
             const refUnpacked = reference.replace(TOKEN_REFERENCE_REGEXP, "$1");
             const line = stringRange.start.line;
             const character = currentLine.indexOf(refUnpacked);
-            const name = `--${this.#localReferenceToTokenName(reference)}`;
+            const name = `--${this.#localReferenceToTokenName(refUnpacked)}`;
             if (this.#context.tokens.has(name)) {
               return {
                 name,
@@ -284,7 +285,6 @@ export class YamlDocument extends DTLSTextDocument {
             return matches.flatMap((match) => {
               const { reference } = match.groups!;
               const name = this.#localReferenceToTokenName(reference);
-              Logger.debug`${name}`;
               if (!this.#context.tokens.has(name)) return [];
               const [start] = match.indices!.groups!.reference;
               let lastStartChar = 1 +

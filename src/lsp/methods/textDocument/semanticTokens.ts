@@ -1,6 +1,5 @@
 import * as LSP from "vscode-languageserver-protocol";
 import { DTLSContext } from "#lsp";
-import { Logger } from "#logger";
 
 export interface DTLSSemanticTokenIntermediate {
   line: number;
@@ -31,30 +30,27 @@ export function full(
           } else {
             return a.line - b.line;
           }
-        }).flatMap(
-          (intermediate, i, a) => {
-            Logger.debug`${intermediate}`;
-            const {
-              line,
-              startChar,
-              length,
-              tokenType,
-              tokenModifiers,
-            } = intermediate;
-            const prev = a[i - 1] ?? { line: 0, startChar: 0 };
-            const deltaLine = line - prev.line;
-            const deltaStart = deltaLine === 0
-              ? startChar - prev.startChar
-              : startChar;
-            return [
-              deltaLine,
-              deltaStart,
-              length,
-              DTLSTokenTypes.indexOf(tokenType),
-              tokenModifiers,
-            ];
-          },
-        ),
+        }).flatMap((intermediate, i, a) => {
+          const {
+            line,
+            startChar,
+            length,
+            tokenType,
+            tokenModifiers,
+          } = intermediate;
+          const prev = a[i - 1] ?? { line: 0, startChar: 0 };
+          const deltaLine = line - prev.line;
+          const deltaStart = deltaLine === 0
+            ? startChar - prev.startChar
+            : startChar;
+          return [
+            deltaLine,
+            deltaStart,
+            length,
+            DTLSTokenTypes.indexOf(tokenType),
+            tokenModifiers,
+          ];
+        }),
       };
     default:
       return null;

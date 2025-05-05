@@ -166,6 +166,7 @@ Deno.test("design-tokens-language-server", async (t) => {
           };
         }
       }, undefined);
+
       const referencesResponse = await client.sendMessage({
         method: "textDocument/references",
         params: {
@@ -200,12 +201,12 @@ Deno.test("design-tokens-language-server", async (t) => {
           {
             range: {
               end: {
-                character: 34,
-                line: 5,
+                character: 45,
+                line: 17,
               },
               start: {
-                character: 19,
-                line: 5,
+                character: 30,
+                line: 17,
               },
             },
             uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
@@ -219,6 +220,19 @@ Deno.test("design-tokens-language-server", async (t) => {
               start: {
                 character: 13,
                 line: 7,
+              },
+            },
+            uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
+          },
+          {
+            range: {
+              end: {
+                character: 55,
+                line: 10,
+              },
+              start: {
+                character: 40,
+                line: 10,
               },
             },
             uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
