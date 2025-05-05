@@ -1,6 +1,10 @@
 import * as LSP from "vscode-languageserver-protocol";
 
-import { adjustPosition, DTLSTextDocument } from "#document";
+import {
+  adjustPosition,
+  DTLSTextDocument,
+  TOKEN_REFERENCE_REGEXP,
+} from "#document";
 
 import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
@@ -12,7 +16,10 @@ import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
 import { DTLSToken } from "#tokens";
 
-const REF_RE = /{([^}]+)}/g;
+import {
+  DTLSSemanticTokenIntermediate,
+  DTLSTokenTypes,
+} from "#lsp/methods/textDocument/semanticTokens.ts";
 
 type YAMLPath = readonly (
   | YAML.Node
@@ -198,6 +205,12 @@ export class YamlDocument extends DTLSTextDocument {
     return null;
   }
 
+  #localReferenceToTokenName(reference: string) {
+    const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+    const path = Array.isArray(reference) ? reference : reference.split(".");
+    return [prefix, ...path].filter((x) => !!x).join("-");
+  }
+
   getRangeForTokenName(tokenName: string, prefix?: string): LSP.Range | null {
     return this.#getRangeForNode(this.#getNodeForTokenName(tokenName, prefix));
   }
@@ -224,7 +237,7 @@ export class YamlDocument extends DTLSTextDocument {
 
       // get the match that contains the current position
       for (const currentLine of valueLines) {
-        const matches = currentLine.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
+        const matches = currentLine.match(TOKEN_REFERENCE_REGEXP); // ['{color.blue._}', '{color.blue.dark}']
         for (const reference of matches ?? []) {
           const matchOffsetInLine = currentLine.indexOf(reference);
           if (
@@ -232,12 +245,10 @@ export class YamlDocument extends DTLSTextDocument {
             adjusted.character <= matchOffsetInLine + reference.length
           ) {
             const stringRange = this.#getRangeForNode(stringNode)!;
-            const refUnpacked = reference.replace(REF_RE, "$1");
+            const refUnpacked = reference.replace(TOKEN_REFERENCE_REGEXP, "$1");
             const line = stringRange.start.line;
             const character = currentLine.indexOf(refUnpacked);
-            const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
-            const path = [prefix, ...refUnpacked.split(".")].filter((x) => !!x);
-            const name = `--${path.join("-")}`;
+            const name = `--${this.#localReferenceToTokenName(refUnpacked)}`;
             if (this.#context.tokens.has(name)) {
               return {
                 name,
@@ -252,6 +263,55 @@ export class YamlDocument extends DTLSTextDocument {
       }
     }
     return null;
+  }
+
+  public getSemanticTokensFull() {
+    const tokens: DTLSSemanticTokenIntermediate[] = [];
+    YAML.visit(this.#root, {
+      Pair: (_, node) => {
+        const { key, value } = node;
+        if (
+          YAML.isScalar(key) && key.value === "$value" &&
+          YAML.isScalar(value) && typeof value.value === "string" &&
+          usesReferences(value.value)
+        ) {
+          const valueNodeRange = this.#getRangeForNode(value);
+          if (!valueNodeRange) return;
+          const valueLines = value.value.split("\n");
+          tokens.push(...valueLines.flatMap((currentLine, i) => {
+            const line = valueNodeRange.start.line + i;
+            const matches = currentLine.matchAll(TOKEN_REFERENCE_REGEXP);
+            if (!matches) return [];
+            return matches.flatMap((match) => {
+              const { reference } = match.groups!;
+              const name = this.#localReferenceToTokenName(reference);
+              if (!this.#context.tokens.has(name)) return [];
+              const [start] = match.indices!.groups!.reference;
+              let lastStartChar = 1 +
+                (i === 0
+                  ? valueNodeRange.start.character + start
+                  : currentLine.indexOf(reference));
+              return reference.split(".").map((token, k) => {
+                const startChar = lastStartChar;
+                const { length } = token;
+                const tokenModifiers = 0;
+                const tokenType = DTLSTokenTypes[k] ?? DTLSTokenTypes[1];
+                lastStartChar = length + 1;
+                return {
+                  token,
+                  line,
+                  startChar,
+                  length,
+                  tokenType,
+                  tokenModifiers,
+                };
+              });
+            }).toArray();
+          }));
+        }
+      },
+    });
+    return tokens;
   }
 
   public getColors(context: DTLSContext): LSP.ColorInformation[] {
@@ -324,7 +384,7 @@ export class YamlDocument extends DTLSTextDocument {
         if (!range || typeof content !== "string") return;
         const errors: string[] = [];
         if (usesReferences(content)) {
-          const matches = content.match(REF_RE);
+          const matches = content.match(TOKEN_REFERENCE_REGEXP);
           for (const name of matches ?? []) {
             const resolved = context.tokens.resolveValue(name);
             if (!resolved) {

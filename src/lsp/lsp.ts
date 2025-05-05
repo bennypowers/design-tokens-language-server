@@ -10,14 +10,14 @@ import * as CodeAction from "./methods/textDocument/codeAction.ts";
 import * as Diagnostic from "./methods/textDocument/diagnostic.ts";
 import * as Hover from "./methods/textDocument/hover.ts";
 import * as Completion from "./methods/textDocument/completion.ts";
-import { colorPresentation } from "./methods/textDocument/colorPresentation.ts";
+import * as ColorPresentation from "./methods/textDocument/colorPresentation.ts";
+import * as SemanticTokens from "./methods/textDocument/semanticTokens.ts";
 import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
 import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
 import * as Definition from "./methods/textDocument/definition.ts";
 import * as References from "./methods/textDocument/references.ts";
 
 import manifest from "../../package.json" with { type: "json" };
-import { Server } from "#server";
 
 const { version } = manifest;
 
@@ -26,12 +26,13 @@ const handlers = {
   "completionItem/resolve": completionItemResolve,
   "textDocument/codeAction": CodeAction.codeAction,
   "textDocument/definition": Definition.definition,
-  "textDocument/colorPresentation": colorPresentation,
+  "textDocument/colorPresentation": ColorPresentation.colorPresentation,
   "textDocument/completion": Completion.completion,
   "textDocument/diagnostic": Diagnostic.diagnostic,
   "textDocument/documentColor": DocumentColor.documentColor,
   "textDocument/hover": Hover.hover,
   "textDocument/references": References.references,
+  "textDocument/semanticTokens/full": SemanticTokens.full,
 };
 
 type Handlers =
@@ -278,6 +279,7 @@ export class Lsp {
         ...Completion.capabilities,
         ...CodeAction.capabilities,
         ...Diagnostic.capabilities,
+        ...SemanticTokens.capabilities,
       },
       serverInfo: {
         name: "design-tokens-language-server",

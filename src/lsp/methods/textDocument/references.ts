@@ -6,6 +6,7 @@ import {
 import { DTLSContext } from "#lsp";
 import { JsonDocument } from "#json";
 import { YamlDocument } from "#yaml";
+import { Logger } from "#logger";
 
 export function references(
   params: ReferenceParams,
@@ -23,18 +24,19 @@ export function references(
       const token = context.tokens.get(name);
       if (!token) return null;
       const ext = token.$extensions.designTokensLanguageServer;
-      const locations = new Set<Location>();
+      // stringify to ensure reference identity and avoid duplicates
+      const locations = new Set<string>();
       for (const doc of context.documents.getAll()) {
         if (doc.language === "css") {
           for (const range of doc.getRangesForSubstring(`(${name})`)) {
-            locations.add({ uri: doc.uri, range });
+            locations.add(JSON.stringify({ uri: doc.uri, range }));
           }
           for (const range of doc.getRangesForSubstring(`(${name},`)) {
-            locations.add({ uri: doc.uri, range });
+            locations.add(JSON.stringify({ uri: doc.uri, range }));
           }
         } else {
           for (const range of doc.getRangesForSubstring(ext.reference)) {
-            locations.add({ uri: doc.uri, range });
+            locations.add(JSON.stringify({ uri: doc.uri, range }));
           }
         }
       }
@@ -43,10 +45,10 @@ export function references(
         const doc = context.documents.get(uri) as JsonDocument | YamlDocument;
         const range = doc.getRangeForPath(ext.path);
         if (uri && range) {
-          locations.add({ uri, range });
+          locations.add(JSON.stringify({ uri, range }));
         }
       }
-      return locations.values().toArray();
+      return locations.values().map((x) => JSON.parse(x)).toArray();
     }
   }
 }

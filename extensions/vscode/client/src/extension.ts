@@ -49,6 +49,7 @@ export async function activate(context: ExtensionContext) {
     documentSelector: [
       { scheme: "file", language: "css" },
       { scheme: "file", language: "json" },
+      { scheme: "file", language: "yaml" },
     ],
   };
 

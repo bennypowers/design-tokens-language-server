@@ -7,3 +7,5 @@ color:
   susan:
     $value: "{color.red.hex}"
     $description: referenced from a json file
+  double:
+    $value: "light-dark({color.purple}, {color.red.hex})"

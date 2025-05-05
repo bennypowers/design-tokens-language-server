@@ -13,6 +13,9 @@
       },
       "yamref": {
         "$value": "{color.becky}"
+      },
+      "doubleref": {
+        "$value": "light-dark({color.red.hex}, {color.blue.dark})"
       }
     }
   }

@@ -13,5 +13,5 @@ bad {
   color: var(--token-color-blue, green);
   font-family: var(--token-font-family, a, b, c, d);
   font-weight: var(--token-font-weight, "400");
-  box-shadow: var(--token-box-shadow, 1px 2px 3px 4px rgba(2, 4, 6 / 0.8));
+  box-shadow: var(--token-box-shadow, 1px 2px 3px 4px rgba(2, 4, 6 / .8));
 }
