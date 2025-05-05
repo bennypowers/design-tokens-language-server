@@ -245,20 +245,26 @@ export class CssDocument extends DTLSTextDocument {
 
     return callNodes.values().flatMap(
       ({ range, tokenNameNode, fallbacks, fallback }) => {
+        const _token = context.tokens.get(tokenNameNode.text)!;
         const token = {
           name: tokenNameNode.text,
           range: tsRangeToLspRange(tokenNameNode),
-          token: context.tokens.get(tokenNameNode.text)!,
+          token: _token,
         };
         if (context.tokens.has(token.name)) {
           const { $value } = token.token;
           if (fallbacks.length) {
+            const value = $value.toString();
+            // TODO: compute semantic equivalence using CSS OM
+            const valid = _token.$type === "color"
+              ? fallback.toLowerCase() === value.toLowerCase()
+              : fallback === value;
             return [{
               range,
               token,
               fallback: {
                 value: fallback,
-                valid: fallback === $value.toString(),
+                valid,
                 range: tsNodesToLspRangeInclusive(...fallbacks),
               },
             }];
