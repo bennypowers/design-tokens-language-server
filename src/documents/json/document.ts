@@ -8,11 +8,13 @@ import * as JSONC from "jsonc-parser";
 import { cssColorToLspColor } from "#color";
 import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
-import { DTLSTextDocument } from "#document";
+import { DTLSTextDocument, TOKEN_REFERENCE_REGEXP } from "#document";
 
 import { DEFAULT_GROUP_MARKERS, DTLSToken } from "#tokens";
-
-const REF_RE = /{([^}]+)}/g;
+import {
+  DTLSSemanticTokenIntermediate,
+  DTLSTokenTypes,
+} from "#lsp/methods/textDocument/semanticTokens.ts";
 
 export class JsonDocument extends DTLSTextDocument {
   language = "json" as const;
@@ -137,6 +139,12 @@ export class JsonDocument extends DTLSTextDocument {
     return null;
   }
 
+  #localReferenceToTokenName(reference: string | (JSONC.Segment[])) {
+    const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+    const path = Array.isArray(reference) ? reference : reference.split(".");
+    return [prefix, ...path].filter((x) => !!x).join("-");
+  }
+
   getTokenForPath(path: JSONC.Segment[]): DTLSToken | null {
     const node = this.#getNodeAtJSONPath(path);
     if (!node) {
@@ -157,10 +165,8 @@ export class JsonDocument extends DTLSTextDocument {
           $value = resolved;
         }
       }
-      const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
-      return this.#context.tokens.get(
-        [prefix, ...path].filter((x) => !!x).join("-"),
-      ) ?? null;
+      return this.#context.tokens.get(this.#localReferenceToTokenName(path)) ??
+        null;
     }
     return null;
   }
@@ -181,7 +187,7 @@ export class JsonDocument extends DTLSTextDocument {
     const stringNode = this.#getNodeAtPosition(position, offset);
     switch (stringNode?.type) {
       case "string": {
-        const matches = `${stringNode.value}`.match(REF_RE); // ['{color.blue._}', '{color.blue.dark}']
+        const matches = `${stringNode.value}`.match(TOKEN_REFERENCE_REGEXP); // ['{color.blue._}', '{color.blue.dark}']
         // because it's json, we only need to check the current line
         const currentLine = this.getText().split("\n")[position.line]; // "$value": "light-dark({color.blue._}, {color.blue.dark})"
 
@@ -196,7 +202,7 @@ export class JsonDocument extends DTLSTextDocument {
 
         if (reference) {
           const stringRange = this.#getRangeForNode(stringNode)!;
-          const refUnpacked = reference.replace(REF_RE, "$1");
+          const refUnpacked = reference.replace(TOKEN_REFERENCE_REGEXP, "$1");
           const line = stringRange.start.line;
           const character = currentLine.indexOf(refUnpacked);
           const spec = this.#context.workspaces.getSpecForUri(this.uri);
@@ -231,6 +237,41 @@ export class JsonDocument extends DTLSTextDocument {
   ): JSONC.Segment[] | null {
     const node = this.#getNodeAtPosition(position, offset);
     return node && JSONC.getNodePath(node);
+  }
+
+  public getSemanticTokensFull(): DTLSSemanticTokenIntermediate[] {
+    return this.#allStringValueNodes.flatMap((node) => {
+      if (typeof node.value !== "string" || !usesReferences(node.value)) {
+        return [];
+      }
+      const valueNodeRange = this.#getRangeForNode(node);
+      if (!valueNodeRange) return [];
+      const matches = node.value.matchAll(TOKEN_REFERENCE_REGEXP);
+      if (!matches) return [];
+      const line = valueNodeRange.start.line;
+      return matches.flatMap((match) => {
+        const { reference } = match.groups!;
+        const name = this.#localReferenceToTokenName(reference);
+        if (!this.#context.tokens.has(name)) return [];
+        const [start] = match.indices!.groups!.reference;
+        let lastStartChar = 1 + valueNodeRange.start.character + start;
+        return reference.split(".").map((token, j) => {
+          const startChar = lastStartChar;
+          const { length } = token;
+          const tokenModifiers = 0;
+          const tokenType = DTLSTokenTypes[j] ?? DTLSTokenTypes[1];
+          lastStartChar = length + 1;
+          return {
+            token,
+            line,
+            startChar,
+            length,
+            tokenType,
+            tokenModifiers,
+          };
+        });
+      }).toArray();
+    });
   }
 
   public getColors(context: DTLSContext): LSP.ColorInformation[] {
@@ -311,7 +352,7 @@ export class JsonDocument extends DTLSTextDocument {
       const content = valueNode.value;
       const errors: string[] = [];
       if (usesReferences(content)) {
-        const matches = content.match(REF_RE);
+        const matches = content.match(TOKEN_REFERENCE_REGEXP);
         for (const name of matches ?? []) {
           const resolved = context.tokens.resolveValue(name);
           if (!resolved) {

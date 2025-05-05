@@ -4,7 +4,8 @@
 [![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
 
 Editor tools for working with [<abbr title="design tokens community
-  group">DTCG</abbr> formatted design tokens][dtcg] in CSS and JSON files.
+  group">DTCG</abbr> formatted design tokens][dtcg] in CSS, and 
+for token definitions in JSON or YAML files.
 
 > [!NOTE]
 > This pre-release software. If you encounter bugs or unexpected behavior,
@@ -47,7 +48,13 @@ Display token color values in your source, e.g. as swatches.
 
 ![Document color swatches](./docs/document-color.png)
 
-### 🗺️ Go to Definition
+### 👂 Semantic Tokens
+
+Highlight token references inside token definition files.
+
+![Semantic tokens highlighting legit token definitions](./docs/semantic-tokens.png)
+
+### 🪪 Go to Definition
 
 Jump to the position in the tokens file where the token is defined. Can also
 jump from a token reference in a JSON file to the token's definition.
@@ -57,6 +64,13 @@ jump from a token reference in a JSON file to the token's definition.
 Go to definition in a split window using Neovim's
 [`<C-w C-]>` binding](https://neovim.io/doc/user/windows.html#CTRL-W_g_CTRL-%5D),
 which defers to LSP methods when they're available
+
+### 🗺️ References
+
+Locate all references to a token in open files, whether in CSS or in the token
+definition JSON or YAML files
+
+![References](./docs/references.png)
 
 ## 🧰 Usage
 

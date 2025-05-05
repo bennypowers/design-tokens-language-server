@@ -32,7 +32,7 @@ const handlers = {
   "textDocument/documentColor": DocumentColor.documentColor,
   "textDocument/hover": Hover.hover,
   "textDocument/references": References.references,
-  "textDocument/semanticTokens": SemanticTokens.semanticTokens,
+  "textDocument/semanticTokens/full": SemanticTokens.full,
 };
 
 type Handlers =

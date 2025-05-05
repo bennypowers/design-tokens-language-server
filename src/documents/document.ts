@@ -2,7 +2,8 @@ import * as LSP from "vscode-languageserver-protocol";
 import { FullTextDocument } from "./textDocument.ts";
 import { DTLSContext } from "#lsp/lsp.ts";
 import { DTLSToken } from "#tokens";
-import { Logger } from "#logger";
+
+export const TOKEN_REFERENCE_REGEXP = /{(?<reference>[^}]+)}/gd;
 
 /**
  * Represents an occurrence of a token name in a file

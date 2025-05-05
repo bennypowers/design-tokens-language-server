@@ -69,6 +69,16 @@ describe("Lsp", () => {
               referencesProvider: true,
               hoverProvider: true,
               definitionProvider: true,
+              semanticTokensProvider: {
+                full: true,
+                legend: {
+                  tokenModifiers: [],
+                  tokenTypes: [
+                    "namespace",
+                    "property",
+                  ],
+                },
+              },
             },
           } satisfies LSP.InitializeResult,
         );
