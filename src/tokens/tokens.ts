@@ -16,7 +16,7 @@ import { DTLSContext, TokenFileSpec } from "#lsp/lsp.ts";
 import { Logger } from "#logger";
 import { PreprocessedTokens } from "style-dictionary";
 import { deepMerge } from "@std/collections/deep-merge";
-import { toFileUrl } from "@std/path";
+import { relative, toFileUrl } from "@std/path";
 
 interface DTLSExtensions {
   /** The CSS var name for this token */
@@ -88,7 +88,8 @@ export class Tokens extends Map<string, DTLSToken> {
       return resolveReferences(reference, this.#dtcg as PreprocessedTokens, {
         usesDtcg: true,
       }) as string | number;
-    } catch {
+    } catch (e) {
+      Logger.error`${e}`;
       return null;
     }
   }
@@ -193,11 +194,10 @@ export class Tokens extends Map<string, DTLSToken> {
         const tokens = await this.#importSpec(spec.path);
         const amt = this.populateFromDtcg(tokens, spec, context);
         this.#importedSpecs.add(spec.path);
-        Logger.info`✍️ Registered ${amt} tokens`;
-        Logger.info`  from: ${spec.path}`;
-        if (spec.prefix) {
-          Logger.info`  with prefix ${spec.prefix}`;
-        }
+        const rel = relative(Deno.cwd(), spec.path);
+        Logger.info`✍️ Registered ${amt} tokens from: ${rel}${
+          spec.prefix ? ` with prefix ${spec.prefix}` : ""
+        }`;
       } catch (e) {
         Logger.error`Could not load tokens for ${spec}: ${e}`;
       }

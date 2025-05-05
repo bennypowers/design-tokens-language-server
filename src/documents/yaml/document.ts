@@ -267,47 +267,56 @@ export class YamlDocument extends DTLSTextDocument {
 
   public getSemanticTokensFull() {
     const tokens: DTLSSemanticTokenIntermediate[] = [];
+    const addToken = (value: YAML.Scalar) => {
+      if (typeof value.value === "string" && usesReferences(value.value)) {
+        const valueNodeRange = this.#getRangeForNode(value);
+        if (!valueNodeRange) return;
+        const valueLines = value.value.split("\n");
+        tokens.push(...valueLines.flatMap((currentLine, i) => {
+          const line = valueNodeRange.start.line + i;
+          const matches = currentLine.matchAll(TOKEN_REFERENCE_REGEXP);
+          if (!matches) return [];
+          return matches.flatMap((match) => {
+            const { reference } = match.groups!;
+            const name = this.#localReferenceToTokenName(reference);
+            if (!this.#context.tokens.has(name)) return [];
+            const [start] = match.indices!.groups!.reference;
+            let lastStartChar = 1 +
+              (i === 0
+                ? valueNodeRange.start.character + start
+                : currentLine.indexOf(reference));
+            return reference.split(".").map((token, k) => {
+              const startChar = lastStartChar;
+              const { length } = token;
+              const tokenModifiers = 0;
+              const tokenType = DTLSTokenTypes[k] ?? DTLSTokenTypes[1];
+              lastStartChar = length + 1;
+              return {
+                token,
+                line,
+                startChar,
+                length,
+                tokenType,
+                tokenModifiers,
+              };
+            });
+          }).toArray();
+        }));
+      }
+    };
     YAML.visit(this.#root, {
       Pair: (_, node) => {
         const { key, value } = node;
-        if (
-          YAML.isScalar(key) && key.value === "$value" &&
-          YAML.isScalar(value) && typeof value.value === "string" &&
-          usesReferences(value.value)
-        ) {
-          const valueNodeRange = this.#getRangeForNode(value);
-          if (!valueNodeRange) return;
-          const valueLines = value.value.split("\n");
-          tokens.push(...valueLines.flatMap((currentLine, i) => {
-            const line = valueNodeRange.start.line + i;
-            const matches = currentLine.matchAll(TOKEN_REFERENCE_REGEXP);
-            if (!matches) return [];
-            return matches.flatMap((match) => {
-              const { reference } = match.groups!;
-              const name = this.#localReferenceToTokenName(reference);
-              if (!this.#context.tokens.has(name)) return [];
-              const [start] = match.indices!.groups!.reference;
-              let lastStartChar = 1 +
-                (i === 0
-                  ? valueNodeRange.start.character + start
-                  : currentLine.indexOf(reference));
-              return reference.split(".").map((token, k) => {
-                const startChar = lastStartChar;
-                const { length } = token;
-                const tokenModifiers = 0;
-                const tokenType = DTLSTokenTypes[k] ?? DTLSTokenTypes[1];
-                lastStartChar = length + 1;
-                return {
-                  token,
-                  line,
-                  startChar,
-                  length,
-                  tokenType,
-                  tokenModifiers,
-                };
-              });
-            }).toArray();
-          }));
+        if (YAML.isScalar(key) && key.value === "$value") {
+          if (YAML.isScalar(value)) {
+            addToken(value);
+          } else if (YAML.isSeq(value)) {
+            for (const item of value.items) {
+              if (YAML.isScalar(item)) {
+                addToken(item);
+              }
+            }
+          }
         }
       },
     });
@@ -316,53 +325,70 @@ export class YamlDocument extends DTLSTextDocument {
 
   public getColors(context: DTLSContext): LSP.ColorInformation[] {
     const colors: LSP.ColorInformation[] = [];
-    YAML.visit(this.#root, {
-      Pair: (_key, node, path) => {
-        if (
-          YAML.isScalar(node.key) && node.key.value === "$value" &&
-          YAML.isScalar(node.value) && typeof node.value.value === "string"
-        ) {
-          const content = node.value.value;
-          const type = this.#getDTCGTypeForNode(node.value, path);
-          if (type === "color" && node.value.range) {
-            const range = this.#getRangeForNode(node.value);
-            if (!range) return;
-            if (range && usesReferences(content)) {
-              const references = content.match(/{[^}]*}/g);
-              for (const reference of references ?? []) {
-                const resolved = context.tokens.resolveValue(reference);
-                if (resolved) {
-                  const line = range.start.line;
-                  const character = range.start.character +
-                    content.indexOf(reference) + 1;
-                  const color = cssColorToLspColor(resolved.toString());
-                  if (color) {
-                    colors.push({
-                      color,
-                      range: {
-                        start: { line, character },
-                        end: {
-                          line,
-                          character: character + reference.length - 2,
-                        },
-                      },
-                    });
-                  }
-                }
-              }
-            } else if (content.startsWith("light-dark(")) {
-              for (const match of getLightDarkValues(content)) {
-                const color = cssColorToLspColor(match);
+    const addColor = (
+      value: YAML.Scalar,
+      path: readonly (
+        | YAML.Node
+        | YAML.Pair<unknown, unknown>
+        | YAML.Document<YAML.Node, true>
+      )[],
+    ) => {
+      if (typeof value.value === "string") {
+        const content = value.value;
+        const type = this.#getDTCGTypeForNode(value, path);
+        if (type === "color" && value.range) {
+          const range = this.#getRangeForNode(value);
+          if (!range) return;
+          if (range && usesReferences(content)) {
+            const references = content.match(/{[^}]*}/g);
+            for (const reference of references ?? []) {
+              const resolved = context.tokens.resolveValue(reference);
+              if (resolved) {
+                const line = range.start.line;
+                const character = range.start.character +
+                  content.indexOf(reference) + 1;
+                const color = cssColorToLspColor(resolved.toString());
                 if (color) {
-                  colors.push({ range, color });
+                  colors.push({
+                    color,
+                    range: {
+                      start: { line, character },
+                      end: {
+                        line,
+                        character: character + reference.length - 2,
+                      },
+                    },
+                  });
                 }
               }
-            } else {
-              const resolved = context.tokens.resolveValue(content);
-              const match = resolved?.toString() ?? content;
+            }
+          } else if (content.startsWith("light-dark(")) {
+            for (const match of getLightDarkValues(content)) {
               const color = cssColorToLspColor(match);
               if (color) {
                 colors.push({ range, color });
+              }
+            }
+          } else {
+            const resolved = context.tokens.resolveValue(content);
+            const match = resolved?.toString() ?? content;
+            const color = cssColorToLspColor(match);
+            if (color) {
+              colors.push({ range, color });
+            }
+          }
+        }
+      }
+    };
+    YAML.visit(this.#root, {
+      Pair: (_key, node, path) => {
+        if (YAML.isScalar(node.key) && node.key.value === "$value") {
+          if (YAML.isScalar(node.value)) {
+            addColor(node.value, path);
+          } else if (YAML.isSeq(node.value)) {
+            for (const item of node.value.items) {
+              if (YAML.isScalar(item)) {
+                addColor(item, path);
               }
             }
           }
@@ -373,10 +399,12 @@ export class YamlDocument extends DTLSTextDocument {
   }
 
   public getDiagnostics(context: DTLSContext) {
+    Logger.info`getDiagnostics ${this.uri}`;
     if (!context.tokens) {
       throw new Error("No tokens found in context");
     }
     const diagnostics: LSP.Diagnostic[] = [];
+    // TODO: start with Pair, like in Color, and generalize that code
     YAML.visit(this.#root, {
       Scalar: (_, node) => {
         const range = this.#getRangeForNode(node);

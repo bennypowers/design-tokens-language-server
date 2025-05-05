@@ -77,6 +77,9 @@ export class Documents {
   }
 
   onDidClose(params: LSP.DidCloseTextDocumentParams, _: DTLSContext) {
+    // TODO: don't delete if the doc is a token definition
+    // or consider holding the token definitions in a separate map,
+    // without necessarily treating them as LSP documents
     this.#map.delete(params.textDocument.uri);
   }
 

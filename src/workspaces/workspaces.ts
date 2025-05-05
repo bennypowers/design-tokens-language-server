@@ -13,7 +13,7 @@ import { JsonDocument } from "#json";
 import { YamlDocument } from "#yaml";
 
 import { normalizeTokenFile } from "../tokens/utils.ts";
-import { isGlob, toFileUrl } from "@std/path";
+import { isGlob, relative, toFileUrl } from "@std/path";
 import { expandGlob } from "@std/fs/expand-glob";
 import { DTLSDocument } from "#documents";
 import { deepMerge } from "@std/collections/deep-merge";
@@ -53,12 +53,14 @@ export class Workspaces {
         "./package.json",
         uri.replace(/\/$/, "") + "/",
       );
-      Logger.info`🎒 Loading package.json from ${pkgJsonPath.href}`;
+      Logger.info`🎒 Loading package.json from ${
+        relative(Deno.cwd(), pkgJsonPath.pathname)
+      }`;
       const manifest = JSON.parse(
         await Deno.readTextFile(pkgJsonPath.pathname),
       );
       Logger
-        .info`  ...loaded package.json for ${manifest.name}@${manifest.version}`;
+        .info`  ...loaded ${manifest.name}@${manifest.version}`;
       const settings = manifest?.designTokensLanguageServer;
       return settings;
     } catch (e) {
@@ -103,10 +105,11 @@ export class Workspaces {
   ) {
     const { prefix, path, groupMarkers } = spec;
     if (!force && this.#loadedSpecs.has(path)) return;
-    Logger.info`🪙 Adding token spec`;
-    Logger.info`  from ${path}`;
-    if (prefix) Logger.info`  with prefix ${prefix}`;
-    if (groupMarkers) Logger.info`  and groupMarkers ${groupMarkers}`;
+    Logger.info("🪙 Adding token spec from {p}{f}{g}", {
+      p: relative(Deno.cwd(), path),
+      f: !prefix ? "" : ` prefix: ${prefix}`,
+      g: !groupMarkers ? "" : ` groupMarkers: ${groupMarkers}`,
+    });
     this.#tokenSpecs.add(spec);
     try {
       const tokenfileContent = await Deno.readTextFile(spec.path);
@@ -149,14 +152,11 @@ export class Workspaces {
       );
       if (isGlob(normalizedButGlobby.path)) {
         const norm = `file://${normalizedButGlobby.path}`.replace(uri, "");
-        const specs = expandGlob(
-          norm,
-          {
-            includeDirs: false,
-            globstar: false,
-            root,
-          },
-        );
+        const specs = expandGlob(norm, {
+          includeDirs: false,
+          globstar: true,
+          root,
+        });
         for await (const fspec of specs) {
           const path = fspec.path;
           await this.#loadSpec(context, { ...normalizedButGlobby, path });
@@ -172,7 +172,9 @@ export class Workspaces {
     { force }: { force: boolean },
   ) {
     for (const ws of this.#workspaces) {
-      Logger.info`📁 Adding workspace folder ${ws.name}@${ws.uri}`;
+      Logger.info`📁 Adding workspace folder ${ws.name}@${
+        relative(Deno.cwd(), ws.uri)
+      }`;
       const localSettings =
         await this.#tryToLoadSettingsFromPackageJson(ws.uri) ?? {};
       const settings = deepMerge(localSettings ?? {}, this.#settings ?? {});

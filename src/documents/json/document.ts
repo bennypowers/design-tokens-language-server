@@ -344,6 +344,7 @@ export class JsonDocument extends DTLSTextDocument {
   }
 
   public getDiagnostics(context: DTLSContext) {
+    Logger.info`getDiagnostics ${this.uri}`;
     if (!context.tokens) {
       throw new Error("No tokens found in context");
     }
