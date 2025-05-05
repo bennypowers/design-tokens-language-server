@@ -26,7 +26,8 @@
   },
   "activationEvents": [
     "onLanguage:css",
-    "onLanguage:json"
+    "onLanguage:json",
+    "onLanguage:yaml"
   ],
   "main": "./client/out/extension",
   "contributes": {
