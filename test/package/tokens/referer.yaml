@@ -13,4 +13,4 @@ color:
       - "{color.pink}"
       - "{color.purple}"
   double:
-    $value: "light-dark({color.purple}, {color.red.hex})"
+    $value: "light-dark({color.blue}, {color.red.hex})"

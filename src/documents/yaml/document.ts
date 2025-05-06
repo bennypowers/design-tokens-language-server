@@ -136,29 +136,32 @@ export class YamlDocument extends DTLSTextDocument {
       .reduce((acc, row, i) => {
         if (i === adjustedPosition.line) {
           return acc + adjustedPosition.character;
-        } else if (i < adjustedPosition.line) return acc + row.length;
+        } else if (i < adjustedPosition.line) return acc + row.length + 1; // add 1 for the '\n'
         else return acc;
       }, 0);
-    let previousRange = [-Infinity, Infinity];
+
+    function isInRangeOfPosition(node: YAML.Node) {
+      const [start, end] = node?.range ?? [Infinity, -Infinity];
+      return start <= offsetOfPosition && end >= offsetOfPosition;
+    }
+
     YAML.visit(this.#root, {
-      Node: (_, node) => {
-        let n: YAML.Node | undefined = node;
-        if (YAML.isAlias(node)) {
-          n = node.resolve(this.#document);
+      Node: (_, unresolved) => {
+        let node: YAML.Node | undefined = unresolved;
+        if (YAML.isAlias(unresolved)) {
+          node = unresolved.resolve(this.#document);
         }
-        if (n?.range) {
-          const [start, end] = n.range;
-          previousRange = n.range;
-          const nodeContainsOffset = start <= offsetOfPosition &&
-            end >= offsetOfPosition;
-          const isSmallerThanPreviousRange = start >= previousRange[0] &&
-            end <= previousRange[1];
-          if (nodeContainsOffset && isSmallerThanPreviousRange) {
-            found = node;
-          }
+        if (YAML.isScalar(node) && isInRangeOfPosition(node)) {
+          found = node;
+        } else if (YAML.isSeq<YAML.Node>(node)) {
+          found = node.items.find(isInRangeOfPosition) ?? null;
+        }
+        if (found) {
+          return YAML.visit.BREAK;
         }
       },
     });
+
     return found;
   }
 
@@ -225,7 +228,9 @@ export class YamlDocument extends DTLSTextDocument {
   ) {
     const adjusted = adjustPosition(position, offset);
     const stringNode = this.#getNodeAtPosition(adjusted, offset);
-    if (!YAML.isScalar(stringNode)) return null;
+    if (!YAML.isScalar(stringNode)) {
+      return null;
+    }
     if (typeof stringNode.value === "string") {
       const valueRange = this.#getRangeForNode(stringNode);
 
