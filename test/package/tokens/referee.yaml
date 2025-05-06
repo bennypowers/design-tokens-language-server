@@ -3,3 +3,10 @@ color:
   purple:
     $value: rebeccapurple
     $description: sentimental color
+  pink:
+    $value: lightpink
+  twotone:
+    $description: Two-toned color
+    $value:
+      - salmon
+      - maroon

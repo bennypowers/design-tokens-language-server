@@ -7,5 +7,10 @@ color:
   susan:
     $value: "{color.red.hex}"
     $description: referenced from a json file
+  twice:
+    $description: Color token whose $value is defined as a YAML sequence
+    $value:
+      - "{color.pink}"
+      - "{color.purple}"
   double:
     $value: "light-dark({color.purple}, {color.red.hex})"
