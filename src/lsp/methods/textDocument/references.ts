@@ -6,7 +6,6 @@ import {
 import { DTLSContext } from "#lsp";
 import { JsonDocument } from "#json";
 import { YamlDocument } from "#yaml";
-import { Logger } from "#logger";
 
 export function references(
   params: ReferenceParams,
@@ -19,20 +18,26 @@ export function references(
       return null;
     default: {
       const reference = doc.getTokenReferenceAtPosition(params.position);
-      if (!reference) return null;
-      const { name } = reference;
-      const token = context.tokens.get(name);
+      const token = context.tokens.get(reference?.name);
       if (!token) return null;
       const ext = token.$extensions.designTokensLanguageServer;
       // stringify to ensure reference identity and avoid duplicates
       const locations = new Set<string>();
       for (const doc of context.documents.getAll()) {
         if (doc.language === "css") {
-          for (const range of doc.getRangesForSubstring(`(${name})`)) {
-            locations.add(JSON.stringify({ uri: doc.uri, range }));
-          }
-          for (const range of doc.getRangesForSubstring(`(${name},`)) {
-            locations.add(JSON.stringify({ uri: doc.uri, range }));
+          for (const range of doc.getRangesForSubstring(ext.name)) {
+            const charAfterRef = doc.getText({
+              start: range.end,
+              end: {
+                line: range.end.line,
+                character: range.end.character + 1,
+              },
+            });
+            // it's a var call with or without fallback
+            // this excludes things like `--token-color-red:` and `--token-color-reddish)`
+            if (charAfterRef.match(/[,)]/)) {
+              locations.add(JSON.stringify({ uri: doc.uri, range }));
+            }
           }
         } else {
           for (const range of doc.getRangesForSubstring(ext.reference)) {
