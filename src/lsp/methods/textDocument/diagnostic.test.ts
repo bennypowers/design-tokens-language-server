@@ -212,6 +212,8 @@ describe("textDocument/diagnostic", () => {
         severity: 1,
         data: {
           tokenName: "--token-font-heft",
+          actual: "'400'",
+          expected: '400',
         },
         message: "Token fallback does not match expected value: 400",
         range: doc.getRangeForSubstring("'400'"),
