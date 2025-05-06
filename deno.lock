@@ -26,8 +26,10 @@
     "jsr:@std/path@^1.0.8": "1.0.9",
     "jsr:@std/path@^1.0.9": "1.0.9",
     "jsr:@std/regexp@^1.0.1": "1.0.1",
+    "jsr:@std/semver@*": "1.0.5",
     "jsr:@std/testing@*": "1.0.11",
     "jsr:@std/testing@^1.0.11": "1.0.11",
+    "jsr:@std/toml@*": "1.0.4",
     "jsr:@sv2dev/tasque@~0.1.2": "0.1.2",
     "npm:@types/node@*": "22.12.0",
     "npm:@types/tinycolor2@^1.4.6": "1.4.6",
@@ -113,6 +115,9 @@
     "@std/regexp@1.0.1": {
       "integrity": "5179d823465085c5480dafb44438466e83c424fadc61ba31f744050ecc0f596d"
     },
+    "@std/semver@1.0.5": {
+      "integrity": "529f79e83705714c105ad0ba55bec0f9da0f24d2f726b6cc1c15e505cc2c0624"
+    },
     "@std/testing@1.0.11": {
       "integrity": "12b3db12d34f0f385a26248933bde766c0f8c5ad8b6ab34d4d38f528ab852f48",
       "dependencies": [
@@ -122,6 +127,12 @@
         "jsr:@std/fs@^1.0.16",
         "jsr:@std/internal",
         "jsr:@std/path@^1.0.8"
+      ]
+    },
+    "@std/toml@1.0.4": {
+      "integrity": "8781e687d04c8fbe246b9c5714be01925792a94d943462c33777675ab557cff1",
+      "dependencies": [
+        "jsr:@std/collections"
       ]
     },
     "@sv2dev/tasque@0.1.2": {

@@ -8,11 +8,6 @@ import {
 
 import { getTokenMarkdown } from "#tokens";
 import { DTLSContext } from "#lsp";
-import { Logger } from "#logger";
-
-export const capabilities: Partial<ServerCapabilities> = {
-  hoverProvider: true,
-};
 
 /**
  * Generates hover information for design tokens.
@@ -24,10 +19,6 @@ export const capabilities: Partial<ServerCapabilities> = {
 export function hover(params: HoverParams, context: DTLSContext): null | Hover {
   const doc = context.documents.get(params.textDocument.uri);
   const result = doc.getTokenReferenceAtPosition(params.position);
-  Logger.debug`
-uri: ${doc.uri}
-result: ${result}
-`;
   if (result) {
     const { name, range } = result;
     const token = context.tokens.get(name);
@@ -41,3 +32,8 @@ result: ${result}
   }
   return null;
 }
+
+export const capabilities: Partial<ServerCapabilities> = {
+  hoverProvider: true,
+};
+
