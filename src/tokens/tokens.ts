@@ -89,7 +89,7 @@ export class Tokens extends Map<string, DTLSToken> {
         usesDtcg: true,
       }) as string | number;
     } catch (e) {
-      Logger.error`${e}`;
+      if (!`${e}`.includes("tries to reference")) throw e;
       return null;
     }
   }
@@ -195,7 +195,7 @@ export class Tokens extends Map<string, DTLSToken> {
         const amt = this.populateFromDtcg(tokens, spec, context);
         this.#importedSpecs.add(spec.path);
         const rel = relative(Deno.cwd(), spec.path);
-        Logger.info`✍️ Registered ${amt} tokens from: ${rel}${
+        Logger.info`✍️  Registered ${amt} tokens from: ${rel}${
           spec.prefix ? ` with prefix ${spec.prefix}` : ""
         }`;
       } catch (e) {
