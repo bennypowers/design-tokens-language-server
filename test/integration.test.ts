@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { describe, it, afterAll, beforeAll } from "@std/testing/bdd";
+import { expect } from "@std/expect";
 
 import { createTestLspClient } from "#test-helpers";
 
@@ -6,59 +7,57 @@ import manifest from "../package.json" with { type: "json" };
 
 const { version } = manifest;
 
-// Test against the running server binary
-Deno.test("design-tokens-language-server", async (t) => {
-  const client = createTestLspClient();
-  await client.sendNotification({ method: "initialized" });
+describe("design-tokens-language-server", () => {
+  let client: ReturnType<typeof createTestLspClient>;
 
-  try {
-    await t.step("initialize", async () => {
-      // Step 2: Initialize the LSP server
-      const rootUri = new URL("../test/package/", import.meta.url).href;
-      console.log(rootUri);
-      const initializeResponse = await client.sendMessage({
-        method: "initialize",
-        params: {
-          processId: null,
-          rootUri,
-          workspaceFolders: [
-            { uri: rootUri, name: "root" },
-          ],
-          clientInfo: {
-            name: "DENO_TEST_CLIENT",
-            version: Temporal.Now.plainDateTimeISO().toString(),
-          },
-          capabilities: {
-            textDocument: {
-              synchronization: {
-                dynamicRegistration: false,
-                willSave: false,
-                didSave: false,
-                willSaveWaitUntil: false,
-              },
+  beforeAll(async () => {
+    client = createTestLspClient();
+    await client.sendNotification({ method: "initialized" });
+  });
+
+  afterAll(async () => {
+    await client.close();
+  });
+
+  it("should initialize the LSP server", async () => {
+    const rootUri = new URL("../test/package/", import.meta.url).href;
+    const initializeResponse = await client.sendMessage({
+      method: "initialize",
+      params: {
+        processId: null,
+        rootUri,
+        workspaceFolders: [{ uri: rootUri, name: "root" }],
+        clientInfo: {
+          name: "DENO_TEST_CLIENT",
+          version: Temporal.Now.plainDateTimeISO().toString(),
+        },
+        capabilities: {
+          textDocument: {
+            synchronization: {
+              dynamicRegistration: false,
+              willSave: false,
+              didSave: false,
+              willSaveWaitUntil: false,
             },
           },
         },
-      });
-
-      assertEquals(initializeResponse?.jsonrpc, "2.0");
-      assertEquals(initializeResponse?.id, 0);
-      assertEquals(initializeResponse?.result.serverInfo.version, version);
-      assertEquals(
-        initializeResponse?.result.serverInfo.name,
-        "design-tokens-language-server",
-      );
+      },
     });
 
-    await client.sendNotification({ method: "initialized" });
+    expect(initializeResponse?.jsonrpc).toBe("2.0");
+    expect(initializeResponse?.id).toBe(0);
+    expect(initializeResponse?.result.serverInfo.version).toBe(version);
+    expect(initializeResponse?.result.serverInfo.name).toBe(
+      "design-tokens-language-server",
+    );
+  });
 
+  describe("calling didOpen on a test file", () => {
     const uri = "file:///test.css";
-
     const initialText = "body { color: red; }";
-
-    await t.step("didOpen", async () => {
-      // Step 3: Open a document
-      const didOpenResponse = await client.sendNotification({
+    let didOpenResponse: any;
+    beforeAll(async () => {
+      didOpenResponse = await client.sendNotification({
         method: "textDocument/didOpen",
         params: {
           textDocument: {
@@ -69,79 +68,102 @@ Deno.test("design-tokens-language-server", async (t) => {
           },
         },
       });
-
-      assertEquals(didOpenResponse, undefined); // No response expected for didOpen
     });
 
-    await t.step("changes", async () => {
+    it("should not respond to the didOpen notification", () => {
+      // Step 3: Open a document
+      expect(didOpenResponse).toBeUndefined(); // No response expected for didOpen
+    });
+
+    describe("calling didChange", () => {
       // Step 4: Simulate incremental document changes
-      const change1 = {
-        range: {
-          start: { line: 0, character: 12 },
-          end: { line: 0, character: 15 },
-        },
-        text: "blue",
-      };
-      const change2 = {
-        range: {
-          start: { line: 0, character: 12 },
-          end: { line: 0, character: 16 },
-        },
-        text: "green",
-      };
+      beforeAll(async () => {
+        // First incremental update: Change "red" to "blue"
+        await client.sendNotification({
+          method: "textDocument/didChange",
+          params: {
+            textDocument: { uri, version: 2 },
+            contentChanges: [
+              {
+                range: {
+                  start: { line: 0, character: 12 },
+                  end: { line: 0, character: 15 },
+                },
+                text: "blue",
+              },
+            ],
+          },
+        });
 
-      // First incremental update: Change "red" to "blue"
-      await client.sendNotification({
-        method: "textDocument/didChange",
-        params: {
-          textDocument: { uri, version: 2 },
-          contentChanges: [change1],
-        },
+        // Second incremental update: Change "blue" to "green"
+        await client.sendNotification({
+          method: "textDocument/didChange",
+          params: {
+            textDocument: { uri, version: 3 },
+            contentChanges: [
+              {
+                range: {
+                  start: { line: 0, character: 12 },
+                  end: { line: 0, character: 16 },
+                },
+                text: "green",
+              },
+            ],
+          },
+        });
       });
 
-      // Second incremental update: Change "blue" to "green"
-      await client.sendNotification({
-        method: "textDocument/didChange",
-        params: {
-          textDocument: { uri, version: 3 },
-          contentChanges: [change2],
-        },
+      describe("then calling hover on a non-token", () => {
+        let hoverResponse: any;
+        beforeAll(async () => {
+          // Step 5: Request hover and diagnostics
+          hoverResponse = await client.sendMessage({
+            method: "textDocument/hover",
+            params: {
+              textDocument: { uri },
+              position: { line: 0, character: 10 },
+            },
+          });
+        });
+
+        it("should return null hover information", () => {
+          // Step 6: Assert results
+          expect(hoverResponse).toEqual({
+            jsonrpc: "2.0",
+            id: 1,
+            result: null,
+          });
+        });
+        describe("then calling diagnostic", () => {
+          let diagnosticsResponse: any;
+          beforeAll(async () => {
+            diagnosticsResponse = await client.sendMessage({
+              method: "textDocument/diagnostic",
+              params: { textDocument: { uri } },
+            });
+
+            expect(diagnosticsResponse).toEqual({
+              jsonrpc: "2.0",
+              id: 2,
+              result: { kind: "full", items: [] },
+            }); // Replace with expected diagnostics
+          });
+        });
       });
-
-      // TODO: add test tokens so that this is meaningful
-
-      // Step 5: Request hover and diagnostics
-      const hoverResponse = await client.sendMessage({
-        method: "textDocument/hover",
-        params: {
-          textDocument: { uri },
-          position: { line: 0, character: 10 },
-        },
-      });
-
-      const diagnosticsResponse = await client.sendMessage({
-        method: "textDocument/diagnostic",
-        params: { textDocument: { uri } },
-      });
-
-      // Step 6: Assert results
-      assertEquals(hoverResponse, { jsonrpc: "2.0", id: 1, result: null });
-
-      assertEquals(diagnosticsResponse, {
-        jsonrpc: "2.0",
-        id: 2,
-        result: { kind: "full", items: [] },
-      }); // Replace with expected diagnostics
     });
+  });
 
+  describe("given a yaml file", () => {
+    let yamlContent: string;
     const yamlRefererUri = new URL(
       "../test/package/tokens/referer.yaml",
       import.meta.url,
     );
 
-    const yamlContent = await Deno.readTextFile(yamlRefererUri);
+    beforeAll(async () => {
+      yamlContent = await Deno.readTextFile(yamlRefererUri);
 
-    await t.step("open yaml referer", async () => {
+      // Step 7: Open YAML referer
       await client.sendNotification({
         method: "textDocument/didOpen",
         params: {
@@ -155,105 +177,111 @@ Deno.test("design-tokens-language-server", async (t) => {
       });
     });
 
-    await t.step("references from yaml to yaml and json", async () => {
-      const position = yamlContent.split("\n").reduce<any>((acc, line, i) => {
-        if (acc) {
-          return acc;
-        } else if (line.includes("{color.red.hex")) {
-          return {
-            line: i,
-            character: line.indexOf("color.") + 1,
-          };
-        }
-      }, undefined);
+    describe("then calling references", () => {
+      let referencesResponse: any;
+      let position: any;
 
-      const referencesResponse = await client.sendMessage({
-        method: "textDocument/references",
-        params: {
-          textDocument: {
-            uri: yamlRefererUri.href,
+      beforeAll(async () => {
+        // Step 8: References from YAML to YAML and JSON
+        position = yamlContent.split("\n").reduce<any>((acc, line, i) => {
+          if (acc) {
+            return acc;
+          } else if (line.includes("{color.red.hex")) {
+            return {
+              line: i,
+              character: line.indexOf("color.") + 1,
+            };
+          }
+        }, undefined);
+
+        referencesResponse = await client.sendMessage({
+          method: "textDocument/references",
+          params: {
+            textDocument: {
+              uri: yamlRefererUri.href,
+            },
+            context: {
+              includeDeclaration: true,
+            },
+            position,
           },
-          context: {
-            includeDeclaration: true,
-          },
-          position,
-        },
+        });
       });
 
-      // TODO: get context from the test client and compute these values
-      assertEquals(referencesResponse, {
-        jsonrpc: "2.0",
-        id: 3,
-        result: [
-          {
-            range: {
-              end: {
-                character: 34,
-                line: 5,
-              },
-              start: {
-                character: 19,
-                line: 5,
-              },
-            },
-            uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
-          },
-          {
-            range: {
-              end: {
-                character: 45,
-                line: 17,
-              },
-              start: {
-                character: 30,
-                line: 17,
+      it("gathers the correct references", () => {
+        // TODO: get context from the test client and compute these values
+        expect(referencesResponse).toEqual({
+          jsonrpc: "2.0",
+          id: 3,
+          result: [
+            {
+              uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
+              range: {
+                end: {
+                  character: 34,
+                  line: 5,
+                },
+                start: {
+                  character: 19,
+                  line: 5,
+                },
               },
             },
-            uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
-          },
-          {
-            range: {
-              end: {
-                character: 28,
-                line: 7,
-              },
-              start: {
-                character: 13,
-                line: 7,
-              },
-            },
-            uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
-          },
-          {
-            range: {
-              end: {
-                character: 55,
-                line: 10,
-              },
-              start: {
-                character: 40,
-                line: 10,
+            {
+              uri: `file://${Deno.cwd()}/test/package/tokens/referer.json`,
+              range: {
+                end: {
+                  character: 45,
+                  line: 17,
+                },
+                start: {
+                  character: 30,
+                  line: 17,
+                },
               },
             },
-            uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
-          },
-          {
-            range: {
-              end: {
-                character: 7,
-                line: 42,
-              },
-              start: {
-                character: 13,
-                line: 39,
+            {
+              uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
+              range: {
+                end: {
+                  character: 28,
+                  line: 7,
+                },
+                start: {
+                  character: 13,
+                  line: 7,
+                },
               },
             },
-            uri: `file://${Deno.cwd()}/test/package/tokens/referee.json`,
-          },
-        ],
+            {
+              uri: `file://${Deno.cwd()}/test/package/tokens/referer.yaml`,
+              range: {
+                end: {
+                  character: 55,
+                  line: 10,
+                },
+                start: {
+                  character: 40,
+                  line: 10,
+                },
+              },
+            },
+            {
+              uri: `file://${Deno.cwd()}/test/package/tokens/referee.json`,
+              range: {
+                end: {
+                  character: 7,
+                  line: 42,
+                },
+                start: {
+                  character: 13,
+                  line: 39,
+                },
+              },
+            },
+          ],
+        });
       });
     });
-  } finally {
-    await client.close();
-  }
+  });
 });
