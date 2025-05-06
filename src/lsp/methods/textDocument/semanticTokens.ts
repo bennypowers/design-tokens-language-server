@@ -1,5 +1,6 @@
 import * as LSP from "vscode-languageserver-protocol";
 import { DTLSContext } from "#lsp";
+import { Logger } from "#logger";
 
 export interface DTLSSemanticTokenIntermediate {
   line: number;
@@ -11,7 +12,7 @@ export interface DTLSSemanticTokenIntermediate {
 }
 
 export const DTLSTokenTypes = [
-  LSP.SemanticTokenTypes.namespace,
+  LSP.SemanticTokenTypes.class,
   LSP.SemanticTokenTypes.property,
 ];
 
@@ -24,13 +25,8 @@ export function full(
     case "yaml":
     case "json":
       return {
-        data: doc.getSemanticTokensFull().sort((a, b) => {
-          if (a.line === b.line) {
-            return a.startChar - b.startChar;
-          } else {
-            return a.line - b.line;
-          }
-        }).flatMap((intermediate, i, a) => {
+        data: doc.getSemanticTokensFull().flatMap((intermediate, i, a) => {
+          Logger.debug`${i}: ${intermediate}`;
           const {
             line,
             startChar,

@@ -287,17 +287,18 @@ export class YamlDocument extends DTLSTextDocument {
                 : currentLine.indexOf(reference));
             return reference.split(".").map((token, k) => {
               const startChar = lastStartChar;
+              const tokenType = k === 0
+                ? DTLSTokenTypes.at(0)!
+                : DTLSTokenTypes.at(1)!;
               const { length } = token;
-              const tokenModifiers = 0;
-              const tokenType = DTLSTokenTypes[k] ?? DTLSTokenTypes[1];
-              lastStartChar = length + 1;
+              lastStartChar += token.length + 1;
               return {
                 token,
                 line,
                 startChar,
                 length,
                 tokenType,
-                tokenModifiers,
+                tokenModifiers: 0,
               };
             });
           }).toArray();
@@ -320,7 +321,10 @@ export class YamlDocument extends DTLSTextDocument {
         }
       },
     });
-    return tokens;
+    return tokens.sort((a, b) => {
+      if (a.line === b.line) return a.startChar - b.startChar;
+      else return a.line - b.line;
+    });
   }
 
   public getColors(context: DTLSContext): LSP.ColorInformation[] {
@@ -399,7 +403,6 @@ export class YamlDocument extends DTLSTextDocument {
   }
 
   public getDiagnostics(context: DTLSContext) {
-    Logger.info`getDiagnostics ${this.uri}`;
     if (!context.tokens) {
       throw new Error("No tokens found in context");
     }

@@ -260,7 +260,7 @@ export class JsonDocument extends DTLSTextDocument {
           const { length } = token;
           const tokenModifiers = 0;
           const tokenType = DTLSTokenTypes[j] ?? DTLSTokenTypes[1];
-          lastStartChar = length + 1;
+          lastStartChar += length + 1;
           return {
             token,
             line,
