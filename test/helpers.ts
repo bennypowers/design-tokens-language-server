@@ -1,4 +1,5 @@
 // deno-coverage-ignore-file
+import * as LSP from "vscode-languageserver-protocol";
 import { Token } from "style-dictionary";
 import { Documents } from "#documents";
 import { Tokens } from "#tokens";
@@ -23,6 +24,43 @@ import { JsonDocument } from "#json";
 import { YamlDocument } from "#yaml";
 import { Workspaces } from "#workspaces";
 import { Server } from "#server";
+
+import { escape } from "@std/regexp";
+
+/**
+ * @param text document to search in
+ * @param substring substring to search for
+ * @returns array of LSP ranges corresponding to each occurence of the substring in the file
+ */
+export function getLspRangesForSubstring(
+  text: string,
+  substring: string,
+): LSP.Range[] {
+  const ranges: LSP.Range[] = [];
+
+  const matches = text.matchAll(new RegExp(escape(substring), "gd"));
+
+  for (const match of matches) {
+    const [[start, end]] = match.indices!;
+    // given the start and end indices, create a range object  which computes the correct line number and character
+    const line = text.substring(0, start).split("\n").length - 1;
+    const character = start - text.substring(0, start).lastIndexOf("\n") - 1;
+    const endLine = text.substring(0, end).split("\n").length - 1;
+    const endCharacter = end - text.substring(0, end).lastIndexOf("\n") - 1;
+    ranges.push({
+      start: { line, character },
+      end: { line: endLine, character: endCharacter },
+    });
+  }
+
+  return ranges.sort((a, b) => {
+    if (a.start.line === b.start.line) {
+      return a.start.character - b.start.character;
+    } else {
+      return a.start.line - b.start.line;
+    }
+  });
+}
 
 interface TestSpec {
   tokens: Token;
@@ -237,11 +275,14 @@ class TestDocuments extends Documents {
 
   tearDown() {
     for (const doc of this.allDocuments) {
-      this.onDidClose({ textDocument: { uri: doc.uri } }, {
-        documents: this,
-        tokens: this.#tokens,
-        workspaces: this.#workspaces,
-      });
+      this.onDidClose(
+        { textDocument: { uri: doc.uri } },
+        {
+          documents: this,
+          tokens: this.#tokens,
+          workspaces: this.#workspaces,
+        },
+      );
     }
   }
 }
@@ -265,8 +306,7 @@ class TestTokens extends Tokens {
   }
 }
 
-class TestLsp extends Lsp {
-}
+class TestLsp extends Lsp {}
 
 /**
  * Create a test context for the language server.
@@ -299,7 +339,9 @@ export async function createTestContext(
     const specs = [];
     if (isGlob(spec.path)) {
       for await (
-        const { path } of expandGlob(spec.path, { includeDirs: false })
+        const { path } of expandGlob(spec.path, {
+          includeDirs: false,
+        })
       ) {
         specs.push(path);
       }
