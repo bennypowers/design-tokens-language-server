@@ -3,15 +3,10 @@ import * as LSP from "vscode-languageserver-protocol";
 import { CssDocument } from "#css";
 import { JsonDocument } from "#json";
 import { YamlDocument } from "#yaml";
-
 import { DTLSContext } from "#lsp";
-
 import { Logger } from "#logger";
 
-export type DTLSDocument =
-  | CssDocument
-  | JsonDocument
-  | YamlDocument;
+export type DTLSDocument = CssDocument | JsonDocument | YamlDocument;
 
 class ENODOCError extends Error {
   constructor(public uri: LSP.DocumentUri) {
@@ -40,9 +35,7 @@ export class Documents {
   }
 
   protected get allDocuments(): DTLSDocument[] {
-    return [
-      ...this.#map.values(),
-    ];
+    return [...this.#map.values()];
   }
 
   add(doc: DTLSDocument) {

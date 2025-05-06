@@ -3,6 +3,10 @@ import type { Token } from "style-dictionary";
 
 import * as YAML from "yaml";
 
+import { DTLSContext, TokenFileSpec } from "#lsp/lsp.ts";
+import { Logger } from "#logger";
+import { PreprocessedTokens } from "style-dictionary";
+
 import { getLightDarkValues } from "#css";
 
 import {
@@ -12,9 +16,6 @@ import {
   usesReferences,
 } from "style-dictionary/utils";
 
-import { DTLSContext, TokenFileSpec } from "#lsp/lsp.ts";
-import { Logger } from "#logger";
-import { PreprocessedTokens } from "style-dictionary";
 import { deepMerge } from "@std/collections/deep-merge";
 import { relative, toFileUrl } from "@std/path";
 
@@ -39,11 +40,7 @@ export type DTLSToken = Omit<Token, "$extensions"> & {
   };
 };
 
-export const DEFAULT_GROUP_MARKERS = [
-  "_",
-  "@",
-  "DEFAULT",
-];
+export const DEFAULT_GROUP_MARKERS = ["_", "@", "DEFAULT"];
 
 export class Tokens extends Map<string, DTLSToken> {
   /**
@@ -162,7 +159,7 @@ export class Tokens extends Map<string, DTLSToken> {
     return {
       ...clone,
       $extensions: {
-        ...clone.$extensions ?? {},
+        ...(clone.$extensions ?? {}),
         designTokensLanguageServer: deepMerge<Partial<DTLSExtensions>>(
           existing,
           ext,
@@ -179,8 +176,9 @@ export class Tokens extends Map<string, DTLSToken> {
       case "yml":
         return YAML.parse(await Deno.readTextFile(path));
       default:
-        return await import(path, { with: { type: "json" } })
-          .then((m) => m.default);
+        return await import(path, { with: { type: "json" } }).then(
+          (m) => m.default,
+        );
     }
   }
 
@@ -231,7 +229,9 @@ export function getTokenMarkdown(token: DTLSToken) {
     "```css",
     format($value),
     "```",
-  ].filter((x) => x != null).join("\n");
+  ]
+    .filter((x) => x != null)
+    .join("\n");
 }
 
 export const tokens = new Tokens();

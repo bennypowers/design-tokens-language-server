@@ -68,7 +68,7 @@ export abstract class DTLSTextDocument extends FullTextDocument {
         const character = row.indexOf(substring);
         return { line, character };
       })
-      .filter(x => x.character > -1);
+      .filter((x) => x.character > -1);
   }
 
   /**
