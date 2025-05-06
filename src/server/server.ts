@@ -4,10 +4,11 @@ import {
   ResponseError,
 } from "vscode-languageserver-protocol";
 
-import { Logger } from "#logger";
-
 import { createQueue } from "@sv2dev/tasque";
 
+import { fromFileUrl, relative } from "@std/path";
+
+import { Logger } from "#logger";
 import { Lsp } from "#lsp";
 import { Documents } from "#documents";
 import { Tokens } from "#tokens";
@@ -60,7 +61,7 @@ export class Server {
   static #queue = createQueue({ parallelize: 5 });
   static #serverRequests = new Map<
     string | number,
-    ((value: unknown) => unknown)
+    (value: unknown) => unknown
   >();
 
   public static notify(message: NotificationMessage) {
@@ -96,9 +97,12 @@ export class Server {
     }
 
     for await (const request of this.#io.requests()) {
-      Logger.info`${
-        request.id != null ? `📩 (${request.id})` : `🔔`
-      }: ${request.method}`;
+      const logIcon = request.id != null ? `📩 (${request.id})` : `🔔`;
+      const reqFileUri = (request.params as any)?.textDocument?.uri;
+      const logUri = reqFileUri
+        ? `(${relative(Deno.cwd(), fromFileUrl(reqFileUri))})`
+        : "";
+      Logger.info`${logIcon}: ${request.method} ${logUri}`;
       // if (request.id != null && this.#serverRequests.has(request.id)) {
       //   const resolve = this.#serverRequests.get(request.id);
       //   if (!resolve) throw new Error(`unexpected response ${request.method}`);
