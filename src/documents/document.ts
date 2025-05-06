@@ -64,12 +64,11 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     const text = this.getText();
     const rows = text.split("\n");
     return rows
-      .filter((line) => line.includes(substring))
-      .map((row) => {
-        const line = rows.indexOf(row);
+      .map((row, line) => {
         const character = row.indexOf(substring);
         return { line, character };
-      });
+      })
+      .filter(x => x.character > -1);
   }
 
   /**
