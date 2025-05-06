@@ -8,6 +8,7 @@ import { Tokens } from "#tokens";
 
 import { Lsp } from "#lsp";
 import { Server } from "#server";
+import { DTLSTokenTypes } from "#lsp/methods/textDocument/semanticTokens.ts";
 
 describe("Lsp", () => {
   describe("with default options", () => {
@@ -73,10 +74,7 @@ describe("Lsp", () => {
                 full: true,
                 legend: {
                   tokenModifiers: [],
-                  tokenTypes: [
-                    "namespace",
-                    "property",
-                  ],
+                  tokenTypes: DTLSTokenTypes,
                 },
               },
             },
