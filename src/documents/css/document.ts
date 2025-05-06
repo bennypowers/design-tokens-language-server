@@ -281,14 +281,18 @@ export class CssDocument extends DTLSTextDocument {
     return this.varCalls.flatMap((call) => {
       if (!call.fallback || call.fallback.valid) return [];
       else {
+        const actual = call.fallback.value;
+        const expected = call.token.token.$value;
+        const tokenName = call.token.name;
         return [{
           range: call.fallback.range,
           severity: LSP.DiagnosticSeverity.Error,
-          message:
-            `Token fallback does not match expected value: ${call.token.token.$value}`,
+          message: `Token fallback does not match expected value: ${expected}`,
           code: DTLSErrorCodes.incorrectFallback,
           data: {
-            tokenName: call.token.name,
+            tokenName,
+            actual,
+            expected,
           },
         }];
       }
