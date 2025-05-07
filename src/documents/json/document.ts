@@ -347,6 +347,34 @@ export class JsonDocument extends DTLSTextDocument {
     context: DTLSContext,
     params: LSP.CompletionParams,
   ): LSP.CompletionList | null {
+    const node = this.#getNodeAtPosition(params.position);
+    if (node?.type === "string") {
+      const prefix = node.value.replace(/}$/, "");
+      const range = this.#getRangeForNode(node);
+      if (range) {
+        const items = context.tokens
+          .values()
+          .flatMap((token) => {
+            const ext = token.$extensions.designTokensLanguageServer;
+            if (!ext.reference.startsWith(prefix)) return [];
+            const label = `"${ext.reference}"`;
+            const tokenName = ext.name;
+            return [{ label, data: { tokenName } }];
+          })
+          .toArray();
+
+        return {
+          items,
+          isIncomplete: items.length === 0 ||
+            items.length < context.tokens.size,
+          itemDefaults: {
+            insertTextFormat: LSP.InsertTextFormat.Snippet,
+            insertTextMode: LSP.InsertTextMode.asIs,
+            editRange: range,
+          },
+        };
+      }
+    }
     return null;
   }
 
