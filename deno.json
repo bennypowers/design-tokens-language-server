@@ -96,6 +96,7 @@
     "#logger": "./src/logger.ts",
     "#lsp": "./src/lsp/lsp.ts",
     "#lsp/": "./src/lsp/",
+    "#methods/": "./src/lsp/methods/",
     "#main": "./src/main.ts",
     "#server": "./src/server/server.ts",
     "#test-helpers": "./test/helpers.ts",

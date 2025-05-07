@@ -10,20 +10,8 @@ import {
 import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { completion } from "./completion.ts";
-import { DTLSTextDocument } from "#document";
 import { CssDocument } from "#css";
-
-function getCompletionsForWord(
-  ctx: DTLSTestContext,
-  word: string,
-  content: string,
-  language: DTLSTextDocument["language"] = "css",
-) {
-  const textDocument = ctx.documents.createDocument(language, content);
-  const doc = ctx.documents.get(textDocument.uri);
-  const position = doc.positionForSubstring(word, "end");
-  return completion({ textDocument, position }, ctx);
-}
+import { YamlDocument } from "#yaml";
 
 describe("textDocument/completion", () => {
   let ctx: DTLSTestContext;
@@ -80,7 +68,7 @@ describe("textDocument/completion", () => {
     });
   });
 
-  describe("in a document with a css rule", () => {
+  describe("in a css document with an incomplete rule", () => {
     let textDocument: TextDocumentIdentifier;
     let doc: CssDocument;
     beforeEach(() => {
@@ -97,7 +85,6 @@ describe("textDocument/completion", () => {
         textDocument,
         position: doc.positionForSubstring("a", "end"),
       }, ctx);
-
       expect(completions).toBeNull();
     });
   });
@@ -179,6 +166,42 @@ describe("textDocument/completion", () => {
     it("should return token completions as var() calls", () => {
       for (const item of completions?.items ?? []) {
         expect(item.textEdit?.newText).toMatch(/^var\(--token/);
+      }
+    });
+  });
+
+  describe("in a yaml file", () => {
+    let textDocument: TextDocumentIdentifier;
+    let doc: YamlDocument;
+    let completions: CompletionList | null;
+    beforeEach(() => {
+      textDocument = ctx.documents.createDocument(
+        "yaml",
+        /*yaml*/ `
+          color:
+            $type: color
+            bread:
+              $value: '`,
+      );
+      doc = ctx.documents.get(textDocument.uri) as YamlDocument;
+      completions = completion({
+        textDocument,
+        position: doc.positionForSubstring("$value: '", "end"),
+      }, ctx);
+    });
+    it("should return all color token completions", () => {
+      expect(completions?.items)
+        .toHaveLength(
+          ctx.tokens
+            .values()
+            .filter((x) => x.$type === "color")
+            .toArray()
+            .length,
+        );
+    });
+    it("should return token completions as references", () => {
+      for (const item of completions?.items ?? []) {
+        expect(item.textEdit?.newText).toMatch(/^\{.*}$/);
       }
     });
   });

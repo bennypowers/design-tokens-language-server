@@ -41,6 +41,14 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   abstract getColors(context: DTLSContext): LSP.ColorInformation[];
 
   /**
+   * Computes token completions for a given position in a document
+   */
+  abstract getCompletions(
+    context: DTLSContext,
+    params: LSP.CompletionParams,
+  ): LSP.CompletionList | null;
+
+  /**
    * Get a range and the referenced token name for a position in a document
    * e.g. `{color.red}` => the range for `{color.red}` and the token name `--token-color-red`
    */
@@ -49,10 +57,19 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     offset?: Offset,
   ): TokenReference | null;
 
+  /**
+   * Gets the range of a data path in a JSON or YAML file
+   */
   abstract getRangeForPath(path: string[]): LSP.Range | null;
 
+  /**
+   * Gets the token corresponding to a data path in a JSON or YAML file
+   */
   abstract getTokenForPath(path: string[]): DTLSToken | null;
 
+  /**
+   * The identifier for this document
+   */
   get identifier(): LSP.VersionedTextDocumentIdentifier {
     return {
       uri: this.uri,

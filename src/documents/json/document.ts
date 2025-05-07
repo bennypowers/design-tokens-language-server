@@ -343,6 +343,13 @@ export class JsonDocument extends DTLSTextDocument {
     return colors;
   }
 
+  public getCompletions(
+    context: DTLSContext,
+    params: LSP.CompletionParams,
+  ): LSP.CompletionList | null {
+    return null;
+  }
+
   public getDiagnostics(context: DTLSContext) {
     Logger.info`getDiagnostics ${this.uri}`;
     if (!context.tokens) {

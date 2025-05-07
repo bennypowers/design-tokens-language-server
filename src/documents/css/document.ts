@@ -13,6 +13,18 @@ import { Token } from "style-dictionary";
 import { cssColorToLspColor } from "#color";
 import { DTLSToken } from "#tokens";
 
+/**
+ * Regular expression to match hex color values.
+ */
+const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
+
+interface CompletionArgs {
+  node: Node;
+  name: string;
+  range: LSP.Range;
+  tokens: DTLSContext["tokens"];
+}
+
 type TsRange = Pick<Node, "startPosition" | "endPosition">;
 
 export interface TokenVarCall {
@@ -62,7 +74,7 @@ export function getVarCallArguments(value: string) {
   };
 }
 
-export function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
+function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
   return {
     start: {
       line: (node as TsRange).startPosition.row,
@@ -106,10 +118,40 @@ function offsetPosition(
   };
 }
 
-/**
- * Regular expression to match hex color values.
- */
-const HEX_RE = /#(?<hex>.{3}|.{4}|.{6}|.{8})\b/g;
+function escapeCommas($value: string) {
+  if (typeof $value !== "string") {
+    return $value;
+  } else {
+    return $value.replaceAll(",", "\\,");
+  }
+}
+
+function getCompletionDependingOnNode(args: CompletionArgs): string {
+  const { node, name, tokens } = args;
+  switch (node.type) {
+    case "identifier":
+    case "property_name":
+      return `${name}: $0`;
+    default: {
+      const token = tokens.get(name)!;
+      const value = Array.isArray(token.$value)
+        ? token.$value.join(", ")
+        : token.$value;
+      return `var(${name}\${1|\\, ${escapeCommas(value)},|})$0`;
+    }
+  }
+}
+
+function getEditOrEntry(args: {
+  node: Node;
+  name: string;
+  range: LSP.Range;
+  tokens: DTLSContext["tokens"];
+}): Pick<LSP.CompletionItem, "insertText" | "textEdit"> {
+  const { range } = args;
+  const insertText = getCompletionDependingOnNode(args);
+  return { textEdit: { range, newText: insertText } };
+}
 
 /**
  * Given that the match can be a hex color, a css color name, or a var call,
@@ -313,39 +355,6 @@ export class CssDocument extends DTLSTextDocument {
     return q.captures(this.#tree.rootNode, { matchLimit: 65536, ...options });
   }
 
-  getColors(context: DTLSContext): LSP.ColorInformation[] {
-    this.#context = context;
-    return this.#varCalls.flatMap((call) => {
-      const token = call.token.token;
-
-      if (!token || token.$type !== "color") {
-        return [];
-      }
-      const colors = [];
-      const hexMatches = `${token.$value}`.match(HEX_RE);
-      const [light, dark] = getLightDarkValues(token.$value);
-      if (light && dark) {
-        colors.push(light, dark);
-      } else if (hexMatches) {
-        colors.push(...hexMatches);
-      } else {
-        colors.push(token.$value);
-      }
-      return colors.flatMap((match) => {
-        const colorMatch = extractColor(match, this.#context);
-        const color = cssColorToLspColor(colorMatch);
-        if (!color) {
-          return [];
-        } else {
-          return [{
-            color,
-            range: call.token.range,
-          }];
-        }
-      });
-    });
-  }
-
   /**
    * Gets the node at the specified position in the document.
    *
@@ -401,8 +410,82 @@ export class CssDocument extends DTLSTextDocument {
     return false;
   }
 
-  getDiagnostics(context: DTLSContext) {
+  public getColors(context: DTLSContext): LSP.ColorInformation[] {
+    this.#context = context;
+    return this.#varCalls.flatMap((call) => {
+      const token = call.token.token;
+
+      if (!token || token.$type !== "color") {
+        return [];
+      }
+      const colors = [];
+      const hexMatches = `${token.$value}`.match(HEX_RE);
+      const [light, dark] = getLightDarkValues(token.$value);
+      if (light && dark) {
+        colors.push(light, dark);
+      } else if (hexMatches) {
+        colors.push(...hexMatches);
+      } else {
+        colors.push(token.$value);
+      }
+      return colors.flatMap((match) => {
+        const colorMatch = extractColor(match, this.#context);
+        const color = cssColorToLspColor(colorMatch);
+        if (!color) {
+          return [];
+        } else {
+          return [{
+            color,
+            range: call.token.range,
+          }];
+        }
+      });
+    });
+  }
+
+  public getDiagnostics(context: DTLSContext) {
     this.#context = context;
     return this.#diagnostics ?? this.#computeDiagnostics();
+  }
+
+  public getCompletions(
+    context: DTLSContext,
+    params: LSP.CompletionParams,
+  ): LSP.CompletionList | null {
+    const node = this.getNodeAtPosition(params.position, { character: -2 });
+
+    if (
+      !node || node.type !== "identifier" &&
+        !this.positionIsInNodeType(params.position, "block")
+    ) {
+      return null;
+    }
+
+    const range = tsRangeToLspRange(node);
+    const items = context.tokens
+      .keys()
+      .filter(function (name: string): boolean {
+        return !!node.text && !!name && name
+          .replaceAll("-", "")
+          .startsWith(node.text.replaceAll("-", ""));
+      })
+      .map((name) =>
+        ({
+          label: name,
+          data: { tokenName: name },
+          kind: LSP.CompletionItemKind.Snippet,
+          ...getEditOrEntry({ node, name, range, tokens: context.tokens }),
+        }) satisfies LSP.CompletionItem
+      ).toArray();
+
+    return {
+      items,
+      isIncomplete: items.length === 0 || items.length < context.tokens.size,
+      itemDefaults: {
+        insertTextFormat: LSP.InsertTextFormat.Snippet,
+        insertTextMode: LSP.InsertTextMode.asIs,
+        editRange: range,
+      },
+    };
   }
 }

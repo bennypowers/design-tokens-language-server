@@ -3,7 +3,7 @@ import { expect } from "@std/expect";
 
 import { createTestContext, DTLSTestContext } from "#test-helpers";
 
-import { resolve } from "./resolve.ts";
+import { resolve } from "../textDocument/codeAction.ts";
 import { CodeAction } from "vscode-languageserver-protocol";
 
 describe("codeAction/resolve", () => {
