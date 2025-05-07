@@ -5,7 +5,7 @@ import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { codeAction, DTLSCodeAction } from "./codeAction.ts";
 
-import { resolve } from "../codeAction/resolve.ts";
+import { resolve } from "../textDocument/codeAction.ts";
 
 import {
   CodeActionKind,
