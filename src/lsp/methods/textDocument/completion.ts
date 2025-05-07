@@ -32,7 +32,7 @@ export function resolve(
   params: LSP.CompletionItem,
   context: DTLSContext,
 ): LSP.CompletionItem {
-  const tokenName = params.data.tokenName ?? params.label;
+  const tokenName = params.data?.tokenName ?? params.label;
   const token = context.tokens.get(tokenName);
   if (!token) {
     return params;
