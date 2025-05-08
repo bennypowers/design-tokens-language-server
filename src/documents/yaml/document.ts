@@ -10,8 +10,9 @@ import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
 import * as YAML from "yaml";
 
-import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";
+
+import { cssColorToLspColor } from "#color";
 import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
 import { DTLSToken } from "#tokens";
@@ -19,16 +20,13 @@ import { DTLSToken } from "#tokens";
 import {
   DTLSSemanticTokenIntermediate,
   DTLSTokenTypes,
-} from "#lsp/methods/textDocument/semanticTokens.ts";
+} from "#methods/textDocument/semanticTokens.ts";
 
 type YAMLPath = readonly (
   | YAML.Node
   | YAML.Document<YAML.Node, true>
   | YAML.Pair<unknown, unknown>
 )[];
-
-const getExtensions = (token: DTLSToken) =>
-  token.$extensions.designTokensLanguageServer;
 
 export class YamlDocument extends DTLSTextDocument {
   language = "yaml" as const;
