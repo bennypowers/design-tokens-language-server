@@ -17,6 +17,8 @@ jobs:
         with:
           deno-version: v2.x
 
+      - run: deno install --lock
+
       - name: Release to VSCode Marketplace
         run: deno task vscode:publish
         env:
