@@ -1,17 +1,15 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import {
-  CompletionList,
-  Position,
-  TextDocumentIdentifier,
-} from "vscode-languageserver-protocol";
+import * as LSP from "vscode-languageserver-protocol";
 
 import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { completion } from "./completion.ts";
 import { CssDocument } from "#css";
 import { YamlDocument } from "#yaml";
+import { JsonDocument } from "#json";
+import { TextDocumentIdentifierFor } from "#documents";
 
 describe("textDocument/completion", () => {
   let ctx: DTLSTestContext;
@@ -55,45 +53,42 @@ describe("textDocument/completion", () => {
   });
 
   describe("in an empty document", () => {
-    let textDocument: TextDocumentIdentifier;
+    let completions: LSP.CompletionList | null;
     beforeEach(() => {
-      textDocument = ctx.documents.createDocument("css", "");
-    });
-    it("should return no completions", () => {
-      const completions = completion({
-        textDocument,
+      completions = completion({
+        textDocument: ctx.documents.createDocument("css", ""),
         position: { line: 0, character: 0 },
       }, ctx);
+    });
+    it("should return no completions", () => {
       expect(completions).toBeNull();
     });
   });
 
   describe("in a css document with an incomplete rule", () => {
-    let textDocument: TextDocumentIdentifier;
-    let doc: CssDocument;
+    let completions: LSP.CompletionList | null;
     beforeEach(() => {
-      textDocument = ctx.documents.createDocument(
+      const textDocument = ctx.documents.createDocument(
         "css",
         /*css*/ `
           body {
             a`,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
-    });
-    it("should return no completions", () => {
-      const completions = completion({
+      const doc = ctx.documents.get(textDocument.uri);
+      completions = completion({
         textDocument,
         position: doc.positionForSubstring("a", "end"),
       }, ctx);
+    });
+    it("should return no completions", () => {
       expect(completions).toBeNull();
     });
   });
 
   describe("adding the token prefix in a malformed block", () => {
-    let textDocument: TextDocumentIdentifier;
-    let doc: CssDocument;
+    let completions: LSP.CompletionList | null;
     beforeEach(() => {
-      textDocument = ctx.documents.createDocument(
+      const textDocument = ctx.documents.createDocument(
         "css",
         /*css*/ `
         body {
@@ -101,31 +96,29 @@ describe("textDocument/completion", () => {
         }
       `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
-    });
-    it("should return all token completions", () => {
-      const completions = completion({
+      const doc = ctx.documents.get(textDocument.uri);
+      completions = completion({
         textDocument,
         position: doc.positionForSubstring("token", "end"),
       }, ctx);
+    });
+    it("should return all token completions", () => {
       expect(completions?.items).toHaveLength(ctx.tokens.size);
     });
   });
 
   describe("adding the token prefix as a property name", () => {
-    let textDocument: TextDocumentIdentifier;
-    let doc: CssDocument;
-    let completions: CompletionList | null;
+    let completions: LSP.CompletionList | null;
     beforeEach(() => {
-      textDocument = ctx.documents.createDocument(
+      const textDocument = ctx.documents.createDocument(
         "css",
         /*css*/ `
-      body {
-        --token
-      }
-    `,
+          body {
+            --token
+          }
+        `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      const doc = ctx.documents.get(textDocument.uri);
       completions = completion({
         textDocument,
         position: doc.positionForSubstring("--token", "end"),
@@ -142,11 +135,9 @@ describe("textDocument/completion", () => {
   });
 
   describe("adding the token prefix as a property value", () => {
-    let textDocument: TextDocumentIdentifier;
-    let doc: CssDocument;
-    let completions: CompletionList | null;
+    let completions: LSP.CompletionList | null;
     beforeEach(() => {
-      textDocument = ctx.documents.createDocument(
+      const textDocument = ctx.documents.createDocument(
         "css",
         /*css*/ `
           body {
@@ -154,7 +145,7 @@ describe("textDocument/completion", () => {
           }
         `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      const doc = ctx.documents.get(textDocument.uri);
       completions = completion({
         textDocument,
         position: doc.positionForSubstring("token", "end"),
@@ -171,12 +162,10 @@ describe("textDocument/completion", () => {
   });
 
   describe("in a yaml file", () => {
-    let textDocument: TextDocumentIdentifier;
-    let doc: YamlDocument;
-    let completions: CompletionList | null;
+    let completions: LSP.CompletionList | null;
     describe("opening a string property", () => {
       beforeEach(() => {
-        textDocument = ctx.documents.createDocument(
+        const textDocument = ctx.documents.createDocument(
           "yaml",
           /*yaml*/ `
             color:
@@ -184,7 +173,7 @@ describe("textDocument/completion", () => {
               bread:
                 $value: '`,
         );
-        doc = ctx.documents.get(textDocument.uri) as YamlDocument;
+        const doc = ctx.documents.get(textDocument.uri);
         completions = completion({
           textDocument,
           position: doc.positionForSubstring("$value: '", "end"),
@@ -212,7 +201,7 @@ describe("textDocument/completion", () => {
     });
     describe("prefixing `{c`", () => {
       beforeEach(() => {
-        textDocument = ctx.documents.createDocument(
+        const textDocument = ctx.documents.createDocument(
           "yaml",
           /*yaml*/ `
             color:
@@ -220,11 +209,86 @@ describe("textDocument/completion", () => {
               bread:
                 $value: '{co`,
         );
-        doc = ctx.documents.get(textDocument.uri) as YamlDocument;
+        const doc = ctx.documents.get(textDocument.uri);
         const { end } = doc.getRangeForSubstring("{co");
         completions = completion({
           textDocument,
           position: end,
+        }, ctx);
+      });
+      it("should return only color token completions", () => {
+        expect(completions?.items)
+          .toHaveLength(
+            ctx.tokens
+              .values()
+              .filter((x) => x.$type === "color")
+              .toArray()
+              .length,
+          );
+      });
+    });
+  });
+
+  describe("in a json file", () => {
+    let completions: LSP.CompletionList | null;
+    describe("opening a string property", () => {
+      beforeEach(() => {
+        const textDocument = ctx.documents.createDocument(
+          "json",
+          /*json*/ `
+            {
+              "color": {
+                "$type": "color",
+                "bread": {
+                  "$value": ""
+                }
+              }
+            }`,
+        );
+        const doc = ctx.documents.get(textDocument.uri);
+        completions = completion({
+          textDocument,
+          position: doc.getRangeForSubstring('"$value": "').end,
+        }, ctx);
+      });
+      it("should return all token completions", () => {
+        expect(completions?.items)
+          .toHaveLength(
+            ctx.tokens
+              .values()
+              .toArray()
+              .length,
+          );
+      });
+      it("should return token completions as references", () => {
+        for (const item of completions?.items ?? []) {
+          expect(item.label).toMatch(/^"\{.*}"$/);
+        }
+      });
+      it("should return token names as contextual data for completions", () => {
+        for (const item of completions?.items ?? []) {
+          expect(item.data?.tokenName).toMatch(/^--token-/);
+        }
+      });
+    });
+    describe("prefixing `{c`", () => {
+      beforeEach(() => {
+        const textDocument = ctx.documents.createDocument(
+          "json",
+          /*json*/ `
+            {
+              "color": {
+                "$type": "color",
+                "bread": {
+                  "$value": "{co"
+                }
+              }
+            }`,
+        );
+        const doc = ctx.documents.get(textDocument.uri);
+        completions = completion({
+          textDocument,
+          position: doc.getRangeForSubstring("{co").end,
         }, ctx);
       });
       it("should return only color token completions", () => {
