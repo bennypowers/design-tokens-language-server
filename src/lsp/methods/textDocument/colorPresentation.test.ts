@@ -6,8 +6,7 @@ import { cssColorToLspColor } from "#color";
 import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { colorPresentation } from "./colorPresentation.ts";
-import { TextDocumentIdentifier } from "vscode-languageserver-protocol";
-import { CssDocument } from "#css";
+import { ColorPresentation } from "vscode-languageserver-protocol";
 
 describe("textDocument/colorPresentation", () => {
   let ctx: DTLSTestContext;
@@ -49,10 +48,9 @@ describe("textDocument/colorPresentation", () => {
   });
 
   describe("in a document with tokens and non-tokens", () => {
-    let textDocument: TextDocumentIdentifier;
-    let doc: CssDocument;
+    let result: ColorPresentation[];
     beforeEach(() => {
-      textDocument = ctx.documents.createDocument(
+      const textDocument = ctx.documents.createDocument(
         "css",
         /*css*/ `
           a {
@@ -64,12 +62,12 @@ describe("textDocument/colorPresentation", () => {
           }
         `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
-    });
-    it("should return color presentations for matching colors", () => {
+      const doc = ctx.documents.get(textDocument.uri);
       const range = doc.getRangeForSubstring("--token-color-red");
       const color = cssColorToLspColor("red")!;
-      const result = colorPresentation({ textDocument, color, range }, ctx);
+      result = colorPresentation({ textDocument, color, range }, ctx);
+    });
+    it("should return color presentations for matching colors", () => {
       expect(result).toEqual([
         { label: "--token-color-red" },
         { label: "--token-color-red-hex" },

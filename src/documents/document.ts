@@ -77,35 +77,6 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     };
   }
 
-  #startOfSubstrings(substring: string) {
-    const text = this.getText();
-    const rows = text.split("\n");
-    return rows
-      .map((row, line) => {
-        const character = row.indexOf(substring);
-        return { line, character };
-      })
-      .filter((x) => x.character > -1);
-  }
-
-  /**
-   * Get the first position of the string in the document
-   *
-   * @param substring - The string to find in the document
-   * @param position - The position in the substring to return (start or end)
-   * @returns The position of the start or end of the string in the document
-   */
-  positionForSubstring(
-    substring: string,
-    position: "start" | "end" = "start",
-  ): LSP.Position {
-    let [{ line, character }] = this.#startOfSubstrings(substring);
-    if (position === "end") {
-      character += substring.length;
-    }
-    return { line, character };
-  }
-
   /**
    * Get the first range of the string in the document
    *
@@ -118,12 +89,17 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   }
 
   public getRangesForSubstring(substring: string): LSP.Range[] {
-    return this.#startOfSubstrings(substring).map(({ line, character }) => {
-      return {
-        start: { line, character },
-        end: { line, character: character + substring.length },
-      };
-    });
+    const text = this.getText();
+    const rows = text.split("\n");
+    return rows
+      .flatMap((row, line) => {
+        const character = row.indexOf(substring);
+        if (character < 0) return [];
+        return [{
+          start: { line, character },
+          end: { line, character: character + substring.length },
+        }];
+      });
   }
 
   /**

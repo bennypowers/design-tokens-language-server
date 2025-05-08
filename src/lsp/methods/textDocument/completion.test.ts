@@ -6,10 +6,6 @@ import * as LSP from "vscode-languageserver-protocol";
 import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { completion } from "./completion.ts";
-import { CssDocument } from "#css";
-import { YamlDocument } from "#yaml";
-import { JsonDocument } from "#json";
-import { TextDocumentIdentifierFor } from "#documents";
 
 describe("textDocument/completion", () => {
   let ctx: DTLSTestContext;
@@ -77,7 +73,7 @@ describe("textDocument/completion", () => {
       const doc = ctx.documents.get(textDocument.uri);
       completions = completion({
         textDocument,
-        position: doc.positionForSubstring("a", "end"),
+        position: doc.getRangeForSubstring("a").end,
       }, ctx);
     });
     it("should return no completions", () => {
@@ -99,7 +95,7 @@ describe("textDocument/completion", () => {
       const doc = ctx.documents.get(textDocument.uri);
       completions = completion({
         textDocument,
-        position: doc.positionForSubstring("token", "end"),
+        position: doc.getRangeForSubstring("token").end,
       }, ctx);
     });
     it("should return all token completions", () => {
@@ -121,7 +117,7 @@ describe("textDocument/completion", () => {
       const doc = ctx.documents.get(textDocument.uri);
       completions = completion({
         textDocument,
-        position: doc.positionForSubstring("--token", "end"),
+        position: doc.getRangeForSubstring("--token").end,
       }, ctx);
     });
     it("should return all token completions", () => {
@@ -148,7 +144,7 @@ describe("textDocument/completion", () => {
       const doc = ctx.documents.get(textDocument.uri);
       completions = completion({
         textDocument,
-        position: doc.positionForSubstring("token", "end"),
+        position: doc.getRangeForSubstring("token").end,
       }, ctx);
     });
     it("should return all token completions", () => {
@@ -176,7 +172,7 @@ describe("textDocument/completion", () => {
         const doc = ctx.documents.get(textDocument.uri);
         completions = completion({
           textDocument,
-          position: doc.positionForSubstring("$value: '", "end"),
+          position: doc.getRangeForSubstring("$value: '").end,
         }, ctx);
       });
       it("should return all token completions", () => {
@@ -280,7 +276,7 @@ describe("textDocument/completion", () => {
               "color": {
                 "$type": "color",
                 "bread": {
-                  "$value": "{co"
+                  "$value": "{c"
                 }
               }
             }`,
@@ -288,7 +284,7 @@ describe("textDocument/completion", () => {
         const doc = ctx.documents.get(textDocument.uri);
         completions = completion({
           textDocument,
-          position: doc.getRangeForSubstring("{co").end,
+          position: doc.getRangeForSubstring("{c").end,
         }, ctx);
       });
       it("should return only color token completions", () => {

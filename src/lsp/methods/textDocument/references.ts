@@ -4,8 +4,6 @@ import {
   ServerCapabilities,
 } from "vscode-languageserver-protocol";
 import { DTLSContext } from "#lsp";
-import { JsonDocument } from "#json";
-import { YamlDocument } from "#yaml";
 
 export function references(
   params: ReferenceParams,
@@ -47,7 +45,7 @@ export function references(
       }
       if (params.context.includeDeclaration) {
         const uri = ext.definitionUri;
-        const doc = context.documents.get(uri) as JsonDocument | YamlDocument;
+        const doc = context.documents.get(uri);
         const range = doc.getRangeForPath(ext.path);
         if (uri && range) {
           locations.add(JSON.stringify({ uri, range }));

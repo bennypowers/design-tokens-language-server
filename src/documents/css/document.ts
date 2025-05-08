@@ -452,6 +452,9 @@ export class CssDocument extends DTLSTextDocument {
     context: DTLSContext,
     params: LSP.CompletionParams,
   ): LSP.CompletionList | null {
+    // The { character: -2 } offset adjusts the position slightly backward to ensure
+    // that the correct node is retrieved, especially when the cursor is at the end
+    // of a token. This helps avoid off-by-one errors in node selection.
     const node = this.getNodeAtPosition(params.position, { character: -2 });
 
     if (

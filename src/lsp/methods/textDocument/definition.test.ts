@@ -71,7 +71,7 @@ describe("textDocument/definition", () => {
     it("returns matching range for nested token", () => {
       const doc = ctx.documents.get(textDocument.uri);
       const definitionUri = "file:///tokens.json";
-      const jsonDoc = ctx.documents.get(definitionUri) as JsonDocument;
+      const jsonDoc = ctx.documents.get(definitionUri);
       const position = doc.getRangeForSubstring("--token-color-red-hex").start;
       const result = definition({ textDocument, position }, ctx);
       expect(result).toEqual([
@@ -129,7 +129,7 @@ describe("textDocument/definition", () => {
     });
 
     it("returns a reference within the document", () => {
-      const doc = ctx.documents.get(textDocument.uri) as JsonDocument;
+      const doc = ctx.documents.get(textDocument.uri);
       const position = doc.getRangeForSubstring("color.red._").start;
       const result = definition({ textDocument, position }, ctx);
       expect(result).toEqual([{
@@ -172,8 +172,8 @@ describe("textDocument/definition", () => {
           },
         ],
       });
-      referee = ctx.documents.get("file:///referee.json") as JsonDocument;
-      referer = ctx.documents.get("file:///referer.json") as JsonDocument;
+      referee = ctx.documents.get("file:///referee.json");
+      referer = ctx.documents.get("file:///referer.json");
     });
 
     afterEach(() => ctx.clear());
