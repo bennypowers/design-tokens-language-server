@@ -174,35 +174,69 @@ describe("textDocument/completion", () => {
     let textDocument: TextDocumentIdentifier;
     let doc: YamlDocument;
     let completions: CompletionList | null;
-    beforeEach(() => {
-      textDocument = ctx.documents.createDocument(
-        "yaml",
-        /*yaml*/ `
-          color:
-            $type: color
-            bread:
-              $value: '`,
-      );
-      doc = ctx.documents.get(textDocument.uri) as YamlDocument;
-      completions = completion({
-        textDocument,
-        position: doc.positionForSubstring("$value: '", "end"),
-      }, ctx);
-    });
-    it("should return all color token completions", () => {
-      expect(completions?.items)
-        .toHaveLength(
-          ctx.tokens
-            .values()
-            .filter((x) => x.$type === "color")
-            .toArray()
-            .length,
+    describe("opening a string property", () => {
+      beforeEach(() => {
+        textDocument = ctx.documents.createDocument(
+          "yaml",
+          /*yaml*/ `
+            color:
+              $type: color
+              bread:
+                $value: '`,
         );
+        doc = ctx.documents.get(textDocument.uri) as YamlDocument;
+        completions = completion({
+          textDocument,
+          position: doc.positionForSubstring("$value: '", "end"),
+        }, ctx);
+      });
+      it("should return all token completions", () => {
+        expect(completions?.items)
+          .toHaveLength(
+            ctx.tokens
+              .values()
+              .toArray()
+              .length,
+          );
+      });
+      it("should return token completions as references", () => {
+        for (const item of completions?.items ?? []) {
+          expect(item.label).toMatch(/^'\{.*}'$/);
+        }
+      });
+      it("should return token names as contextual data for completions", () => {
+        for (const item of completions?.items ?? []) {
+          expect(item.data?.tokenName).toMatch(/^--token-/);
+        }
+      });
     });
-    it("should return token completions as references", () => {
-      for (const item of completions?.items ?? []) {
-        expect(item.textEdit?.newText).toMatch(/^\{.*}$/);
-      }
+    describe("prefixing `{c`", () => {
+      beforeEach(() => {
+        textDocument = ctx.documents.createDocument(
+          "yaml",
+          /*yaml*/ `
+            color:
+              $type: color
+              bread:
+                $value: '{co`,
+        );
+        doc = ctx.documents.get(textDocument.uri) as YamlDocument;
+        const { end } = doc.getRangeForSubstring("{co");
+        completions = completion({
+          textDocument,
+          position: end,
+        }, ctx);
+      });
+      it("should return only color token completions", () => {
+        expect(completions?.items)
+          .toHaveLength(
+            ctx.tokens
+              .values()
+              .filter((x) => x.$type === "color")
+              .toArray()
+              .length,
+          );
+      });
     });
   });
 });
