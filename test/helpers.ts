@@ -1,7 +1,7 @@
 // deno-coverage-ignore-file
 import * as LSP from "vscode-languageserver-protocol";
 import { Token } from "style-dictionary";
-import { Documents } from "#documents";
+import { Documents, TextDocumentIdentifierFor } from "#documents";
 import { Tokens } from "#tokens";
 import { DocumentUri, RequestMessage } from "vscode-languageserver-protocol";
 
@@ -258,16 +258,17 @@ class TestDocuments extends Documents {
     }
   }
 
-  createDocument(
-    languageId: "css" | "json" | "yaml",
+  createDocument<E extends "css" | "json" | "yaml">(
+    languageId: E,
     text: string,
-    uri?: DocumentUri,
-  ) {
+    _uri?: DocumentUri,
+  ): TextDocumentIdentifierFor<E> {
     const id = this.allDocuments.length;
     const tokens = this.#tokens;
     const workspaces = this.#workspaces;
     const version = 1;
-    uri ??= toFileUrl(`/test-${id}.${languageId}`).href;
+    const uri =
+      (_uri ?? toFileUrl(`/test-${id}.${languageId}`).href) as `${string}.${E}`;
     const textDocument = { uri, languageId, version, text };
     this.onDidOpen({ textDocument }, { documents: this, tokens, workspaces });
     return textDocument;

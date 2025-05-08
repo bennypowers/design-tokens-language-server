@@ -3,7 +3,7 @@ import { expect } from "@std/expect";
 
 import { createTestContext, DTLSTestContext } from "#test-helpers";
 
-import { resolve } from "./resolve.ts";
+import { resolve } from "../textDocument/completion.ts";
 
 describe("completionItem/resolve", () => {
   let ctx: DTLSTestContext;

@@ -41,6 +41,14 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   abstract getColors(context: DTLSContext): LSP.ColorInformation[];
 
   /**
+   * Computes token completions for a given position in a document
+   */
+  abstract getCompletions(
+    context: DTLSContext,
+    params: LSP.CompletionParams,
+  ): LSP.CompletionList | null;
+
+  /**
    * Get a range and the referenced token name for a position in a document
    * e.g. `{color.red}` => the range for `{color.red}` and the token name `--token-color-red`
    */
@@ -49,44 +57,24 @@ export abstract class DTLSTextDocument extends FullTextDocument {
     offset?: Offset,
   ): TokenReference | null;
 
+  /**
+   * Gets the range of a data path in a JSON or YAML file
+   */
   abstract getRangeForPath(path: string[]): LSP.Range | null;
 
+  /**
+   * Gets the token corresponding to a data path in a JSON or YAML file
+   */
   abstract getTokenForPath(path: string[]): DTLSToken | null;
 
+  /**
+   * The identifier for this document
+   */
   get identifier(): LSP.VersionedTextDocumentIdentifier {
     return {
       uri: this.uri,
       version: this.version,
     };
-  }
-
-  #startOfSubstrings(substring: string) {
-    const text = this.getText();
-    const rows = text.split("\n");
-    return rows
-      .map((row, line) => {
-        const character = row.indexOf(substring);
-        return { line, character };
-      })
-      .filter((x) => x.character > -1);
-  }
-
-  /**
-   * Get the first position of the string in the document
-   *
-   * @param substring - The string to find in the document
-   * @param position - The position in the substring to return (start or end)
-   * @returns The position of the start or end of the string in the document
-   */
-  positionForSubstring(
-    substring: string,
-    position: "start" | "end" = "start",
-  ): LSP.Position {
-    let [{ line, character }] = this.#startOfSubstrings(substring);
-    if (position === "end") {
-      character += substring.length;
-    }
-    return { line, character };
   }
 
   /**
@@ -101,12 +89,17 @@ export abstract class DTLSTextDocument extends FullTextDocument {
   }
 
   public getRangesForSubstring(substring: string): LSP.Range[] {
-    return this.#startOfSubstrings(substring).map(({ line, character }) => {
-      return {
-        start: { line, character },
-        end: { line, character: character + substring.length },
-      };
-    });
+    const text = this.getText();
+    const rows = text.split("\n");
+    return rows
+      .flatMap((row, line) => {
+        const character = row.indexOf(substring);
+        if (character < 0) return [];
+        return [{
+          start: { line, character },
+          end: { line, character: character + substring.length },
+        }];
+      });
   }
 
   /**

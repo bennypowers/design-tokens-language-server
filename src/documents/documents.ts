@@ -8,6 +8,11 @@ import { Logger } from "#logger";
 
 export type DTLSDocument = CssDocument | JsonDocument | YamlDocument;
 
+export interface TextDocumentIdentifierFor<E extends "css" | "json" | "yaml">
+  extends LSP.TextDocumentIdentifier {
+  uri: `${string}.${E}`;
+}
+
 class ENODOCError extends Error {
   constructor(public uri: LSP.DocumentUri) {
     super(`ENOENT: no Document found for ${uri}`);
@@ -76,6 +81,10 @@ export class Documents {
     this.#map.delete(params.textDocument.uri);
   }
 
+  get(uri: `${string}.css`): CssDocument;
+  get(uri: `${string}.json`): JsonDocument;
+  get(uri: `${string}.yaml`): YamlDocument;
+  get(uri: LSP.DocumentUri): DTLSDocument;
   get(uri: LSP.DocumentUri) {
     const doc = this.#map.get(uri);
     if (!doc) {

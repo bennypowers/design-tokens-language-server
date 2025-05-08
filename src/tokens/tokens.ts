@@ -203,7 +203,7 @@ export class Tokens extends Map<string, DTLSToken> {
   }
 }
 
-export function format(value: string): string {
+function formatCssValue(value: string): string {
   if (value?.startsWith?.("light-dark\(") && value.split("\n").length === 1) {
     const [light, dark] = getLightDarkValues(value);
     return `color: light-dark(
@@ -217,6 +217,10 @@ export function format(value: string): string {
 
 export function getTokenMarkdown(token: DTLSToken) {
   const { $description, $value, $type, $extensions } = token;
+  if (token.value !== "string" && typeof $value !== "number") {
+    Logger.warn`Weird token ${token}`;
+  }
+
   const { name } = $extensions.designTokensLanguageServer;
   return [
     `# \`${name}\``,
@@ -227,7 +231,7 @@ export function getTokenMarkdown(token: DTLSToken) {
     $description,
     "",
     "```css",
-    format($value),
+    formatCssValue($value),
     "```",
   ]
     .filter((x) => x != null)

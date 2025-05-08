@@ -10,8 +10,9 @@ import { DTLSContext, DTLSErrorCodes } from "#lsp/lsp.ts";
 
 import * as YAML from "yaml";
 
-import { cssColorToLspColor } from "#color";
 import { usesReferences } from "style-dictionary/utils";
+
+import { cssColorToLspColor } from "#color";
 import { getLightDarkValues } from "#css";
 import { Logger } from "#logger";
 import { DTLSToken } from "#tokens";
@@ -19,7 +20,7 @@ import { DTLSToken } from "#tokens";
 import {
   DTLSSemanticTokenIntermediate,
   DTLSTokenTypes,
-} from "#lsp/methods/textDocument/semanticTokens.ts";
+} from "#methods/textDocument/semanticTokens.ts";
 
 type YAMLPath = readonly (
   | YAML.Node
@@ -44,7 +45,7 @@ export class YamlDocument extends DTLSTextDocument {
 
   private constructor(uri: string, version: number, text: string) {
     super(uri, "yaml", version, text);
-    this.#root = this.#parse();
+    this.#parse();
   }
 
   override update(
@@ -52,10 +53,10 @@ export class YamlDocument extends DTLSTextDocument {
     version: number,
   ) {
     super.update(changes, version);
-    this.#root = this.#parse();
+    this.#parse();
   }
 
-  #parse(): YAML.Node {
+  #parse() {
     const lineCounter = new YAML.LineCounter();
     this.#document = YAML.parseDocument(this.getText(), {
       lineCounter,
@@ -65,7 +66,7 @@ export class YamlDocument extends DTLSTextDocument {
     if (!root) {
       throw new Error("Failed to parse YAML");
     }
-    return root;
+    this.#root = root;
   }
 
   #getRangeForNode(node: YAML.Node | null) {
@@ -124,6 +125,17 @@ export class YamlDocument extends DTLSTextDocument {
     return null;
   }
 
+  #getOffsetAtPosition(position: LSP.Position): number {
+    return this.getText()
+      .split("\n")
+      .reduce((acc, row, i) => {
+        if (i === position.line) {
+          return acc + position.character;
+        } else if (i < position.line) return acc + row.length + 1; // add 1 for the '\n'
+        else return acc;
+      }, 0);
+  }
+
   #getNodeAtPosition(
     position: LSP.Position,
     offset: Partial<LSP.Position> = {},
@@ -131,14 +143,7 @@ export class YamlDocument extends DTLSTextDocument {
     let found: YAML.Node | null = null;
     const adjustedPosition = adjustPosition(position, offset);
     // convert the line/col position to a numeric offset
-    const offsetOfPosition = this.getText()
-      .split("\n")
-      .reduce((acc, row, i) => {
-        if (i === adjustedPosition.line) {
-          return acc + adjustedPosition.character;
-        } else if (i < adjustedPosition.line) return acc + row.length + 1; // add 1 for the '\n'
-        else return acc;
-      }, 0);
+    const offsetOfPosition = this.#getOffsetAtPosition(adjustedPosition);
 
     function isInRangeOfPosition(node: YAML.Node) {
       const [start, end] = node?.range ?? [Infinity, -Infinity];
@@ -405,6 +410,41 @@ export class YamlDocument extends DTLSTextDocument {
       },
     });
     return colors;
+  }
+
+  public getCompletions(
+    context: DTLSContext,
+    params: LSP.CompletionParams,
+  ): LSP.CompletionList | null {
+    const node = this.#getNodeAtPosition(params.position);
+    if (YAML.isScalar(node) && typeof node.value === "string") {
+      const prefix = node.value.replace(/}$/, "");
+      const range = this.#getRangeForNode(node);
+      if (range) {
+        const items = context.tokens
+          .values()
+          .flatMap((token) => {
+            const ext = token.$extensions.designTokensLanguageServer;
+            if (!ext.reference.startsWith(prefix)) return [];
+            const label = `'${ext.reference}'`;
+            const tokenName = ext.name;
+            return [{ label, data: { tokenName } }];
+          })
+          .toArray();
+
+        return {
+          items,
+          isIncomplete: items.length === 0 ||
+            items.length < context.tokens.size,
+          itemDefaults: {
+            insertTextFormat: LSP.InsertTextFormat.Snippet,
+            insertTextMode: LSP.InsertTextMode.asIs,
+            editRange: range,
+          },
+        };
+      }
+    }
+    return null;
   }
 
   public getDiagnostics(context: DTLSContext) {

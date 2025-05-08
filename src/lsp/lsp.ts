@@ -5,29 +5,27 @@ import { Logger } from "#logger";
 import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
 
-import * as DocumentColor from "./methods/textDocument/documentColor.ts";
-import * as CodeAction from "./methods/textDocument/codeAction.ts";
-import * as Diagnostic from "./methods/textDocument/diagnostic.ts";
-import * as Hover from "./methods/textDocument/hover.ts";
-import * as Completion from "./methods/textDocument/completion.ts";
-import * as ColorPresentation from "./methods/textDocument/colorPresentation.ts";
-import * as SemanticTokens from "./methods/textDocument/semanticTokens.ts";
-import { resolve as completionItemResolve } from "./methods/completionItem/resolve.ts";
-import { resolve as codeActionResolve } from "./methods/codeAction/resolve.ts";
-import * as Definition from "./methods/textDocument/definition.ts";
-import * as References from "./methods/textDocument/references.ts";
+import * as DocumentColor from "#methods/textDocument/documentColor.ts";
+import * as CodeAction from "#methods/textDocument/codeAction.ts";
+import * as Diagnostic from "#methods/textDocument/diagnostic.ts";
+import * as Hover from "#methods/textDocument/hover.ts";
+import * as Completion from "#methods/textDocument/completion.ts";
+import * as ColorPresentation from "#methods/textDocument/colorPresentation.ts";
+import * as SemanticTokens from "#methods/textDocument/semanticTokens.ts";
+import * as Definition from "#methods/textDocument/definition.ts";
+import * as References from "#methods/textDocument/references.ts";
 
 import manifest from "../../package.json" with { type: "json" };
 
 const { version } = manifest;
 
 const handlers = {
-  "codeAction/resolve": codeActionResolve,
-  "completionItem/resolve": completionItemResolve,
   "textDocument/codeAction": CodeAction.codeAction,
+  "codeAction/resolve": CodeAction.resolve,
   "textDocument/definition": Definition.definition,
   "textDocument/colorPresentation": ColorPresentation.colorPresentation,
   "textDocument/completion": Completion.completion,
+  "completionItem/resolve": Completion.resolve,
   "textDocument/diagnostic": Diagnostic.diagnostic,
   "textDocument/documentColor": DocumentColor.documentColor,
   "textDocument/hover": Hover.hover,
@@ -247,10 +245,13 @@ export class Lsp {
    * @param params - The parameters for the initialization request.
    * @returns The capabilities of the server.
    */
-  public async initialize(params: LSP.InitializeParams) {
-    Logger.info`\n\n🎨 DESIGN TOKENS LANGUAGE SERVER 💎: ${
-      params.clientInfo?.name ?? "unknown-client"
-    }@${params.clientInfo?.version ?? "unknown-version"}\n`;
+  public async initialize(
+    params: LSP.InitializeParams,
+  ): Promise<LSP.InitializeResult> {
+    const clientName = params.clientInfo?.name ?? "unknown-client";
+    const clientVersion = params.clientInfo?.version ?? "unknown-version";
+    Logger
+      .info`\n\n🎨 DESIGN TOKENS LANGUAGE SERVER 💎: ${clientName}@${clientVersion}\n`;
 
     try {
       const {
@@ -270,6 +271,10 @@ export class Lsp {
     }
 
     return {
+      serverInfo: {
+        name: "design-tokens-language-server",
+        version,
+      },
       capabilities: {
         textDocumentSync: LSP.TextDocumentSyncKind.Incremental,
         ...DocumentColor.capabilities,
@@ -281,11 +286,7 @@ export class Lsp {
         ...Diagnostic.capabilities,
         ...SemanticTokens.capabilities,
       },
-      serverInfo: {
-        name: "design-tokens-language-server",
-        version,
-      },
-    } satisfies LSP.InitializeResult;
+    };
   }
 
   /**

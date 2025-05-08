@@ -17,6 +17,7 @@ jobs:
         with:
           deno-version: v2.x
 
+      - run: deno install --lock
       - run: deno task test
       - run: deno task build:ci
 

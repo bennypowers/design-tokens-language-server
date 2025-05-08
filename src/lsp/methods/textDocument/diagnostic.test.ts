@@ -213,7 +213,7 @@ describe("textDocument/diagnostic", () => {
         data: {
           tokenName: "--token-font-heft",
           actual: "'400'",
-          expected: '400',
+          expected: "400",
         },
         message: "Token fallback does not match expected value: 400",
         range: doc.getRangeForSubstring("'400'"),
@@ -253,9 +253,7 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a JSON document which references an existing token", () => {
     it("should return a single diagnostic", () => {
-      const doc = ctx.documents.get(
-        "file:///referer-good.json",
-      ) as JsonDocument;
+      const doc = ctx.documents.get("file:///referer-good.json");
       const diagnostics = diagnostic({ textDocument: doc }, ctx);
       expect(diagnostics.items).toHaveLength(0);
     });
@@ -263,7 +261,7 @@ describe("textDocument/diagnostic", () => {
 
   describe("in a JSON document which references a non-existent token", () => {
     it("should return a single diagnostic", () => {
-      const doc = ctx.documents.get("file:///referer.json") as JsonDocument;
+      const doc = ctx.documents.get("file:///referer.json");
       const diagnostics = diagnostic({ textDocument: doc }, ctx);
       expect(diagnostics.items).toHaveLength(1);
       const [diag] = diagnostics.items;

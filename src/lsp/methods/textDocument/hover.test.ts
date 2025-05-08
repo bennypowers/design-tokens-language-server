@@ -70,10 +70,8 @@ describe("textDocument/hover", () => {
     `,
     );
     const doc = ctx.documents.get(textDocument.uri);
-    const position = doc.positionForSubstring("--token-color-red");
-
+    const position = doc.getRangeForSubstring("--token-color-red").start;
     const result = hover({ textDocument, position }, ctx);
-
     expect(result).not.toBeNull();
     expect(result?.range).toEqual(
       doc.getRangeForSubstring("--token-color-red"),
@@ -101,7 +99,7 @@ describe("textDocument/hover", () => {
     `,
     );
     const doc = ctx.documents.get(textDocument.uri);
-    const position = doc.positionForSubstring("--non-token");
+    const position = doc.getRangeForSubstring("--non-token").start;
     const result = hover({ textDocument, position }, ctx);
     expect(result).toBeNull();
   });
@@ -117,7 +115,8 @@ describe("textDocument/hover", () => {
     );
 
     const doc = ctx.documents.get(textDocument.uri);
-    const position = doc.positionForSubstring("--token-color-blue-lightdark");
+    const position =
+      doc.getRangeForSubstring("--token-color-blue-lightdark").start;
     const range = doc.getRangeForSubstring("--token-color-blue-lightdark");
     const result = hover({ textDocument, position }, ctx);
     expect(result).not.toBeNull();
@@ -140,7 +139,7 @@ describe("textDocument/hover", () => {
 
   describe("in a json file with local references", () => {
     it("should return hover information for a token", () => {
-      const doc = ctx.documents.get("file:///tokens.json") as JsonDocument;
+      const doc = ctx.documents.get("file:///tokens.json");
       const range = doc.getRangeForSubstring("color.red._");
       const position = range.start;
       const result = hover({ textDocument: doc, position }, ctx);
@@ -163,7 +162,7 @@ describe("textDocument/hover", () => {
 
   describe("in a json file with foreign references", () => {
     it("should return hover information for a token", () => {
-      const doc = ctx.documents.get("file:///referer.json") as JsonDocument;
+      const doc = ctx.documents.get("file:///referer.json");
       const range = doc.getRangeForSubstring("color.red.hex");
       const position = range.start;
       const result = hover({ textDocument: doc, position }, ctx);

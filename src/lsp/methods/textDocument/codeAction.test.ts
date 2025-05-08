@@ -5,14 +5,17 @@ import { createTestContext, DTLSTestContext } from "#test-helpers";
 
 import { codeAction, DTLSCodeAction } from "./codeAction.ts";
 
-import { resolve } from "../codeAction/resolve.ts";
+import { resolve } from "../textDocument/codeAction.ts";
 
 import {
   CodeActionKind,
+  Diagnostic,
   TextDocumentIdentifier,
 } from "vscode-languageserver-protocol";
 import { DTLSTextDocument } from "#document";
 import { CssDocument } from "#css";
+import { diagnostic } from "#methods/textDocument/diagnostic.ts";
+import { TextDocumentIdentifierFor } from "#documents";
 
 describe("textDocument/codeAction", () => {
   let ctx: DTLSTestContext;
@@ -45,8 +48,9 @@ describe("textDocument/codeAction", () => {
 
   describe("in a css document with one token var call and no fallback", () => {
     let result: ReturnType<typeof codeAction>;
-    let textDocument: TextDocumentIdentifier;
+    let textDocument: TextDocumentIdentifierFor<"css">;
     let doc: CssDocument;
+    let diagnostics: Diagnostic[];
 
     beforeEach(() => {
       textDocument = ctx.documents.createDocument(
@@ -57,7 +61,8 @@ describe("textDocument/codeAction", () => {
         }
       `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      doc = ctx.documents.get(textDocument.uri);
+      diagnostics = doc.getDiagnostics(ctx);
     });
 
     describe("called on the first character of the file", () => {
@@ -69,7 +74,7 @@ describe("textDocument/codeAction", () => {
             end: { line: 0, character: 0 },
           },
           context: {
-            diagnostics: doc.getDiagnostics(ctx),
+            diagnostics,
           },
         }, ctx);
       });
@@ -80,7 +85,7 @@ describe("textDocument/codeAction", () => {
 
     describe("calling codeAction on the first character of the token name", () => {
       beforeEach(() => {
-        const position = doc.positionForSubstring("--token-color-red");
+        const position = doc.getRangeForSubstring("--token-color-red").start;
         result = codeAction({
           textDocument,
           range: { start: position, end: position },
@@ -111,7 +116,7 @@ describe("textDocument/codeAction", () => {
   });
 
   describe("in a css document with one token var call that has an incorrect fallback", () => {
-    let textDocument: TextDocumentIdentifier;
+    let textDocument: TextDocumentIdentifierFor<"css">;
     let doc: CssDocument;
 
     beforeEach(() => {
@@ -123,14 +128,14 @@ describe("textDocument/codeAction", () => {
           }
         `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      doc = ctx.documents.get(textDocument.uri);
     });
 
     describe("called on the first character of the fallback", () => {
       let result: ReturnType<typeof codeAction>;
 
       beforeEach(() => {
-        const position = doc.positionForSubstring("blue");
+        const position = doc.getRangeForSubstring("blue").start;
         const diagnostics = doc.getDiagnostics(ctx);
         result = codeAction({
           textDocument,
@@ -156,7 +161,7 @@ describe("textDocument/codeAction", () => {
   });
 
   describe("in a css document with one token var call that has a correct fallback", () => {
-    let textDocument: TextDocumentIdentifier;
+    let textDocument: TextDocumentIdentifierFor<"css">;
     let doc: CssDocument;
 
     beforeEach(() => {
@@ -168,14 +173,14 @@ describe("textDocument/codeAction", () => {
           }
         `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      doc = ctx.documents.get(textDocument.uri);
     });
 
     describe("called on the first character of the fallback", () => {
       let result: ReturnType<typeof codeAction>;
 
       beforeEach(() => {
-        const position = doc.positionForSubstring("red");
+        const position = doc.getRangeForSubstring("red").start;
         const diagnostics = doc.getDiagnostics(ctx);
         result = codeAction({
           textDocument,
@@ -208,7 +213,7 @@ describe("textDocument/codeAction", () => {
   });
 
   describe("in a css document with two token var calls with incorrect fallbacks", () => {
-    let textDocument: TextDocumentIdentifier;
+    let textDocument: TextDocumentIdentifierFor<"css">;
     let doc: CssDocument;
 
     beforeEach(() => {
@@ -221,7 +226,7 @@ describe("textDocument/codeAction", () => {
           }
         `,
       );
-      doc = ctx.documents.get(textDocument.uri) as CssDocument;
+      doc = ctx.documents.get(textDocument.uri);
     });
 
     let result: ReturnType<typeof codeAction>;
@@ -314,8 +319,8 @@ describe("textDocument/codeAction", () => {
           result = codeAction({
             textDocument: doc.identifier,
             range: {
-              start: doc.positionForSubstring("color:", "start"),
-              end: doc.positionForSubstring("darkblue));", "end"),
+              start: doc.getRangeForSubstring("color:").start,
+              end: doc.getRangeForSubstring("darkblue));").end,
             },
             context: { diagnostics },
           }, ctx);
