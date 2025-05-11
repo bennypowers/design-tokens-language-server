@@ -38,8 +38,8 @@
     "npm:style-dictionary@^4.3.3": "4.3.3",
     "npm:tinycolor2@^1.6.0": "1.6.0",
     "npm:vscode-languageserver-protocol@^3.17.5": "3.17.5",
-    "npm:web-tree-sitter@*": "0.25.3",
-    "npm:web-tree-sitter@~0.25.3": "0.25.3",
+    "npm:web-tree-sitter@*": "0.25.4",
+    "npm:web-tree-sitter@~0.25.4": "0.25.4",
     "npm:yaml@^2.7.1": "2.7.1"
   },
   "jsr": {
@@ -1180,8 +1180,8 @@
     "vscode-languageserver-types@3.17.5": {
       "integrity": "sha512-Ld1VelNuX9pdF39h2Hgaeb5hEZM2Z3jUrrMgWQAu82jMtZp7p3vJT3BzToKtZI7NgQssZje5o0zryOrhQvzQAg=="
     },
-    "web-tree-sitter@0.25.3": {
-      "integrity": "sha512-e0hdXG+nJ18Zd/QJFhSx0DNTSMz7miwUjKyJ/lglTnZo6ke08++BQzXkaeaqnGJFi9qq+nPJg2L8hYAjduToHQ=="
+    "web-tree-sitter@0.25.4": {
+      "integrity": "sha512-BNbAL2tgeuqpufHOM4TapD8evwq+J+X514rTL7zMgDSc+RN9LlByE3zVtTheucwQFkQ+FPU0Pz8Wn4Emz9itRg=="
     },
     "which-typed-array@1.1.19": {
       "integrity": "sha512-rEvr90Bck4WZt9HHFC4DJMsjvu7x+r6bImz0/BrbWb7A2djJ8hnZMrWnHo9F8ssv0OMErasDhftrfROTyqSDrw==",
@@ -1252,7 +1252,7 @@
         "npm:esbuild@~0.25.2",
         "npm:jsonc-parser@^3.3.1",
         "npm:tinycolor2@^1.6.0",
-        "npm:web-tree-sitter@~0.25.3",
+        "npm:web-tree-sitter@~0.25.4",
         "npm:yaml@^2.7.1"
       ]
     }

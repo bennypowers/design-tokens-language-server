@@ -10,16 +10,14 @@
     "test": "deno test -A --coverage=coverage",
     "test:watch": "deno test -A --watch",
     "dev": "npx nodemon -e ts,json,rs -x 'deno task build'",
-    "copy:wts:vendor": "cp -r vendor/web-tree-sitter ./node_modules/.deno/web-tree-sitter@0.25.3/node_modules/",
     "copy:wts:mkdir": "mkdir -p dist/documents/css/tree-sitter",
-    "copy:wts:wasm": "cp ./vendor/web-tree-sitter/web-tree-sitter.wasm dist/web-tree-sitter.wasm",
+    "copy:wts:wasm": "cp ./node_modules/web-tree-sitter/tree-sitter.wasm dist/tree-sitter.wasm",
     "copy:wts:css": "cp ./src/**/*.wasm dist/",
     "copy:vscode:readme": "cp README.md extensions/vscode/",
     "copy": {
       "dependencies": [
         "copy:wts:mkdir",
         "copy:vscode:readme",
-        "copy:wts:vendor",
         "copy:wts:wasm",
         "copy:wts:css"
       ]
@@ -116,7 +114,6 @@
     "@std/regexp": "jsr:@std/regexp@^1.0.1",
     "@std/testing": "jsr:@std/testing@^1.0.11",
     "@sv2dev/tasque": "jsr:@sv2dev/tasque@^0.1.2",
-    "web-tree-sitter": "npm:web-tree-sitter",
     "style-dictionary": "npm:style-dictionary@^4.3.3",
     "env": "npm:web-tree-sitter",
     "vscode-languageserver-protocol": "npm:vscode-languageserver-protocol@^3.17.5"
