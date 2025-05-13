@@ -16,3 +16,5 @@ color:
     $value: "light-dark({color.blue}, {color.red.hex})"
   triple:
     $value: '{}'
+  depr:
+    $value: '{deprecated}'
