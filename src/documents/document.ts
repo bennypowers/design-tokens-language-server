@@ -2,6 +2,7 @@ import * as LSP from "vscode-languageserver-protocol";
 import { FullTextDocument } from "./textDocument.ts";
 import { DTLSContext } from "#lsp/lsp.ts";
 import { DTLSToken } from "#tokens";
+import { Token } from "style-dictionary";
 
 export const TOKEN_REFERENCE_REGEXP = /{(?<reference>[^}]+)}/gd;
 
@@ -27,6 +28,10 @@ export interface TokenReference {
 type Offset = Partial<LSP.Position>;
 
 export abstract class DTLSTextDocument extends FullTextDocument {
+  static isDTLSToken(token: Token): token is DTLSToken {
+    return !!token?.$extensions?.designTokensLanguageServer;
+  }
+
   abstract language: "json" | "css" | "yaml";
 
   /**
@@ -39,6 +44,11 @@ export abstract class DTLSTextDocument extends FullTextDocument {
    * color token name in the document.
    */
   abstract getColors(context: DTLSContext): LSP.ColorInformation[];
+
+  /**
+   * Get a list of DocumentSymbol objects representing the occurences of tokens in the document.
+   */
+  abstract getDocumentSymbols(context: DTLSContext): LSP.DocumentSymbol[];
 
   /**
    * Computes token completions for a given position in a document

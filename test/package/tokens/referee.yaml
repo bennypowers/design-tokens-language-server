@@ -10,3 +10,7 @@ color:
     $value:
       - salmon
       - maroon
+deprecated:
+  $type: dimension
+  $value: 0px
+  $deprecated: because reasons
