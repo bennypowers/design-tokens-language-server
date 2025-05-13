@@ -180,6 +180,12 @@ export class YamlDocument extends DTLSTextDocument {
     return node ?? null;
   }
 
+  #localReferenceToTokenName(reference: string) {
+    const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
+    const path = Array.isArray(reference) ? reference : reference.split(".");
+    return [prefix, ...path].filter((x) => !!x).join("-");
+  }
+
   getTokenForPath(path: (string | number)[]): DTLSToken | null {
     const node = this.#getNodeAtPath(path);
     const valueNode = this.#getNodeAtPath([...path, "$value"]);
@@ -211,12 +217,6 @@ export class YamlDocument extends DTLSTextDocument {
       ) ?? null;
     }
     return null;
-  }
-
-  #localReferenceToTokenName(reference: string) {
-    const prefix = this.#context.workspaces.getPrefixForUri(this.uri);
-    const path = Array.isArray(reference) ? reference : reference.split(".");
-    return [prefix, ...path].filter((x) => !!x).join("-");
   }
 
   getRangeForTokenName(tokenName: string, prefix?: string): LSP.Range | null {
@@ -461,10 +461,30 @@ export class YamlDocument extends DTLSTextDocument {
         const errors: string[] = [];
         if (usesReferences(content)) {
           const matches = content.match(TOKEN_REFERENCE_REGEXP);
-          for (const name of matches ?? []) {
-            const resolved = context.tokens.resolveValue(name);
+          for (const match of matches ?? []) {
+            const resolved = context.tokens.resolveValue(match);
             if (!resolved) {
-              errors.push(name);
+              errors.push(match);
+            } else {
+              const refUnpacked = match.replace(TOKEN_REFERENCE_REGEXP, "$1");
+              const name = `--${this.#localReferenceToTokenName(refUnpacked)}`;
+              const token = context.tokens.get(name);
+              if (token?.$deprecated) {
+                let message = `${name} is deprecated`;
+                if (typeof token.$deprecated === "string") {
+                  message += `: ${token.$deprecated}`;
+                }
+                diagnostics.push({
+                  range,
+                  severity: LSP.DiagnosticSeverity.Information,
+                  tags: [LSP.DiagnosticTag.Deprecated],
+                  message,
+                  data: {
+                    tokenName:
+                      token.$extensions.designTokensLanguageServer.name,
+                  },
+                });
+              }
             }
           }
         }

@@ -49,6 +49,10 @@ export class Tokens extends Map<string, DTLSToken> {
    */
   #normalizeKey(key: string) {
     if (key.startsWith(`{`)) {
+      Logger.debug`
+key: ${key}
+normali: ${`--${key.replace(/{|}/g, "").split(".").join("-")}`}
+`;
       return `--${key.replace(/{|}/g, "").split(".").join("-")}`;
     } else {
       return `--${key}`.replace(/^-{4}/, "--");

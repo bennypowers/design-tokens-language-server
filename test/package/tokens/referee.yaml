@@ -1,3 +1,7 @@
+deprecated:
+  $value: 0px
+  $type: dimension
+  $deprecated: because reasons
 color:
   $type: color
   purple:

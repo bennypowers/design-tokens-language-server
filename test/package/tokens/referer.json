@@ -11,6 +11,9 @@
       "vexref": {
         "$value": "{color.red.vex}"
       },
+      "depref": {
+        "$value": "{deprecated}"
+      },
       "yamref": {
         "$value": "{color.becky}"
       },

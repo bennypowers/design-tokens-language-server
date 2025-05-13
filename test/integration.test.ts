@@ -214,12 +214,24 @@ color: light-dark(
             it("returns full diagnostics", () => {
               expect(diagnosticsResponse.result.kind).toEqual("full");
             });
-            it("returns 4 diagnostics", () => {
-              expect(diagnosticsResponse.result.items).toHaveLength(4);
+            it("returns 5 diagnostics", () => {
+              expect(diagnosticsResponse.result.items).toHaveLength(5);
             });
             it("returns the right diagnostics", () => {
-              const [$1, $2, $3, $4] = diagnosticsResponse.result.items;
+              const [$1, $2, $3, $4, $5] = diagnosticsResponse.result.items;
               expect($1, "1st diagnostic").toEqual({
+                range: getLspRangesForSubstring(
+                  testCssContent,
+                  "--token-deprecated",
+                ).at(0),
+                severity: 3,
+                message: "--token-deprecated is deprecated: because reasons",
+                data: {
+                  tokenName: "--token-deprecated",
+                },
+                tags: [2],
+              });
+              expect($2, "2nd diagnostic").toEqual({
                 severity: 1,
                 code: "incorrect-fallback",
                 message: "Token fallback does not match expected value: blue",
@@ -230,7 +242,7 @@ color: light-dark(
                 },
                 range: getLspRangesForSubstring(testCssContent, "green").at(2),
               });
-              expect($2, "2nd diagnostic").toEqual({
+              expect($3, "3rd diagnostic").toEqual({
                 severity: 1,
                 code: "incorrect-fallback",
                 message:
@@ -242,7 +254,7 @@ color: light-dark(
                 },
                 range: getLspRangesForSubstring(testCssContent, "fee").at(0),
               });
-              expect($3, "3rd diagnostic").toEqual({
+              expect($4, "4th diagnostic").toEqual({
                 severity: 1,
                 code: "incorrect-fallback",
                 data: {
@@ -253,7 +265,7 @@ color: light-dark(
                 message: "Token fallback does not match expected value: 400",
                 range: getLspRangesForSubstring(testCssContent, '"400"').at(0),
               });
-              expect($4, "4th diagnostic").toEqual({
+              expect($5, "5th diagnostic").toEqual({
                 severity: 1,
                 code: "incorrect-fallback",
                 message:

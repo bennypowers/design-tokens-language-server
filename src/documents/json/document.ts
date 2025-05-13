@@ -7,7 +7,6 @@ import * as JSONC from "jsonc-parser";
 
 import { cssColorToLspColor } from "#color";
 import { getLightDarkValues } from "#css";
-import { Logger } from "#logger";
 import { DTLSTextDocument, TOKEN_REFERENCE_REGEXP } from "#document";
 
 import { DEFAULT_GROUP_MARKERS, DTLSToken } from "#tokens";
@@ -379,29 +378,56 @@ export class JsonDocument extends DTLSTextDocument {
   }
 
   public getDiagnostics(context: DTLSContext) {
-    Logger.info`getDiagnostics ${this.uri}`;
     if (!context.tokens) {
       throw new Error("No tokens found in context");
     }
+    const diagnostics: LSP.Diagnostic[] = [];
     // all nodes which are string values of $value properties in the #root
-    return this.#allStringValueNodes.flatMap((valueNode) => {
-      const content = valueNode.value;
-      const errors: string[] = [];
+    this.#allStringValueNodes.forEach((valueNode) => {
+      const content: string = valueNode.value;
       if (usesReferences(content)) {
         const matches = content.match(TOKEN_REFERENCE_REGEXP);
-        for (const name of matches ?? []) {
-          const resolved = context.tokens.resolveValue(name);
+        for (const match of matches ?? []) {
+          const resolved = context.tokens.resolveValue(match);
           if (!resolved) {
-            errors.push(name);
+            diagnostics.push({
+              range: this.#getRangeForNode(valueNode)!,
+              severity: LSP.DiagnosticSeverity.Error,
+              message: `Token reference does not exist: ${match}`,
+              code: DTLSErrorCodes.unknownReference,
+            });
+          } else {
+            const refUnpacked = match.replace(TOKEN_REFERENCE_REGEXP, "$1");
+            const spec = this.#context.workspaces.getSpecForUri(this.uri);
+            const parts = refUnpacked.split(".");
+            const pathIncludingMarkers = spec?.prefix
+              ? [spec.prefix, ...parts]
+              : parts;
+            const groupMarkers = spec?.groupMarkers ?? DEFAULT_GROUP_MARKERS;
+            const path = pathIncludingMarkers.filter((x) =>
+              !groupMarkers.includes(x)
+            );
+            const name = `--${path.join("-")}`;
+            const token = context.tokens.get(name);
+            if (token?.$deprecated) {
+              let message = `${name} is deprecated`;
+              if (typeof token.$deprecated === "string") {
+                message += `: ${token.$deprecated}`;
+              }
+              diagnostics.push({
+                range: this.#getRangeForNode(valueNode)!,
+                severity: LSP.DiagnosticSeverity.Information,
+                tags: [LSP.DiagnosticTag.Deprecated],
+                message,
+                data: {
+                  tokenName: token.$extensions.designTokensLanguageServer.name,
+                },
+              });
+            }
           }
         }
       }
-      return errors.map((name) => ({
-        range: this.#getRangeForNode(valueNode)!,
-        severity: LSP.DiagnosticSeverity.Error,
-        message: `Token reference does not exist: ${name}`,
-        code: DTLSErrorCodes.unknownReference,
-      }));
     });
+    return diagnostics;
   }
 }

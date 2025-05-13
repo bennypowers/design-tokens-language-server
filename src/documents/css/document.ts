@@ -8,7 +8,6 @@ import * as LSP from "vscode-languageserver-protocol";
 import * as Queries from "./tree-sitter/queries.ts";
 
 import { parser } from "./tree-sitter/parser.ts";
-import { Token } from "style-dictionary";
 
 import { cssColorToLspColor } from "#color";
 import { DTLSToken } from "#tokens";
@@ -32,7 +31,7 @@ export interface TokenVarCall {
   token: {
     name: string;
     range: LSP.Range;
-    token: Token;
+    token: DTLSToken;
   };
   fallback?: {
     value: string;
@@ -291,7 +290,7 @@ export class CssDocument extends DTLSTextDocument {
         const token = {
           name: tokenNameNode.text,
           range: tsRangeToLspRange(tokenNameNode),
-          token: _token,
+          token: _token as DTLSToken,
         };
         if (context.tokens.has(token.name)) {
           const { $value } = token.token;
@@ -321,12 +320,15 @@ export class CssDocument extends DTLSTextDocument {
 
   #computeDiagnostics() {
     return this.varCalls.flatMap((call) => {
-      if (!call.fallback || call.fallback.valid) return [];
-      else {
+      const diags: LSP.Diagnostic[] = [];
+      const tokenName =
+        call.token.token.$extensions.designTokensLanguageServer.name;
+      const { $deprecated } = call.token.token;
+      if (call.fallback && !call.fallback.valid) {
         const actual = call.fallback.value;
         const expected = call.token.token.$value;
         const tokenName = call.token.name;
-        return [{
+        diags.push({
           range: call.fallback.range,
           severity: LSP.DiagnosticSeverity.Error,
           message: `Token fallback does not match expected value: ${expected}`,
@@ -336,8 +338,24 @@ export class CssDocument extends DTLSTextDocument {
             actual,
             expected,
           },
-        }];
+        });
       }
+      if ($deprecated != null) {
+        let message = `${tokenName} is deprecated`;
+        if (typeof $deprecated === "string") {
+          message += `: ${$deprecated}`;
+        }
+        diags.push({
+          range: call.token.range,
+          severity: LSP.DiagnosticSeverity.Information,
+          tags: [LSP.DiagnosticTag.Deprecated],
+          message,
+          data: {
+            tokenName,
+          },
+        });
+      }
+      return diags;
     });
   }
 

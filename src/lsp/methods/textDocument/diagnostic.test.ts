@@ -1,3 +1,4 @@
+import * as LSP from "vscode-languageserver-protocol";
 import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -6,7 +7,6 @@ import { createTestContext, DTLSTestContext } from "#test-helpers";
 import { DTLSErrorCodes } from "#lsp";
 
 import { diagnostic } from "./diagnostic.ts";
-import { JsonDocument } from "#json";
 
 describe("textDocument/diagnostic", () => {
   let ctx: DTLSTestContext;
@@ -18,6 +18,18 @@ describe("textDocument/diagnostic", () => {
           prefix: "token",
           spec: "file:///tokens.json",
           tokens: {
+            deprecated: {
+              width: {
+                $deprecated: "because reasons",
+                $type: "dimension",
+                $value: "0px",
+              },
+              height: {
+                $deprecated: true,
+                $type: "dimension",
+                $value: "0px",
+              },
+            },
             color: {
               $type: "color",
               red: {
@@ -248,6 +260,38 @@ describe("textDocument/diagnostic", () => {
       );
       const diagnostics = diagnostic({ textDocument }, ctx);
       expect(diagnostics.items).toEqual([]);
+    });
+  });
+
+  describe("in a CSS document with two deprecated tokens", () => {
+    it("should return deprecation diagnostics", () => {
+      const textDocument = ctx.documents.createDocument(
+        "css",
+        /*css*/ `
+        body {
+          width: var(--token-deprecated-width);
+          height: var(--token-deprecated-height);
+        }
+      `,
+      );
+      const diagnostics = diagnostic({ textDocument }, ctx);
+      expect(diagnostics.items).toEqual([{
+        data: { tokenName: "--token-deprecated-width" },
+        message: "--token-deprecated-width is deprecated: because reasons",
+        range: ctx.documents.get(textDocument.uri).getRangeForSubstring(
+          "--token-deprecated-width",
+        ),
+        severity: LSP.DiagnosticSeverity.Information,
+        tags: [LSP.DiagnosticTag.Deprecated],
+      }, {
+        data: { tokenName: "--token-deprecated-height" },
+        message: "--token-deprecated-height is deprecated",
+        range: ctx.documents.get(textDocument.uri).getRangeForSubstring(
+          "--token-deprecated-height",
+        ),
+        severity: LSP.DiagnosticSeverity.Information,
+        tags: [LSP.DiagnosticTag.Deprecated],
+      }]);
     });
   });
 
