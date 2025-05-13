@@ -404,4 +404,11 @@ export class JsonDocument extends DTLSTextDocument {
       }));
     });
   }
+
+  public override getDocumentSymbols(
+    context: DTLSContext,
+  ): LSP.DocumentSymbol[] {
+    // TODO: return tokens
+    return [];
+  }
 }

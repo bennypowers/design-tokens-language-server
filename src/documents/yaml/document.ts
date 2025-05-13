@@ -480,4 +480,11 @@ export class YamlDocument extends DTLSTextDocument {
     });
     return diagnostics;
   }
+
+  public override getDocumentSymbols(
+    context: DTLSContext,
+  ): LSP.DocumentSymbol[] {
+    // TODO: return tokens
+    return [];
+  }
 }

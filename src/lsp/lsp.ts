@@ -6,6 +6,7 @@ import { Tokens } from "#tokens";
 import { Workspaces } from "#workspaces";
 
 import * as DocumentColor from "#methods/textDocument/documentColor.ts";
+import * as DocumentSymbol from "#methods/textDocument/documentSymbol.ts";
 import * as CodeAction from "#methods/textDocument/codeAction.ts";
 import * as Diagnostic from "#methods/textDocument/diagnostic.ts";
 import * as Hover from "#methods/textDocument/hover.ts";
@@ -28,6 +29,7 @@ const handlers = {
   "completionItem/resolve": Completion.resolve,
   "textDocument/diagnostic": Diagnostic.diagnostic,
   "textDocument/documentColor": DocumentColor.documentColor,
+  "textDocument/documentSymbol": DocumentSymbol.documentSymbol,
   "textDocument/hover": Hover.hover,
   "textDocument/references": References.references,
   "textDocument/semanticTokens/full": SemanticTokens.full,
@@ -278,6 +280,7 @@ export class Lsp {
       capabilities: {
         textDocumentSync: LSP.TextDocumentSyncKind.Incremental,
         ...DocumentColor.capabilities,
+        ...DocumentSymbol.capabilities,
         ...Hover.capabilities,
         ...Definition.capabilities,
         ...References.capabilities,

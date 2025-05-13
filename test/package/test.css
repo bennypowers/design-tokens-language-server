@@ -6,6 +6,7 @@ good {
   column-rule-color: var(--token-color-red-hexref, #f00);
   outline: 1px solid var(--token-color-blue-lightdark, light-dark(lightblue, darkblue));
   color: var(--token-color-blue-lightdark);
+  height: var(--token-deprecated);
 }
 
 bad {
