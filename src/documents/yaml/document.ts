@@ -469,9 +469,6 @@ export class YamlDocument extends DTLSTextDocument {
               const refUnpacked = match.replace(TOKEN_REFERENCE_REGEXP, "$1");
               const name = `--${this.#localReferenceToTokenName(refUnpacked)}`;
               const token = context.tokens.get(name);
-              Logger.debug`
-name: ${name}
-token: ${token}`;
               if (token?.$deprecated) {
                 let message = `${name} is deprecated`;
                 if (typeof token.$deprecated === "string") {
