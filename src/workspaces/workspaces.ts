@@ -64,7 +64,7 @@ export class Workspaces {
       const settings = manifest?.designTokensLanguageServer;
       return settings;
     } catch (e) {
-      if (e instanceof SyntaxError) {
+      if (e instanceof SyntaxError || e instanceof Deno.errors.NotFound) {
         Logger.error`Could not load package.json: ${e}`;
       }
       throw e;
