@@ -73,6 +73,25 @@ export function getVarCallArguments(value: string) {
   };
 }
 
+/**
+ * Roughly effective semantic equivalence of CSS values
+ * @example ```js
+ *          console.assert(
+ *            isCssValueSemanticallyEquivalent(
+ *              "light-dark(black, white)",
+ *              `light-dark(
+ *                black,
+ *                white
+ *              )`,
+ *            "values are equivalent"
+ *          )
+ *          ```
+ */
+function isCssValueSemanticallyEquivalent(a: string, b: string): boolean {
+  return a.replace(/\s/g, "").toLowerCase() ===
+    b.replace(/\s/g, "").toLowerCase();
+}
+
 function tsRangeToLspRange(node: TsRange | Node): LSP.Range {
   return {
     start: {
@@ -296,10 +315,7 @@ export class CssDocument extends DTLSTextDocument {
           const { $value } = token.token;
           if (fallbacks.length) {
             const value = $value.toString();
-            // TODO: compute semantic equivalence using CSS OM
-            const valid = _token.$type === "color"
-              ? fallback.toLowerCase() === value.toLowerCase()
-              : fallback === value;
+            const valid = isCssValueSemanticallyEquivalent(fallback, value);
             return [{
               range,
               token,
