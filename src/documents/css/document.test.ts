@@ -1,3 +1,4 @@
+import { DTLSErrorCodes } from "#lsp/lsp.ts";
 import { describe, it } from "@std/testing/bdd";
 import { CssDocument, getLightDarkValues } from "#css";
 import { expect } from "@std/expect/expect";
@@ -33,6 +34,10 @@ const ctx = await createTestContext({
               $type: "color",
             },
           },
+          "ld-color": {
+            $value: "light-dark(hsl(0 100% 50%), hsl(240 100% 50%))",
+            $type: "color",
+          },
         },
         space: {
           small: {
@@ -41,6 +46,12 @@ const ctx = await createTestContext({
           },
         },
         font: {
+          family: {
+            "sans-serif": {
+              $value: "Helvetica, Arial, sans-serif",
+              $type: "fontFamily",
+            },
+          },
           weight: {
             thin: {
               $value: 100,
@@ -69,6 +80,45 @@ describe("CssDocument", () => {
     expect(doc.getFullRange()).toEqual({
       start: { line: 0, character: 0 },
       end: { line: 0, character: 20 },
+    });
+  });
+
+  describe("diagnostics", () => {
+    it("should not report incorrect fallback when semantically equivalent", () => {
+      const text = `
+        body {
+          font-family: var(--token-font-family-sans-serif, Helvetica,Arial,sans-serif);
+        }
+      `;
+      const doc = CssDocument.create(ctx, "file:///test.css", text);
+      const diagnostics = doc.getDiagnostics(ctx);
+      expect(diagnostics.length).toBe(0);
+    });
+
+    it("should report incorrect fallback", () => {
+      const text = `
+        body {
+          font-family: var(--token-font-family-sans-serif, "Times New Roman");
+        }
+      `;
+      const doc = CssDocument.create(ctx, "file:///test.css", text);
+      const diagnostics = doc.getDiagnostics(ctx);
+      expect(diagnostics.length).toBe(1);
+      expect(diagnostics[0].code).toBe(DTLSErrorCodes.incorrectFallback);
+    });
+
+    it("should not report incorrect fallback for indented light-dark", () => {
+      const text = `
+        body {
+          color: var(--token-color-ld-color, light-dark(
+            hsl(0 100% 50%),
+            hsl(240 100% 50%)
+          ));
+        }
+      `;
+      const doc = CssDocument.create(ctx, "file:///test.css", text);
+      const diagnostics = doc.getDiagnostics(ctx);
+      expect(diagnostics.length).toBe(0);
     });
   });
 });

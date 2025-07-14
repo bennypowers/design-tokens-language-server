@@ -286,3 +286,9 @@ If you'd like to trace lsp messages in real time, try
 [lsp-devtools](https://lsp-devtools.readthedocs.io/en/latest/lsp-devtools/guide/inspect-command.html)
 
 [dtcg]: https://tr.designtokens.org/format/
+
+### 🚚 Releasing
+1. Commit all your changes and merge your branch to main
+2. On main, run `deno task version major|minor|patch`
+   this creates a version commit and tags it with the appropriate version number
+3. Push your changes, and the tag, and create a new GitHub release
