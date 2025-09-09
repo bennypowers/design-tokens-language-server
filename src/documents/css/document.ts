@@ -444,7 +444,7 @@ export class CssDocument extends DTLSTextDocument {
     return false;
   }
 
-  public getColors(context: DTLSContext): LSP.ColorInformation[] {
+  public override getColors(context: DTLSContext): LSP.ColorInformation[] {
     this.#context = context;
     return this.#varCalls.flatMap((call) => {
       const token = call.token.token;
@@ -477,12 +477,7 @@ export class CssDocument extends DTLSTextDocument {
     });
   }
 
-  public getDiagnostics(context: DTLSContext) {
-    this.#context = context;
-    return this.#diagnostics ?? this.#computeDiagnostics();
-  }
-
-  public getCompletions(
+  public override getCompletions(
     context: DTLSContext,
     params: LSP.CompletionParams,
   ): LSP.CompletionList | null {
@@ -524,5 +519,36 @@ export class CssDocument extends DTLSTextDocument {
         editRange: range,
       },
     };
+  }
+
+  public override getDiagnostics(context: DTLSContext) {
+    this.#context = context;
+    return this.#diagnostics ?? this.#computeDiagnostics();
+  }
+
+  public override getDocumentSymbols(
+    _context: DTLSContext,
+  ): LSP.DocumentSymbol[] {
+    return this.varCalls.flatMap((call) => {
+      const token = call.token.token;
+      if (!DTLSTextDocument.isDTLSToken(token)) {
+        return [];
+      }
+      const ext = token.$extensions.designTokensLanguageServer;
+      const { name } = ext;
+      const { range } = call;
+      // TODO: make it make sense
+      const selectionRange: LSP.Range = range;
+      return [{
+        name,
+        kind: LSP.SymbolKind.Variable,
+        tags: token.$deprecated ? [LSP.SymbolTag.Deprecated] : [],
+        detail: typeof token.$deprecated === "string"
+          ? token.$deprecated
+          : undefined,
+        range,
+        selectionRange,
+      }];
+    });
   }
 }
