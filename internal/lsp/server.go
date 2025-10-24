@@ -13,9 +13,10 @@ import (
 
 // Server represents the Design Tokens Language Server
 type Server struct {
-	documents *documents.Manager
-	tokens    *tokens.Manager
+	documents  *documents.Manager
+	tokens     *tokens.Manager
 	glspServer *server.Server
+	context    *glsp.Context
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -95,6 +96,8 @@ func (s *Server) handleInitialize(context *glsp.Context, params *protocol.Initia
 // handleInitialized handles the initialized notification
 func (s *Server) handleInitialized(context *glsp.Context, params *protocol.InitializedParams) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Server initialized\n")
+	// Store context for later use (diagnostics)
+	s.context = context
 	return nil
 }
 
@@ -112,7 +115,17 @@ func (s *Server) handleSetTrace(context *glsp.Context, params *protocol.SetTrace
 
 // handleDidOpen handles the textDocument/didOpen notification
 func (s *Server) handleDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
-	return s.DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version), params.TextDocument.Text)
+	err := s.DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version), params.TextDocument.Text)
+	if err != nil {
+		return err
+	}
+
+	// Publish diagnostics for the opened document
+	if s.context != nil {
+		s.PublishDiagnostics(s.context, params.TextDocument.URI)
+	}
+
+	return nil
 }
 
 // DidOpen opens a document (exposed for testing)
@@ -136,7 +149,17 @@ func (s *Server) handleDidChange(context *glsp.Context, params *protocol.DidChan
 		}
 	}
 
-	return s.documents.DidChange(uri, version, changes)
+	err := s.documents.DidChange(uri, version, changes)
+	if err != nil {
+		return err
+	}
+
+	// Publish diagnostics after document change
+	if s.context != nil {
+		s.PublishDiagnostics(s.context, uri)
+	}
+
+	return nil
 }
 
 // handleDidClose handles the textDocument/didClose notification

@@ -130,8 +130,7 @@ func TestParseDeprecatedTokens(t *testing.T) {
     "old-primary": {
       "$value": "#0000ff",
       "$type": "color",
-      "deprecated": true,
-      "deprecationMessage": "Use color.primary instead"
+      "$deprecated": "Use color.primary instead"
     }
   }
 }`

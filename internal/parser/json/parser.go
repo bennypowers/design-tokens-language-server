@@ -87,13 +87,11 @@ func (p *Parser) createToken(key, path string, value interface{}, data map[strin
 		token.Description = desc
 	}
 
-	// Extract deprecated flag
-	if deprecated, ok := data["deprecated"].(bool); ok {
+	// Extract $deprecated flag (can be bool or string with message)
+	if deprecated, ok := data["$deprecated"].(bool); ok {
 		token.Deprecated = deprecated
-	}
-
-	// Extract deprecation message
-	if depMsg, ok := data["deprecationMessage"].(string); ok {
+	} else if depMsg, ok := data["$deprecated"].(string); ok {
+		token.Deprecated = true
 		token.DeprecationMessage = depMsg
 	}
 

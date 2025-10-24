@@ -1,0 +1,129 @@
+package lsp
+
+import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
+)
+
+// GetDiagnostics returns diagnostics for a document
+func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
+	// Get document
+	doc := s.documents.Get(uri)
+	if doc == nil {
+		return nil, nil
+	}
+
+	// Only process CSS files
+	if doc.LanguageID() != "css" {
+		return nil, nil
+	}
+
+	// Parse CSS to find var() calls
+	parser := css.NewParser()
+	result, err := parser.Parse(doc.Content())
+	if err != nil {
+		return nil, nil
+	}
+
+	var diagnostics []protocol.Diagnostic
+
+	// Check each var() call
+	for _, varCall := range result.VarCalls {
+		// Look up the token
+		token := s.tokens.Get(varCall.TokenName)
+		if token == nil {
+			// Unknown tokens are not errors - they're handled by hover
+			continue
+		}
+
+		// Check for deprecated token
+		if token.Deprecated {
+			message := fmt.Sprintf("%s is deprecated", varCall.TokenName)
+			if token.DeprecationMessage != "" {
+				message += ": " + token.DeprecationMessage
+			}
+
+			severity := protocol.DiagnosticSeverityInformation
+			diagnostics = append(diagnostics, protocol.Diagnostic{
+				Range: protocol.Range{
+					Start: protocol.Position{
+						Line:      varCall.Range.Start.Line,
+						Character: varCall.Range.Start.Character,
+					},
+					End: protocol.Position{
+						Line:      varCall.Range.End.Line,
+						Character: varCall.Range.End.Character,
+					},
+				},
+				Severity: &severity,
+				Message:  message,
+				Tags:     []protocol.DiagnosticTag{protocol.DiagnosticTagDeprecated},
+			})
+		}
+
+		// Check for incorrect fallback
+		if varCall.Fallback != nil {
+			fallbackValue := *varCall.Fallback
+			tokenValue := token.Value
+
+			// Check semantic equivalence (case-insensitive, whitespace-normalized)
+			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
+				severity := protocol.DiagnosticSeverityError
+				diagnostics = append(diagnostics, protocol.Diagnostic{
+					Range: protocol.Range{
+						Start: protocol.Position{
+							Line:      varCall.Range.Start.Line,
+							Character: varCall.Range.Start.Character,
+						},
+						End: protocol.Position{
+							Line:      varCall.Range.End.Line,
+							Character: varCall.Range.End.Character,
+						},
+					},
+					Severity: &severity,
+					Message:  fmt.Sprintf("Token fallback does not match expected value: %s", tokenValue),
+				})
+			}
+		}
+	}
+
+	return diagnostics, nil
+}
+
+// PublishDiagnostics publishes diagnostics for a document
+func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
+	fmt.Fprintf(os.Stderr, "[DTLS] Publishing diagnostics for: %s\n", uri)
+
+	diagnostics, err := s.GetDiagnostics(uri)
+	if err != nil {
+		return err
+	}
+
+	// Publish diagnostics to the client
+	context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
+		URI:         uri,
+		Diagnostics: diagnostics,
+	})
+
+	return nil
+}
+
+// isCSSValueSemanticallyEquivalent checks if two CSS values are semantically equivalent
+// Ignores whitespace and case differences
+func isCSSValueSemanticallyEquivalent(a, b string) bool {
+	// Normalize: remove all whitespace and convert to lowercase
+	normalize := func(s string) string {
+		s = strings.ReplaceAll(s, " ", "")
+		s = strings.ReplaceAll(s, "\t", "")
+		s = strings.ReplaceAll(s, "\n", "")
+		s = strings.ToLower(s)
+		return s
+	}
+
+	return normalize(a) == normalize(b)
+}
