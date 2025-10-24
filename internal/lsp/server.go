@@ -17,8 +17,9 @@ type Server struct {
 	tokens     *tokens.Manager
 	glspServer *server.Server
 	context    *glsp.Context
-	rootURI    string // Workspace root URI
-	rootPath   string // Workspace root path (file system)
+	rootURI    string       // Workspace root URI
+	rootPath   string       // Workspace root path (file system)
+	config     ServerConfig // Server configuration
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -26,26 +27,29 @@ func NewServer() (*Server, error) {
 	s := &Server{
 		documents: documents.NewManager(),
 		tokens:    tokens.NewManager(),
+		config:    DefaultConfig(),
 	}
 
 	// Create the GLSP server with our handlers
 	handler := protocol.Handler{
-		Initialize:                    s.handleInitialize,
-		Initialized:                   s.handleInitialized,
-		Shutdown:                      s.handleShutdown,
-		SetTrace:                      s.handleSetTrace,
-		TextDocumentDidOpen:           s.handleDidOpen,
-		TextDocumentDidChange:         s.handleDidChange,
-		TextDocumentDidClose:          s.handleDidClose,
-		TextDocumentHover:             s.handleHover,
-		TextDocumentCompletion:        s.handleCompletion,
-		CompletionItemResolve:         s.handleCompletionResolve,
-		TextDocumentDefinition:        s.handleDefinition,
-		TextDocumentReferences:        s.handleReferences,
-		TextDocumentColor:             s.handleDocumentColor,
-		TextDocumentColorPresentation: s.handleColorPresentation,
-		TextDocumentCodeAction:        s.handleCodeAction,
-		CodeActionResolve:             s.handleCodeActionResolve,
+		Initialize:                     s.handleInitialize,
+		Initialized:                    s.handleInitialized,
+		Shutdown:                       s.handleShutdown,
+		SetTrace:                       s.handleSetTrace,
+		WorkspaceDidChangeConfiguration: s.handleDidChangeConfiguration,
+		TextDocumentDidOpen:            s.handleDidOpen,
+		TextDocumentDidChange:          s.handleDidChange,
+		TextDocumentDidClose:           s.handleDidClose,
+		TextDocumentHover:              s.handleHover,
+		TextDocumentCompletion:         s.handleCompletion,
+		CompletionItemResolve:          s.handleCompletionResolve,
+		TextDocumentDefinition:         s.handleDefinition,
+		TextDocumentReferences:         s.handleReferences,
+		TextDocumentColor:              s.handleDocumentColor,
+		TextDocumentColorPresentation:  s.handleColorPresentation,
+		TextDocumentCodeAction:         s.handleCodeAction,
+		CodeActionResolve:              s.handleCodeActionResolve,
+		TextDocumentSemanticTokensFull: s.handleSemanticTokensFull,
 	}
 
 	// Create GLSP server with debug enabled for stdio
@@ -99,10 +103,10 @@ func (s *Server) handleInitialize(context *glsp.Context, params *protocol.Initia
 		ColorProvider: true,
 		SemanticTokensProvider: &protocol.SemanticTokensOptions{
 			Legend: protocol.SemanticTokensLegend{
-				TokenTypes:     []string{"variable", "property"},
-				TokenModifiers: []string{"declaration", "definition", "readonly"},
+				TokenTypes:     []string{"class", "property"}, // Match TypeScript: class for first part, property for rest
+				TokenModifiers: []string{},
 			},
-			Full: true,
+			Full: boolPtr(true),
 		},
 	}
 
@@ -121,17 +125,10 @@ func (s *Server) handleInitialized(context *glsp.Context, params *protocol.Initi
 	// Store context for later use (diagnostics)
 	s.context = context
 
-	// Load token files from workspace
-	if s.rootPath != "" {
-		config := TokenFileConfig{
-			RootDir: s.rootPath,
-			// Patterns and Prefix can be configured later via workspace/didChangeConfiguration
-		}
-
-		if err := s.LoadTokenFiles(config); err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load token files: %v\n", err)
-			// Don't fail initialization, just log the error
-		}
+	// Load token files from workspace using configuration
+	if err := s.loadTokensFromConfig(); err != nil {
+		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load token files: %v\n", err)
+		// Don't fail initialization, just log the error
 	}
 
 	return nil
