@@ -1,4 +1,5 @@
 node_modules
+design-tokens-lsp
 bin
 extensions/**/*.wasm
 extensions/vscode/README.md
