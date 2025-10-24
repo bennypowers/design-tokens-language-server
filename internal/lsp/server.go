@@ -28,14 +28,20 @@ func NewServer() (*Server, error) {
 
 	// Create the GLSP server with our handlers
 	handler := protocol.Handler{
-		Initialize:            s.handleInitialize,
-		Initialized:           s.handleInitialized,
-		Shutdown:              s.handleShutdown,
-		SetTrace:              s.handleSetTrace,
-		TextDocumentDidOpen:   s.handleDidOpen,
-		TextDocumentDidChange: s.handleDidChange,
-		TextDocumentDidClose:  s.handleDidClose,
-		TextDocumentHover:     s.handleHover,
+		Initialize:                    s.handleInitialize,
+		Initialized:                   s.handleInitialized,
+		Shutdown:                      s.handleShutdown,
+		SetTrace:                      s.handleSetTrace,
+		TextDocumentDidOpen:           s.handleDidOpen,
+		TextDocumentDidChange:         s.handleDidChange,
+		TextDocumentDidClose:          s.handleDidClose,
+		TextDocumentHover:             s.handleHover,
+		TextDocumentCompletion:        s.handleCompletion,
+		CompletionItemResolve:         s.handleCompletionResolve,
+		TextDocumentDefinition:        s.handleDefinition,
+		TextDocumentReferences:        s.handleReferences,
+		TextDocumentColor:             s.handleDocumentColor,
+		TextDocumentColorPresentation: s.handleColorPresentation,
 	}
 
 	// Create GLSP server with debug enabled for stdio

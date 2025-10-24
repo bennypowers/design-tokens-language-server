@@ -3,7 +3,7 @@ package integration_test
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/lsp"
+	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -11,42 +11,19 @@ import (
 
 // TestHoverOnVarCall tests hover on a var() function call
 func TestHoverOnVarCall(t *testing.T) {
-	// Create server
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
-	// Load test tokens
-	tokenJSON := []byte(`{
-		"color": {
-			"primary": {
-				"$value": "#0000ff",
-				"$type": "color",
-				"$description": "Primary brand color"
-			}
-		}
-	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "")
-	require.NoError(t, err)
-
-	// Open a CSS document
-	cssContent := `.button {
-  color: var(--color-primary);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
-
-	// Request hover on the var(--color-primary)
-	// Line 1, character 15 should be inside "color-primary"
+	// Request hover - see fixture for position
 	hover, err := server.Hover(&protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      1,
-				Character: 15,
+				Line:      2, // Adjusted for comment line
+				Character: 18,
 			},
 		},
 	})
@@ -67,25 +44,18 @@ func TestHoverOnVarCall(t *testing.T) {
 
 // TestHoverOnUnknownToken tests hover on undefined token
 func TestHoverOnUnknownToken(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
-
+	server := testutil.NewTestServer(t)
 	// Don't load any tokens
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "unknown-token.css")
 
-	cssContent := `.button {
-  color: var(--unknown-token);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
-
+	// Request hover - see fixture for position
 	hover, err := server.Hover(&protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      1,
+				Line:      2, // Adjusted for comment line
 				Character: 15,
 			},
 		},
@@ -103,36 +73,18 @@ func TestHoverOnUnknownToken(t *testing.T) {
 
 // TestHoverWithPrefix tests hover with CSS variable prefix
 func TestHoverWithPrefix(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.LoadTokensWithPrefix(t, server, "my-ds")
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "prefixed-var-call.css")
 
-	// Load tokens with prefix
-	tokenJSON := []byte(`{
-		"color": {
-			"primary": {
-				"$value": "#ff0000",
-				"$type": "color"
-			}
-		}
-	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "my-ds")
-	require.NoError(t, err)
-
-	cssContent := `.button {
-  color: var(--my-ds-color-primary);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
-
+	// Request hover - see fixture for position
 	hover, err := server.Hover(&protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      1,
+				Line:      2, // Adjusted for comment line
 				Character: 18,
 			},
 		},
@@ -150,24 +102,17 @@ func TestHoverWithPrefix(t *testing.T) {
 
 // TestHoverOutsideVarCall tests that hover returns nil outside var() calls
 func TestHoverOutsideVarCall(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
-	cssContent := `.button {
-  color: red;
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
-
-	// Hover on "red" (not a var call)
+	// Request hover - see fixture for position
 	hover, err := server.Hover(&protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      1,
+				Line:      2, // Adjusted for comment line
 				Character: 10,
 			},
 		},

@@ -1,0 +1,4 @@
+.button {
+  /* Incorrect fallback value - should be #0000ff not #ff0000 */
+  color: var(--color-primary, #ff0000);
+}

@@ -24,11 +24,20 @@ type Token struct {
 	// DeprecationMessage provides context for deprecated tokens
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 
-	// FilePath is the file this token was loaded from
+	// FilePath is the file this token was loaded from (URI format)
 	FilePath string `json:"-"`
 
 	// Prefix is the CSS variable prefix for this token
 	Prefix string `json:"-"`
+
+	// Path is the JSON path to this token (e.g., ["color", "primary"])
+	Path []string `json:"-"`
+
+	// DefinitionURI is the file URI where this token is defined
+	DefinitionURI string `json:"-"`
+
+	// Reference is the original reference format (e.g., "{color.primary}")
+	Reference string `json:"-"`
 }
 
 // CSSVariableName returns the CSS custom property name for this token

@@ -3,7 +3,7 @@ package integration_test
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/lsp"
+	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -11,29 +11,9 @@ import (
 
 // TestDiagnosticsIncorrectFallback tests diagnostics for incorrect fallback values
 func TestDiagnosticsIncorrectFallback(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
-
-	// Load tokens
-	tokenJSON := []byte(`{
-		"color": {
-			"primary": {
-				"$value": "#0000ff",
-				"$type": "color"
-			}
-		}
-	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "")
-	require.NoError(t, err)
-
-	// CSS with incorrect fallback
-	cssContent := `.button {
-  color: var(--color-primary, #ff0000);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "incorrect-fallback.css")
 
 	// Get diagnostics
 	diagnostics, err := server.GetDiagnostics("file:///test.css")
@@ -50,29 +30,9 @@ func TestDiagnosticsIncorrectFallback(t *testing.T) {
 
 // TestDiagnosticsCorrectFallback tests that correct fallback values produce no diagnostics
 func TestDiagnosticsCorrectFallback(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
-
-	// Load tokens
-	tokenJSON := []byte(`{
-		"color": {
-			"primary": {
-				"$value": "#0000ff",
-				"$type": "color"
-			}
-		}
-	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "")
-	require.NoError(t, err)
-
-	// CSS with correct fallback
-	cssContent := `.button {
-  color: var(--color-primary, #0000ff);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "correct-fallback.css")
 
 	// Get diagnostics
 	diagnostics, err := server.GetDiagnostics("file:///test.css")
@@ -84,11 +44,10 @@ func TestDiagnosticsCorrectFallback(t *testing.T) {
 
 // TestDiagnosticsSemanticEquivalence tests that semantically equivalent CSS values are accepted
 func TestDiagnosticsSemanticEquivalence(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
 
-	// Load tokens
-	tokenJSON := []byte(`{
+	// Load tokens with uppercase value
+	tokens := []byte(`{
 		"color": {
 			"primary": {
 				"$value": "#0000FF",
@@ -96,17 +55,11 @@ func TestDiagnosticsSemanticEquivalence(t *testing.T) {
 			}
 		}
 	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "")
+	err := server.LoadTokensFromJSON(tokens, "")
 	require.NoError(t, err)
 
-	// CSS with semantically equivalent fallback (different case, spaces)
-	cssContent := `.button {
-  color: var(--color-primary, #0000ff);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
+	// Load CSS with semantically equivalent fallback (different case)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "semantic-equivalence.css")
 
 	// Get diagnostics
 	diagnostics, err := server.GetDiagnostics("file:///test.css")
@@ -118,30 +71,9 @@ func TestDiagnosticsSemanticEquivalence(t *testing.T) {
 
 // TestDiagnosticsDeprecatedToken tests diagnostics for deprecated tokens
 func TestDiagnosticsDeprecatedToken(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
-
-	// Load tokens with deprecated token
-	tokenJSON := []byte(`{
-		"color": {
-			"old-primary": {
-				"$value": "#ff0000",
-				"$type": "color",
-				"$deprecated": "Use color.primary instead"
-			}
-		}
-	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "")
-	require.NoError(t, err)
-
-	// CSS using deprecated token
-	cssContent := `.button {
-  color: var(--color-old-primary);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "deprecated-token.css")
 
 	// Get diagnostics
 	diagnostics, err := server.GetDiagnostics("file:///test.css")
@@ -160,18 +92,9 @@ func TestDiagnosticsDeprecatedToken(t *testing.T) {
 // TestDiagnosticsUnknownToken tests that unknown tokens produce no diagnostics
 // (they are handled by hover instead)
 func TestDiagnosticsUnknownToken(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
-
+	server := testutil.NewTestServer(t)
 	// Don't load any tokens
-
-	// CSS with unknown token
-	cssContent := `.button {
-  color: var(--unknown-token);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "unknown-token.css")
 
 	// Get diagnostics
 	diagnostics, err := server.GetDiagnostics("file:///test.css")
@@ -183,35 +106,9 @@ func TestDiagnosticsUnknownToken(t *testing.T) {
 
 // TestDiagnosticsMultipleIssues tests multiple diagnostics in one document
 func TestDiagnosticsMultipleIssues(t *testing.T) {
-	server, err := lsp.NewServer()
-	require.NoError(t, err)
-
-	// Load tokens
-	tokenJSON := []byte(`{
-		"color": {
-			"primary": {
-				"$value": "#0000ff",
-				"$type": "color"
-			},
-			"old-secondary": {
-				"$value": "#00ff00",
-				"$type": "color",
-				"$deprecated": true
-			}
-		}
-	}`)
-
-	err = server.LoadTokensFromJSON(tokenJSON, "")
-	require.NoError(t, err)
-
-	// CSS with multiple issues
-	cssContent := `.button {
-  color: var(--color-primary, #ff0000);
-  background: var(--color-old-secondary);
-}`
-
-	err = server.DidOpen("file:///test.css", "css", 1, cssContent)
-	require.NoError(t, err)
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "multiple-issues.css")
 
 	// Get diagnostics
 	diagnostics, err := server.GetDiagnostics("file:///test.css")

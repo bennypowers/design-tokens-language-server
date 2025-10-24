@@ -1,0 +1,24 @@
+{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$type": "color",
+      "$description": "Primary brand color"
+    },
+    "secondary": {
+      "$value": "#00ff00",
+      "$type": "color"
+    },
+    "old-primary": {
+      "$value": "#ff0000",
+      "$type": "color",
+      "$deprecated": "Use color.primary instead"
+    }
+  },
+  "spacing": {
+    "small": {
+      "$value": "8px",
+      "$type": "dimension"
+    }
+  }
+}

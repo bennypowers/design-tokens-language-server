@@ -1,0 +1,4 @@
+.button {
+  /*      ↓ Position 1,10 - hover on "red" (not a var call) */
+  color: red;
+}
