@@ -5,24 +5,47 @@ on:
       - created
 
 jobs:
-  deploy:
-    name: Release
+  publish-vscode:
+    name: Publish to VSCode Marketplace
     runs-on: ubuntu-latest
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
+      - uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
+          node-version: '20'
 
-      - run: deno install --lock
+      - name: Get release tag
+        id: get_tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Release to VSCode Marketplace
-        run: deno task vscode:publish
+      - name: Download binaries from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p extensions/vscode/dist/bin
+          gh release download ${{ steps.get_tag.outputs.tag }} \
+            --pattern "design-tokens-language-server-*" \
+            --dir extensions/vscode/dist/bin
+
+      - name: List downloaded binaries
+        run: ls -lh extensions/vscode/dist/bin/
+
+      - name: Build and publish VSCode extension
+        working-directory: extensions/vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          npm install
+          node build.js
+          npm run build
+          npm run publish
+
+  publish-zed:
+    name: Publish to Zed Extensions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Release to Zed extensions
         uses: huacnlee/zed-extension-action@v1
