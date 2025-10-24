@@ -33,7 +33,7 @@ func NewServer() (*Server, error) {
 	}
 
 	// Create the GLSP server with our handlers
-	handler := protocol.Handler{
+	protocolHandler := protocol.Handler{
 		Initialize:                      s.handleInitialize,
 		Initialized:                     s.handleInitialized,
 		Shutdown:                        s.handleShutdown,
@@ -55,8 +55,17 @@ func NewServer() (*Server, error) {
 		TextDocumentSemanticTokensFull:  s.handleSemanticTokensFull,
 	}
 
+	// WORKAROUND: Wrap with custom handler to support LSP 3.17 features
+	// The CustomHandler intercepts LSP 3.17 methods (like textDocument/diagnostic)
+	// before they reach protocol.Handler, which only knows about LSP 3.16 methods.
+	// When glsp is updated to LSP 3.17, we can remove CustomHandler and use protocol_3_17.Handler directly.
+	customHandler := &CustomHandler{
+		Handler: protocolHandler,
+		server:  s,
+	}
+
 	// Create GLSP server with debug enabled for stdio
-	s.glspServer = server.NewServer(&handler, "design-tokens-lsp", true)
+	s.glspServer = server.NewServer(customHandler, "design-tokens-lsp", true)
 
 	return s, nil
 }
@@ -93,32 +102,47 @@ func (s *Server) handleInitialize(context *glsp.Context, params *protocol.Initia
 	}
 
 	// Build server capabilities
+	//
+	// WORKAROUND: We use map[string]any instead of protocol.ServerCapabilities to include
+	// LSP 3.17 fields that don't exist in glsp v0.2.2's protocol.ServerCapabilities struct.
+	// When glsp is updated to LSP 3.17, we can switch back to using protocol_3_17.ServerCapabilities.
 	syncKind := protocol.TextDocumentSyncKindIncremental
-	capabilities := protocol.ServerCapabilities{
-		TextDocumentSync: protocol.TextDocumentSyncOptions{
+	capabilities := map[string]any{
+		"textDocumentSync": protocol.TextDocumentSyncOptions{
 			OpenClose: boolPtr(true),
 			Change:    &syncKind,
 		},
-		HoverProvider:      true,
-		CompletionProvider: &protocol.CompletionOptions{
+		"hoverProvider":      true,
+		"completionProvider": protocol.CompletionOptions{
 			ResolveProvider: boolPtr(true),
 		},
-		DefinitionProvider: true,
-		ReferencesProvider: true,
-		CodeActionProvider: &protocol.CodeActionOptions{
+		"definitionProvider": true,
+		"referencesProvider": true,
+		"codeActionProvider": protocol.CodeActionOptions{
 			ResolveProvider: boolPtr(true),
 		},
-		ColorProvider: true,
-		SemanticTokensProvider: &protocol.SemanticTokensOptions{
+		"colorProvider": true,
+		"semanticTokensProvider": protocol.SemanticTokensOptions{
 			Legend: protocol.SemanticTokensLegend{
 				TokenTypes:     []string{"class", "property"}, // Match TypeScript: class for first part, property for rest
 				TokenModifiers: []string{},
 			},
 			Full: boolPtr(true),
 		},
+		// LSP 3.17: Pull diagnostics support
+		"diagnosticProvider": DiagnosticOptions{
+			InterFileDependencies: false,
+			WorkspaceDiagnostics:  false,
+		},
 	}
 
-	return protocol.InitializeResult{
+	// WORKAROUND: Return custom struct with any type for Capabilities field
+	// protocol.InitializeResult expects ServerCapabilities (LSP 3.16), but we need to
+	// include LSP 3.17 fields. When glsp is updated, we can use protocol_3_17.InitializeResult.
+	return struct {
+		Capabilities any                                      `json:"capabilities"`
+		ServerInfo   *protocol.InitializeResultServerInfo `json:"serverInfo,omitempty"`
+	}{
 		Capabilities: capabilities,
 		ServerInfo: &protocol.InitializeResultServerInfo{
 			Name:    "design-tokens-language-server",

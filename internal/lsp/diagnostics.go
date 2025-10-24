@@ -10,6 +10,27 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
+// handleDocumentDiagnostic handles the textDocument/diagnostic request (pull diagnostics)
+//
+// This is an LSP 3.17 feature. Since glsp v0.2.2 only supports LSP 3.16, this handler
+// is called via CustomHandler which intercepts the method before it reaches protocol.Handler.
+func (s *Server) handleDocumentDiagnostic(context *glsp.Context, params *DocumentDiagnosticParams) (any, error) {
+	uri := params.TextDocument.URI
+	fmt.Fprintf(os.Stderr, "[DTLS] Pull diagnostics requested for: %s\n", uri)
+
+	diagnostics, err := s.GetDiagnostics(uri)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DTLS] Error getting diagnostics: %v\n", err)
+		return nil, err
+	}
+
+	// Return a full document diagnostic report
+	return RelatedFullDocumentDiagnosticReport{
+		Kind:  string(DiagnosticFull),
+		Items: diagnostics,
+	}, nil
+}
+
 // GetDiagnostics returns diagnostics for a document
 func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
 	// Get document
