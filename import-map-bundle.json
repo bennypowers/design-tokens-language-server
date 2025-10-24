@@ -1,7 +1,0 @@
-{
-  "imports": {
-    "env": "npm:web-tree-sitter",
-    "GOT.mem": "npm:web-tree-sitter",
-    "wasi_snapshot_preview1": "npm:web-tree-sitter"
-  }
-}
