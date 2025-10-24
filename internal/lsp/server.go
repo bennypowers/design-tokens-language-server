@@ -42,6 +42,8 @@ func NewServer() (*Server, error) {
 		TextDocumentReferences:        s.handleReferences,
 		TextDocumentColor:             s.handleDocumentColor,
 		TextDocumentColorPresentation: s.handleColorPresentation,
+		TextDocumentCodeAction:        s.handleCodeAction,
+		CodeActionResolve:             s.handleCodeActionResolve,
 	}
 
 	// Create GLSP server with debug enabled for stdio
