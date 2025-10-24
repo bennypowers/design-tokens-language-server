@@ -11,6 +11,19 @@ import (
 
 // LoadTokenFile loads a token file (JSON or YAML) and adds tokens to the manager
 func (s *Server) LoadTokenFile(filepath, prefix string) error {
+	err := s.loadTokenFileInternal(filepath, prefix)
+	if err != nil {
+		return err
+	}
+
+	// Track this file for reload on change (only on successful load)
+	s.loadedFiles[filepath] = prefix
+
+	return nil
+}
+
+// loadTokenFileInternal loads a token file without tracking it
+func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
@@ -46,6 +59,7 @@ func (s *Server) LoadTokenFile(filepath, prefix string) error {
 	}
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", len(parsedTokens), filepath)
+
 	return nil
 }
 

@@ -13,43 +13,46 @@ import (
 
 // Server represents the Design Tokens Language Server
 type Server struct {
-	documents  *documents.Manager
-	tokens     *tokens.Manager
-	glspServer *server.Server
-	context    *glsp.Context
-	rootURI    string       // Workspace root URI
-	rootPath   string       // Workspace root path (file system)
-	config     ServerConfig // Server configuration
+	documents    *documents.Manager
+	tokens       *tokens.Manager
+	glspServer   *server.Server
+	context      *glsp.Context
+	rootURI      string                 // Workspace root URI
+	rootPath     string                 // Workspace root path (file system)
+	config       ServerConfig           // Server configuration
+	loadedFiles  map[string]string      // Track loaded files: filepath -> prefix
 }
 
 // NewServer creates a new Design Tokens LSP server
 func NewServer() (*Server, error) {
 	s := &Server{
-		documents: documents.NewManager(),
-		tokens:    tokens.NewManager(),
-		config:    DefaultConfig(),
+		documents:   documents.NewManager(),
+		tokens:      tokens.NewManager(),
+		config:      DefaultConfig(),
+		loadedFiles: make(map[string]string),
 	}
 
 	// Create the GLSP server with our handlers
 	handler := protocol.Handler{
-		Initialize:                     s.handleInitialize,
-		Initialized:                    s.handleInitialized,
-		Shutdown:                       s.handleShutdown,
-		SetTrace:                       s.handleSetTrace,
+		Initialize:                      s.handleInitialize,
+		Initialized:                     s.handleInitialized,
+		Shutdown:                        s.handleShutdown,
+		SetTrace:                        s.handleSetTrace,
 		WorkspaceDidChangeConfiguration: s.handleDidChangeConfiguration,
-		TextDocumentDidOpen:            s.handleDidOpen,
-		TextDocumentDidChange:          s.handleDidChange,
-		TextDocumentDidClose:           s.handleDidClose,
-		TextDocumentHover:              s.handleHover,
-		TextDocumentCompletion:         s.handleCompletion,
-		CompletionItemResolve:          s.handleCompletionResolve,
-		TextDocumentDefinition:         s.handleDefinition,
-		TextDocumentReferences:         s.handleReferences,
-		TextDocumentColor:              s.handleDocumentColor,
-		TextDocumentColorPresentation:  s.handleColorPresentation,
-		TextDocumentCodeAction:         s.handleCodeAction,
-		CodeActionResolve:              s.handleCodeActionResolve,
-		TextDocumentSemanticTokensFull: s.handleSemanticTokensFull,
+		WorkspaceDidChangeWatchedFiles:  s.handleDidChangeWatchedFiles,
+		TextDocumentDidOpen:             s.handleDidOpen,
+		TextDocumentDidChange:           s.handleDidChange,
+		TextDocumentDidClose:            s.handleDidClose,
+		TextDocumentHover:               s.handleHover,
+		TextDocumentCompletion:          s.handleCompletion,
+		CompletionItemResolve:           s.handleCompletionResolve,
+		TextDocumentDefinition:          s.handleDefinition,
+		TextDocumentReferences:          s.handleReferences,
+		TextDocumentColor:               s.handleDocumentColor,
+		TextDocumentColorPresentation:   s.handleColorPresentation,
+		TextDocumentCodeAction:          s.handleCodeAction,
+		CodeActionResolve:               s.handleCodeActionResolve,
+		TextDocumentSemanticTokensFull:  s.handleSemanticTokensFull,
 	}
 
 	// Create GLSP server with debug enabled for stdio
@@ -61,6 +64,11 @@ func NewServer() (*Server, error) {
 // RunStdio starts the LSP server using stdio transport
 func (s *Server) RunStdio() error {
 	return s.glspServer.RunStdio()
+}
+
+// TokenCount returns the number of loaded tokens (for testing)
+func (s *Server) TokenCount() int {
+	return s.tokens.Count()
 }
 
 // handleInitialize handles the initialize request
@@ -128,6 +136,12 @@ func (s *Server) handleInitialized(context *glsp.Context, params *protocol.Initi
 	// Load token files from workspace using configuration
 	if err := s.loadTokensFromConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load token files: %v\n", err)
+		// Don't fail initialization, just log the error
+	}
+
+	// Register file watchers for token files
+	if err := s.registerFileWatchers(context); err != nil {
+		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to register file watchers: %v\n", err)
 		// Don't fail initialization, just log the error
 	}
 
