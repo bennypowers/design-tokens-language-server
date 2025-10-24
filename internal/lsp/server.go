@@ -17,6 +17,8 @@ type Server struct {
 	tokens     *tokens.Manager
 	glspServer *server.Server
 	context    *glsp.Context
+	rootURI    string // Workspace root URI
+	rootPath   string // Workspace root path (file system)
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -66,6 +68,18 @@ func (s *Server) handleInitialize(context *glsp.Context, params *protocol.Initia
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Initializing for client: %s\n", clientName)
 
+	// Store the workspace root
+	if params.RootURI != nil {
+		s.rootURI = *params.RootURI
+		// Convert URI to file path
+		s.rootPath = uriToPath(*params.RootURI)
+		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root: %s\n", s.rootPath)
+	} else if params.RootPath != nil {
+		s.rootPath = *params.RootPath
+		s.rootURI = pathToURI(s.rootPath)
+		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root (from rootPath): %s\n", s.rootPath)
+	}
+
 	// Build server capabilities
 	syncKind := protocol.TextDocumentSyncKindIncremental
 	capabilities := protocol.ServerCapabilities{
@@ -106,6 +120,20 @@ func (s *Server) handleInitialized(context *glsp.Context, params *protocol.Initi
 	fmt.Fprintf(os.Stderr, "[DTLS] Server initialized\n")
 	// Store context for later use (diagnostics)
 	s.context = context
+
+	// Load token files from workspace
+	if s.rootPath != "" {
+		config := TokenFileConfig{
+			RootDir: s.rootPath,
+			// Patterns and Prefix can be configured later via workspace/didChangeConfiguration
+		}
+
+		if err := s.LoadTokenFiles(config); err != nil {
+			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load token files: %v\n", err)
+			// Don't fail initialization, just log the error
+		}
+	}
+
 	return nil
 }
 

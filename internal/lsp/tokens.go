@@ -3,7 +3,6 @@ package lsp
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/json"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/yaml"
@@ -34,7 +33,7 @@ func (s *Server) LoadTokenFile(filepath, prefix string) error {
 		return fmt.Errorf("failed to parse token file: %w", err)
 	}
 
-	// Convert filepath to URI
+	// Convert filepath to URI using the helper from token_loader
 	fileURI := pathToURI(filepath)
 
 	// Add all tokens to the manager
@@ -48,15 +47,6 @@ func (s *Server) LoadTokenFile(filepath, prefix string) error {
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", len(parsedTokens), filepath)
 	return nil
-}
-
-// pathToURI converts a file path to a URI
-func pathToURI(path string) string {
-	// Simple conversion - in production, use proper URI encoding
-	if !strings.HasPrefix(path, "file://") {
-		return "file://" + path
-	}
-	return path
 }
 
 // LoadTokensFromJSON loads tokens from JSON data (for testing)
