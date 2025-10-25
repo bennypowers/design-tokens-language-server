@@ -90,11 +90,11 @@ func (s *Server) Hover(params *protocol.HoverParams) (*protocol.Hover, error) {
 				},
 				Range: &protocol.Range{
 					Start: protocol.Position{
-						Line:      position.Line,
+						Line:      varCall.Range.Start.Line,
 						Character: varCall.Range.Start.Character,
 					},
 					End: protocol.Position{
-						Line:      position.Line,
+						Line:      varCall.Range.End.Line,
 						Character: varCall.Range.End.Character,
 					},
 				},
