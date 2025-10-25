@@ -35,7 +35,7 @@ test:
 
 ## Run tests with coverage
 test-coverage:
-	go test -v -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
+	go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/...,./cmd/... ./...
 	@echo "Coverage report:"
 	@go tool cover -func=coverage.out
 
