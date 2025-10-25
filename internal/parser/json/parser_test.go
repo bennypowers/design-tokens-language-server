@@ -220,7 +220,7 @@ func TestParseFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, tokens, 2)
 
-	// Verify first token
+	// Tokens should be returned in alphabetical order (primary, then secondary)
 	assert.Equal(t, "color-primary", tokens[0].Name)
 	assert.Equal(t, "#0000ff", tokens[0].Value)
 	assert.Equal(t, "color", tokens[0].Type)

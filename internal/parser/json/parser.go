@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
@@ -44,7 +45,15 @@ func (p *Parser) extractTokens(data map[string]any, path, prefix string, result 
 
 // extractTokensWithPath recursively extracts tokens tracking the JSON path
 func (p *Parser) extractTokensWithPath(data map[string]any, jsonPath []string, path, prefix string, result *[]*tokens.Token) {
-	for key, value := range data {
+	// Sort keys to ensure deterministic order
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		value := data[key]
 		valueMap, isMap := value.(map[string]any)
 		if !isMap {
 			continue
