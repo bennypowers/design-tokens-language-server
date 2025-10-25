@@ -3,6 +3,7 @@ package lsp
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
@@ -10,6 +11,168 @@ import (
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
+
+// formatTokenValueForCSS formats a token value for safe insertion into CSS.
+// Returns the formatted value and a boolean indicating if the value is safe to use.
+// Some token types cannot be safely converted to CSS fallback values and should be skipped.
+func formatTokenValueForCSS(token *tokens.Token) (string, bool) {
+	value := token.Value
+	tokenType := strings.ToLower(token.Type)
+
+	// Safe types that can use raw values (no quoting needed)
+	safeTypes := map[string]bool{
+		"color":      true,
+		"dimension":  true,
+		"number":     true,
+		"duration":   true,
+		"cubicbezier": true,
+	}
+
+	// Font weight can be numeric (safe) or string (needs validation)
+	if tokenType == "fontweight" {
+		// Check if it's numeric (safe to use raw)
+		matched, _ := regexp.MatchString(`^\d+$`, value)
+		if matched {
+			return value, true
+		}
+		// Predefined keywords like "bold", "normal" are safe
+		keywords := map[string]bool{
+			"normal": true, "bold": true, "bolder": true, "lighter": true,
+			"100": true, "200": true, "300": true, "400": true, "500": true,
+			"600": true, "700": true, "800": true, "900": true,
+		}
+		if keywords[strings.ToLower(value)] {
+			return value, true
+		}
+		return "", false // Unsafe font weight value
+	}
+
+	// Font family needs special handling (quoting for values with spaces/special chars)
+	if tokenType == "fontfamily" {
+		return formatFontFamilyValue(value)
+	}
+
+	// Check if this is a safe type
+	if safeTypes[tokenType] {
+		return value, true
+	}
+
+	// If no type specified, inspect the value to determine if it's safe
+	if tokenType == "" {
+		// Check if it looks like a safe CSS value (color, dimension, number)
+		// Colors: hex, rgb(), hsl(), named colors
+		if strings.HasPrefix(value, "#") || strings.HasPrefix(value, "rgb") ||
+		   strings.HasPrefix(value, "hsl") || isNamedColor(value) {
+			return value, true
+		}
+
+		// Dimensions: number followed by unit (px, rem, em, %, etc.)
+		matched, _ := regexp.MatchString(`^-?\d+(\.\d+)?(px|rem|em|%|vh|vw|pt|cm|mm|in|pc|ex|ch|vmin|vmax)$`, value)
+		if matched {
+			return value, true
+		}
+
+		// Pure numbers
+		matched, _ = regexp.MatchString(`^-?\d+(\.\d+)?$`, value)
+		if matched {
+			return value, true
+		}
+
+		// If it contains spaces or special characters, it might need quoting
+		// but we can't be sure, so skip it for safety
+		if strings.ContainsAny(value, " \t\n\"'()[]{}") {
+			return "", false
+		}
+
+		// Simple identifiers without spaces are probably safe
+		matched, _ = regexp.MatchString(`^[a-zA-Z][a-zA-Z0-9-]*$`, value)
+		if matched {
+			return value, true
+		}
+
+		return "", false // Unknown format, unsafe
+	}
+
+	// Composite types (stroke, border, transition, shadow, gradient, typography)
+	// cannot be safely inserted as simple CSS values
+	return "", false
+}
+
+// formatFontFamilyValue formats a font family value for CSS.
+// Returns the formatted value and whether it's safe to use.
+func formatFontFamilyValue(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+
+	// If it's already quoted, use as-is (assume it's properly formatted)
+	if (strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"")) ||
+	   (strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) {
+		return value, true
+	}
+
+	// Generic font families don't need quotes
+	genericFamilies := map[string]bool{
+		"serif": true, "sans-serif": true, "monospace": true,
+		"cursive": true, "fantasy": true, "system-ui": true,
+	}
+	if genericFamilies[strings.ToLower(value)] {
+		return value, true
+	}
+
+	// If it contains spaces, commas, or special characters, it needs quoting
+	needsQuoting := strings.ContainsAny(value, " \t\n,\"'")
+
+	if needsQuoting {
+		// Escape any internal quotes
+		escaped := strings.ReplaceAll(value, "\"", "\\\"")
+		return fmt.Sprintf("\"%s\"", escaped), true
+	}
+
+	// Single-word font names without special chars don't need quotes
+	return value, true
+}
+
+// isNamedColor checks if a value is a named CSS color
+func isNamedColor(value string) bool {
+	namedColors := map[string]bool{
+		"transparent": true, "black": true, "white": true, "red": true, "green": true,
+		"blue": true, "yellow": true, "cyan": true, "magenta": true, "gray": true,
+		"grey": true, "maroon": true, "purple": true, "fuchsia": true, "lime": true,
+		"olive": true, "navy": true, "teal": true, "aqua": true, "orange": true,
+		"aliceblue": true, "antiquewhite": true, "aquamarine": true, "azure": true,
+		"beige": true, "bisque": true, "blanchedalmond": true, "blueviolet": true,
+		"brown": true, "burlywood": true, "cadetblue": true, "chartreuse": true,
+		"chocolate": true, "coral": true, "cornflowerblue": true, "cornsilk": true,
+		"crimson": true, "darkblue": true, "darkcyan": true, "darkgoldenrod": true,
+		"darkgray": true, "darkgrey": true, "darkgreen": true, "darkkhaki": true,
+		"darkmagenta": true, "darkolivegreen": true, "darkorange": true, "darkorchid": true,
+		"darkred": true, "darksalmon": true, "darkseagreen": true, "darkslateblue": true,
+		"darkslategray": true, "darkslategrey": true, "darkturquoise": true, "darkviolet": true,
+		"deeppink": true, "deepskyblue": true, "dimgray": true, "dimgrey": true,
+		"dodgerblue": true, "firebrick": true, "floralwhite": true, "forestgreen": true,
+		"gainsboro": true, "ghostwhite": true, "gold": true, "goldenrod": true,
+		"greenyellow": true, "honeydew": true, "hotpink": true, "indianred": true,
+		"indigo": true, "ivory": true, "khaki": true, "lavender": true,
+		"lavenderblush": true, "lawngreen": true, "lemonchiffon": true, "lightblue": true,
+		"lightcoral": true, "lightcyan": true, "lightgoldenrodyellow": true, "lightgray": true,
+		"lightgrey": true, "lightgreen": true, "lightpink": true, "lightsalmon": true,
+		"lightseagreen": true, "lightskyblue": true, "lightslategray": true, "lightslategrey": true,
+		"lightsteelblue": true, "lightyellow": true, "limegreen": true, "linen": true,
+		"mediumaquamarine": true, "mediumblue": true, "mediumorchid": true, "mediumpurple": true,
+		"mediumseagreen": true, "mediumslateblue": true, "mediumspringgreen": true, "mediumturquoise": true,
+		"mediumvioletred": true, "midnightblue": true, "mintcream": true, "mistyrose": true,
+		"moccasin": true, "navajowhite": true, "oldlace": true, "olivedrab": true,
+		"orangered": true, "orchid": true, "palegoldenrod": true, "palegreen": true,
+		"paleturquoise": true, "palevioletred": true, "papayawhip": true, "peachpuff": true,
+		"peru": true, "pink": true, "plum": true, "powderblue": true,
+		"rosybrown": true, "royalblue": true, "saddlebrown": true, "salmon": true,
+		"sandybrown": true, "seagreen": true, "seashell": true, "sienna": true,
+		"silver": true, "skyblue": true, "slateblue": true, "slategray": true,
+		"slategrey": true, "snow": true, "springgreen": true, "steelblue": true,
+		"tan": true, "thistle": true, "tomato": true, "turquoise": true,
+		"violet": true, "wheat": true, "whitesmoke": true, "yellowgreen": true,
+	}
+	return namedColors[strings.ToLower(value)]
+}
 
 // handleCodeAction handles the textDocument/codeAction request
 func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
@@ -77,11 +240,15 @@ func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeA
 			tokenValue := token.Value
 
 			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
-				actions = append(actions, s.createFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics))
+				if action := s.createFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics); action != nil {
+					actions = append(actions, *action)
+				}
 			}
 		} else if token.Type == "color" || token.Type == "dimension" {
 			// Suggest adding fallback for color and dimension tokens
-			actions = append(actions, s.createAddFallbackAction(uri, *varCall, token))
+			if action := s.createAddFallbackAction(uri, *varCall, token); action != nil {
+				actions = append(actions, *action)
+			}
 		}
 	}
 
@@ -104,8 +271,16 @@ func (s *Server) CodeActionResolve(action *protocol.CodeAction) (*protocol.CodeA
 	return action, nil
 }
 
-// createFixFallbackAction creates a code action to fix an incorrect fallback value
-func (s *Server) createFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) protocol.CodeAction {
+// createFixFallbackAction creates a code action to fix an incorrect fallback value.
+// Returns nil if the token value cannot be safely formatted for CSS.
+func (s *Server) createFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
+	// Format the token value for safe CSS insertion
+	formattedValue, safe := formatTokenValueForCSS(token)
+	if !safe {
+		// Skip this code action - value cannot be safely inserted
+		return nil
+	}
+
 	// Find the matching diagnostic
 	var matchingDiag *protocol.Diagnostic
 	for i := range diagnostics {
@@ -116,12 +291,12 @@ func (s *Server) createFixFallbackAction(uri string, varCall css.VarCall, token 
 		}
 	}
 
-	// Create the replacement text
-	newText := fmt.Sprintf("var(%s, %s)", varCall.TokenName, token.Value)
+	// Create the replacement text with formatted value
+	newText := fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
 
 	kind := protocol.CodeActionKindQuickFix
 	action := protocol.CodeAction{
-		Title: fmt.Sprintf("Fix fallback value to '%s'", token.Value),
+		Title: fmt.Sprintf("Fix fallback value to '%s'", formattedValue),
 		Kind:  &kind,
 		Edit: &protocol.WorkspaceEdit{
 			Changes: map[string][]protocol.TextEdit{
@@ -150,17 +325,25 @@ func (s *Server) createFixFallbackAction(uri string, varCall css.VarCall, token 
 		action.IsPreferred = &preferred
 	}
 
-	return action
+	return &action
 }
 
-// createAddFallbackAction creates a code action to add a fallback value
-func (s *Server) createAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) protocol.CodeAction {
-	// Create the replacement text
-	newText := fmt.Sprintf("var(%s, %s)", varCall.TokenName, token.Value)
+// createAddFallbackAction creates a code action to add a fallback value.
+// Returns nil if the token value cannot be safely formatted for CSS.
+func (s *Server) createAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
+	// Format the token value for safe CSS insertion
+	formattedValue, safe := formatTokenValueForCSS(token)
+	if !safe {
+		// Skip this code action - value cannot be safely inserted
+		return nil
+	}
+
+	// Create the replacement text with formatted value
+	newText := fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
 
 	kind := protocol.CodeActionKindQuickFix
-	return protocol.CodeAction{
-		Title: fmt.Sprintf("Add fallback value '%s'", token.Value),
+	action := protocol.CodeAction{
+		Title: fmt.Sprintf("Add fallback value '%s'", formattedValue),
 		Kind:  &kind,
 		Edit: &protocol.WorkspaceEdit{
 			Changes: map[string][]protocol.TextEdit{
@@ -182,6 +365,7 @@ func (s *Server) createAddFallbackAction(uri string, varCall css.VarCall, token 
 			},
 		},
 	}
+	return &action
 }
 
 // createDeprecatedTokenActions creates code actions for deprecated tokens
@@ -275,36 +459,40 @@ func (s *Server) createDeprecatedTokenActions(uri string, varCall css.VarCall, t
 	}
 
 	// Add a generic "Remove deprecated token" action (shows the value inline)
-	kind := protocol.CodeActionKindQuickFix
-	removeAction := protocol.CodeAction{
-		Title: fmt.Sprintf("Replace with literal value '%s'", token.Value),
-		Kind:  &kind,
-		Edit: &protocol.WorkspaceEdit{
-			Changes: map[string][]protocol.TextEdit{
-				uri: {
-					{
-						Range: protocol.Range{
-							Start: protocol.Position{
-								Line:      varCall.Range.Start.Line,
-								Character: varCall.Range.Start.Character,
+	// Only offer this if the value can be safely formatted for CSS
+	formattedValue, safe := formatTokenValueForCSS(token)
+	if safe {
+		kind := protocol.CodeActionKindQuickFix
+		removeAction := protocol.CodeAction{
+			Title: fmt.Sprintf("Replace with literal value '%s'", formattedValue),
+			Kind:  &kind,
+			Edit: &protocol.WorkspaceEdit{
+				Changes: map[string][]protocol.TextEdit{
+					uri: {
+						{
+							Range: protocol.Range{
+								Start: protocol.Position{
+									Line:      varCall.Range.Start.Line,
+									Character: varCall.Range.Start.Character,
+								},
+								End: protocol.Position{
+									Line:      varCall.Range.End.Line,
+									Character: varCall.Range.End.Character,
+								},
 							},
-							End: protocol.Position{
-								Line:      varCall.Range.End.Line,
-								Character: varCall.Range.End.Character,
-							},
+							NewText: formattedValue,
 						},
-						NewText: token.Value,
 					},
 				},
 			},
-		},
-	}
+		}
 
-	if matchingDiag != nil {
-		removeAction.Diagnostics = []protocol.Diagnostic{*matchingDiag}
-	}
+		if matchingDiag != nil {
+			removeAction.Diagnostics = []protocol.Diagnostic{*matchingDiag}
+		}
 
-	actions = append(actions, removeAction)
+		actions = append(actions, removeAction)
+	}
 
 	return actions
 }
