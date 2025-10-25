@@ -33,27 +33,27 @@ install: build
 test:
 	go test -v -race ./...
 
-## Run tests with coverage (includes integration test coverage via Go 1.20+ subprocess coverage)
+## Run tests with coverage (Go 1.20+ includes cross-process coverage for integration tests)
 test-coverage:
 	@echo "=== Running Unit Tests with Coverage ==="
-	@go test -coverprofile=coverage-unit.out -covermode=atomic -coverpkg=./internal/...,./cmd/... $$(go list ./... | grep -v /test/integration)
+	@go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/...,./cmd/... $$(go list ./... | grep -v /test/integration)
 	@echo ""
 	@echo "=== Running Integration Tests with Subprocess Coverage ==="
 	@rm -rf coverage/integration
 	@go test ./test/integration
-	@go tool covdata textfmt -i=coverage/integration -o=coverage-integration.out
 	@echo ""
-	@echo "=== Coverage Summary ==="
+	@echo "=== Coverage Report ==="
 	@echo ""
 	@echo "Unit Test Coverage:"
-	@go tool cover -func=coverage-unit.out | tail -1
+	@go tool cover -func=coverage.out | tail -1
 	@echo ""
-	@echo "Integration Test Coverage (cross-process, Go 1.20+):"
-	@go tool cover -func=coverage-integration.out | tail -1
+	@echo "Integration Test Coverage (cross-process binaries):"
+	@go tool covdata percent -i=coverage/integration
 	@echo ""
-	@echo "Functions covered by integration tests that showed 0% before:"
-	@go tool cover -func=coverage-integration.out | grep -E "handleDidChangeConfiguration|parseConfiguration|loadTokensFromConfig|registerFileWatchers|handleInitialized|LoadTokenFiles" || echo "  (see coverage-integration.out for details)"
-	@cp coverage-unit.out coverage.out
+	@echo "Both coverages complement each other. Unit tests cover isolated functions,"
+	@echo "integration tests cover real server execution and cross-process communication."
+	@echo ""
+	@echo "Run 'make show-coverage' to view unit test coverage in browser."
 
 ## Show coverage in browser
 show-coverage: test-coverage
