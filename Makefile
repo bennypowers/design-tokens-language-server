@@ -33,15 +33,31 @@ install: build
 test:
 	go test -v -race ./...
 
-## Run tests with coverage
+## Run tests with coverage (includes integration test coverage via Go 1.20+ subprocess coverage)
 test-coverage:
-	go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/...,./cmd/... ./...
-	@echo "Coverage report:"
-	@go tool cover -func=coverage.out
+	@echo "=== Running Unit Tests with Coverage ==="
+	@go test -coverprofile=coverage-unit.out -covermode=atomic -coverpkg=./internal/...,./cmd/... $$(go list ./... | grep -v /test/integration)
+	@echo ""
+	@echo "=== Running Integration Tests with Subprocess Coverage ==="
+	@rm -rf coverage/integration
+	@go test ./test/integration
+	@go tool covdata textfmt -i=coverage/integration -o=coverage-integration.out
+	@echo ""
+	@echo "=== Coverage Summary ==="
+	@echo ""
+	@echo "Unit Test Coverage:"
+	@go tool cover -func=coverage-unit.out | tail -1
+	@echo ""
+	@echo "Integration Test Coverage (cross-process, Go 1.20+):"
+	@go tool cover -func=coverage-integration.out | tail -1
+	@echo ""
+	@echo "Functions covered by integration tests that showed 0% before:"
+	@go tool cover -func=coverage-integration.out | grep -E "handleDidChangeConfiguration|parseConfiguration|loadTokensFromConfig|registerFileWatchers|handleInitialized|LoadTokenFiles" || echo "  (see coverage-integration.out for details)"
+	@cp coverage-unit.out coverage.out
 
 ## Show coverage in browser
 show-coverage: test-coverage
-	go tool cover -html=coverage.out
+	@go tool cover -html=coverage.out
 
 ## Build all platform binaries (requires cross-compilation toolchains)
 build-all: linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64
