@@ -1,5 +1,7 @@
 package tokens
 
+import "strings"
+
 // Token represents a design token following the DTCG specification
 // See: https://design-tokens.github.io/community-group/format/
 type Token struct {
@@ -42,11 +44,14 @@ type Token struct {
 
 // CSSVariableName returns the CSS custom property name for this token
 // e.g., "--color-primary" or "--my-prefix-color-primary"
+// Dots in token names and prefixes are replaced with hyphens for valid CSS.
 func (t *Token) CSSVariableName() string {
+	name := strings.ReplaceAll(t.Name, ".", "-")
 	if t.Prefix != "" {
-		return "--" + t.Prefix + "-" + t.Name
+		prefix := strings.ReplaceAll(t.Prefix, ".", "-")
+		return "--" + prefix + "-" + name
 	}
-	return "--" + t.Name
+	return "--" + name
 }
 
 // TokenGroup represents a group of tokens (can be nested)
