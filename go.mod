@@ -3,6 +3,7 @@ module github.com/bennypowers/design-tokens-language-server
 go 1.25.3
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/jsonc v0.3.2
 	github.com/tliron/glsp v0.2.2
@@ -13,7 +14,6 @@ require (
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
@@ -30,8 +30,8 @@ require (
 	github.com/sourcegraph/jsonrpc2 v0.2.0 // indirect
 	github.com/tliron/commonlog v0.2.8 // indirect
 	github.com/tliron/kutil v0.3.11 // indirect
-	golang.org/x/crypto v0.15.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/net v0.45.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/term v0.36.0 // indirect
 )
