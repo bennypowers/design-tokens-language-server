@@ -122,8 +122,11 @@ func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []Semanti
 			referenceEnd := match[3]
 			reference := line[referenceStart:referenceEnd]
 
+			// Convert dots to dashes for token lookup (design tokens use dots, but we store as dashes)
+			tokenName := strings.ReplaceAll(reference, ".", "-")
+
 			// Check if this reference exists in our token manager
-			if s.tokens.Get(reference) == nil {
+			if s.tokens.Get(tokenName) == nil {
 				continue
 			}
 

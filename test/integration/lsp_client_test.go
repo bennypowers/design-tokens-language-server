@@ -368,6 +368,34 @@ func (c *LSPClient) DidChangeTextDocument(uri, text string, version int) {
 	c.sendNotification("textDocument/didChange", params)
 }
 
+// SemanticTokensFull sends a semanticTokens/full request
+func (c *LSPClient) SemanticTokensFull(uri string) (*protocol.SemanticTokens, error) {
+	params := map[string]interface{}{
+		"textDocument": map[string]interface{}{
+			"uri": uri,
+		},
+	}
+
+	id := c.sendRequest("textDocument/semanticTokens/full", params)
+	response, err := c.waitForResponse(id, 1*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle null response
+	if string(response) == "null" {
+		return nil, nil
+	}
+
+	var tokens protocol.SemanticTokens
+	err = json.Unmarshal(response, &tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tokens, nil
+}
+
 // TestRealLSPConnection tests with a real LSP connection
 // This test validates that the server initialization, token loading,
 // and file watcher registration work correctly end-to-end.
@@ -529,5 +557,60 @@ func TestRealLSPConnection(t *testing.T) {
 		t.Logf("After configuration change: %d diagnostics", len(diagnostics2.Items))
 
 		t.Log("✅ Configuration change test passed")
+	})
+
+	t.Run("Semantic tokens full", func(t *testing.T) {
+		// Create temp workspace
+		tmpDir := t.TempDir()
+
+		// Create token file with nested references
+		tokensPath := filepath.Join(tmpDir, "tokens.json")
+		tokens := `{
+  "color": {
+    "brand": {
+      "primary": {
+        "$value": "#0000ff",
+        "$type": "color"
+      }
+    }
+  },
+  "component": {
+    "button": {
+      "background": {
+        "$value": "{color.brand.primary}",
+        "$type": "color"
+      }
+    }
+  }
+}`
+		err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+		require.NoError(t, err)
+
+		// Start LSP client
+		client := NewLSPClient(t)
+		defer client.Close()
+
+		// Initialize with workspace
+		rootURI := "file://" + tmpDir
+		err = client.Initialize(rootURI)
+		require.NoError(t, err)
+
+		// Open token document
+		tokensURI := "file://" + tokensPath
+		client.DidOpenTextDocument(tokensURI, "json", tokens)
+
+		// Wait for document processing
+		time.Sleep(300 * time.Millisecond)
+
+		// Request semantic tokens
+		semanticTokens, err := client.SemanticTokensFull(tokensURI)
+		require.NoError(t, err)
+		require.NotNil(t, semanticTokens, "Should return semantic tokens for JSON token file")
+
+		// Semantic tokens should highlight the token reference {color.brand.primary}
+		assert.NotEmpty(t, semanticTokens.Data, "Should have semantic token data")
+
+		t.Logf("Received %d semantic token values (5 values per token)", len(semanticTokens.Data))
+		t.Log("✅ Semantic tokens test passed")
 	})
 }
