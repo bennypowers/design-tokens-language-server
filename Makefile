@@ -36,24 +36,31 @@ test:
 ## Run tests with coverage (Go 1.20+ includes cross-process coverage for integration tests)
 test-coverage:
 	@echo "=== Running Unit Tests with Coverage ==="
-	@go test -coverprofile=coverage.out -covermode=atomic -coverpkg=./internal/...,./cmd/... $$(go list ./... | grep -v /test/integration)
+	@go test -coverprofile=coverage-unit.out -covermode=set -coverpkg=./internal/...,./cmd/... $$(go list ./... | grep -v /test/integration)
 	@echo ""
 	@echo "=== Running Integration Tests with Subprocess Coverage ==="
 	@rm -rf coverage/integration
 	@go test ./test/integration
 	@echo ""
+	@echo "=== Converting Integration Coverage to Text Format ==="
+	@go tool covdata textfmt -i=coverage/integration -o=coverage-integration.out
+	@echo ""
+	@echo "=== Merging Coverage Files ==="
+	@command -v gocovmerge >/dev/null 2>&1 || go install github.com/wadey/gocovmerge@latest
+	@gocovmerge coverage-unit.out coverage-integration.out > coverage.out
+	@echo ""
 	@echo "=== Coverage Report ==="
 	@echo ""
 	@echo "Unit Test Coverage:"
+	@go tool cover -func=coverage-unit.out | tail -1
+	@echo ""
+	@echo "Integration Test Coverage (cross-process):"
+	@go tool cover -func=coverage-integration.out | tail -1
+	@echo ""
+	@echo "Merged Total Coverage (for CI tools like codecov):"
 	@go tool cover -func=coverage.out | tail -1
 	@echo ""
-	@echo "Integration Test Coverage (cross-process binaries):"
-	@go tool covdata percent -i=coverage/integration
-	@echo ""
-	@echo "Both coverages complement each other. Unit tests cover isolated functions,"
-	@echo "integration tests cover real server execution and cross-process communication."
-	@echo ""
-	@echo "Run 'make show-coverage' to view unit test coverage in browser."
+	@echo "Run 'make show-coverage' to view merged coverage in browser."
 
 ## Show coverage in browser
 show-coverage: test-coverage
