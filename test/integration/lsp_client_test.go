@@ -34,19 +34,26 @@ type LSPClient struct {
 func NewLSPClient(t *testing.T) *LSPClient {
 	t.Helper()
 
-	// Build the server binary
+	// Build the server binary with coverage instrumentation
 	// Get current directory and navigate to project root
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	projectRoot := filepath.Join(cwd, "..", "..")
 
-	cmd := exec.Command("go", "build", "-o", "/tmp/design-tokens-lsp-test", "./cmd/design-tokens-lsp")
+	// Build with -cover flag to enable coverage for integration tests (Go 1.20+)
+	cmd := exec.Command("go", "build", "-cover", "-o", "/tmp/design-tokens-lsp-test", "./cmd/design-tokens-lsp")
 	cmd.Dir = projectRoot
 	output, buildErr := cmd.CombinedOutput()
 	require.NoError(t, buildErr, "Failed to build server: %s", string(output))
 
-	// Start the server process
+	// Start the server process with coverage output
+	coverDir := filepath.Join(projectRoot, "coverage", "integration")
+	os.MkdirAll(coverDir, 0755)
+
 	serverCmd := exec.Command("/tmp/design-tokens-lsp-test")
+	serverCmd.Env = append(os.Environ(),
+		fmt.Sprintf("GOCOVERDIR=%s", coverDir),
+	)
 	stdin, err := serverCmd.StdinPipe()
 	require.NoError(t, err)
 	stdout, err := serverCmd.StdoutPipe()
