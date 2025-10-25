@@ -189,6 +189,29 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 	})
 }
 
+// TestHelperFunctions tests the utility helper functions
+func TestHelperFunctions(t *testing.T) {
+	t.Run("boolPtr", func(t *testing.T) {
+		truePtr := boolPtr(true)
+		assert.NotNil(t, truePtr)
+		assert.True(t, *truePtr)
+
+		falsePtr := boolPtr(false)
+		assert.NotNil(t, falsePtr)
+		assert.False(t, *falsePtr)
+	})
+
+	t.Run("strPtr", func(t *testing.T) {
+		str := strPtr("test-string")
+		assert.NotNil(t, str)
+		assert.Equal(t, "test-string", *str)
+
+		emptyStr := strPtr("")
+		assert.NotNil(t, emptyStr)
+		assert.Equal(t, "", *emptyStr)
+	})
+}
+
 // TestServer_Close tests that Close() properly releases resources
 func TestServer_Close(t *testing.T) {
 	t.Run("Close releases CSS parser pool", func(t *testing.T) {
