@@ -2,11 +2,11 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -365,24 +365,35 @@ func (c *LSPClient) GetProcessMemory() (uint64, error) {
 
 	// Try to read from /proc/[pid]/status
 	statusPath := fmt.Sprintf("/proc/%d/status", c.cmd.Process.Pid)
-	data, err := exec.Command("cat", statusPath).Output()
+	data, err := os.ReadFile(statusPath)
 	if err != nil {
 		// Fallback to approximate value
 		return 50 * 1024 * 1024, nil // 50MB estimate
 	}
 
 	// Parse VmRSS (Resident Set Size)
-	lines := bytes.SplitSeq(data, []byte("\n"))
-	for line := range lines {
-		if bytes.HasPrefix(line, []byte("VmRSS:")) {
-			var size uint64
-			var unit string
-			fmt.Sscanf(string(line), "VmRSS: %d %s", &size, &unit)
-			if unit == "kB" {
-				return size * 1024, nil
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "VmRSS:") {
+			// Split into fields: "VmRSS:" "5432" "kB"
+			fields := strings.Fields(line)
+			if len(fields) < 3 {
+				return 0, fmt.Errorf("invalid VmRSS format: not enough fields")
 			}
+
+			var size uint64
+			if _, err := fmt.Sscanf(fields[1], "%d", &size); err != nil {
+				return 0, fmt.Errorf("failed to parse VmRSS size: %w", err)
+			}
+
+			unit := fields[2]
+			if unit != "kB" {
+				return 0, fmt.Errorf("unexpected unit %q, expected kB", unit)
+			}
+
+			return size * 1024, nil
 		}
 	}
 
-	return 0, fmt.Errorf("could not parse memory usage")
+	return 0, fmt.Errorf("VmRSS not found in status")
 }

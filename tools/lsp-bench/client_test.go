@@ -475,3 +475,117 @@ func TestErrorResponseHandling(t *testing.T) {
 		t.Error("Error response should have nil result")
 	}
 }
+
+// TestParseMemoryStatus tests parsing /proc/[pid]/status for memory info
+func TestParseMemoryStatus(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		statusContent  string
+		expectedMemory uint64
+		expectError    bool
+	}{
+		{
+			name: "valid VmRSS in kB",
+			statusContent: `Name:	design-tokens-lsp
+Umask:	0022
+State:	S (sleeping)
+VmPeak:	   12345 kB
+VmSize:	   12000 kB
+VmRSS:	    5432 kB
+VmData:	    1024 kB`,
+			expectedMemory: 5432 * 1024,
+			expectError:    false,
+		},
+		{
+			name: "VmRSS with tabs and spaces",
+			statusContent: `Name:	test
+VmRSS:	  	  1024 kB
+VmData:	512 kB`,
+			expectedMemory: 1024 * 1024,
+			expectError:    false,
+		},
+		{
+			name: "VmRSS at beginning",
+			statusContent: `VmRSS:	2048 kB
+VmData:	512 kB`,
+			expectedMemory: 2048 * 1024,
+			expectError:    false,
+		},
+		{
+			name: "no VmRSS line",
+			statusContent: `Name:	test
+VmSize:	1000 kB
+VmData:	512 kB`,
+			expectedMemory: 0,
+			expectError:    true,
+		},
+		{
+			name:           "empty content",
+			statusContent:  "",
+			expectedMemory: 0,
+			expectError:    true,
+		},
+		{
+			name: "invalid VmRSS format",
+			statusContent: `VmRSS:	invalid kB
+VmData:	512 kB`,
+			expectedMemory: 0,
+			expectError:    true,
+		},
+		{
+			name: "missing unit",
+			statusContent: `VmRSS:	1024
+VmData:	512 kB`,
+			expectedMemory: 0,
+			expectError:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memory, err := parseMemoryFromStatus([]byte(tt.statusContent))
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("Expected error but got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if memory != tt.expectedMemory {
+					t.Errorf("Memory = %d bytes, want %d bytes", memory, tt.expectedMemory)
+				}
+			}
+		})
+	}
+}
+
+// parseMemoryFromStatus is the extracted logic for parsing memory from status file
+func parseMemoryFromStatus(data []byte) (uint64, error) {
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "VmRSS:") {
+			// Split into fields: "VmRSS:" "5432" "kB"
+			fields := strings.Fields(line)
+			if len(fields) < 3 {
+				return 0, fmt.Errorf("invalid VmRSS format: not enough fields")
+			}
+
+			var size uint64
+			if _, err := fmt.Sscanf(fields[1], "%d", &size); err != nil {
+				return 0, fmt.Errorf("failed to parse VmRSS size: %v", err)
+			}
+
+			unit := fields[2]
+			if unit != "kB" {
+				return 0, fmt.Errorf("unexpected unit %q, expected kB", unit)
+			}
+
+			return size * 1024, nil
+		}
+	}
+
+	return 0, fmt.Errorf("VmRSS not found in status")
+}
