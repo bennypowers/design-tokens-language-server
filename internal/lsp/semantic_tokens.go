@@ -70,7 +70,38 @@ func (s *Server) handleSemanticTokensFull(context *glsp.Context, params *protoco
 	}, nil
 }
 
+// byteOffsetToUTF16 converts a byte offset within a string to UTF-16 code units
+func byteOffsetToUTF16(s string, byteOffset int) int {
+	if byteOffset > len(s) {
+		byteOffset = len(s)
+	}
+
+	utf16Count := 0
+	for _, r := range []rune(s[:byteOffset]) {
+		if r <= 0xFFFF {
+			utf16Count++
+		} else {
+			utf16Count += 2 // Surrogate pair
+		}
+	}
+	return utf16Count
+}
+
+// stringLengthUTF16 returns the length of a string in UTF-16 code units
+func stringLengthUTF16(s string) int {
+	utf16Count := 0
+	for _, r := range []rune(s) {
+		if r <= 0xFFFF {
+			utf16Count++
+		} else {
+			utf16Count += 2 // Surrogate pair
+		}
+	}
+	return utf16Count
+}
+
 // getSemanticTokensForDocument extracts semantic tokens from a document
+// Positions and lengths are in UTF-16 code units (LSP default encoding)
 func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []SemanticTokenIntermediate {
 	content := doc.Content()
 	tokens := []SemanticTokenIntermediate{}
@@ -101,7 +132,8 @@ func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []Semanti
 
 			// Calculate the starting position of the reference within the line
 			// The reference starts at match[2] (after the opening {)
-			partStartChar := referenceStart
+			// Convert byte offset to UTF-16 code units
+			partStartChar := byteOffsetToUTF16(line, referenceStart)
 
 			for i, part := range parts {
 				tokenType := 1 // property (default)
@@ -112,13 +144,13 @@ func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []Semanti
 				tokens = append(tokens, SemanticTokenIntermediate{
 					Line:           lineNum,
 					StartChar:      partStartChar,
-					Length:         len(part),
+					Length:         stringLengthUTF16(part),
 					TokenType:      tokenType,
 					TokenModifiers: 0,
 				})
 
-				// Move to the next part (add length of part + 1 for the dot)
-				partStartChar += len(part) + 1
+				// Move to the next part (add UTF-16 length of part + 1 for the dot)
+				partStartChar += stringLengthUTF16(part) + 1
 			}
 		}
 	}
