@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/bennypowers/design-tokens-language-server/internal/position"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -107,22 +108,49 @@ func (m *Manager) applyChanges(content string, changes []protocol.TextDocumentCo
 	return result, nil
 }
 
-// applyIncrementalChange applies a single incremental change to the content
+// applyIncrementalChange applies a single incremental change to the content.
+// LSP positions use UTF-16 code units, so this function converts them to byte offsets.
 func applyIncrementalChange(content string, changeRange protocol.Range, text string) (string, error) {
 	lines := strings.Split(content, "\n")
 
-	// Validate range
-	if int(changeRange.Start.Line) >= len(lines) {
+	// Validate line range - allow EOF insertion (line == len(lines))
+	if int(changeRange.Start.Line) > len(lines) {
 		return "", fmt.Errorf("start line %d out of bounds (total lines: %d)", changeRange.Start.Line, len(lines))
 	}
-	if int(changeRange.End.Line) >= len(lines) {
+	if int(changeRange.End.Line) > len(lines) {
 		return "", fmt.Errorf("end line %d out of bounds (total lines: %d)", changeRange.End.Line, len(lines))
 	}
 
 	startLine := int(changeRange.Start.Line)
-	startChar := int(changeRange.Start.Character)
+	startCharUTF16 := int(changeRange.Start.Character)
 	endLine := int(changeRange.End.Line)
-	endChar := int(changeRange.End.Character)
+	endCharUTF16 := int(changeRange.End.Character)
+
+	// Handle EOF insertion: normalize to last line
+	if startLine == len(lines) && startCharUTF16 == 0 && endLine == len(lines) && endCharUTF16 == 0 {
+		if len(lines) == 0 {
+			// Empty document
+			return text, nil
+		}
+		startLine, endLine = len(lines)-1, len(lines)-1
+		lastLine := lines[len(lines)-1]
+		startCharUTF16 = position.StringLengthUTF16(lastLine)
+		endCharUTF16 = startCharUTF16
+	}
+
+	// Convert UTF-16 positions to byte offsets
+	startCharByte := position.UTF16ToByteOffset(lines[startLine], startCharUTF16)
+	endCharByte := position.UTF16ToByteOffset(lines[endLine], endCharUTF16)
+
+	// Validate character bounds
+	if startCharByte < 0 || startCharByte > len(lines[startLine]) {
+		return "", fmt.Errorf("start char %d (UTF-16: %d) out of bounds for line %d (length: %d)",
+			startCharByte, startCharUTF16, startLine, len(lines[startLine]))
+	}
+	if endCharByte < 0 || endCharByte > len(lines[endLine]) {
+		return "", fmt.Errorf("end char %d (UTF-16: %d) out of bounds for line %d (length: %d)",
+			endCharByte, endCharUTF16, endLine, len(lines[endLine]))
+	}
 
 	// Build the new content
 	var result strings.Builder
@@ -134,18 +162,14 @@ func applyIncrementalChange(content string, changeRange protocol.Range, text str
 	}
 
 	// Start line prefix (before change)
-	if startChar < len(lines[startLine]) {
-		result.WriteString(lines[startLine][:startChar])
-	} else {
-		result.WriteString(lines[startLine])
-	}
+	result.WriteString(lines[startLine][:startCharByte])
 
 	// Insert new text
 	result.WriteString(text)
 
 	// End line suffix (after change)
-	if endLine < len(lines) && endChar < len(lines[endLine]) {
-		result.WriteString(lines[endLine][endChar:])
+	if endLine < len(lines) {
+		result.WriteString(lines[endLine][endCharByte:])
 	}
 
 	// Lines after the change

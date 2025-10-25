@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/bennypowers/design-tokens-language-server/internal/position"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -155,7 +156,8 @@ func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.Com
 	return item, nil
 }
 
-// getWordAtPosition extracts the word at the given position
+// getWordAtPosition extracts the word at the given position.
+// LSP positions use UTF-16 code units, so this function converts them to byte offsets.
 func (s *Server) getWordAtPosition(content string, pos protocol.Position) string {
 	lines := strings.Split(content, "\n")
 	if int(pos.Line) >= len(lines) {
@@ -163,18 +165,24 @@ func (s *Server) getWordAtPosition(content string, pos protocol.Position) string
 	}
 
 	line := lines[pos.Line]
-	if int(pos.Character) > len(line) {
+
+	// Convert UTF-16 column to byte offset
+	utf16Col := int(pos.Character)
+	byteOffset := position.UTF16ToByteOffset(line, utf16Col)
+
+	// Bounds check
+	if byteOffset > len(line) {
 		return ""
 	}
 
 	// Find the start of the word (going backwards from cursor)
-	start := int(pos.Character)
+	start := byteOffset
 	for start > 0 && isWordChar(line[start-1]) {
 		start--
 	}
 
 	// Find the end of the word (going forwards from cursor)
-	end := int(pos.Character)
+	end := byteOffset
 	for end < len(line) && isWordChar(line[end]) {
 		end++
 	}

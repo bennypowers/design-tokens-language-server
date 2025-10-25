@@ -328,3 +328,145 @@ func TestDocumentManagerGetAll(t *testing.T) {
 	assert.True(t, uris["file:///test2.css"])
 	assert.True(t, uris["file:///test3.json"])
 }
+
+// TestDocumentManagerUTF16Incremental tests incremental updates with UTF-16 positions
+func TestDocumentManagerUTF16Incremental(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Open document with emoji
+	content := "/* 👍 */ color: blue;"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Replace "blue" with "red"
+	// "/* 👍 */ color: " is 18 bytes but only 16 UTF-16 code units (👍 = 2 units)
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 16}, // UTF-16 position
+				End:   protocol.Position{Line: 0, Character: 20}, // UTF-16 position
+			},
+			Text: "red",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	assert.Equal(t, "/* 👍 */ color: red;", doc.Content())
+}
+
+// TestDocumentManagerUTF16CJK tests UTF-16 handling with CJK characters
+func TestDocumentManagerUTF16CJK(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Open document with CJK characters
+	content := "/* 颜色 */ color: blue;"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Replace "blue" with "red"
+	// "/* 颜色 */ color: " is 20 bytes, 16 UTF-16 code units (each CJK char = 1 unit)
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 16},
+				End:   protocol.Position{Line: 0, Character: 20},
+			},
+			Text: "red",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	assert.Equal(t, "/* 颜色 */ color: red;", doc.Content())
+}
+
+// TestDocumentManagerEOFInsertion tests EOF insertion handling
+func TestDocumentManagerEOFInsertion(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Open document
+	content := "line1\nline2"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Insert at EOF (line == len(lines))
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 2, Character: 0}, // EOF
+				End:   protocol.Position{Line: 2, Character: 0},
+			},
+			Text: "\nline3",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	assert.Equal(t, "line1\nline2\nline3", doc.Content())
+}
+
+// TestDocumentManagerEmptyDocumentEOF tests EOF insertion on empty document
+func TestDocumentManagerEmptyDocumentEOF(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Open empty document
+	err := manager.DidOpen(uri, "css", 1, "")
+	require.NoError(t, err)
+
+	// Insert at EOF in empty document
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 0},
+				End:   protocol.Position{Line: 0, Character: 0},
+			},
+			Text: "hello",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	assert.Equal(t, "hello", doc.Content())
+}
+
+// TestDocumentManagerCharBoundsCheck tests character bounds validation
+func TestDocumentManagerCharBoundsCheck(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	content := "hello"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Try to edit with out-of-bounds character position (UTF16ToByteOffset clamps to end)
+	// When position is beyond line length, it should append at end
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 100}, // Way beyond line length
+				End:   protocol.Position{Line: 0, Character: 100},
+			},
+			Text: "x",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	// UTF16ToByteOffset clamps to string length, so this appends at end
+	doc := manager.Get(uri)
+	assert.Equal(t, "hellox", doc.Content())
+}
