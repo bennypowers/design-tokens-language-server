@@ -44,7 +44,12 @@ type Token struct {
 
 // CSSVariableName returns the CSS custom property name for this token
 // e.g., "--color-primary" or "--my-prefix-color-primary"
-// Dots in token names and prefixes are replaced with hyphens for valid CSS.
+//
+// Note: The current JSON/YAML parsers already convert dot-separated token paths
+// (e.g., "color.primary.500") to hyphenated names (e.g., "color-primary-500")
+// during parsing. This function defensively replaces any remaining dots with
+// hyphens to ensure CSS validity, and handles the prefix which is user-provided.
+// Prefix should not contain dots, but we sanitize it defensively.
 func (t *Token) CSSVariableName() string {
 	name := strings.ReplaceAll(t.Name, ".", "-")
 	if t.Prefix != "" {
