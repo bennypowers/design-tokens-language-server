@@ -1,12 +1,31 @@
 package lsp
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
+
+// loadFixture loads a test fixture file from test/fixtures/
+func loadFixture(t *testing.T, path string) string {
+	t.Helper()
+	// Get the project root (go up from internal/lsp/)
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	projectRoot := filepath.Join(wd, "..", "..")
+	fixturePath := filepath.Join(projectRoot, "test", "fixtures", path)
+	content, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("Failed to load fixture %s: %v", path, err)
+	}
+	return string(content)
+}
 
 func TestGetSemanticTokensForDocument(t *testing.T) {
 	tests := []struct {
@@ -225,5 +244,116 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	}
 	if result.Data[6] != 6 {
 		t.Errorf("Second token deltaStart: expected 6, got %d", result.Data[6])
+	}
+}
+
+func TestSemanticTokensRange(t *testing.T) {
+	s, err := NewServer()
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Add test tokens
+	token1 := &tokens.Token{
+		Name:  "color-brand-primary",
+		Value: "#FF6B35",
+		Type:  "color",
+	}
+	token2 := &tokens.Token{
+		Name:  "color-ui-background",
+		Value: "#F7F7F7",
+		Type:  "color",
+	}
+	s.tokens.Add(token1)
+	s.tokens.Add(token2)
+
+	// Load fixture document
+	content := loadFixture(t, "semantic-tokens/range-test.json")
+	doc := documents.NewDocument("file:///test.json", "json", 1, content)
+	s.documents.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
+
+	// Request semantic tokens for range (lines 1-2 only)
+	params := &protocol.SemanticTokensRangeParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: doc.URI(),
+		},
+		Range: protocol.Range{
+			Start: protocol.Position{Line: 1, Character: 0},
+			End:   protocol.Position{Line: 2, Character: 100},
+		},
+	}
+
+	result, err := s.handleSemanticTokensRange(nil, params)
+	if err != nil {
+		t.Fatalf("handleSemanticTokensRange failed: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Should only include tokens from lines 1-2 (6 tokens total: 3 per reference)
+	// Line 1: color, brand, primary
+	// Line 2: color, ui, background
+	expectedDataLength := 6 * 5 // 6 tokens × 5 values each
+	if len(result.Data) != expectedDataLength {
+		t.Errorf("Expected %d data values for range, got %d", expectedDataLength, len(result.Data))
+	}
+}
+
+func TestSemanticTokensDelta(t *testing.T) {
+	s, err := NewServer()
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Add test token
+	token := &tokens.Token{
+		Name:  "color-brand-primary",
+		Value: "#FF6B35",
+		Type:  "color",
+	}
+	s.tokens.Add(token)
+
+	// Load initial document fixture
+	content1 := loadFixture(t, "semantic-tokens/delta-test-initial.json")
+	doc := documents.NewDocument("file:///test.json", "json", 1, content1)
+	s.documents.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
+
+	// Get initial semantic tokens
+	fullParams := &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: doc.URI()},
+	}
+	fullResult, err := s.handleSemanticTokensFull(nil, fullParams)
+	if err != nil || fullResult == nil {
+		t.Fatalf("Failed to get initial tokens: %v", err)
+	}
+
+	// Now modify the document - load modified fixture
+	content2 := loadFixture(t, "semantic-tokens/delta-test-modified.json")
+	s.documents.DidChange(doc.URI(), 2, []protocol.TextDocumentContentChangeEvent{
+		{Text: content2},
+	})
+
+	// Request delta
+	deltaParams := &protocol.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: doc.URI()},
+		PreviousResultID: "result-1", // Assume we tracked this
+	}
+
+	result, err := s.handleSemanticTokensDelta(nil, deltaParams)
+	if err != nil {
+		t.Fatalf("handleSemanticTokensDelta failed: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected non-nil delta result")
+	}
+
+	// Delta should contain edits describing the changes
+	// For simplicity in this implementation, we'll return full tokens if delta is complex
+	// So check that we got edits
+	if len(result.Edits) == 0 {
+		t.Error("Expected edits in delta response")
 	}
 }

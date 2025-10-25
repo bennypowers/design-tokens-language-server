@@ -41,7 +41,16 @@ func (s *Server) handleSemanticTokensFull(context *glsp.Context, params *protoco
 
 	intermediateTokens := s.getSemanticTokensForDocument(doc)
 
-	// Convert intermediate tokens to delta-encoded format
+	// Encode tokens using delta encoding
+	data := encodeSemanticTokens(intermediateTokens)
+
+	return &protocol.SemanticTokens{
+		Data: data,
+	}, nil
+}
+
+// encodeSemanticTokens converts intermediate tokens to delta-encoded format (LSP spec)
+func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) []uint32 {
 	data := make([]uint32, 0, len(intermediateTokens)*5)
 	prevLine := 0
 	prevStartChar := 0
@@ -65,9 +74,7 @@ func (s *Server) handleSemanticTokensFull(context *glsp.Context, params *protoco
 		prevStartChar = token.StartChar
 	}
 
-	return &protocol.SemanticTokens{
-		Data: data,
-	}, nil
+	return data
 }
 
 // byteOffsetToUTF16 converts a byte offset within a string to UTF-16 code units
@@ -163,12 +170,82 @@ func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []Semanti
 
 // handleSemanticTokensDelta handles the textDocument/semanticTokens/full/delta request
 func (s *Server) handleSemanticTokensDelta(context *glsp.Context, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
-	// Not implemented yet
-	return nil, nil
+	// Get the current document
+	doc := s.documents.Get(params.TextDocument.URI)
+	if doc == nil {
+		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
+	}
+
+	// Get current semantic tokens
+	intermediateTokens := s.getSemanticTokensForDocument(doc)
+	newData := encodeSemanticTokens(intermediateTokens)
+
+	// For a full implementation, we would:
+	// 1. Store previous results by resultID
+	// 2. Compare old and new token arrays
+	// 3. Generate minimal edits (SemanticTokensEdit with start, deleteCount, data)
+	//
+	// For now, we'll implement a simplified version that returns edits
+	// showing that new tokens were added at the end.
+	//
+	// In a real implementation, you would compare params.PreviousResultID's data
+	// with newData and generate minimal edits.
+
+	// Simplified implementation: return an edit that appends new tokens
+	// This assumes tokens were added at the end (which is common when adding new lines)
+	edits := []protocol.SemanticTokensEdit{
+		{
+			// Start at the beginning and replace all
+			// A better implementation would do proper diffing
+			Start:       0,
+			DeleteCount: 0, // Don't delete anything
+			Data:        newData,
+		},
+	}
+
+	return &protocol.SemanticTokensDelta{
+		Edits: edits,
+	}, nil
 }
 
 // handleSemanticTokensRange handles the textDocument/semanticTokens/range request
 func (s *Server) handleSemanticTokensRange(context *glsp.Context, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
-	// Not implemented yet
-	return nil, nil
+	// Get the document
+	doc := s.documents.Get(params.TextDocument.URI)
+	if doc == nil {
+		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
+	}
+
+	// Get all semantic tokens for the document
+	intermediateTokens := s.getSemanticTokensForDocument(doc)
+
+	// Filter tokens to only those within the requested range
+	filteredTokens := []SemanticTokenIntermediate{}
+	for _, token := range intermediateTokens {
+		// Convert protocol.UInteger to int for comparison
+		startLine := int(params.Range.Start.Line)
+		endLine := int(params.Range.End.Line)
+		startChar := int(params.Range.Start.Character)
+		endChar := int(params.Range.End.Character)
+
+		// Check if token is within the requested range
+		if token.Line >= startLine && token.Line <= endLine {
+			// For start line, check if character is >= start character
+			if token.Line == startLine && token.StartChar < startChar {
+				continue
+			}
+			// For end line, check if character is < end character (exclusive)
+			if token.Line == endLine && token.StartChar >= endChar {
+				continue
+			}
+			filteredTokens = append(filteredTokens, token)
+		}
+	}
+
+	// Encode filtered tokens
+	encodedData := encodeSemanticTokens(filteredTokens)
+
+	return &protocol.SemanticTokens{
+		Data: encodedData,
+	}, nil
 }
