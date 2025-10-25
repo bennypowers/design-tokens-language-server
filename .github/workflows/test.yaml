@@ -25,3 +25,5 @@ jobs:
         with:
           files: coverage.out
           token: ${{ secrets.CODECOV_PAT }}
+          fail_ci_if_error: true
+          verbose: true

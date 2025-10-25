@@ -4,6 +4,7 @@ bin
 extensions/**/*.wasm
 extensions/vscode/README.md
 coverage
+coverage.out
 **/*.db
 **/cargo-target
 **/target
