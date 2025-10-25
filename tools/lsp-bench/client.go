@@ -30,14 +30,14 @@ type LSPClient struct {
 
 type jsonrpcRequest struct {
 	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id,omitempty"`
+	ID      int    `json:"id"`
 	Method  string `json:"method"`
 	Params  any    `json:"params,omitempty"`
 }
 
 type jsonrpcResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      int             `json:"id,omitempty"`
+	ID      int             `json:"id"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *jsonrpcError   `json:"error,omitempty"`
 }
@@ -181,8 +181,8 @@ func (c *LSPClient) readResponses() {
 
 func (c *LSPClient) call(method string, params any) (json.RawMessage, error) {
 	c.mu.Lock()
-	id := c.nextID
 	c.nextID++
+	id := c.nextID
 	respChan := make(chan json.RawMessage, 1)
 	c.responses[id] = respChan
 	c.mu.Unlock()

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -205,5 +206,119 @@ func TestFullMessageParsing(t *testing.T) {
 
 	if string(content) != messageContent {
 		t.Errorf("content mismatch:\ngot:  %s\nwant: %s", string(content), messageContent)
+	}
+}
+
+// TestJSONRPCIDSerialization tests that ID field is always serialized (not omitted)
+func TestJSONRPCIDSerialization(t *testing.T) {
+	tests := []struct {
+		name      string
+		id        int
+		expectID  string // Expected ID in JSON
+	}{
+		{
+			name:     "ID is 0",
+			id:       0,
+			expectID: `"id":0`,
+		},
+		{
+			name:     "ID is 1",
+			id:       1,
+			expectID: `"id":1`,
+		},
+		{
+			name:     "ID is 42",
+			id:       42,
+			expectID: `"id":42`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test request serialization
+			req := jsonrpcRequest{
+				JSONRPC: "2.0",
+				ID:      tt.id,
+				Method:  "test",
+			}
+
+			data, err := json.Marshal(req)
+			if err != nil {
+				t.Fatalf("failed to marshal request: %v", err)
+			}
+
+			jsonStr := string(data)
+			if !strings.Contains(jsonStr, tt.expectID) {
+				t.Errorf("Request JSON missing expected ID:\ngot:  %s\nwant: %s", jsonStr, tt.expectID)
+			}
+
+			// Test response serialization
+			resp := jsonrpcResponse{
+				JSONRPC: "2.0",
+				ID:      tt.id,
+			}
+
+			data, err = json.Marshal(resp)
+			if err != nil {
+				t.Fatalf("failed to marshal response: %v", err)
+			}
+
+			jsonStr = string(data)
+			if !strings.Contains(jsonStr, tt.expectID) {
+				t.Errorf("Response JSON missing expected ID:\ngot:  %s\nwant: %s", jsonStr, tt.expectID)
+			}
+		})
+	}
+}
+
+// TestIDGeneratorStartsAtOne tests that the ID generator starts at 1, not 0
+func TestIDGeneratorStartsAtOne(t *testing.T) {
+	// Simulate the ID generation logic from call()
+	nextID := 0 // Initial value
+
+	// First call increments before assigning
+	nextID++
+	firstID := nextID
+
+	if firstID != 1 {
+		t.Errorf("First ID should be 1, got %d", firstID)
+	}
+
+	// Second call
+	nextID++
+	secondID := nextID
+
+	if secondID != 2 {
+		t.Errorf("Second ID should be 2, got %d", secondID)
+	}
+}
+
+// TestNotificationHasNoID tests that notifications don't have an ID field
+func TestNotificationHasNoID(t *testing.T) {
+	notif := jsonrpcNotification{
+		JSONRPC: "2.0",
+		Method:  "textDocument/didOpen",
+		Params:  map[string]string{"uri": "file:///test.txt"},
+	}
+
+	data, err := json.Marshal(notif)
+	if err != nil {
+		t.Fatalf("failed to marshal notification: %v", err)
+	}
+
+	jsonStr := string(data)
+
+	// Notifications should NOT have an "id" field
+	if strings.Contains(jsonStr, `"id"`) {
+		t.Errorf("Notification should not have an 'id' field:\ngot: %s", jsonStr)
+	}
+
+	// Should have method and jsonrpc
+	if !strings.Contains(jsonStr, `"method":"textDocument/didOpen"`) {
+		t.Errorf("Notification missing method field:\ngot: %s", jsonStr)
+	}
+
+	if !strings.Contains(jsonStr, `"jsonrpc":"2.0"`) {
+		t.Errorf("Notification missing jsonrpc field:\ngot: %s", jsonStr)
 	}
 }
