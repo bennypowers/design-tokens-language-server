@@ -40,6 +40,7 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
 
 	// Create server and load tokens
 	server := testutil.NewTestServer(t)
+	defer server.Close()
 	err = server.LoadTokenFile(tokensPath, "")
 	require.NoError(t, err)
 
@@ -129,6 +130,7 @@ func TestFileWatching_TokenFileDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	server := testutil.NewTestServer(t)
+	defer server.Close()
 	err = server.LoadTokenFile(tokensPath, "")
 	require.NoError(t, err)
 
@@ -216,6 +218,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	server := testutil.NewTestServer(t)
+	defer server.Close()
 	err = server.LoadTokenFile(tokens1Path, "")
 	require.NoError(t, err)
 	err = server.LoadTokenFile(tokens2Path, "")
@@ -288,6 +291,7 @@ func TestFileWatching_NonTokenFileIgnored(t *testing.T) {
 	require.NoError(t, err)
 
 	server := testutil.NewTestServer(t)
+	defer server.Close()
 	err = server.LoadTokenFile(tokensPath, "")
 	require.NoError(t, err)
 
@@ -335,6 +339,7 @@ func TestFileWatching_YmlExtension(t *testing.T) {
 
 			// Create server and load the .yml file
 			server := testutil.NewTestServer(t)
+			defer server.Close()
 			err = server.LoadTokenFile(tokensPath, "")
 			require.NoError(t, err)
 

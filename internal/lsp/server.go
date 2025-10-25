@@ -173,14 +173,22 @@ func (s *Server) handleInitialized(context *glsp.Context, params *protocol.Initi
 	return nil
 }
 
+// Close releases server resources including the CSS parser pool.
+// It is safe to call Close multiple times.
+// This method should be called when the server is no longer needed,
+// typically in test cleanup via defer server.Close().
+func (s *Server) Close() error {
+	// Clean up the CSS parser pool
+	css.ClosePool()
+	return nil
+}
+
 // handleShutdown handles the shutdown request
 func (s *Server) handleShutdown(context *glsp.Context) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Server shutting down\n")
 
-	// Clean up the CSS parser pool
-	css.ClosePool()
-
-	return nil
+	// Delegate to Close() for resource cleanup
+	return s.Close()
 }
 
 // handleSetTrace handles the setTrace notification

@@ -188,3 +188,47 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// TestServer_Close tests that Close() properly releases resources
+func TestServer_Close(t *testing.T) {
+	t.Run("Close releases CSS parser pool", func(t *testing.T) {
+		server, err := NewServer()
+		assert.NoError(t, err)
+		assert.NotNil(t, server)
+
+		// Close should not panic and should clean up resources
+		assert.NotPanics(t, func() {
+			err := server.Close()
+			assert.NoError(t, err)
+		})
+	})
+
+	t.Run("Close can be called multiple times", func(t *testing.T) {
+		server, err := NewServer()
+		assert.NoError(t, err)
+
+		// First close
+		err = server.Close()
+		assert.NoError(t, err)
+
+		// Second close should not panic or error
+		err = server.Close()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Close works with nil server fields", func(t *testing.T) {
+		// Minimal server with no initialization
+		server := &Server{
+			documents:   documents.NewManager(),
+			tokens:      tokens.NewManager(),
+			config:      ServerConfig{},
+			loadedFiles: make(map[string]string),
+		}
+
+		// Should not panic
+		assert.NotPanics(t, func() {
+			err := server.Close()
+			assert.NoError(t, err)
+		})
+	})
+}
