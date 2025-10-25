@@ -49,7 +49,11 @@ impl DesignTokensExtension {
                 let arch_name = match arch {
                     zed::Architecture::Aarch64 => "arm64",
                     zed::Architecture::X8664 => "x64",
-                    zed::Architecture::X86 => todo!(),
+                    zed::Architecture::X86 => {
+                        return Err(format!(
+                            "Unsupported architecture: 32-bit x86 is not supported. Please use a 64-bit system."
+                        ))
+                    }
                 };
                 format!("design-tokens-language-server-win-{}.exe", arch_name)
             }
@@ -58,7 +62,11 @@ impl DesignTokensExtension {
                 let arch_name = match arch {
                     zed::Architecture::Aarch64 => "aarch64",
                     zed::Architecture::X8664 => "x86_64",
-                    zed::Architecture::X86 => todo!(),
+                    zed::Architecture::X86 => {
+                        return Err(format!(
+                            "Unsupported architecture: 32-bit x86 is not supported. Please use a 64-bit system."
+                        ))
+                    }
                 };
                 let os_name = match platform {
                     zed::Os::Mac => "apple-darwin",
