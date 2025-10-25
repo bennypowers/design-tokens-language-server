@@ -105,7 +105,10 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 // matchGlobPattern matches a glob pattern against a path using doublestar
 // Supports full glob syntax including ** for recursive directory matching
 func matchGlobPattern(pattern, path string) (bool, error) {
-	return doublestar.Match(pattern, path)
+	// Normalize path separators to forward slashes for consistent glob matching
+	// doublestar.Match expects forward slashes, but Windows paths use backslashes
+	normalizedPath := filepath.ToSlash(path)
+	return doublestar.Match(pattern, normalizedPath)
 }
 
 // pathToURI converts a file path to a file:// URI
