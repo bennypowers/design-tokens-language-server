@@ -169,3 +169,82 @@ func TestColorPresentationWithAlpha(t *testing.T) {
 	// RGBA should show alpha
 	assert.Contains(t, labels, "rgba(255, 0, 0, 0.50)")
 }
+
+// TestDocumentColorNonCSSFile tests that color returns nil for non-CSS files
+func TestDocumentColorNonCSSFile(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open a JSON file
+	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+
+	// Request colors
+	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///test.json",
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, colors)
+}
+
+
+// TestDocumentColorVariables tests colors from CSS variable declarations
+func TestDocumentColorVariables(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open CSS file with variable declarations
+	content := `:root {
+    --color-primary: #0000ff;
+    --color-secondary: #00ff00;
+}`
+	server.DidOpen("file:///test.css", "css", 1, content)
+
+	// Request colors
+	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///test.css",
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, colors)
+	// Should have colors from variable declarations
+	assert.GreaterOrEqual(t, len(colors), 1)
+}
+
+// TestDocumentColorInvalidColorValue tests handling of invalid color values
+func TestDocumentColorInvalidColorValue(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	// Load token with invalid color value
+	tokens := []byte(`{
+		"color-invalid": {
+			"$type": "color",
+			"$value": "not-a-color"
+		}
+	}`)
+	err := server.LoadTokensFromJSON(tokens, "")
+	require.NoError(t, err)
+
+	// Open CSS file using the invalid color
+	content := `.button {
+    color: var(--color-invalid);
+}`
+	server.DidOpen("file:///test.css", "css", 1, content)
+
+	// Request colors
+	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///test.css",
+		},
+	})
+
+	require.NoError(t, err)
+	// Should skip invalid colors
+	if colors != nil {
+		assert.Len(t, colors, 0)
+	}
+}

@@ -135,3 +135,61 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	require.NotNil(t, locations)
 	assert.GreaterOrEqual(t, len(locations), 1)
 }
+
+// TestReferencesNonCSSFile tests that references returns nil for non-CSS files
+func TestReferencesNonCSSFile(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open a JSON file
+	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+
+	// Request references
+	locations, err := server.GetReferences(&protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.json",
+			},
+			Position: protocol.Position{Line: 0, Character: 5},
+		},
+		Context: protocol.ReferenceContext{
+			IncludeDeclaration: false,
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, locations)
+}
+
+// TestReferencesUnknownToken tests finding references to an unknown token
+func TestReferencesUnknownToken(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open CSS file with reference to unknown token
+	content := `/* Test file */
+.button {
+    color: var(--unknown-token);
+}`
+	server.DidOpen("file:///test.css", "css", 1, content)
+
+	// Request references on unknown token
+	locations, err := server.GetReferences(&protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.css",
+			},
+			Position: protocol.Position{
+				Line:      2,
+				Character: 18,
+			},
+		},
+		Context: protocol.ReferenceContext{
+			IncludeDeclaration: false,
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, locations)
+}
+
