@@ -40,8 +40,10 @@ export async function activate(context: ExtensionContext) {
 
     // Windows uses simplified naming: design-tokens-language-server-win-x64.exe
     if (platform === "win32") {
-      const archShort = arch === "x64" ? "x64" : "arm64";
-      return `design-tokens-language-server-win-${archShort}.exe`;
+      if (arch !== "x64" && arch !== "arm64") {
+        throw new Error(`Unsupported Windows architecture: ${arch}`);
+      }
+      return `design-tokens-language-server-win-${arch}.exe`;
     }
 
     // Unix platforms use target triple: design-tokens-language-server-x86_64-apple-darwin
