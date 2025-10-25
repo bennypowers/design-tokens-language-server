@@ -309,3 +309,49 @@ func TestFileWatching_NonTokenFileIgnored(t *testing.T) {
 	// Token count should remain the same
 	assert.Equal(t, initialCount, server.TokenCount(), "Token count should not change for non-token file changes")
 }
+
+// TestFileWatching_YmlExtension tests that .yml files are recognized (in addition to .yaml)
+func TestFileWatching_YmlExtension(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Test all .yml variants
+	testFiles := []string{
+		"tokens.yml",
+		"design-tokens.yml",
+		"my-app.tokens.yml",
+	}
+
+	for _, filename := range testFiles {
+		t.Run(filename, func(t *testing.T) {
+			// Create token file with .yml extension
+			tokensPath := filepath.Join(tmpDir, filename)
+			tokens := `color:
+  primary:
+    $value: "#0000ff"
+    $type: color
+`
+			err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+			require.NoError(t, err)
+
+			// Create server and load the .yml file
+			server := testutil.NewTestServer(t)
+			err = server.LoadTokenFile(tokensPath, "")
+			require.NoError(t, err)
+
+			// Verify token was loaded
+			assert.Equal(t, 1, server.TokenCount(), "Should load token from .yml file")
+
+			// Simulate file change to .yml file
+			tokensURI := "file://" + tokensPath
+			err = server.HandleDidChangeWatchedFiles(&protocol.DidChangeWatchedFilesParams{
+				Changes: []protocol.FileEvent{
+					{
+						URI:  tokensURI,
+						Type: protocol.FileChangeTypeChanged,
+					},
+				},
+			})
+			require.NoError(t, err, "Should handle .yml file changes")
+		})
+	}
+}
