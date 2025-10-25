@@ -11,6 +11,7 @@ import (
 
 // TestParseSimpleYAMLTokens tests parsing a simple DTCG YAML token file
 func TestParseSimpleYAMLTokens(t *testing.T) {
+	t.Parallel()
 	yamlData := `color:
   primary:
     $value: "#0000ff"
@@ -32,6 +33,7 @@ func TestParseSimpleYAMLTokens(t *testing.T) {
 
 // TestParseNestedYAMLTokens tests parsing nested YAML token groups
 func TestParseNestedYAMLTokens(t *testing.T) {
+	t.Parallel()
 	yamlData := `color:
   brand:
     primary:
@@ -57,6 +59,7 @@ func TestParseNestedYAMLTokens(t *testing.T) {
 
 // TestParseYAMLWithPrefix tests parsing with a CSS variable prefix
 func TestParseYAMLWithPrefix(t *testing.T) {
+	t.Parallel()
 	yamlData := `color:
   primary:
     $value: "#0000ff"
@@ -75,6 +78,7 @@ func TestParseYAMLWithPrefix(t *testing.T) {
 
 // TestParseInvalidYAML tests error handling for invalid YAML
 func TestParseInvalidYAML(t *testing.T) {
+	t.Parallel()
 	yamlData := `invalid: yaml: data: ::::`
 
 	parser := yaml.NewParser()
@@ -84,6 +88,7 @@ func TestParseInvalidYAML(t *testing.T) {
 
 // TestParseEmptyYAML tests parsing empty YAML
 func TestParseEmptyYAML(t *testing.T) {
+	t.Parallel()
 	yamlData := ``
 
 	parser := yaml.NewParser()
@@ -94,6 +99,7 @@ func TestParseEmptyYAML(t *testing.T) {
 
 // TestParseFile tests parsing a YAML file from disk
 func TestParseFile(t *testing.T) {
+	t.Parallel()
 	// Create a temporary file
 	tmpfile, err := os.CreateTemp("", "tokens-*.yaml")
 	require.NoError(t, err)
@@ -135,6 +141,7 @@ func TestParseFile(t *testing.T) {
 
 // TestParseFileNotFound tests error handling when file doesn't exist
 func TestParseFileNotFound(t *testing.T) {
+	t.Parallel()
 	parser := yaml.NewParser()
 	_, err := parser.ParseFile("/nonexistent/file.yaml", "")
 	require.Error(t, err)
@@ -143,6 +150,7 @@ func TestParseFileNotFound(t *testing.T) {
 
 // TestParseFileInvalidYAML tests error handling for invalid YAML
 func TestParseFileInvalidYAML(t *testing.T) {
+	t.Parallel()
 	// Create a temporary file with invalid YAML
 	tmpfile, err := os.CreateTemp("", "invalid-*.yaml")
 	require.NoError(t, err)
