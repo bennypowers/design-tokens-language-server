@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 // TokenFileConfig represents configuration for loading token files
@@ -100,35 +102,10 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 	return nil
 }
 
-// matchGlobPattern matches a glob pattern against a path
-// Simplified glob matching: ** matches any path, * matches any file
+// matchGlobPattern matches a glob pattern against a path using doublestar
+// Supports full glob syntax including ** for recursive directory matching
 func matchGlobPattern(pattern, path string) (bool, error) {
-	// Convert pattern to filepath pattern
-	// Handle ** for directory recursion
-	if strings.Contains(pattern, "**") {
-		// **/*.json should match any path ending in .json
-		suffix := strings.TrimPrefix(pattern, "**")
-		suffix = strings.TrimPrefix(suffix, "/")
-
-		if strings.HasSuffix(path, suffix) ||
-		   strings.Contains(path, suffix) {
-			// Do a proper filepath match for the suffix part
-			matched, err := filepath.Match(suffix, filepath.Base(path))
-			if err != nil {
-				return false, err
-			}
-			if matched {
-				return true, nil
-			}
-
-			// Also try matching the full remaining path
-			return strings.HasSuffix(path, suffix), nil
-		}
-		return false, nil
-	}
-
-	// Regular glob pattern
-	return filepath.Match(pattern, path)
+	return doublestar.Match(pattern, path)
 }
 
 // pathToURI converts a file path to a file:// URI
