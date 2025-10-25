@@ -156,15 +156,19 @@ func (s *Server) registerFileWatchers(context *glsp.Context) error {
 				continue
 			}
 
-			// Convert to URI pattern
+			// Convert to filesystem path pattern (forward-slash separated)
+			// Glob patterns use filesystem paths, not URIs
 			var pattern string
 			if filepath.IsAbs(tokenPath) {
-				pattern = pathToURI(tokenPath)
+				// Absolute path: convert to forward slashes
+				pattern = filepath.ToSlash(filepath.Clean(tokenPath))
 			} else if s.rootPath != "" {
+				// Relative path: join with root and convert to forward slashes
 				absPath := filepath.Join(s.rootPath, tokenPath)
-				pattern = pathToURI(absPath)
+				pattern = filepath.ToSlash(filepath.Clean(absPath))
 			} else {
-				pattern = tokenPath
+				// No root path: keep relative, convert to forward slashes
+				pattern = filepath.ToSlash(tokenPath)
 			}
 
 			watchers = append(watchers, protocol.FileSystemWatcher{
@@ -173,25 +177,26 @@ func (s *Server) registerFileWatchers(context *glsp.Context) error {
 		}
 	} else if s.rootPath != "" {
 		// Auto-discover mode: watch common patterns
-		rootURI := pathToURI(s.rootPath)
+		// Convert root path to forward-slash separated filesystem path
+		rootPattern := filepath.ToSlash(filepath.Clean(s.rootPath))
 		watchers = append(watchers,
 			protocol.FileSystemWatcher{
-				GlobPattern: rootURI + "/**/tokens.json",
+				GlobPattern: rootPattern + "/**/tokens.json",
 			},
 			protocol.FileSystemWatcher{
-				GlobPattern: rootURI + "/**/*.tokens.json",
+				GlobPattern: rootPattern + "/**/*.tokens.json",
 			},
 			protocol.FileSystemWatcher{
-				GlobPattern: rootURI + "/**/design-tokens.json",
+				GlobPattern: rootPattern + "/**/design-tokens.json",
 			},
 			protocol.FileSystemWatcher{
-				GlobPattern: rootURI + "/**/tokens.yaml",
+				GlobPattern: rootPattern + "/**/tokens.yaml",
 			},
 			protocol.FileSystemWatcher{
-				GlobPattern: rootURI + "/**/*.tokens.yaml",
+				GlobPattern: rootPattern + "/**/*.tokens.yaml",
 			},
 			protocol.FileSystemWatcher{
-				GlobPattern: rootURI + "/**/design-tokens.yaml",
+				GlobPattern: rootPattern + "/**/design-tokens.yaml",
 			},
 		)
 	}
