@@ -15,6 +15,7 @@ func TestParseSimpleCSSVariable(t *testing.T) {
 }`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err, "Parsing should not error")
 	require.NotNil(t, result, "Parse result should not be nil")
@@ -42,6 +43,7 @@ func TestParseMultipleCSSVariables(t *testing.T) {
 }`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -69,6 +71,7 @@ func TestParseVarFunctionCall(t *testing.T) {
 }`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -88,6 +91,7 @@ func TestParseVarFunctionWithFallback(t *testing.T) {
 }`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -107,6 +111,7 @@ func TestParseNestedVarCalls(t *testing.T) {
 }`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -147,6 +152,7 @@ func TestParseMixedContent(t *testing.T) {
 }`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -163,6 +169,7 @@ func TestParseInvalidCSS(t *testing.T) {
 	cssCode := `this is not valid css {{{`
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 
 	// Parser should not crash, but may return an error or empty result
@@ -181,6 +188,7 @@ func TestParseEmptyCSS(t *testing.T) {
 	cssCode := ``
 
 	parser := css.NewParser()
+	defer parser.Close()
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 	require.NotNil(t, result)
