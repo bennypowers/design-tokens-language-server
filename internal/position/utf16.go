@@ -23,7 +23,13 @@ func UTF16ToByteOffset(s string, utf16Col int) int {
 		}
 
 		// Characters above U+FFFF (outside BMP) use surrogate pairs in UTF-16
+		// If target falls within the surrogate pair, clamp to the start of the rune
 		if r > 0xFFFF {
+			// If we're at the first unit of a surrogate pair and target is the second unit,
+			// stop here (clamp to code-point boundary)
+			if units + 1 == utf16Col {
+				break
+			}
 			units += 2
 		} else {
 			units++

@@ -85,6 +85,24 @@ func TestUTF16ToByteOffset(t *testing.T) {
 			utf16Col:   1, // After invalid byte
 			expectByte: 1,
 		},
+		{
+			name:       "surrogate pair boundary - clamp to start",
+			s:          "👍hello",
+			utf16Col:   1, // Middle of surrogate pair (between high and low)
+			expectByte: 0, // Should clamp to start of emoji, not advance past it
+		},
+		{
+			name:       "surrogate pair boundary - after emoji",
+			s:          "👍hello",
+			utf16Col:   2, // After full surrogate pair
+			expectByte: 4, // Should be after emoji (4 UTF-8 bytes)
+		},
+		{
+			name:       "multiple surrogates - clamp to second emoji start",
+			s:          "👍🎨hello",
+			utf16Col:   3, // 2 for first emoji + 1 (middle of second)
+			expectByte: 4, // Should clamp to start of second emoji
+		},
 	}
 
 	for _, tt := range tests {
