@@ -26,8 +26,8 @@ func TestGetSemanticTokensForDocument(t *testing.T) {
   }
 }`,
 			tokens: map[string]*tokens.Token{
-				"color.brand.primary": {
-					Name:  "color.brand.primary",
+				"color-brand-primary": {
+					Name:  "color-brand-primary",
 					Value: "#FF6B35",
 					Type:  "color",
 				},
@@ -52,13 +52,13 @@ func TestGetSemanticTokensForDocument(t *testing.T) {
   }
 }`,
 			tokens: map[string]*tokens.Token{
-				"color.brand.primary": {
-					Name:  "color.brand.primary",
+				"color-brand-primary": {
+					Name:  "color-brand-primary",
 					Value: "#FF6B35",
 					Type:  "color",
 				},
-				"color.ui.background": {
-					Name:  "color.ui.background",
+				"color-ui-background": {
+					Name:  "color-ui-background",
 					Value: "#F7F7F7",
 					Type:  "color",
 				},
@@ -161,7 +161,7 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 
 	// Add a test token
 	token := &tokens.Token{
-		Name:  "color.brand.primary",
+		Name:  "color-brand-primary",
 		Value: "#FF6B35",
 		Type:  "color",
 	}
