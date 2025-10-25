@@ -25,26 +25,22 @@ func (s *Server) LoadTokenFile(filepath, prefix string) error {
 
 // loadTokenFileInternal loads a token file without tracking it
 func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
-
 	var parsedTokens []*tokens.Token
+	var err error
 
-	// Determine parser based on file extension
+	// Determine parser based on file extension and parse file
 	if len(filepath) > 5 && filepath[len(filepath)-5:] == ".json" {
 		parser := json.NewParser()
-		parsedTokens, err = parser.Parse(data, prefix)
+		parsedTokens, err = parser.ParseFile(filepath, prefix)
 	} else if len(filepath) > 5 && (filepath[len(filepath)-5:] == ".yaml" || filepath[len(filepath)-4:] == ".yml") {
 		parser := yaml.NewParser()
-		parsedTokens, err = parser.Parse(data, prefix)
+		parsedTokens, err = parser.ParseFile(filepath, prefix)
 	} else {
 		return fmt.Errorf("unsupported file type: %s", filepath)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to parse token file: %w", err)
+		return err // Error already wrapped by parser
 	}
 
 	// Convert filepath to URI using the helper from token_loader

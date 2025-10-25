@@ -1,6 +1,7 @@
 package json_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/json"
@@ -186,4 +187,75 @@ func TestParseJSONWithComments(t *testing.T) {
 	token := tokens[0]
 	assert.Equal(t, "color-primary", token.Name)
 	assert.Equal(t, "#0000ff", token.Value)
+}
+
+// TestParseFile tests parsing a JSON file from disk
+func TestParseFile(t *testing.T) {
+	// Create a temporary file
+	tmpfile, err := os.CreateTemp("", "tokens-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpfile.Name())
+
+	// Write test data
+	jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$type": "color",
+      "$description": "Primary color"
+    },
+    "secondary": {
+      "$value": "#ff0000",
+      "$type": "color"
+    }
+  }
+}`
+	_, err = tmpfile.Write([]byte(jsonData))
+	require.NoError(t, err)
+	require.NoError(t, tmpfile.Close())
+
+	// Parse the file
+	parser := json.NewParser()
+	tokens, err := parser.ParseFile(tmpfile.Name(), "test")
+	require.NoError(t, err)
+	require.Len(t, tokens, 2)
+
+	// Verify first token
+	assert.Equal(t, "color-primary", tokens[0].Name)
+	assert.Equal(t, "#0000ff", tokens[0].Value)
+	assert.Equal(t, "color", tokens[0].Type)
+	assert.Equal(t, "Primary color", tokens[0].Description)
+	assert.Equal(t, "test", tokens[0].Prefix)
+
+	// Verify second token
+	assert.Equal(t, "color-secondary", tokens[1].Name)
+	assert.Equal(t, "#ff0000", tokens[1].Value)
+	assert.Equal(t, "color", tokens[1].Type)
+	assert.Equal(t, "test", tokens[1].Prefix)
+}
+
+// TestParseFileNotFound tests error handling when file doesn't exist
+func TestParseFileNotFound(t *testing.T) {
+	parser := json.NewParser()
+	_, err := parser.ParseFile("/nonexistent/file.json", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read file")
+}
+
+// TestParseFileInvalidJSON tests error handling for invalid JSON
+func TestParseFileInvalidJSON(t *testing.T) {
+	// Create a temporary file with invalid JSON
+	tmpfile, err := os.CreateTemp("", "invalid-*.json")
+	require.NoError(t, err)
+	defer os.Remove(tmpfile.Name())
+
+	_, err = tmpfile.Write([]byte("{ invalid json }"))
+	require.NoError(t, err)
+	require.NoError(t, tmpfile.Close())
+
+	// Attempt to parse
+	parser := json.NewParser()
+	_, err = parser.ParseFile(tmpfile.Name(), "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse file")
 }

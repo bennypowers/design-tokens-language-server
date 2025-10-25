@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,13 +65,16 @@ func (s *Server) reloadTokenFiles() error {
 	s.tokens.Clear()
 
 	// Reload all tracked files
+	var errs []error
 	for filepath, prefix := range s.loadedFiles {
 		if err := s.loadTokenFileInternal(filepath, prefix); err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to reload %s: %v\n", filepath, err)
-			// Continue loading other files
+			errs = append(errs, fmt.Errorf("failed to reload %s: %w", filepath, err))
 		}
 	}
 
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,10 +83,10 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d token files\n", len(tokenFiles))
 
 	// Load each token file
+	var errs []error
 	for _, filePath := range tokenFiles {
 		if err := s.LoadTokenFile(filePath, config.Prefix); err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load %s: %v\n", filePath, err)
-			// Continue loading other files
+			errs = append(errs, fmt.Errorf("failed to load %s: %w", filePath, err))
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "[DTLS] Loaded: %s\n", filePath)
@@ -93,6 +94,9 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Total tokens loaded: %d\n", s.tokens.Count())
 
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 

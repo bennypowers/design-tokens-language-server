@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
@@ -108,4 +109,19 @@ func (p *Parser) createToken(key, path string, value interface{}, data map[strin
 	}
 
 	return token
+}
+
+// ParseFile parses a YAML file and returns tokens
+func (p *Parser) ParseFile(filename string, prefix string) ([]*tokens.Token, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
+	}
+
+	tokens, err := p.Parse(data, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file %s: %w", filename, err)
+	}
+
+	return tokens, nil
 }

@@ -3,6 +3,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
@@ -24,7 +25,7 @@ func (p *Parser) Parse(data []byte, prefix string) ([]*tokens.Token, error) {
 	cleanJSON := jsonc.ToJSON(data)
 
 	// Parse JSON
-	var rawData map[string]interface{}
+	var rawData map[string]any
 	if err := json.Unmarshal(cleanJSON, &rawData); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
@@ -37,14 +38,14 @@ func (p *Parser) Parse(data []byte, prefix string) ([]*tokens.Token, error) {
 }
 
 // extractTokens recursively extracts tokens from the JSON structure
-func (p *Parser) extractTokens(data map[string]interface{}, path, prefix string, result *[]*tokens.Token) {
+func (p *Parser) extractTokens(data map[string]any, path, prefix string, result *[]*tokens.Token) {
 	p.extractTokensWithPath(data, []string{}, path, prefix, result)
 }
 
 // extractTokensWithPath recursively extracts tokens tracking the JSON path
-func (p *Parser) extractTokensWithPath(data map[string]interface{}, jsonPath []string, path, prefix string, result *[]*tokens.Token) {
+func (p *Parser) extractTokensWithPath(data map[string]any, jsonPath []string, path, prefix string, result *[]*tokens.Token) {
 	for key, value := range data {
-		valueMap, isMap := value.(map[string]interface{})
+		valueMap, isMap := value.(map[string]any)
 		if !isMap {
 			continue
 		}
@@ -69,7 +70,7 @@ func (p *Parser) extractTokensWithPath(data map[string]interface{}, jsonPath []s
 }
 
 // createToken creates a Token from the parsed data
-func (p *Parser) createToken(key, path string, value interface{}, data map[string]interface{}, prefix string, jsonPath []string) *tokens.Token {
+func (p *Parser) createToken(key, path string, value any, data map[string]any, prefix string, jsonPath []string) *tokens.Token {
 	// Build token name from path
 	name := path
 	if name == "" {
@@ -108,7 +109,7 @@ func (p *Parser) createToken(key, path string, value interface{}, data map[strin
 	}
 
 	// Extract $extensions
-	if extensions, ok := data["$extensions"].(map[string]interface{}); ok {
+	if extensions, ok := data["$extensions"].(map[string]any); ok {
 		token.Extensions = extensions
 	}
 
@@ -117,17 +118,15 @@ func (p *Parser) createToken(key, path string, value interface{}, data map[strin
 
 // ParseFile parses a JSON file and returns tokens
 func (p *Parser) ParseFile(filename string, prefix string) ([]*tokens.Token, error) {
-	// This will be implemented when we add file I/O
-	// For now, keeping it simple for testing
-	return nil, fmt.Errorf("ParseFile not yet implemented")
-}
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
+	}
 
-// NormalizeTokenName converts a token path to a CSS variable name format
-// e.g., "color.brand.primary" -> "color-brand-primary"
-func NormalizeTokenName(name string) string {
-	// Replace dots with hyphens
-	name = strings.ReplaceAll(name, ".", "-")
-	// Convert to lowercase
-	name = strings.ToLower(name)
-	return name
+	tokens, err := p.Parse(data, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file %s: %w", filename, err)
+	}
+
+	return tokens, nil
 }

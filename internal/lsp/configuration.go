@@ -2,6 +2,7 @@ package lsp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -154,6 +155,8 @@ func (s *Server) loadTokensFromConfig() error {
 
 // loadExplicitTokenFiles loads tokens from explicitly configured files
 func (s *Server) loadExplicitTokenFiles() error {
+	var errs []error
+
 	for _, item := range s.config.TokensFiles {
 		var path, prefix string
 		var groupMarkers []string
@@ -201,13 +204,16 @@ func (s *Server) loadExplicitTokenFiles() error {
 
 		// Load the file
 		if err := s.LoadTokenFile(path, prefix); err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load %s: %v\n", path, err)
+			errs = append(errs, fmt.Errorf("failed to load %s: %w", path, err))
 			continue
 		}
 
 		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s)\n", path, prefix)
 	}
 
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 
