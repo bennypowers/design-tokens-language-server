@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/json"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/yaml"
@@ -24,19 +26,21 @@ func (s *Server) LoadTokenFile(filepath, prefix string) error {
 }
 
 // loadTokenFileInternal loads a token file without tracking it
-func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
+func (s *Server) loadTokenFileInternal(filePath, prefix string) error {
 	var parsedTokens []*tokens.Token
 	var err error
 
-	// Determine parser based on file extension and parse file
-	if len(filepath) > 5 && filepath[len(filepath)-5:] == ".json" {
+	// Determine parser based on file extension
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".json":
 		parser := json.NewParser()
-		parsedTokens, err = parser.ParseFile(filepath, prefix)
-	} else if len(filepath) > 5 && (filepath[len(filepath)-5:] == ".yaml" || filepath[len(filepath)-4:] == ".yml") {
+		parsedTokens, err = parser.ParseFile(filePath, prefix)
+	case ".yaml", ".yml":
 		parser := yaml.NewParser()
-		parsedTokens, err = parser.ParseFile(filepath, prefix)
-	} else {
-		return fmt.Errorf("unsupported file type: %s", filepath)
+		parsedTokens, err = parser.ParseFile(filePath, prefix)
+	default:
+		return fmt.Errorf("unsupported file type %s: %s", ext, filePath)
 	}
 
 	if err != nil {
@@ -44,13 +48,13 @@ func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
 	}
 
 	// Convert filepath to URI using the helper from token_loader
-	fileURI := pathToURI(filepath)
+	fileURI := pathToURI(filePath)
 
 	// Add all tokens to the manager
 	var errs []error
 	successCount := 0
 	for _, token := range parsedTokens {
-		token.FilePath = filepath
+		token.FilePath = filePath
 		token.DefinitionURI = fileURI
 		if err := s.tokens.Add(token); err != nil {
 			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
@@ -63,14 +67,14 @@ func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
 		// Report partial success if some tokens loaded
 		if successCount > 0 {
 			fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d/%d tokens from %s (%d failed)\n",
-				successCount, len(parsedTokens), filepath, len(errs))
+				successCount, len(parsedTokens), filePath, len(errs))
 		} else {
-			fmt.Fprintf(os.Stderr, "[DTLS] Failed to load any tokens from %s\n", filepath)
+			fmt.Fprintf(os.Stderr, "[DTLS] Failed to load any tokens from %s\n", filePath)
 		}
 		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", successCount, filepath)
+	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", successCount, filePath)
 	return nil
 }
 
