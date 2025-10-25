@@ -45,10 +45,6 @@ test-coverage:
 	@echo "=== Converting Integration Coverage to Text Format ==="
 	@go tool covdata textfmt -i=coverage/integration -o=coverage-integration.out
 	@echo ""
-	@echo "=== Merging Coverage Files ==="
-	@command -v gocovmerge >/dev/null 2>&1 || go install github.com/wadey/gocovmerge@latest
-	@gocovmerge coverage-unit.out coverage-integration.out > coverage.out 2>&1 || true
-	@echo ""
 	@echo "=== Coverage Report ==="
 	@echo ""
 	@echo "Unit Test Coverage:"
@@ -57,10 +53,7 @@ test-coverage:
 	@echo "Integration Test Coverage (cross-process):"
 	@go tool cover -func=coverage-integration.out | tail -1
 	@echo ""
-	@echo "Merged Total Coverage (for CI tools like codecov):"
-	@go tool cover -func=coverage.out | tail -1
-	@echo ""
-	@echo "Run 'make show-coverage' to view merged coverage in browser."
+	@echo "Note: Codecov will merge both coverage files automatically"
 
 ## Show coverage in browser
 show-coverage: test-coverage
