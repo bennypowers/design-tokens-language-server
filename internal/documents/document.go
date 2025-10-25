@@ -1,5 +1,7 @@
 package documents
 
+import "fmt"
+
 // Document represents a text document being managed by the language server
 type Document struct {
 	uri        string
@@ -38,8 +40,14 @@ func (d *Document) Content() string {
 	return d.content
 }
 
-// SetContent updates the document's content and version
-func (d *Document) SetContent(content string, version int) {
+// SetContent updates the document's content and version.
+// Returns an error if the provided version is older than the current document version,
+// preventing stale updates from being applied.
+func (d *Document) SetContent(content string, version int) error {
+	if version < d.version {
+		return fmt.Errorf("rejected stale update: document version is %d but update version is %d", d.version, version)
+	}
 	d.content = content
 	d.version = version
+	return nil
 }

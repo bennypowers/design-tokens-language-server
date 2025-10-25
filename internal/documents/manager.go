@@ -79,7 +79,9 @@ func (m *Manager) DidChange(uri string, version int, changes []protocol.TextDocu
 		return fmt.Errorf("failed to apply changes: %w", err)
 	}
 
-	doc.SetContent(newContent, version)
+	if err := doc.SetContent(newContent, version); err != nil {
+		return fmt.Errorf("failed to set document content: %w", err)
+	}
 	return nil
 }
 
