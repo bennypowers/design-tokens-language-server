@@ -33,7 +33,8 @@ func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Lo
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.NewParser()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
 		return nil, nil

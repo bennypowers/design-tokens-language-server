@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
+	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -175,6 +176,10 @@ func (s *Server) handleInitialized(context *glsp.Context, params *protocol.Initi
 // handleShutdown handles the shutdown request
 func (s *Server) handleShutdown(context *glsp.Context) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Server shutting down\n")
+
+	// Clean up the CSS parser pool
+	css.ClosePool()
+
 	return nil
 }
 

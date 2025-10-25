@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -50,20 +51,26 @@ func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
 	fileURI := pathToURI(filepath)
 
 	// Add all tokens to the manager
+	var errs []error
 	for _, token := range parsedTokens {
 		token.FilePath = filepath
 		token.DefinitionURI = fileURI
 		if err := s.tokens.Add(token); err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to add token %s: %v\n", token.Name, err)
+			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", len(parsedTokens), filepath)
 
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 
 // LoadTokensFromJSON loads tokens from JSON data (for testing)
+// errors from this function should be presented to the user via window/logMessage
+// further up the call stack
 func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 	parser := json.NewParser()
 	parsedTokens, err := parser.Parse(data, prefix)
@@ -71,9 +78,15 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 		return err
 	}
 
+	var errs []error
 	for _, token := range parsedTokens {
-		s.tokens.Add(token)
+		if err := s.tokens.Add(token); err != nil {
+			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
+		}
 	}
 
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }

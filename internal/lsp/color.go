@@ -34,7 +34,8 @@ func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.NewParser()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse CSS: %v\n", err)

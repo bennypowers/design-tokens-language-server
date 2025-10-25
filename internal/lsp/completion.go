@@ -34,7 +34,8 @@ func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.Co
 	}
 
 	// Parse CSS to find context
-	parser := css.NewParser()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
 		return nil, nil

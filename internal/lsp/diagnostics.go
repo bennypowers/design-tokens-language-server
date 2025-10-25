@@ -45,7 +45,8 @@ func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.NewParser()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
 		return nil, nil

@@ -3,6 +3,7 @@ package css
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_css "github.com/tree-sitter/tree-sitter-css/bindings/go"
@@ -13,7 +14,18 @@ type Parser struct {
 	parser *sitter.Parser
 }
 
+// parserPool is a pool of reusable CSS parsers for performance
+var parserPool = sync.Pool{
+	New: func() interface{} {
+		parser := sitter.NewParser()
+		lang := sitter.NewLanguage(tree_sitter_css.Language())
+		parser.SetLanguage(lang)
+		return &Parser{parser: parser}
+	},
+}
+
 // NewParser creates a new CSS parser
+// Deprecated: Use AcquireParser/ReleaseParser for better performance
 func NewParser() *Parser {
 	parser := sitter.NewParser()
 	lang := sitter.NewLanguage(tree_sitter_css.Language())
@@ -21,6 +33,41 @@ func NewParser() *Parser {
 
 	return &Parser{
 		parser: parser,
+	}
+}
+
+// AcquireParser gets a parser from the pool
+func AcquireParser() *Parser {
+	p := parserPool.Get().(*Parser)
+	p.parser.Reset() // Reset state for reuse
+	return p
+}
+
+// ReleaseParser returns a parser to the pool
+func ReleaseParser(p *Parser) {
+	if p != nil {
+		parserPool.Put(p)
+	}
+}
+
+// Close closes the parser and releases its resources
+// This should be called when the parser is no longer needed
+func (p *Parser) Close() {
+	if p.parser != nil {
+		p.parser.Close()
+	}
+}
+
+// ClosePool closes all parsers in the pool
+// This should be called on server shutdown
+func ClosePool() {
+	// Drain the pool by repeatedly getting and closing parsers
+	// Note: This is a best-effort cleanup; sync.Pool doesn't provide
+	// a way to iterate over all items
+	for i := 0; i < 100; i++ {
+		if p, ok := parserPool.Get().(*Parser); ok && p != nil {
+			p.Close()
+		}
 	}
 }
 

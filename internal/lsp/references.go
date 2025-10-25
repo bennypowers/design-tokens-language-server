@@ -34,7 +34,8 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.NewParser()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
 		return nil, nil
@@ -70,8 +71,9 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 		}
 
 		// Parse the document
-		parser := css.NewParser()
-		docResult, err := parser.Parse(document.Content())
+		docParser := css.AcquireParser()
+		docResult, err := docParser.Parse(document.Content())
+		css.ReleaseParser(docParser)
 		if err != nil {
 			continue
 		}
