@@ -152,7 +152,7 @@ func (s *Server) isPositionInRange(pos protocol.Position, r css.Range) bool {
 		return false
 	}
 
-	if posLine == r.End.Line && posChar > r.End.Character {
+	if posLine == r.End.Line && posChar >= r.End.Character {
 		return false
 	}
 
