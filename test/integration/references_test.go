@@ -108,3 +108,30 @@ func TestReferencesOutsideVarCall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, locations)
 }
+
+// TestReferencesWithDeclaration tests including the token declaration
+func TestReferencesWithDeclaration(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
+
+	// Request references with IncludeDeclaration
+	locations, err := server.GetReferences(&protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.css",
+			},
+			Position: protocol.Position{
+				Line:      2,
+				Character: 18,
+			},
+		},
+		Context: protocol.ReferenceContext{
+			IncludeDeclaration: true, // Request declaration
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, locations)
+	assert.GreaterOrEqual(t, len(locations), 1)
+}

@@ -77,6 +77,28 @@ func TestCompletionWithPrefix(t *testing.T) {
 	assert.Contains(t, labels, "--ds-color-primary")
 }
 
+// TestCompletionNonCSSFile tests that completion returns nil for non-CSS files
+func TestCompletionNonCSSFile(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open a JSON file
+	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+
+	// Request completion
+	completions, err := server.GetCompletions(&protocol.CompletionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.json",
+			},
+			Position: protocol.Position{Line: 0, Character: 5},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, completions)
+}
+
 // TestCompletionResolve tests completion item resolve
 func TestCompletionResolve(t *testing.T) {
 	server := testutil.NewTestServer(t)
@@ -193,6 +215,46 @@ func TestCompletionSnippetFormat(t *testing.T) {
 	if item.InsertTextFormat != nil {
 		assert.Equal(t, protocol.InsertTextFormatSnippet, *item.InsertTextFormat)
 	}
+}
+
+// TestCompletionResolveNoData tests resolving completion item without data
+func TestCompletionResolveNoData(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Create a completion item without data - will fall back to using Label
+	item := protocol.CompletionItem{
+		Label: "--color-primary",
+		Data:  nil, // No data - will use Label as tokenName
+	}
+
+	// Resolve it - should still find the token and add documentation
+	resolved, err := server.ResolveCompletion(&item)
+	require.NoError(t, err)
+	require.NotNil(t, resolved)
+	assert.Equal(t, "--color-primary", resolved.Label)
+	assert.NotNil(t, resolved.Documentation) // Should have docs from fallback
+}
+
+// TestCompletionResolveUnknownToken tests resolving completion item for unknown token
+func TestCompletionResolveUnknownToken(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Create a completion item for a token that doesn't exist
+	item := protocol.CompletionItem{
+		Label: "--unknown-token",
+		Data: map[string]interface{}{
+			"tokenName": "--unknown-token",
+		},
+	}
+
+	// Resolve it - should return unchanged without documentation
+	resolved, err := server.ResolveCompletion(&item)
+	require.NoError(t, err)
+	require.NotNil(t, resolved)
+	assert.Equal(t, "--unknown-token", resolved.Label)
+	assert.Nil(t, resolved.Documentation) // No docs for unknown token
 }
 
 // Note: UTF-16 position handling is tested via:
