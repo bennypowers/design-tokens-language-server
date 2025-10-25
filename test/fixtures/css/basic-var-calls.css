@@ -1,5 +1,5 @@
 .button {
-  /*               ↓ Position 1,18 - hover/definition/references */
+  /*               ↓ hover/definition/references */
   color: var(--color-primary);
   background: var(--color-secondary);
 }

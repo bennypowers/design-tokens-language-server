@@ -1,4 +1,4 @@
 .button {
-  /*           ↓ Position 1,15 - completion at "--color" */
+  /*           ↓ completion at "--color" */
   color: --color
 }
