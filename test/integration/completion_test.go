@@ -194,3 +194,8 @@ func TestCompletionSnippetFormat(t *testing.T) {
 		assert.Equal(t, protocol.InsertTextFormatSnippet, *item.InsertTextFormat)
 	}
 }
+
+// Note: UTF-16 position handling is tested via:
+// - internal/documents tests (UTF-16 incremental edits)
+// - internal/position tests (UTF-16 conversion functions)
+// - Existing completion tests implicitly test getWordAtPosition with UTF-16

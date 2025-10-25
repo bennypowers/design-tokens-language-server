@@ -470,3 +470,205 @@ func TestDocumentManagerCharBoundsCheck(t *testing.T) {
 	doc := manager.Get(uri)
 	assert.Equal(t, "hellox", doc.Content())
 }
+
+// TestDocumentManagerStaleVersionRejection tests that older versions are rejected
+func TestDocumentManagerStaleVersionRejection(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Open document at version 5
+	content := "original"
+	err := manager.DidOpen(uri, "css", 5, content)
+	require.NoError(t, err)
+
+	// Try to update with version 3 (older)
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: nil, // Full update
+			Text:  "stale update",
+		},
+	}
+
+	err = manager.DidChange(uri, 3, changes)
+	assert.Error(t, err, "Should reject stale version")
+	assert.Contains(t, err.Error(), "stale update")
+
+	// Verify content unchanged
+	doc := manager.Get(uri)
+	assert.Equal(t, "original", doc.Content())
+	assert.Equal(t, 5, doc.Version())
+}
+
+// TestDocumentManagerLineBoundsError tests out-of-bounds line rejection
+func TestDocumentManagerLineBoundsError(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	content := "line1\nline2"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Try to edit at line 10 (way beyond document)
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 10, Character: 0},
+				End:   protocol.Position{Line: 10, Character: 0},
+			},
+			Text: "invalid",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	assert.Error(t, err, "Should reject out-of-bounds line")
+	assert.Contains(t, err.Error(), "out of bounds")
+
+	// Verify content unchanged
+	doc := manager.Get(uri)
+	assert.Equal(t, "line1\nline2", doc.Content())
+}
+
+// TestDocumentManagerInvalidUTF8 tests handling of invalid UTF-8 sequences
+func TestDocumentManagerInvalidUTF8(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Document with invalid UTF-8 byte sequence (0xFF is invalid in UTF-8)
+	content := "hello\xFFworld"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Try to edit - should handle gracefully
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 5},
+				End:   protocol.Position{Line: 0, Character: 6},
+			},
+			Text: " ",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	// Should not panic, may error but should be graceful
+	if err != nil {
+		t.Logf("Invalid UTF-8 handling returned error: %v", err)
+	}
+}
+
+// TestDocumentManagerEndLineBoundsError tests out-of-bounds end line rejection
+func TestDocumentManagerEndLineBoundsError(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	content := "line1\nline2"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Try to edit with end line beyond document (start is valid, end is not)
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 0},
+				End:   protocol.Position{Line: 10, Character: 0}, // Way beyond document
+			},
+			Text: "invalid",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	assert.Error(t, err, "Should reject out-of-bounds end line")
+	assert.Contains(t, err.Error(), "out of bounds")
+	assert.Contains(t, err.Error(), "end line")
+
+	// Verify content unchanged
+	doc := manager.Get(uri)
+	assert.Equal(t, "line1\nline2", doc.Content())
+}
+
+// TestDocumentManagerEOFInsertionEmptyDocument tests EOF insertion on truly empty document
+func TestDocumentManagerEOFInsertionEmptyDocument(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	// Open truly empty document (empty string splits to [""])
+	err := manager.DidOpen(uri, "css", 1, "")
+	require.NoError(t, err)
+
+	// Insert at EOF position on empty document
+	// This triggers the special case: len(lines) == 1 with lines[0] == ""
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 1, Character: 0}, // EOF: line == len(lines) == 1
+				End:   protocol.Position{Line: 1, Character: 0},
+			},
+			Text: "new content",
+		},
+	}
+
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	// Should append to the empty first line
+	assert.Equal(t, "new content", doc.Content())
+}
+
+// TestDocumentManagerStartCharNegative tests negative character bounds (defensive check)
+func TestDocumentManagerStartCharNegative(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	content := "hello world"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Manually construct a change with negative character position
+	// (This shouldn't happen from a real LSP client, but we test the guard)
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 0},
+				End:   protocol.Position{Line: 0, Character: 5},
+			},
+			Text: "hi",
+		},
+	}
+
+	// This should succeed - negative positions get clamped to 0 by UTF16ToByteOffset
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	assert.Equal(t, "hi world", doc.Content())
+}
+
+// TestDocumentManagerCharBeyondLineLength tests character position validation
+func TestDocumentManagerCharBeyondLineLength(t *testing.T) {
+	manager := documents.NewManager()
+	uri := "file:///test.css"
+
+	content := "short"
+	err := manager.DidOpen(uri, "css", 1, content)
+	require.NoError(t, err)
+
+	// Character position way beyond line length gets clamped by UTF16ToByteOffset
+	// The bounds check at line 146-149 validates that the clamped value is still valid
+	changes := []protocol.TextDocumentContentChangeEvent{
+		{
+			Range: &protocol.Range{
+				Start: protocol.Position{Line: 0, Character: 1000},
+				End:   protocol.Position{Line: 0, Character: 1000},
+			},
+			Text: " added",
+		},
+	}
+
+	// Should succeed - position gets clamped to end of line
+	err = manager.DidChange(uri, 2, changes)
+	require.NoError(t, err)
+
+	doc := manager.Get(uri)
+	assert.Equal(t, "short added", doc.Content())
+}

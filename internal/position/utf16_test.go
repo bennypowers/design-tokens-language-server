@@ -73,6 +73,18 @@ func TestUTF16ToByteOffset(t *testing.T) {
 			utf16Col:   0,
 			expectByte: 0,
 		},
+		{
+			name:       "invalid UTF-8 byte sequence",
+			s:          "hello\xFFworld",
+			utf16Col:   7, // After "hello\xFF" (invalid byte treated as 1 unit)
+			expectByte: 7,
+		},
+		{
+			name:       "invalid UTF-8 at start",
+			s:          "\xFFhello",
+			utf16Col:   1, // After invalid byte
+			expectByte: 1,
+		},
 	}
 
 	for _, tt := range tests {
