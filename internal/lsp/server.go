@@ -217,11 +217,11 @@ func (s *Server) handleDidChange(context *glsp.Context, params *protocol.DidChan
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Document changed: %s (version: %d, changes: %d)\n", uri, version, len(params.ContentChanges))
 
-	// Convert any[] to proper type
-	changes := make([]protocol.TextDocumentContentChangeEvent, len(params.ContentChanges))
-	for i, change := range params.ContentChanges {
+	// Convert any[] to proper type, filtering out invalid entries
+	changes := make([]protocol.TextDocumentContentChangeEvent, 0, len(params.ContentChanges))
+	for _, change := range params.ContentChanges {
 		if changeEvent, ok := change.(protocol.TextDocumentContentChangeEvent); ok {
-			changes[i] = changeEvent
+			changes = append(changes, changeEvent)
 		}
 	}
 
