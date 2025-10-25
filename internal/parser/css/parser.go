@@ -16,7 +16,7 @@ type Parser struct {
 
 // parserPool is a pool of reusable CSS parsers for performance
 var parserPool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		parser := sitter.NewParser()
 		lang := sitter.NewLanguage(tree_sitter_css.Language())
 		parser.SetLanguage(lang)
@@ -64,7 +64,7 @@ func ClosePool() {
 	// Drain the pool by repeatedly getting and closing parsers
 	// Note: This is a best-effort cleanup; sync.Pool doesn't provide
 	// a way to iterate over all items
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if p, ok := parserPool.Get().(*Parser); ok && p != nil {
 			p.Close()
 		}
@@ -250,11 +250,12 @@ func (p *Parser) handleCallExpression(node *sitter.Node, sourceBytes []byte, sou
 		}
 
 		// First argument is the token name
-		if argCount == 0 {
+		switch argCount {
+		case 0:
 			text := string(sourceBytes[child.StartByte():child.EndByte()])
 			tokenName = strings.TrimSpace(text)
 			argCount++
-		} else if argCount == 1 {
+		case 1:
 			// Second argument is the fallback
 			text := string(sourceBytes[child.StartByte():child.EndByte()])
 			fb := strings.TrimSpace(text)

@@ -3,7 +3,6 @@ package lsp
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/tliron/glsp"
@@ -113,36 +112,4 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d references\n", len(locations))
 	return locations, nil
-}
-
-// getRangesForSubstring finds all ranges where a substring appears in the document
-func (s *Server) getRangesForSubstring(content, substring string) []protocol.Range {
-	var ranges []protocol.Range
-	lines := strings.Split(content, "\n")
-
-	for lineNum, line := range lines {
-		startIdx := 0
-		for {
-			idx := strings.Index(line[startIdx:], substring)
-			if idx == -1 {
-				break
-			}
-
-			actualIdx := startIdx + idx
-			ranges = append(ranges, protocol.Range{
-				Start: protocol.Position{
-					Line:      uint32(lineNum),
-					Character: uint32(actualIdx),
-				},
-				End: protocol.Position{
-					Line:      uint32(lineNum),
-					Character: uint32(actualIdx + len(substring)),
-				},
-			})
-
-			startIdx = actualIdx + 1
-		}
-	}
-
-	return ranges
 }

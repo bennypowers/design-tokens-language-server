@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,10 +29,10 @@ type LSPClient struct {
 }
 
 type jsonrpcRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      int         `json:"id,omitempty"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	ID      int    `json:"id,omitempty"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
 }
 
 type jsonrpcResponse struct {
@@ -47,9 +48,9 @@ type jsonrpcError struct {
 }
 
 type jsonrpcNotification struct {
-	JSONRPC string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
 }
 
 // NewLSPClient creates a new LSP client and starts the server
@@ -113,22 +114,49 @@ func (c *LSPClient) readResponses() {
 		default:
 		}
 
-		// Read Content-Length header
-		header, err := c.reader.ReadString('\n')
-		if err != nil {
-			return
+		// Read headers until we find an empty line
+		var contentLength int
+		foundLength := false
+
+		for {
+			line, err := c.reader.ReadString('\n')
+			if err != nil {
+				return
+			}
+
+			// Trim whitespace (handles both \r\n and \n)
+			line = strings.TrimSpace(line)
+
+			// Empty line marks end of headers
+			if line == "" {
+				break
+			}
+
+			// Parse Content-Length header (case-insensitive)
+			if strings.HasPrefix(strings.ToLower(line), "content-length:") {
+				// Extract the value after the colon
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					valueStr := strings.TrimSpace(parts[1])
+					length, err := strconv.Atoi(valueStr)
+					if err != nil {
+						// Invalid Content-Length, skip this message
+						continue
+					}
+					contentLength = length
+					foundLength = true
+				}
+			}
+			// Ignore other headers (e.g., Content-Type)
 		}
 
-		var length int
-		if _, err := fmt.Sscanf(header, "Content-Length: %d\r\n", &length); err != nil {
+		// If we didn't find Content-Length, skip this message
+		if !foundLength {
 			continue
 		}
 
-		// Read empty line
-		c.reader.ReadString('\n')
-
 		// Read content
-		content := make([]byte, length)
+		content := make([]byte, contentLength)
 		if _, err := io.ReadFull(c.reader, content); err != nil {
 			return
 		}
@@ -151,7 +179,7 @@ func (c *LSPClient) readResponses() {
 	}
 }
 
-func (c *LSPClient) call(method string, params interface{}) (json.RawMessage, error) {
+func (c *LSPClient) call(method string, params any) (json.RawMessage, error) {
 	c.mu.Lock()
 	id := c.nextID
 	c.nextID++
@@ -188,7 +216,7 @@ func (c *LSPClient) call(method string, params interface{}) (json.RawMessage, er
 	}
 }
 
-func (c *LSPClient) notify(method string, params interface{}) error {
+func (c *LSPClient) notify(method string, params any) error {
 	req := jsonrpcNotification{
 		JSONRPC: "2.0",
 		Method:  method,
@@ -207,16 +235,16 @@ func (c *LSPClient) notify(method string, params interface{}) error {
 
 // Initialize sends the initialize request
 func (c *LSPClient) Initialize() error {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"processId": nil,
 		"rootUri":   "file:///test",
-		"capabilities": map[string]interface{}{
-			"textDocument": map[string]interface{}{
-				"hover": map[string]interface{}{
+		"capabilities": map[string]any{
+			"textDocument": map[string]any{
+				"hover": map[string]any{
 					"contentFormat": []string{"markdown", "plaintext"},
 				},
-				"completion": map[string]interface{}{
-					"completionItem": map[string]interface{}{
+				"completion": map[string]any{
+					"completionItem": map[string]any{
 						"snippetSupport": true,
 					},
 				},
@@ -230,13 +258,13 @@ func (c *LSPClient) Initialize() error {
 	}
 
 	// Send initialized notification
-	return c.notify("initialized", map[string]interface{}{})
+	return c.notify("initialized", map[string]any{})
 }
 
 // DidOpen sends a textDocument/didOpen notification
 func (c *LSPClient) DidOpen(uri, languageID, text string) error {
-	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{
+	params := map[string]any{
+		"textDocument": map[string]any{
 			"uri":        uri,
 			"languageId": languageID,
 			"version":    1,
@@ -248,11 +276,11 @@ func (c *LSPClient) DidOpen(uri, languageID, text string) error {
 
 // Hover sends a textDocument/hover request
 func (c *LSPClient) Hover(uri string, line, character int) error {
-	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{
+	params := map[string]any{
+		"textDocument": map[string]any{
 			"uri": uri,
 		},
-		"position": map[string]interface{}{
+		"position": map[string]any{
 			"line":      line,
 			"character": character,
 		},
@@ -263,11 +291,11 @@ func (c *LSPClient) Hover(uri string, line, character int) error {
 
 // Completion sends a textDocument/completion request
 func (c *LSPClient) Completion(uri string, line, character int) error {
-	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{
+	params := map[string]any{
+		"textDocument": map[string]any{
 			"uri": uri,
 		},
-		"position": map[string]interface{}{
+		"position": map[string]any{
 			"line":      line,
 			"character": character,
 		},
@@ -278,8 +306,8 @@ func (c *LSPClient) Completion(uri string, line, character int) error {
 
 // Diagnostic sends a textDocument/diagnostic request
 func (c *LSPClient) Diagnostic(uri string) error {
-	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{
+	params := map[string]any{
+		"textDocument": map[string]any{
 			"uri": uri,
 		},
 	}
@@ -289,11 +317,11 @@ func (c *LSPClient) Diagnostic(uri string) error {
 
 // Definition sends a textDocument/definition request
 func (c *LSPClient) Definition(uri string, line, character int) error {
-	params := map[string]interface{}{
-		"textDocument": map[string]interface{}{
+	params := map[string]any{
+		"textDocument": map[string]any{
 			"uri": uri,
 		},
-		"position": map[string]interface{}{
+		"position": map[string]any{
 			"line":      line,
 			"character": character,
 		},
@@ -324,8 +352,8 @@ func (c *LSPClient) GetProcessMemory() (uint64, error) {
 	}
 
 	// Parse VmRSS (Resident Set Size)
-	lines := bytes.Split(data, []byte("\n"))
-	for _, line := range lines {
+	lines := bytes.SplitSeq(data, []byte("\n"))
+	for line := range lines {
 		if bytes.HasPrefix(line, []byte("VmRSS:")) {
 			var size uint64
 			var unit string
