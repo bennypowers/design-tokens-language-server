@@ -47,12 +47,27 @@ func ByteOffsetToUTF16(s string, byteOffset int) int {
 	}
 
 	utf16Count := 0
-	for _, r := range s[:byteOffset] {
+	currentOffset := 0
+
+	// Iterate through runes without slicing to avoid partial rune issues
+	for currentOffset < byteOffset {
+		r, size := utf8.DecodeRuneInString(s[currentOffset:])
+		if r == utf8.RuneError && size == 0 {
+			break // End of string
+		}
+
+		// Stop if decoding this rune would cross the target byteOffset
+		if currentOffset+size > byteOffset {
+			break
+		}
+
 		if r > 0xFFFF {
 			utf16Count += 2 // Surrogate pair
 		} else {
 			utf16Count++
 		}
+
+		currentOffset += size
 	}
 	return utf16Count
 }
