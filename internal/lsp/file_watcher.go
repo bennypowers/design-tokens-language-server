@@ -232,6 +232,10 @@ func (s *Server) registerFileWatchers(context *glsp.Context) error {
 	// Note: client/registerCapability is a request (not notification) per LSP spec.
 	// We use context.Call instead of context.Notify to properly send a request.
 	//
+	// IMPORTANT: We must call this in a goroutine to avoid blocking the main message
+	// handler loop. If we call context.Call synchronously, the server cannot read the
+	// client's response because the message handler is blocked waiting for it (deadlock).
+	//
 	// Error handling note: glsp.Context.Call doesn't return errors - the underlying
 	// jsonrpc2.Conn.Call errors are caught and logged by the glsp wrapper
 	// (see github.com/tliron/glsp@v0.2.2/server/handle.go:24-28).
@@ -239,8 +243,11 @@ func (s *Server) registerFileWatchers(context *glsp.Context) error {
 	// to stderr by the glsp library. Since client capability registration failures
 	// are not fatal (the client continues working, just without file watching),
 	// this fire-and-forget approach with logging is acceptable.
-	var result interface{}
-	context.Call("client/registerCapability", params, &result)
+	go func() {
+		var result interface{}
+		context.Call("client/registerCapability", params, &result)
+		fmt.Fprintf(os.Stderr, "[DTLS] File watcher registration completed\n")
+	}()
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Sent file watcher registration request (%d watchers)\n", len(watchers))
 	return nil

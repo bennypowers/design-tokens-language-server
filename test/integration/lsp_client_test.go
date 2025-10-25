@@ -368,17 +368,20 @@ func TestRealLSPConnection(t *testing.T) {
 		// 4. Document opening ✓
 		t.Log("SUCCESS: Server initialization, token loading, and file watcher registration completed")
 
-		// Optional: Try hover (but don't fail if it doesn't work)
-		// Hover requires document parsing which may have separate issues
+		// Test hover functionality
 		hover, err := client.Hover(cssURI, 1, 15)
-		if err != nil {
-			t.Logf("Note: Hover request did not get response (expected - may be parsing issue): %v", err)
-		} else if hover != nil {
-			content, ok := hover.Contents.(protocol.MarkupContent)
-			if ok {
-				t.Logf("BONUS: Hover also works! Value: %s", content.Value)
-				assert.Contains(t, content.Value, "#0000ff", "Hover should show token value")
-			}
-		}
+		require.NoError(t, err, "Hover request should succeed")
+		require.NotNil(t, hover, "Hover should return result")
+
+		content, ok := hover.Contents.(protocol.MarkupContent)
+		require.True(t, ok, "Hover contents should be MarkupContent")
+
+		// Verify hover response contains all expected token information
+		assert.Contains(t, content.Value, "#0000ff", "Hover should show token value")
+		assert.Contains(t, content.Value, "Primary brand color", "Hover should show description")
+		assert.Contains(t, content.Value, "--color-primary", "Hover should show token name")
+		assert.Contains(t, content.Value, "color", "Hover should show token type")
+
+		t.Logf("✅ Hover test passed! Full response:\n%s", content.Value)
 	})
 }
