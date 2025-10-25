@@ -85,7 +85,7 @@ func (s *Server) isPositionInVarCall(pos protocol.Position, varCall *css.VarCall
 		return false
 	}
 
-	if pos.Line == varCall.Range.End.Line && pos.Character > varCall.Range.End.Character {
+	if pos.Line == varCall.Range.End.Line && pos.Character >= varCall.Range.End.Character {
 		return false
 	}
 
