@@ -317,16 +317,23 @@ func TestDocumentManagerGetAll(t *testing.T) {
 	manager.DidOpen("file:///test3.json", "json", 1, "content3")
 
 	docs = manager.GetAll()
-	assert.Len(t, docs, 3, "Should have 3 documents")
+	require.Len(t, docs, 3, "Should have 3 documents")
 
-	// Verify URIs
-	uris := make(map[string]bool)
-	for _, doc := range docs {
-		uris[doc.URI()] = true
+	// Verify all expected URIs are present
+	expectedURIs := map[string]bool{
+		"file:///test1.css":  false,
+		"file:///test2.css":  false,
+		"file:///test3.json": false,
 	}
-	assert.True(t, uris["file:///test1.css"])
-	assert.True(t, uris["file:///test2.css"])
-	assert.True(t, uris["file:///test3.json"])
+	for _, doc := range docs {
+		uri := doc.URI()
+		if _, expected := expectedURIs[uri]; expected {
+			expectedURIs[uri] = true
+		}
+	}
+	for uri, found := range expectedURIs {
+		assert.True(t, found, "Expected URI %s not found", uri)
+	}
 }
 
 // TestDocumentManagerUTF16Incremental tests incremental updates with UTF-16 positions
@@ -549,11 +556,14 @@ func TestDocumentManagerInvalidUTF8(t *testing.T) {
 		},
 	}
 
-	err = manager.DidChange(uri, 2, changes)
-	// Should not panic, may error but should be graceful
-	if err != nil {
-		t.Logf("Invalid UTF-8 handling returned error: %v", err)
-	}
+	// Should not panic when handling invalid UTF-8
+	assert.NotPanics(t, func() {
+		err = manager.DidChange(uri, 2, changes)
+		// May error but should be graceful
+		if err != nil {
+			t.Logf("Invalid UTF-8 handling returned error: %v", err)
+		}
+	})
 }
 
 // TestDocumentManagerEndLineBoundsError tests out-of-bounds end line rejection
@@ -615,8 +625,8 @@ func TestDocumentManagerEOFInsertionEmptyDocument(t *testing.T) {
 	assert.Equal(t, "new content", doc.Content())
 }
 
-// TestDocumentManagerStartCharNegative tests negative character bounds (defensive check)
-func TestDocumentManagerStartCharNegative(t *testing.T) {
+// TestDocumentManagerStartCharClamp tests character position clamping
+func TestDocumentManagerStartCharClamp(t *testing.T) {
 	manager := documents.NewManager()
 	uri := "file:///test.css"
 
