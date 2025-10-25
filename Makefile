@@ -126,9 +126,9 @@ windows-x64: build-windows-cc-image
 		-e CXX=x86_64-w64-mingw32-g++ \
 		$(WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
-			-o dist/bin/$(BINARY_NAME)-x86_64-pc-windows-msvc.exe \
+			-o dist/bin/$(BINARY_NAME)-win-x64.exe \
 			./cmd/design-tokens-lsp
-	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-x86_64-pc-windows-msvc.exe"
+	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-win-x64.exe"
 
 ## Windows ARM64 (requires Podman - experimental, MinGW ARM64 support varies)
 windows-arm64: build-windows-cc-image
@@ -142,7 +142,7 @@ windows-arm64: build-windows-cc-image
 		-e CGO_ENABLED=1 \
 		$(WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
-			-o dist/bin/$(BINARY_NAME)-aarch64-pc-windows-msvc.exe \
+			-o dist/bin/$(BINARY_NAME)-win-arm64.exe \
 			./cmd/design-tokens-lsp || \
 		echo "Warning: Windows ARM64 build may require additional MinGW setup"
 

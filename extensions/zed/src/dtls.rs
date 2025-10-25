@@ -40,21 +40,34 @@ impl DesignTokensExtension {
         //  * - design-tokens-language-server-aarch64-apple-darwin
         //  * - design-tokens-language-server-aarch64-unknown-linux-gnu
         //  * - design-tokens-language-server-x86_64-apple-darwin
-        //  * - design-tokens-language-server-x86_64-pc-windows-msvc.exe
         //  * - design-tokens-language-server-x86_64-unknown-linux-gnu
-        let asset_name = format!(
-            "design-tokens-language-server-{arch}-{os}",
-            arch = match arch {
-                zed::Architecture::Aarch64 => "aarch64",
-                zed::Architecture::X8664 => "x86_64",
-                zed::Architecture::X86 => todo!(),
-            },
-            os = match platform {
-                zed::Os::Mac => "apple-darwin",
-                zed::Os::Linux => "unknown-linux-gnu",
-                zed::Os::Windows => "pc-windows-msvc.exe",
-            },
-        );
+        //  * - design-tokens-language-server-win-x64.exe
+        //  * - design-tokens-language-server-win-arm64.exe
+        let asset_name = match platform {
+            // Windows uses simplified naming
+            zed::Os::Windows => {
+                let arch_name = match arch {
+                    zed::Architecture::Aarch64 => "arm64",
+                    zed::Architecture::X8664 => "x64",
+                    zed::Architecture::X86 => todo!(),
+                };
+                format!("design-tokens-language-server-win-{}.exe", arch_name)
+            }
+            // Unix platforms use target triples
+            _ => {
+                let arch_name = match arch {
+                    zed::Architecture::Aarch64 => "aarch64",
+                    zed::Architecture::X8664 => "x86_64",
+                    zed::Architecture::X86 => todo!(),
+                };
+                let os_name = match platform {
+                    zed::Os::Mac => "apple-darwin",
+                    zed::Os::Linux => "unknown-linux-gnu",
+                    zed::Os::Windows => unreachable!(),
+                };
+                format!("design-tokens-language-server-{}-{}", arch_name, os_name)
+            }
+        };
 
         let asset = release
             .assets

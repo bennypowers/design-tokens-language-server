@@ -26,7 +26,7 @@ export async function activate(context: ExtensionContext) {
     const osMapping: Record<string, string> = {
       darwin: "apple-darwin",
       linux: "unknown-linux-gnu",
-      win32: "pc-windows-msvc.exe",
+      win32: "win",
     };
 
     const architecture = archMapping[arch];
@@ -38,6 +38,13 @@ export async function activate(context: ExtensionContext) {
       );
     }
 
+    // Windows uses simplified naming: design-tokens-language-server-win-x64.exe
+    if (platform === "win32") {
+      const archShort = arch === "x64" ? "x64" : "arm64";
+      return `design-tokens-language-server-win-${archShort}.exe`;
+    }
+
+    // Unix platforms use target triple: design-tokens-language-server-x86_64-apple-darwin
     return `design-tokens-language-server-${architecture}-${operatingSystem}`;
   })();
 
