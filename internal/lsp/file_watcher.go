@@ -126,7 +126,10 @@ func (s *Server) isTokenFile(path string) bool {
 			filename == "design-tokens.json" ||
 			filename == "tokens.yaml" ||
 			strings.HasSuffix(filename, ".tokens.yaml") ||
-			filename == "design-tokens.yaml" {
+			filename == "design-tokens.yaml" ||
+			filename == "tokens.yml" ||
+			strings.HasSuffix(filename, ".tokens.yml") ||
+			filename == "design-tokens.yml" {
 			return true
 		}
 	}
