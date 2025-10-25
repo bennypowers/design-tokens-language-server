@@ -14,13 +14,19 @@ import (
 	"time"
 )
 
+// rpcResp represents a JSON-RPC response or error
+type rpcResp struct {
+	result json.RawMessage
+	err    error
+}
+
 // LSPClient represents a connection to an LSP server
 type LSPClient struct {
 	cmd       *exec.Cmd
 	stdin     io.WriteCloser
 	stdout    io.ReadCloser
 	stderr    io.ReadCloser
-	responses map[int]chan json.RawMessage
+	responses map[int]chan rpcResp
 	mu        sync.Mutex
 	nextID    int
 	reader    *bufio.Reader
@@ -91,7 +97,7 @@ func NewLSPClient(serverCmd string) (*LSPClient, error) {
 		stdin:     stdin,
 		stdout:    stdout,
 		stderr:    stderr,
-		responses: make(map[int]chan json.RawMessage),
+		responses: make(map[int]chan rpcResp),
 		reader:    bufio.NewReader(stdout),
 		ctx:       ctx,
 		cancel:    cancel,
@@ -171,7 +177,18 @@ func (c *LSPClient) readResponses() {
 		// Deliver to waiting goroutine
 		c.mu.Lock()
 		if ch, ok := c.responses[resp.ID]; ok {
-			ch <- resp.Result
+			// Check if this is an error response
+			if resp.Error != nil {
+				ch <- rpcResp{
+					result: nil,
+					err:    fmt.Errorf("JSON-RPC error %d: %s", resp.Error.Code, resp.Error.Message),
+				}
+			} else {
+				ch <- rpcResp{
+					result: resp.Result,
+					err:    nil,
+				}
+			}
 			close(ch)
 			delete(c.responses, resp.ID)
 		}
@@ -183,7 +200,7 @@ func (c *LSPClient) call(method string, params any) (json.RawMessage, error) {
 	c.mu.Lock()
 	c.nextID++
 	id := c.nextID
-	respChan := make(chan json.RawMessage, 1)
+	respChan := make(chan rpcResp, 1)
 	c.responses[id] = respChan
 	c.mu.Unlock()
 
@@ -206,8 +223,11 @@ func (c *LSPClient) call(method string, params any) (json.RawMessage, error) {
 
 	// Wait for response with timeout
 	select {
-	case result := <-respChan:
-		return result, nil
+	case resp := <-respChan:
+		if resp.err != nil {
+			return nil, resp.err
+		}
+		return resp.result, nil
 	case <-time.After(5 * time.Second):
 		c.mu.Lock()
 		delete(c.responses, id)

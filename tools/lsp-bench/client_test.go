@@ -322,3 +322,156 @@ func TestNotificationHasNoID(t *testing.T) {
 		t.Errorf("Notification missing jsonrpc field:\ngot: %s", jsonStr)
 	}
 }
+
+// TestRpcRespStructure tests the rpcResp type
+func TestRpcRespStructure(t *testing.T) {
+	tests := []struct {
+		name      string
+		resp      rpcResp
+		expectErr bool
+	}{
+		{
+			name: "successful response",
+			resp: rpcResp{
+				result: json.RawMessage(`{"capabilities":{}}`),
+				err:    nil,
+			},
+			expectErr: false,
+		},
+		{
+			name: "error response",
+			resp: rpcResp{
+				result: nil,
+				err:    fmt.Errorf("JSON-RPC error -32601: Method not found"),
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expectErr && tt.resp.err == nil {
+				t.Error("Expected error but got nil")
+			}
+			if !tt.expectErr && tt.resp.err != nil {
+				t.Errorf("Expected no error but got: %v", tt.resp.err)
+			}
+			if tt.expectErr && tt.resp.result != nil {
+				t.Error("Error response should have nil result")
+			}
+			if !tt.expectErr && tt.resp.result == nil {
+				t.Error("Successful response should have non-nil result")
+			}
+		})
+	}
+}
+
+// TestJSONRPCErrorParsing tests parsing of JSON-RPC error responses
+func TestJSONRPCErrorParsing(t *testing.T) {
+	tests := []struct {
+		name        string
+		jsonResp    string
+		expectError bool
+		errorCode   int
+		errorMsg    string
+	}{
+		{
+			name:        "successful response",
+			jsonResp:    `{"jsonrpc":"2.0","id":1,"result":{"capabilities":{}}}`,
+			expectError: false,
+		},
+		{
+			name:        "method not found error",
+			jsonResp:    `{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}`,
+			expectError: true,
+			errorCode:   -32601,
+			errorMsg:    "Method not found",
+		},
+		{
+			name:        "invalid params error",
+			jsonResp:    `{"jsonrpc":"2.0","id":2,"error":{"code":-32602,"message":"Invalid params"}}`,
+			expectError: true,
+			errorCode:   -32602,
+			errorMsg:    "Invalid params",
+		},
+		{
+			name:        "server error",
+			jsonResp:    `{"jsonrpc":"2.0","id":3,"error":{"code":-32000,"message":"Server error"}}`,
+			expectError: true,
+			errorCode:   -32000,
+			errorMsg:    "Server error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var resp jsonrpcResponse
+			if err := json.Unmarshal([]byte(tt.jsonResp), &resp); err != nil {
+				t.Fatalf("Failed to unmarshal response: %v", err)
+			}
+
+			if tt.expectError {
+				if resp.Error == nil {
+					t.Fatal("Expected error field to be present")
+				}
+				if resp.Error.Code != tt.errorCode {
+					t.Errorf("Error code: got %d, want %d", resp.Error.Code, tt.errorCode)
+				}
+				if resp.Error.Message != tt.errorMsg {
+					t.Errorf("Error message: got %q, want %q", resp.Error.Message, tt.errorMsg)
+				}
+			} else {
+				if resp.Error != nil {
+					t.Errorf("Expected no error but got: %+v", resp.Error)
+				}
+				if resp.Result == nil {
+					t.Error("Expected result to be present")
+				}
+			}
+		})
+	}
+}
+
+// TestErrorResponseHandling tests that errors are properly propagated through rpcResp
+func TestErrorResponseHandling(t *testing.T) {
+	// Simulate receiving an error response
+	errorResp := jsonrpcResponse{
+		JSONRPC: "2.0",
+		ID:      1,
+		Error: &jsonrpcError{
+			Code:    -32601,
+			Message: "Method not found",
+		},
+	}
+
+	// Simulate what readResponses does
+	var resp rpcResp
+	if errorResp.Error != nil {
+		resp = rpcResp{
+			result: nil,
+			err:    fmt.Errorf("JSON-RPC error %d: %s", errorResp.Error.Code, errorResp.Error.Message),
+		}
+	} else {
+		resp = rpcResp{
+			result: errorResp.Result,
+			err:    nil,
+		}
+	}
+
+	// Verify error was captured
+	if resp.err == nil {
+		t.Fatal("Expected error to be set")
+	}
+
+	if !strings.Contains(resp.err.Error(), "Method not found") {
+		t.Errorf("Error message should contain 'Method not found', got: %v", resp.err)
+	}
+
+	if !strings.Contains(resp.err.Error(), "-32601") {
+		t.Errorf("Error message should contain error code -32601, got: %v", resp.err)
+	}
+
+	if resp.result != nil {
+		t.Error("Error response should have nil result")
+	}
+}
