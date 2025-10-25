@@ -310,17 +310,21 @@ func (s *Server) createDeprecatedTokenActions(uri string, varCall css.VarCall, t
 }
 
 // rangesIntersect checks if two ranges intersect
+// Ranges are treated as half-open intervals [start, end) where the end position is exclusive
 func rangesIntersect(a, b protocol.Range) bool {
-	// Check if ranges are completely separate
-	if a.End.Line < b.Start.Line || b.End.Line < a.Start.Line {
+	// Check if a ends before or at the start of b (no intersection)
+	if a.End.Line < b.Start.Line {
+		return false
+	}
+	if a.End.Line == b.Start.Line && a.End.Character <= b.Start.Character {
 		return false
 	}
 
-	// If on the same line, check character positions
-	if a.End.Line == b.Start.Line && a.End.Character < b.Start.Character {
+	// Check if b ends before or at the start of a (no intersection)
+	if b.End.Line < a.Start.Line {
 		return false
 	}
-	if b.End.Line == a.Start.Line && b.End.Character < a.Start.Character {
+	if b.End.Line == a.Start.Line && b.End.Character <= a.Start.Character {
 		return false
 	}
 
