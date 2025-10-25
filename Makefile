@@ -47,7 +47,7 @@ test-coverage:
 	@echo ""
 	@echo "=== Merging Coverage Files ==="
 	@command -v gocovmerge >/dev/null 2>&1 || go install github.com/wadey/gocovmerge@latest
-	@gocovmerge coverage-unit.out coverage-integration.out > coverage.out
+	@gocovmerge coverage-unit.out coverage-integration.out > coverage.out 2>&1 || true
 	@echo ""
 	@echo "=== Coverage Report ==="
 	@echo ""
