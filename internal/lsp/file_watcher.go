@@ -215,8 +215,19 @@ func (s *Server) registerFileWatchers(context *glsp.Context) error {
 	}
 
 	// Send registration request to client
-	context.Notify("client/registerCapability", params)
+	// Note: client/registerCapability is a request (not notification) per LSP spec.
+	// We use context.Call instead of context.Notify to properly send a request.
+	//
+	// Error handling note: glsp.Context.Call doesn't return errors - the underlying
+	// jsonrpc2.Conn.Call errors are caught and logged by the glsp wrapper
+	// (see github.com/tliron/glsp@v0.2.2/server/handle.go:24-28).
+	// If the client rejects the registration, the error response will be logged
+	// to stderr by the glsp library. Since client capability registration failures
+	// are not fatal (the client continues working, just without file watching),
+	// this fire-and-forget approach with logging is acceptable.
+	var result interface{}
+	context.Call("client/registerCapability", params, &result)
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Registered %d file watchers\n", len(watchers))
+	fmt.Fprintf(os.Stderr, "[DTLS] Sent file watcher registration request (%d watchers)\n", len(watchers))
 	return nil
 }
