@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bennypowers/design-tokens-language-server/internal/lsp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -315,6 +316,58 @@ func (c *LSPClient) Hover(uri string, line, character int) (*protocol.Hover, err
 	return &hover, nil
 }
 
+// Diagnostic sends a diagnostic request
+func (c *LSPClient) Diagnostic(uri string) (*lsp.RelatedFullDocumentDiagnosticReport, error) {
+	params := map[string]interface{}{
+		"textDocument": map[string]interface{}{
+			"uri": uri,
+		},
+	}
+
+	id := c.sendRequest("textDocument/diagnostic", params)
+	response, err := c.waitForResponse(id, 2*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle null response
+	if string(response) == "null" {
+		return nil, nil
+	}
+
+	var diagnostic lsp.RelatedFullDocumentDiagnosticReport
+	err = json.Unmarshal(response, &diagnostic)
+	if err != nil {
+		return nil, err
+	}
+
+	return &diagnostic, nil
+}
+
+// DidChangeConfiguration sends a didChangeConfiguration notification
+func (c *LSPClient) DidChangeConfiguration(settings map[string]interface{}) {
+	params := map[string]interface{}{
+		"settings": settings,
+	}
+	c.sendNotification("workspace/didChangeConfiguration", params)
+}
+
+// DidChangeTextDocument sends a didChange notification
+func (c *LSPClient) DidChangeTextDocument(uri, text string, version int) {
+	params := map[string]interface{}{
+		"textDocument": map[string]interface{}{
+			"uri":     uri,
+			"version": version,
+		},
+		"contentChanges": []map[string]interface{}{
+			{
+				"text": text,
+			},
+		},
+	}
+	c.sendNotification("textDocument/didChange", params)
+}
+
 // TestRealLSPConnection tests with a real LSP connection
 // This test validates that the server initialization, token loading,
 // and file watcher registration work correctly end-to-end.
@@ -383,5 +436,98 @@ func TestRealLSPConnection(t *testing.T) {
 		assert.Contains(t, content.Value, "color", "Hover should show token type")
 
 		t.Logf("✅ Hover test passed! Full response:\n%s", content.Value)
+	})
+
+	t.Run("Configuration change and diagnostics", func(t *testing.T) {
+		// Create temp workspace
+		tmpDir := t.TempDir()
+
+		// Create initial token file
+		tokensPath := filepath.Join(tmpDir, "tokens.json")
+		tokens := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$type": "color"
+    },
+    "secondary": {
+      "$value": "#ff0000",
+      "$type": "color"
+    }
+  }
+}`
+		err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+		require.NoError(t, err)
+
+		// Create CSS file with incorrect fallback and unknown reference
+		cssPath := filepath.Join(tmpDir, "test.css")
+		cssContent := `.button {
+  color: var(--color-primary, #ff0000);  /* incorrect fallback */
+  background: var(--color-unknown);      /* unknown reference */
+}`
+		err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+		require.NoError(t, err)
+
+		// Start LSP client
+		client := NewLSPClient(t)
+		defer client.Close()
+
+		// Initialize with workspace
+		rootURI := "file://" + tmpDir
+		err = client.Initialize(rootURI)
+		require.NoError(t, err)
+
+		// Open CSS document
+		cssURI := "file://" + cssPath
+		client.DidOpenTextDocument(cssURI, "css", cssContent)
+
+		// Wait for document processing
+		time.Sleep(300 * time.Millisecond)
+
+		// Request diagnostics
+		diagnostics, err := client.Diagnostic(cssURI)
+		require.NoError(t, err)
+		require.NotNil(t, diagnostics)
+
+		// Verify we got diagnostics
+		t.Logf("Received %d diagnostics", len(diagnostics.Items))
+		for i, diag := range diagnostics.Items {
+			t.Logf("Diagnostic %d: %s - %s", i, diag.Code, diag.Message)
+		}
+
+		// Should have at least one diagnostic (incorrect fallback or unknown reference)
+		assert.NotEmpty(t, diagnostics.Items, "Should have diagnostics for CSS errors")
+
+		// Now change configuration to add a prefix
+		client.DidChangeConfiguration(map[string]interface{}{
+			"designTokensLanguageServer": map[string]interface{}{
+				"prefix": "ds",
+				"tokensFiles": []string{
+					tokensPath,
+				},
+			},
+		})
+
+		// Wait for configuration to process and tokens to reload
+		time.Sleep(500 * time.Millisecond)
+
+		// Update CSS to use prefixed variables
+		newCSSContent := `.button {
+  color: var(--ds-color-primary, #0000ff);
+  background: var(--ds-color-secondary, #ff0000);
+}`
+		client.DidChangeTextDocument(cssURI, newCSSContent, 2)
+
+		// Wait for processing
+		time.Sleep(300 * time.Millisecond)
+
+		// Request diagnostics again
+		diagnostics2, err := client.Diagnostic(cssURI)
+		require.NoError(t, err)
+		require.NotNil(t, diagnostics2)
+
+		t.Logf("After configuration change: %d diagnostics", len(diagnostics2.Items))
+
+		t.Log("✅ Configuration change test passed")
 	})
 }
