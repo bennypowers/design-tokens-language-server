@@ -139,6 +139,12 @@ func (s *Server) isTokenFile(path string) bool {
 
 // registerFileWatchers registers file watchers with the client
 func (s *Server) registerFileWatchers(context *glsp.Context) error {
+	// Guard against nil context (can happen in tests without real LSP connection)
+	if context == nil {
+		fmt.Fprintf(os.Stderr, "[DTLS] Skipping file watcher registration (no client context)\n")
+		return nil
+	}
+
 	// Build list of watchers based on configuration
 	watchers := []protocol.FileSystemWatcher{}
 

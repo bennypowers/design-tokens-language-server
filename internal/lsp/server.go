@@ -81,6 +81,26 @@ func (s *Server) TokenCount() int {
 	return s.tokens.Count()
 }
 
+// Initialize handles the initialize request (exposed for testing)
+func (s *Server) Initialize(context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
+	return s.handleInitialize(context, params)
+}
+
+// Initialized handles the initialized notification (exposed for testing)
+func (s *Server) Initialized(context *glsp.Context, params *protocol.InitializedParams) error {
+	return s.handleInitialized(context, params)
+}
+
+// Shutdown handles the shutdown request (exposed for testing)
+func (s *Server) Shutdown(context *glsp.Context) error {
+	return s.handleShutdown(context)
+}
+
+// SetTrace handles the setTrace notification (exposed for testing)
+func (s *Server) SetTrace(context *glsp.Context, params *protocol.SetTraceParams) error {
+	return s.handleSetTrace(context, params)
+}
+
 // handleInitialize handles the initialize request
 func (s *Server) handleInitialize(context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
 	clientName := "unknown"
