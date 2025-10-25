@@ -17,7 +17,7 @@ jobs:
 
       - name: Get release tag
         id: get_tag
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
 
       - name: Download binaries from release
         env:
