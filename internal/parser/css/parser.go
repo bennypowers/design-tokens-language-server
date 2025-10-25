@@ -72,8 +72,10 @@ func ClosePool() {
 }
 
 // Parse parses CSS code and extracts variable declarations and var() calls
+// Positions are converted to UTF-16 code units for LSP compatibility
 func (p *Parser) Parse(source string) (*ParseResult, error) {
-	tree := p.parser.Parse([]byte(source), nil)
+	sourceBytes := []byte(source)
+	tree := p.parser.Parse(sourceBytes, nil)
 	if tree == nil {
 		return nil, fmt.Errorf("failed to parse CSS")
 	}
@@ -86,13 +88,44 @@ func (p *Parser) Parse(source string) (*ParseResult, error) {
 	}
 
 	// Walk the tree to find declarations and var() calls
-	p.walkTree(root, []byte(source), result)
+	// Note: tree-sitter positions from Parse() are byte-based, we'll convert them
+	p.walkTree(root, sourceBytes, source, result)
 
 	return result, nil
 }
 
+// positionToUTF16 converts a tree-sitter Point (which uses byte offsets for Column)
+// to LSP Position (which uses UTF-16 code units for Character)
+func positionToUTF16(source string, point sitter.Point) Position {
+	lines := strings.Split(source, "\n")
+	if point.Row >= uint(len(lines)) {
+		return Position{Line: uint32(point.Row), Character: uint32(point.Column)}
+	}
+
+	line := lines[point.Row]
+	// point.Column is a byte offset within the line
+	// Convert it to UTF-16 code units
+	if point.Column > uint(len(line)) {
+		point.Column = uint(len(line))
+	}
+
+	utf16Count := uint32(0)
+	for _, r := range []rune(line[:point.Column]) {
+		if r <= 0xFFFF {
+			utf16Count++
+		} else {
+			utf16Count += 2 // Surrogate pair
+		}
+	}
+
+	return Position{
+		Line:      uint32(point.Row),
+		Character: utf16Count,
+	}
+}
+
 // walkTree recursively walks the tree to find CSS variables and var() calls
-func (p *Parser) walkTree(node *sitter.Node, source []byte, result *ParseResult) {
+func (p *Parser) walkTree(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) {
 	if node == nil {
 		return
 	}
@@ -101,23 +134,23 @@ func (p *Parser) walkTree(node *sitter.Node, source []byte, result *ParseResult)
 
 	// Check for CSS custom property declaration
 	if nodeKind == "declaration" {
-		p.handleDeclaration(node, source, result)
+		p.handleDeclaration(node, sourceBytes, source, result)
 	}
 
 	// Check for var() function call
 	if nodeKind == "call_expression" {
-		p.handleCallExpression(node, source, result)
+		p.handleCallExpression(node, sourceBytes, source, result)
 	}
 
 	// Recursively walk children
 	for i := uint(0); i < node.ChildCount(); i++ {
 		child := node.Child(i)
-		p.walkTree(child, source, result)
+		p.walkTree(child, sourceBytes, source, result)
 	}
 }
 
 // handleDeclaration processes a CSS declaration node
-func (p *Parser) handleDeclaration(node *sitter.Node, source []byte, result *ParseResult) {
+func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) {
 	// Find property name node
 	var propertyNode *sitter.Node
 	var valueNodes []*sitter.Node
@@ -137,7 +170,7 @@ func (p *Parser) handleDeclaration(node *sitter.Node, source []byte, result *Par
 		return
 	}
 
-	propertyName := string(source[propertyNode.StartByte():propertyNode.EndByte()])
+	propertyName := string(sourceBytes[propertyNode.StartByte():propertyNode.EndByte()])
 
 	// Only process custom properties (starting with --)
 	if !strings.HasPrefix(propertyName, "--") {
@@ -150,26 +183,20 @@ func (p *Parser) handleDeclaration(node *sitter.Node, source []byte, result *Par
 		// Concatenate all value nodes
 		var parts []string
 		for _, valueNode := range valueNodes {
-			nodeText := string(source[valueNode.StartByte():valueNode.EndByte()])
+			nodeText := string(sourceBytes[valueNode.StartByte():valueNode.EndByte()])
 			parts = append(parts, strings.TrimSpace(nodeText))
 		}
 		value = strings.Join(parts, " ")
 	}
 
-	// Create variable
+	// Create variable with UTF-16 positions for LSP
 	variable := &Variable{
 		Name:  propertyName,
 		Value: value,
 		Type:  VariableDeclaration,
 		Range: Range{
-			Start: Position{
-				Line:      uint32(node.StartPosition().Row),
-				Character: uint32(node.StartPosition().Column),
-			},
-			End: Position{
-				Line:      uint32(node.EndPosition().Row),
-				Character: uint32(node.EndPosition().Column),
-			},
+			Start: positionToUTF16(source, node.StartPosition()),
+			End:   positionToUTF16(source, node.EndPosition()),
 		},
 	}
 
@@ -177,7 +204,7 @@ func (p *Parser) handleDeclaration(node *sitter.Node, source []byte, result *Par
 }
 
 // handleCallExpression processes a function call expression (looking for var())
-func (p *Parser) handleCallExpression(node *sitter.Node, source []byte, result *ParseResult) {
+func (p *Parser) handleCallExpression(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) {
 	// Find function name
 	var functionNameNode *sitter.Node
 	var argumentsNode *sitter.Node
@@ -197,7 +224,7 @@ func (p *Parser) handleCallExpression(node *sitter.Node, source []byte, result *
 		return
 	}
 
-	functionName := string(source[functionNameNode.StartByte():functionNameNode.EndByte()])
+	functionName := string(sourceBytes[functionNameNode.StartByte():functionNameNode.EndByte()])
 
 	// Only process var() calls
 	if functionName != "var" {
@@ -224,12 +251,12 @@ func (p *Parser) handleCallExpression(node *sitter.Node, source []byte, result *
 
 		// First argument is the token name
 		if argCount == 0 {
-			text := string(source[child.StartByte():child.EndByte()])
+			text := string(sourceBytes[child.StartByte():child.EndByte()])
 			tokenName = strings.TrimSpace(text)
 			argCount++
 		} else if argCount == 1 {
 			// Second argument is the fallback
-			text := string(source[child.StartByte():child.EndByte()])
+			text := string(sourceBytes[child.StartByte():child.EndByte()])
 			fb := strings.TrimSpace(text)
 			fallback = &fb
 			argCount++
@@ -240,20 +267,14 @@ func (p *Parser) handleCallExpression(node *sitter.Node, source []byte, result *
 		return
 	}
 
-	// Create var call
+	// Create var call with UTF-16 positions for LSP
 	varCall := &VarCall{
 		TokenName: tokenName,
 		Fallback:  fallback,
 		Type:      VarReference,
 		Range: Range{
-			Start: Position{
-				Line:      uint32(node.StartPosition().Row),
-				Character: uint32(node.StartPosition().Column),
-			},
-			End: Position{
-				Line:      uint32(node.EndPosition().Row),
-				Character: uint32(node.EndPosition().Column),
-			},
+			Start: positionToUTF16(source, node.StartPosition()),
+			End:   positionToUTF16(source, node.EndPosition()),
 		},
 	}
 
