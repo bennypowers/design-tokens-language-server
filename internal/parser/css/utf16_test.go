@@ -34,11 +34,15 @@ func TestUTF16Positions(t *testing.T) {
 			},
 		},
 		{
-			name: "Chinese characters",
-			css:  ".button { color: var(--color); }", // Using ASCII for now to keep test simpler
+			name: "CJK characters in comment",
+			css:  ".button { /* 按钮 */ color: var(--color); }",
+			// Count UTF-16 code units:
+			// . b u t t o n   {   /  *     按  钮     *  /     c  o  l  o  r  :     v
+			// 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26
+			// CJK chars are in BMP, 1 UTF-16 code unit each
 			expectedVarCallStart: Position{
 				Line:      0,
-				Character: 17,
+				Character: 26,
 			},
 		},
 	}
