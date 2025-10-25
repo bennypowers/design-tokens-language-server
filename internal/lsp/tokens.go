@@ -48,19 +48,29 @@ func (s *Server) loadTokenFileInternal(filepath, prefix string) error {
 
 	// Add all tokens to the manager
 	var errs []error
+	successCount := 0
 	for _, token := range parsedTokens {
 		token.FilePath = filepath
 		token.DefinitionURI = fileURI
 		if err := s.tokens.Add(token); err != nil {
 			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
+		} else {
+			successCount++
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", len(parsedTokens), filepath)
-
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		// Report partial success if some tokens loaded
+		if successCount > 0 {
+			fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d/%d tokens from %s (%d failed)\n",
+				successCount, len(parsedTokens), filepath, len(errs))
+		} else {
+			fmt.Fprintf(os.Stderr, "[DTLS] Failed to load any tokens from %s\n", filepath)
+		}
+		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
+
+	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", successCount, filepath)
 	return nil
 }
 
@@ -75,14 +85,17 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 	}
 
 	var errs []error
+	successCount := 0
 	for _, token := range parsedTokens {
 		if err := s.tokens.Add(token); err != nil {
 			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
+		} else {
+			successCount++
 		}
 	}
 
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
 	return nil
 }
