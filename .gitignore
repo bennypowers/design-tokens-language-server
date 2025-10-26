@@ -17,4 +17,4 @@ vendor/**/*.c
 report.xml
 tools/lsp-bench/lsp-bench
 *.test
-design-tokens-language-server
+/design-tokens-language-server
