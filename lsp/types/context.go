@@ -35,6 +35,9 @@ type ServerContext interface {
 	LoadTokensFromConfig() error
 	RegisterFileWatchers(ctx *glsp.Context) error
 
+	// File tracking (for managing loaded token files)
+	RemoveLoadedFile(path string)
+
 	// LSP context (for publishing diagnostics, etc.)
 	GLSPContext() *glsp.Context
 	SetGLSPContext(ctx *glsp.Context)

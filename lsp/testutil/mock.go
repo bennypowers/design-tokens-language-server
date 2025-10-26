@@ -150,6 +150,11 @@ func (m *MockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
 	return nil
 }
 
+// RemoveLoadedFile removes a file from the loaded files tracking map
+func (m *MockServerContext) RemoveLoadedFile(path string) {
+	delete(m.loadedFiles, path)
+}
+
 // GLSPContext returns the GLSP context
 func (m *MockServerContext) GLSPContext() *glsp.Context {
 	return m.glspContext

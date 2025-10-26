@@ -247,6 +247,12 @@ func (s *Server) IsTokenFile(path string) bool {
 	return false
 }
 
+// RemoveLoadedFile removes a file from the loaded files tracking map
+// This should be called when a token file is deleted to prevent stale entries
+func (s *Server) RemoveLoadedFile(path string) {
+	delete(s.loadedFiles, path)
+}
+
 // RegisterFileWatchers registers file watchers with the client
 func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	// Guard against nil context (can happen in tests without real LSP connection)

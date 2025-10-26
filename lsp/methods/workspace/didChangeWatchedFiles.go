@@ -17,6 +17,7 @@ func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, param
 
 	// Track if we need to reload tokens
 	needsReload := false
+	hasDeletedFile := false
 
 	for _, change := range params.Changes {
 		uri := change.URI
@@ -25,18 +26,31 @@ func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, param
 
 		// Check if this is a token file we're watching
 		if ctx.IsTokenFile(path) {
-			needsReload = true
-
-			// If the file was deleted, we might want to handle it differently
+			// If the file was deleted, remove it from loaded files
 			if change.Type == protocol.FileChangeTypeDeleted {
 				fmt.Fprintf(os.Stderr, "[DTLS] Token file deleted: %s\n", path)
+				ctx.RemoveLoadedFile(path)
+				hasDeletedFile = true
+				// Still trigger reload to clear tokens from the deleted file
+				// The reload will re-scan remaining files, excluding the deleted one
 			}
+
+			// File was created, modified, or deleted - trigger reload
+			needsReload = true
 		}
 	}
 
 	// Reload all token files if any token file changed
 	if needsReload {
 		fmt.Fprintf(os.Stderr, "[DTLS] Reloading token files due to changes\n")
+
+		// If a file was deleted, we need to force clear tokens even if
+		// LoadTokensFromConfig wouldn't normally clear them (e.g., if loadedFiles is now empty)
+		if hasDeletedFile {
+			ctx.TokenManager().Clear()
+			fmt.Fprintf(os.Stderr, "[DTLS] Cleared all tokens due to file deletion\n")
+		}
+
 		if err := ctx.LoadTokensFromConfig(); err != nil {
 			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to reload tokens: %v\n", err)
 		}

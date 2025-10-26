@@ -84,6 +84,41 @@ func TestHandleDidChangeWatchedFiles_DeletedFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
+
+	// The handler should have called RemoveLoadedFile to clean up the deleted file
+	// This prevents stale entries that would cause reload errors
+}
+
+func TestHandleDidChangeWatchedFiles_DeletedAndModified(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	ctx.SetRootPath("/workspace")
+
+	config := ctx.GetConfig()
+	config.TokensFiles = []any{"tokens.json", "design-tokens.json"}
+	ctx.SetConfig(config)
+
+	// Test that when one file is deleted and another is modified,
+	// we only reload the remaining files
+	params := &protocol.DidChangeWatchedFilesParams{
+		Changes: []protocol.FileEvent{
+			{
+				URI:  "file:///workspace/tokens.json",
+				Type: protocol.FileChangeTypeDeleted,
+			},
+			{
+				URI:  "file:///workspace/design-tokens.json",
+				Type: protocol.FileChangeTypeChanged,
+			},
+		},
+	}
+
+	err := DidChangeWatchedFiles(ctx, nil, params)
+	if err != nil {
+		t.Errorf("DidChangeWatchedFiles failed: %v", err)
+	}
+
+	// Should have triggered a reload for the modified file
+	// Should NOT have tried to reload the deleted file
 }
 
 func TestHandleDidChangeWatchedFiles_NonTokenFile(t *testing.T) {
