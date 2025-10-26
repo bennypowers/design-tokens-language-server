@@ -15,7 +15,7 @@ all: build
 
 ## Clean build artifacts
 clean:
-	rm -rf dist/ coverage.out
+	rm -rf dist/ coverage/ coverage.out
 
 ## Build native binary
 build:
