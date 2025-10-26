@@ -176,14 +176,19 @@ func getSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Docume
 
 // handleSemanticTokensDelta handles the textDocument/semanticTokens/full/delta request
 func (s *Server) handleSemanticTokensDelta(context *glsp.Context, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
+	return SemanticTokensDelta(s, context, params)
+}
+
+// SemanticTokensDelta handles the textDocument/semanticTokens/delta request
+func SemanticTokensDelta(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
 	// Get the current document
-	doc := s.documents.Get(params.TextDocument.URI)
+	doc := ctx.Document(params.TextDocument.URI)
 	if doc == nil {
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
 	// Get current semantic tokens
-	intermediateTokens := getSemanticTokensForDocument(s, doc)
+	intermediateTokens := getSemanticTokensForDocument(ctx, doc)
 	newData := encodeSemanticTokens(intermediateTokens)
 
 	// For a full implementation, we would:
@@ -216,14 +221,19 @@ func (s *Server) handleSemanticTokensDelta(context *glsp.Context, params *protoc
 
 // handleSemanticTokensRange handles the textDocument/semanticTokens/range request
 func (s *Server) handleSemanticTokensRange(context *glsp.Context, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
+	return SemanticTokensRange(s, context, params)
+}
+
+// SemanticTokensRange handles the textDocument/semanticTokens/range request
+func SemanticTokensRange(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
 	// Get the document
-	doc := s.documents.Get(params.TextDocument.URI)
+	doc := ctx.Document(params.TextDocument.URI)
 	if doc == nil {
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
 	// Get all semantic tokens for the document
-	intermediateTokens := getSemanticTokensForDocument(s, doc)
+	intermediateTokens := getSemanticTokensForDocument(ctx, doc)
 
 	// Filter tokens to only those within the requested range
 	filteredTokens := []SemanticTokenIntermediate{}

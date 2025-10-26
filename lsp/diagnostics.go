@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -15,10 +16,15 @@ import (
 // This is an LSP 3.17 feature. Since glsp v0.2.2 only supports LSP 3.16, this handler
 // is called via CustomHandler which intercepts the method before it reaches protocol.Handler.
 func (s *Server) handleDocumentDiagnostic(context *glsp.Context, params *DocumentDiagnosticParams) (any, error) {
+	return DocumentDiagnostic(s, context, params)
+}
+
+// DocumentDiagnostic handles the textDocument/diagnostic request (pull diagnostics)
+func DocumentDiagnostic(ctx types.ServerContext, context *glsp.Context, params *DocumentDiagnosticParams) (any, error) {
 	uri := params.TextDocument.URI
 	fmt.Fprintf(os.Stderr, "[DTLS] Pull diagnostics requested for: %s\n", uri)
 
-	diagnostics, err := s.GetDiagnostics(uri)
+	diagnostics, err := GetDiagnostics(ctx, uri)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Error getting diagnostics: %v\n", err)
 		return nil, err
@@ -32,9 +38,9 @@ func (s *Server) handleDocumentDiagnostic(context *glsp.Context, params *Documen
 }
 
 // GetDiagnostics returns diagnostics for a document
-func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
+func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic, error) {
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -57,7 +63,7 @@ func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
 	// Check each var() call
 	for _, varCall := range result.VarCalls {
 		// Look up the token
-		token := s.tokens.Get(varCall.TokenName)
+		token := ctx.Token(varCall.TokenName)
 		if token == nil {
 			// Unknown tokens are not errors - they're handled by hover
 			continue
@@ -121,7 +127,7 @@ func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
 func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Publishing diagnostics for: %s\n", uri)
 
-	diagnostics, err := s.GetDiagnostics(uri)
+	diagnostics, err := GetDiagnostics(s, uri)
 	if err != nil {
 		return err
 	}
