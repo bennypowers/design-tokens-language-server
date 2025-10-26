@@ -176,11 +176,6 @@ func isNamedColor(value string) bool {
 
 // handleCodeAction handles the textDocument/codeAction request
 func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
-	return s.CodeAction(params)
-}
-
-// CodeAction provides code actions (exposed for testing)
-func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeAction, error) {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeAction requested: %s\n", uri)
@@ -258,12 +253,7 @@ func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeA
 }
 
 // handleCodeActionResolve handles the codeAction/resolve request
-func (s *Server) handleCodeActionResolve(context *glsp.Context, params *protocol.CodeAction) (*protocol.CodeAction, error) {
-	return s.CodeActionResolve(params)
-}
-
-// CodeActionResolve resolves a code action (exposed for testing)
-func (s *Server) CodeActionResolve(action *protocol.CodeAction) (*protocol.CodeAction, error) {
+func (s *Server) handleCodeActionResolve(context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeActionResolve requested: %s\n", action.Title)
 
 	// For now, we compute the edit immediately in CodeAction

@@ -13,11 +13,6 @@ import (
 
 // handleDocumentColor handles the textDocument/documentColor request
 func (s *Server) handleDocumentColor(context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
-	return s.DocumentColor(params)
-}
-
-// DocumentColor provides color information (exposed for testing)
-func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] DocumentColor requested: %s\n", uri)
@@ -120,11 +115,6 @@ func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol
 
 // handleColorPresentation handles the textDocument/colorPresentation request
 func (s *Server) handleColorPresentation(context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
-	return s.ColorPresentation(params)
-}
-
-// ColorPresentation provides color presentations (exposed for testing)
-func (s *Server) ColorPresentation(params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
 	uri := params.TextDocument.URI
 	color := params.Color
 

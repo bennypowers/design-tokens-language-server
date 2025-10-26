@@ -1,4 +1,4 @@
 {
-  "line1": "{color.brand.primary}",
-  "line2": "{color.brand.primary}"
+  "modified": "{color.brand.primary}",
+  "added": "{color.ui.background}"
 }

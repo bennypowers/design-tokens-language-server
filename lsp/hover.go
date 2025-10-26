@@ -12,11 +12,6 @@ import (
 
 // handleHover handles the textDocument/hover request
 func (s *Server) handleHover(context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
-	return s.Hover(params)
-}
-
-// Hover provides hover information (exposed for testing)
-func (s *Server) Hover(params *protocol.HoverParams) (*protocol.Hover, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 

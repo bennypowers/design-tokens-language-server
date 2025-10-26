@@ -33,27 +33,27 @@ func NewServer() (*Server, error) {
 		loadedFiles: make(map[string]string),
 	}
 
-	// Create the GLSP server with our handlers
+	// Create the GLSP server with our handlers wrapped with middleware
 	protocolHandler := protocol.Handler{
-		Initialize:                      s.handleInitialize,
-		Initialized:                     s.handleInitialized,
-		Shutdown:                        s.handleShutdown,
-		SetTrace:                        s.handleSetTrace,
-		WorkspaceDidChangeConfiguration: s.handleDidChangeConfiguration,
-		WorkspaceDidChangeWatchedFiles:  s.handleDidChangeWatchedFiles,
-		TextDocumentDidOpen:             s.handleDidOpen,
-		TextDocumentDidChange:           s.handleDidChange,
-		TextDocumentDidClose:            s.handleDidClose,
-		TextDocumentHover:               s.handleHover,
-		TextDocumentCompletion:          s.handleCompletion,
-		CompletionItemResolve:           s.handleCompletionResolve,
-		TextDocumentDefinition:          s.handleDefinition,
-		TextDocumentReferences:          s.handleReferences,
-		TextDocumentColor:               s.handleDocumentColor,
-		TextDocumentColorPresentation:   s.handleColorPresentation,
-		TextDocumentCodeAction:          s.handleCodeAction,
-		CodeActionResolve:               s.handleCodeActionResolve,
-		TextDocumentSemanticTokensFull:  s.handleSemanticTokensFull,
+		Initialize:                      method(s, "initialize", (*Server).handleInitialize),
+		Initialized:                     notify(s, "initialized", (*Server).handleInitialized),
+		Shutdown:                        noParam(s, "shutdown", (*Server).handleShutdown),
+		SetTrace:                        notify(s, "$/setTrace", (*Server).handleSetTrace),
+		WorkspaceDidChangeConfiguration: notify(s, "workspace/didChangeConfiguration", (*Server).handleDidChangeConfiguration),
+		WorkspaceDidChangeWatchedFiles:  notify(s, "workspace/didChangeWatchedFiles", (*Server).handleDidChangeWatchedFiles),
+		TextDocumentDidOpen:             notify(s, "textDocument/didOpen", (*Server).handleDidOpen),
+		TextDocumentDidChange:           notify(s, "textDocument/didChange", (*Server).handleDidChange),
+		TextDocumentDidClose:            notify(s, "textDocument/didClose", (*Server).handleDidClose),
+		TextDocumentHover:               method(s, "textDocument/hover", (*Server).handleHover),
+		TextDocumentCompletion:          method(s, "textDocument/completion", (*Server).handleCompletion),
+		CompletionItemResolve:           method(s, "completionItem/resolve", (*Server).handleCompletionResolve),
+		TextDocumentDefinition:          method(s, "textDocument/definition", (*Server).handleDefinition),
+		TextDocumentReferences:          method(s, "textDocument/references", (*Server).handleReferences),
+		TextDocumentColor:               method(s, "textDocument/documentColor", (*Server).handleDocumentColor),
+		TextDocumentColorPresentation:   method(s, "textDocument/colorPresentation", (*Server).handleColorPresentation),
+		TextDocumentCodeAction:          method(s, "textDocument/codeAction", (*Server).handleCodeAction),
+		CodeActionResolve:               method(s, "codeAction/resolve", (*Server).handleCodeActionResolve),
+		TextDocumentSemanticTokensFull:  method(s, "textDocument/semanticTokens/full", (*Server).handleSemanticTokensFull),
 	}
 
 	// WORKAROUND: Wrap with custom handler to support LSP 3.17 features
@@ -79,6 +79,47 @@ func (s *Server) RunStdio() error {
 // TokenCount returns the number of loaded tokens (exposed for testing)
 func (s *Server) TokenCount() int {
 	return s.tokens.Count()
+}
+
+// DidOpen opens a document (exposed for testing)
+func (s *Server) DidOpen(uri, languageID string, version int, content string) error {
+	return s.documents.DidOpen(uri, languageID, version, content)
+}
+
+// Hover provides hover information (exposed for testing)
+func (s *Server) Hover(params *protocol.HoverParams) (*protocol.Hover, error) {
+	return s.handleHover(nil, params)
+}
+
+// DocumentColor provides color information (exposed for testing)
+func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
+	return s.handleDocumentColor(nil, params)
+}
+
+// ColorPresentation provides color presentations (exposed for testing)
+func (s *Server) ColorPresentation(params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
+	return s.handleColorPresentation(nil, params)
+}
+
+// CodeAction provides code actions (exposed for testing)
+func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeAction, error) {
+	result, err := s.handleCodeAction(nil, params)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	// handleCodeAction returns any, could be []protocol.CodeAction
+	if actions, ok := result.([]protocol.CodeAction); ok {
+		return actions, nil
+	}
+	return nil, nil
+}
+
+// CodeActionResolve resolves a code action (exposed for testing)
+func (s *Server) CodeActionResolve(action *protocol.CodeAction) (*protocol.CodeAction, error) {
+	return s.handleCodeActionResolve(nil, action)
 }
 
 // Initialize handles the initialize request (exposed for testing)
@@ -214,7 +255,11 @@ func (s *Server) handleSetTrace(context *glsp.Context, params *protocol.SetTrace
 
 // handleDidOpen handles the textDocument/didOpen notification
 func (s *Server) handleDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
-	err := s.DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version), params.TextDocument.Text)
+	fmt.Fprintf(os.Stderr, "[DTLS] Document opened: %s (language: %s, version: %d)\n",
+		params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version))
+
+	err := s.documents.DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID,
+		int(params.TextDocument.Version), params.TextDocument.Text)
 	if err != nil {
 		return err
 	}
@@ -225,12 +270,6 @@ func (s *Server) handleDidOpen(context *glsp.Context, params *protocol.DidOpenTe
 	}
 
 	return nil
-}
-
-// DidOpen opens a document (exposed for testing)
-func (s *Server) DidOpen(uri, languageID string, version int, content string) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Document opened: %s (language: %s, version: %d)\n", uri, languageID, version)
-	return s.documents.DidOpen(uri, languageID, version, content)
 }
 
 // handleDidChange handles the textDocument/didChange notification
