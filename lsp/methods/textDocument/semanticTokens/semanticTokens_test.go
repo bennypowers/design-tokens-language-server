@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
-	"github.com/bennypowers/design-tokens-language-server/lsp"
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
-	semantictokens "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/semanticTokens"
+	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/tokens"
+	"bennypowers.dev/dtls/lsp"
+	"bennypowers.dev/dtls/lsp/methods/textDocument"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 

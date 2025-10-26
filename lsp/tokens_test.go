@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp"
+	"bennypowers.dev/dtls/lsp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

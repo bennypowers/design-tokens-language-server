@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
+	"bennypowers.dev/dtls/internal/uriutil"
+	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )

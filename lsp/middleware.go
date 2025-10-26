@@ -5,7 +5,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 )
 

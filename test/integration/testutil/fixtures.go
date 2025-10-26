@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp"
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
+	"bennypowers.dev/dtls/lsp"
+	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )

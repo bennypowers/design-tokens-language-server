@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"bennypowers.dev/dtls/internal/tokens"
 	"gopkg.in/yaml.v3"
 )
 

@@ -3,9 +3,9 @@ package hover
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
-	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
+	"bennypowers.dev/dtls/internal/parser/css"
+	"bennypowers.dev/dtls/internal/tokens"
+	"bennypowers.dev/dtls/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"

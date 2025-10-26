@@ -3,9 +3,9 @@ package integration_test
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
-	documentcolor "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/documentColor"
-	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
+	"bennypowers.dev/dtls/lsp/methods/textDocument"
+	documentcolor "bennypowers.dev/dtls/lsp/methods/textDocument/documentColor"
+	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"

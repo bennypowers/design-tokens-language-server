@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/parser/json"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"bennypowers.dev/dtls/internal/parser/json"
+	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

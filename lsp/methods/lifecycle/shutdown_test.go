@@ -3,7 +3,7 @@ package lifecycle
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
 )

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
+	"bennypowers.dev/dtls/lsp/types"
 )
 
 // GetConfig returns the current server configuration

@@ -1,13 +1,13 @@
 package lsp
 
 import (
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
+	"bennypowers.dev/dtls/lsp/types"
 	"encoding/json"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
+	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/tokens"
+	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"

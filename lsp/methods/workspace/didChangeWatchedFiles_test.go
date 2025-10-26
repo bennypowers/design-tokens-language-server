@@ -3,7 +3,7 @@ package workspace
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/testutil"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 

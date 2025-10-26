@@ -3,9 +3,9 @@ package integration_test
 import (
 	"testing"
 
-	codeaction "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
-	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
+	codeaction "bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
+	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
+	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"

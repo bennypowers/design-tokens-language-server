@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/position"
+	"bennypowers.dev/dtls/internal/position"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 

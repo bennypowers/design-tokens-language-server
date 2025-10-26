@@ -3,7 +3,7 @@ package tokens_test
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

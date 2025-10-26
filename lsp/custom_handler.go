@@ -3,8 +3,8 @@ package lsp
 import (
 	"encoding/json"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
-	semantictokens "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/semanticTokens"
+	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )

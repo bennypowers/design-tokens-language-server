@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/tliron/glsp"
 )
 

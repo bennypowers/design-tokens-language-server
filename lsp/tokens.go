@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/parser/json"
-	"github.com/bennypowers/design-tokens-language-server/internal/parser/yaml"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
-	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
+	"bennypowers.dev/dtls/internal/parser/json"
+	"bennypowers.dev/dtls/internal/parser/yaml"
+	"bennypowers.dev/dtls/internal/tokens"
+	"bennypowers.dev/dtls/internal/uriutil"
 )
 
 // TokenFileOptions holds per-file configuration for token loading

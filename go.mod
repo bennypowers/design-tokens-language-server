@@ -1,4 +1,4 @@
-module github.com/bennypowers/design-tokens-language-server
+module bennypowers.dev/dtls
 
 go 1.25.3
 

@@ -946,7 +946,7 @@ cat baseline-results.json
 ### Step 2: Set Up Go Project
 ```bash
 # Initialize Go module (using Go 1.25.3)
-go mod init github.com/your-org/design-tokens-language-server
+go mod init bennypowers.dev/dtls
 
 # Install dependencies
 go get github.com/tliron/glsp

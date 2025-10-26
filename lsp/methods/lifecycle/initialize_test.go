@@ -3,8 +3,8 @@ package lifecycle
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
-	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
+	"bennypowers.dev/dtls/internal/uriutil"
+	"bennypowers.dev/dtls/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"

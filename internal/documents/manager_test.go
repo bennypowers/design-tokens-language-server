@@ -3,7 +3,7 @@ package documents_test
 import (
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
+	"bennypowers.dev/dtls/internal/documents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"

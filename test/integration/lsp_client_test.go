@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
+	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
