@@ -23,7 +23,7 @@ jobs:
 
       - uses: codecov/codecov-action@v5
         with:
-          files: coverage-unit.out,coverage-integration.out
+          files: coverage.out
           token: ${{ secrets.CODECOV_PAT }}
           fail_ci_if_error: true
           verbose: true

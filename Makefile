@@ -36,24 +36,29 @@ test:
 ## Run tests with coverage (Go 1.20+ includes cross-process coverage for integration tests)
 test-coverage:
 	@echo "=== Running Unit Tests with Coverage ==="
-	@go test -coverprofile=coverage-unit.out -covermode=set -coverpkg=./internal/...,./cmd/... $$(go list ./... | grep -v /test/integration)
+	@rm -rf coverage/unit coverage/integration
+	@mkdir -p coverage/unit
+	@go test -cover ./... -args -test.gocoverdir="$$(pwd)/coverage/unit" 2>&1 | grep -v "no test files"
 	@echo ""
 	@echo "=== Running Integration Tests with Subprocess Coverage ==="
-	@rm -rf coverage/integration
+	@mkdir -p coverage/integration
 	@go test ./test/integration
 	@echo ""
-	@echo "=== Converting Integration Coverage to Text Format ==="
-	@go tool covdata textfmt -i=coverage/integration -o=coverage-integration.out
+	@echo "=== Merging Coverage Files ==="
+	@go tool covdata textfmt -i=./coverage/unit,./coverage/integration -o=coverage.out
 	@echo ""
 	@echo "=== Coverage Report ==="
 	@echo ""
 	@echo "Unit Test Coverage:"
-	@go tool cover -func=coverage-unit.out | tail -1
+	@go tool covdata percent -i=./coverage/unit
 	@echo ""
-	@echo "Integration Test Coverage (cross-process):"
-	@go tool cover -func=coverage-integration.out | tail -1
+	@echo "Integration Test Coverage:"
+	@go tool covdata percent -i=./coverage/integration
 	@echo ""
-	@echo "Note: Codecov will merge both coverage files automatically"
+	@echo "Merged Coverage:"
+	@go tool cover -func=coverage.out | tail -1
+	@echo ""
+	@echo "Merged coverage saved to coverage.out for codecov upload"
 
 ## Show coverage in browser
 show-coverage: test-coverage
