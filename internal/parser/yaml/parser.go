@@ -3,6 +3,7 @@ package yaml
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
@@ -39,7 +40,15 @@ func (p *Parser) extractTokens(data map[string]interface{}, path, prefix string,
 
 // extractTokensWithPath recursively extracts tokens tracking the JSON path
 func (p *Parser) extractTokensWithPath(data map[string]interface{}, jsonPath []string, path, prefix string, result *[]*tokens.Token) {
-	for key, value := range data {
+	// Sort keys to ensure deterministic order
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		value := data[key]
 		valueMap, isMap := value.(map[string]interface{})
 		if !isMap {
 			continue
