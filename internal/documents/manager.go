@@ -126,16 +126,29 @@ func applyIncrementalChange(content string, changeRange protocol.Range, text str
 	endLine := int(changeRange.End.Line)
 	endCharUTF16 := int(changeRange.End.Character)
 
-	// Handle EOF insertion: normalize to last line
-	if startLine == len(lines) && startCharUTF16 == 0 && endLine == len(lines) && endCharUTF16 == 0 {
+	// Handle EOF position: LSP allows position {line: len(lines), character: 0} as a valid EOF marker
+	// Normalize end position if it's at EOF
+	if endLine == len(lines) && endCharUTF16 == 0 {
+		if len(lines) == 0 {
+			// Empty document: if start is also at EOF, just return the new text
+			if startLine == 0 && startCharUTF16 == 0 {
+				return text, nil
+			}
+		} else {
+			// Non-empty document: normalize end to point to end of last line
+			endLine = len(lines) - 1
+			endCharUTF16 = position.StringLengthUTF16(lines[endLine])
+		}
+	}
+
+	// Handle start position at EOF (append to end of document)
+	if startLine == len(lines) && startCharUTF16 == 0 {
 		if len(lines) == 0 {
 			// Empty document
 			return text, nil
 		}
-		startLine, endLine = len(lines)-1, len(lines)-1
-		lastLine := lines[len(lines)-1]
-		startCharUTF16 = position.StringLengthUTF16(lastLine)
-		endCharUTF16 = startCharUTF16
+		startLine = len(lines) - 1
+		startCharUTF16 = position.StringLengthUTF16(lines[startLine])
 	}
 
 	// Final validation: ensure line indices are within bounds after normalization

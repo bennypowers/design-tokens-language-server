@@ -29,10 +29,15 @@ func PathToURI(path string) string {
 	}
 
 	// Detect Windows UNC path (\\server\share or //server/share)
-	if runtime.GOOS == "windows" && strings.HasPrefix(absPath, `\\`) {
-		// UNC path: \\server\share\path -> file://server/share/path
-		// Strip the leading \\
-		uncPath := strings.TrimPrefix(absPath, `\\`)
+	if runtime.GOOS == "windows" && (strings.HasPrefix(absPath, `\\`) || strings.HasPrefix(absPath, `//`)) {
+		// UNC path: \\server\share\path or //server/share/path -> file://server/share/path
+		// Strip the leading \\ or //
+		uncPath := absPath
+		if strings.HasPrefix(uncPath, `\\`) {
+			uncPath = strings.TrimPrefix(uncPath, `\\`)
+		} else {
+			uncPath = strings.TrimPrefix(uncPath, `//`)
+		}
 		// Convert to forward slashes
 		uncPath = filepath.ToSlash(uncPath)
 		// Split into segments and percent-encode each
@@ -57,7 +62,18 @@ func PathToURI(path string) string {
 	// Split into segments and percent-encode each (skip the leading empty segment from /)
 	segments := strings.Split(absPath, "/")
 	for i, seg := range segments {
-		if seg != "" { // Don't encode empty segments
+		if seg == "" {
+			// Don't encode empty segments
+			continue
+		}
+
+		// Check for Windows drive letter (e.g., "C:")
+		// This should be the first non-empty segment (i==1 since segments[0] is empty)
+		if i == 1 && len(seg) == 2 && seg[1] == ':' && ((seg[0] >= 'A' && seg[0] <= 'Z') || (seg[0] >= 'a' && seg[0] <= 'z')) {
+			// Windows drive letter - keep as-is but uppercase the letter
+			segments[i] = strings.ToUpper(string(seg[0])) + ":"
+		} else {
+			// Regular segment - percent-encode it
 			segments[i] = url.PathEscape(seg)
 		}
 	}
@@ -97,8 +113,22 @@ func URIToPath(uri string) string {
 	// Extract the path component
 	path := parsed.Path
 
-	// Handle UNC paths (file://server/share/path)
+	// Handle UNC paths and drive letters (file://server/share/path or file://C:/path)
 	if parsed.Host != "" {
+		// Check if host is a Windows drive letter (e.g., "C:")
+		if len(parsed.Host) == 2 && parsed.Host[1] == ':' &&
+			((parsed.Host[0] >= 'A' && parsed.Host[0] <= 'Z') || (parsed.Host[0] >= 'a' && parsed.Host[0] <= 'z')) {
+			// Drive letter in host position (file://C:/path)
+			// Decode the path
+			decodedPath, _ := url.PathUnescape(path)
+			// Remove leading slash from path if present
+			decodedPath = strings.TrimPrefix(decodedPath, "/")
+			// Combine drive letter with path
+			combinedPath := parsed.Host + "/" + decodedPath
+			// Convert to OS-specific separators
+			return filepath.FromSlash(combinedPath)
+		}
+
 		// UNC path: file://server/share/path -> \\server\share\path (on Windows)
 		if runtime.GOOS == "windows" {
 			// Decode the host and path

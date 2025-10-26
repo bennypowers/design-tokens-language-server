@@ -3,6 +3,7 @@ package uriutil
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -271,4 +272,163 @@ func TestSpecificCases(t *testing.T) {
 		got := URIToPath("file:///home/user")
 		assert.Equal(t, "/home/user", got)
 	})
+}
+
+// TestUriFallback tests the fallback URI parsing function
+func TestUriFallback(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		posix    bool
+		windows  bool
+	}{
+		{
+			name:     "file:/// with three slashes",
+			input:    "file:///home/user",
+			expected: "/home/user",
+			posix:    true,
+		},
+		{
+			name:     "file:// with two slashes",
+			input:    "file://home/user",
+			expected: "home/user",
+			posix:    true,
+		},
+		{
+			name:     "Windows drive with file:///",
+			input:    "file:///C:/test",
+			expected: "C:" + string(filepath.Separator) + "test",
+		},
+		{
+			name:     "Windows drive with file://",
+			input:    "file://C:/test",
+			expected: "C:" + string(filepath.Separator) + "test",
+		},
+		{
+			name:     "Plain path without file:// prefix",
+			input:    "/home/user",
+			expected: "/home/user",
+			posix:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.windows && runtime.GOOS != "windows" {
+				t.Skip("Windows-only test")
+			}
+			if tt.posix && runtime.GOOS == "windows" {
+				t.Skip("POSIX-only test")
+			}
+
+			got := uriFallback(tt.input)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+// TestURIToPath_InvalidURIs tests URIToPath with invalid URIs that trigger fallback
+func TestURIToPath_InvalidURIs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		posix    bool
+		windows  bool
+	}{
+		{
+			name:  "Invalid URI scheme",
+			input: "http://example.com/path",
+			posix: true,
+		},
+		{
+			name:  "Malformed URI",
+			input: "file://:invalid",
+		},
+		{
+			name:  "URI with query params",
+			input: "file:///path?query=value",
+			posix: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.windows && runtime.GOOS != "windows" {
+				t.Skip("Windows-only test")
+			}
+			if tt.posix && runtime.GOOS == "windows" {
+				t.Skip("POSIX-only test")
+			}
+
+			// Should not panic, should return some path (even if not meaningful)
+			result := URIToPath(tt.input)
+			assert.NotEmpty(t, result)
+		})
+	}
+}
+
+// TestPathToURI_RelativePaths tests PathToURI with relative paths
+func TestPathToURI_RelativePaths(t *testing.T) {
+	// Test that relative paths are converted to absolute
+	relPath := "test.txt"
+	uri := PathToURI(relPath)
+
+	// Should start with file:///
+	assert.True(t, strings.HasPrefix(uri, "file:///") || strings.HasPrefix(uri, "file://"),
+		"URI should start with file://")
+
+	// Should not contain the relative path as-is
+	// (it should be expanded to absolute)
+	assert.NotEqual(t, "file:///test.txt", uri)
+}
+
+// TestPathToURI_EmptyPath tests PathToURI with empty path
+func TestPathToURI_EmptyPath(t *testing.T) {
+	uri := PathToURI("")
+	// Should not panic and should return a valid URI
+	assert.True(t, strings.HasPrefix(uri, "file://"))
+}
+
+// TestURIToPath_EmptyURI tests URIToPath with empty URI
+func TestURIToPath_EmptyURI(t *testing.T) {
+	path := URIToPath("")
+	// Should not panic
+	assert.NotNil(t, path)
+}
+
+// TestPathToURI_SpecialCharacters tests various special characters
+func TestPathToURI_SpecialCharacters(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX-only test")
+	}
+
+	tests := []struct {
+		name     string
+		input    string
+		contains string // What the encoded URI should contain
+	}{
+		{
+			name:     "Path with hash",
+			input:    "/home/user/#tag",
+			contains: "%23",
+		},
+		{
+			name:     "Path with question mark",
+			input:    "/home/user/?query",
+			contains: "%3F",
+		},
+		{
+			name:     "Path with percent",
+			input:    "/home/user/100%",
+			contains: "%25",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri := PathToURI(tt.input)
+			assert.Contains(t, uri, tt.contains, "URI should contain percent-encoded character")
+		})
+	}
 }

@@ -3,9 +3,9 @@ package lsp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"bennypowers.dev/dtls/lsp/types"
 )
@@ -148,63 +148,6 @@ func (s *Server) loadTokenFilesAutoDiscover() error {
 	return s.LoadTokenFiles(tokenConfig)
 }
 
-// discoverTokenFiles discovers token files using auto-discovery patterns
-// Returns a map of file paths to prefixes (empty string prefix for auto-discovered files)
-func (s *Server) discoverTokenFiles() (map[string]string, error) {
-	if s.rootPath == "" {
-		return nil, nil
-	}
-
-	tokenConfig := TokenFileConfig{
-		RootDir: s.rootPath,
-		Patterns: []string{
-			"**/tokens.json",
-			"**/*.tokens.json",
-			"**/design-tokens.json",
-		},
-		Prefix: s.config.Prefix,
-	}
-
-	discovered := make(map[string]string)
-
-	// Walk the directory tree to find matching files
-	err := filepath.Walk(tokenConfig.RootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // Skip errors, continue walking
-		}
-
-		// Skip directories and hidden files/directories
-		if info.IsDir() {
-			if strings.HasPrefix(info.Name(), ".") {
-				return filepath.SkipDir
-			}
-			// Skip node_modules and other common directories
-			if info.Name() == "node_modules" || info.Name() == "dist" || info.Name() == "build" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		// Check if file matches any pattern
-		relPath, err := filepath.Rel(tokenConfig.RootDir, path)
-		if err != nil {
-			return nil
-		}
-
-		for _, pattern := range tokenConfig.Patterns {
-			matched, err := matchGlobPattern(pattern, relPath)
-			if err == nil && matched {
-				discovered[path] = tokenConfig.Prefix
-				break
-			}
-		}
-
-		return nil
-	})
-
-	return discovered, err
-}
-
 // reloadPreviouslyLoadedFiles reloads all files that were previously loaded
 // This is used for programmatic loading (e.g., tests using LoadTokenFile)
 // For auto-discovery mode, LoadTokensFromConfig handles re-discovery directly
@@ -215,9 +158,7 @@ func (s *Server) reloadPreviouslyLoadedFiles() error {
 	// Copy loadedFiles to avoid holding the lock during file I/O
 	s.loadedFilesMu.RLock()
 	filesToReload := make(map[string]*TokenFileOptions, len(s.loadedFiles))
-	for path, opts := range s.loadedFiles {
-		filesToReload[path] = opts
-	}
+	maps.Copy(filesToReload, s.loadedFiles)
 	s.loadedFilesMu.RUnlock()
 
 	// Reload each previously loaded file with its original options (prefix, groupMarkers)
