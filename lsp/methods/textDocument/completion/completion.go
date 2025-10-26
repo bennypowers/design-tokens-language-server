@@ -1,4 +1,4 @@
-package lsp
+package completion
 
 import (
 	"fmt"
@@ -13,9 +13,6 @@ import (
 )
 
 // handleCompletion handles the textDocument/completion request
-func (s *Server) handleCompletion(context *glsp.Context, params *protocol.CompletionParams) (any, error) {
-	return Completion(s, context, params)
-}
 
 // Completion handles the textDocument/completion request
 func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol.CompletionParams) (any, error) {
@@ -92,9 +89,6 @@ func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol
 }
 
 // handleCompletionResolve handles the completionItem/resolve request
-func (s *Server) handleCompletionResolve(context *glsp.Context, params *protocol.CompletionItem) (*protocol.CompletionItem, error) {
-	return CompletionResolve(s, context, params)
-}
 
 // CompletionResolve resolves a completion item with additional details
 func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *protocol.CompletionItem) (*protocol.CompletionItem, error) {

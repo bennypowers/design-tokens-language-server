@@ -1,4 +1,4 @@
-package lsp
+package hover
 
 import (
 	"fmt"

@@ -1,10 +1,12 @@
-package lsp
+package codeaction_test
 
 import (
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp"
+	codeaction "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -135,8 +137,8 @@ func TestRangesIntersect(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := rangesIntersect(tt.a, tt.b)
-			assert.Equal(t, tt.expected, result, "rangesIntersect(%+v, %+v)", tt.a, tt.b)
+			result := codeaction.RangesIntersect(tt.a, tt.b)
+			assert.Equal(t, tt.expected, result, "codeaction.RangesIntersect(%+v, %+v)", tt.a, tt.b)
 		})
 	}
 }
@@ -304,7 +306,7 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			value, safe := formatTokenValueForCSS(tt.token)
+			value, safe := codeaction.FormatTokenValueForCSS(tt.token)
 			assert.Equal(t, tt.expectedSafe, safe, "safety check mismatch")
 			if safe {
 				assert.Equal(t, tt.expectedValue, value, "formatted value mismatch")
@@ -361,7 +363,7 @@ func TestFormatFontFamilyValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			value, safe := formatFontFamilyValue(tt.input)
+			value, safe := codeaction.FormatFontFamilyValue(tt.input)
 			require.Equal(t, tt.expectedSafe, safe)
 			assert.Equal(t, tt.expectedValue, value)
 		})
@@ -434,7 +436,7 @@ func TestCreateFixFallbackAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := createFixFallbackAction(tt.uri, tt.varCall, tt.token, tt.diagnostics)
+			action := codeaction.CreateFixFallbackAction(tt.uri, tt.varCall, tt.token, tt.diagnostics)
 
 			if tt.expectNil {
 				assert.Nil(t, action)
@@ -507,7 +509,7 @@ func TestCreateAddFallbackAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := createAddFallbackAction(tt.uri, tt.varCall, tt.token)
+			action := codeaction.CreateAddFallbackAction(tt.uri, tt.varCall, tt.token)
 
 			if tt.expectNil {
 				assert.Nil(t, action)
@@ -522,7 +524,7 @@ func TestCreateAddFallbackAction(t *testing.T) {
 
 // TestCreateDeprecatedTokenActions tests the createDeprecatedTokenActions helper
 func TestCreateDeprecatedTokenActions(t *testing.T) {
-	s, err := NewServer()
+	s, err := lsp.NewServer()
 	require.NoError(t, err)
 
 	// Add test tokens
@@ -538,8 +540,8 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 		Value: "#ff0000",
 		Type:  "color",
 	}
-	s.tokens.Add(oldToken)
-	s.tokens.Add(newToken)
+	s.TokenManager().Add(oldToken)
+	s.TokenManager().Add(newToken)
 
 	tests := []struct {
 		name               string
@@ -665,11 +667,11 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 		Value: "16px",
 		Type:  "dimension",
 	}
-	s.tokens.Add(spacingBase)
+	s.TokenManager().Add(spacingBase)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actions := createDeprecatedTokenActions(s, tt.uri, tt.varCall, tt.token, tt.diagnostics)
+			actions := codeaction.CreateDeprecatedTokenActions(s, tt.uri, tt.varCall, tt.token, tt.diagnostics)
 			assert.Len(t, actions, tt.expectedNumActions)
 
 			// Check action title if specified

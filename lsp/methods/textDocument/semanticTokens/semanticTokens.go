@@ -1,4 +1,4 @@
-package lsp
+package semantictokens
 
 import (
 	"fmt"
@@ -25,9 +25,6 @@ type SemanticTokenIntermediate struct {
 }
 
 // handleSemanticTokensFull handles the textDocument/semanticTokens/full request
-func (s *Server) handleSemanticTokensFull(context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
-	return SemanticTokensFull(s, context, params)
-}
 
 // SemanticTokensFull handles the textDocument/semanticTokens/full request
 func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
@@ -45,7 +42,7 @@ func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *
 		return nil, nil
 	}
 
-	intermediateTokens := getSemanticTokensForDocument(ctx, doc)
+	intermediateTokens := GetSemanticTokensForDocument(ctx, doc)
 
 	// Encode tokens using delta encoding
 	data := encodeSemanticTokens(intermediateTokens)
@@ -113,9 +110,9 @@ func stringLengthUTF16(s string) int {
 	return utf16Count
 }
 
-// getSemanticTokensForDocument extracts semantic tokens from a document
+// GetSemanticTokensForDocument extracts semantic tokens from a document
 // Positions and lengths are in UTF-16 code units (LSP default encoding)
-func getSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Document) []SemanticTokenIntermediate {
+func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Document) []SemanticTokenIntermediate {
 	content := doc.Content()
 	tokens := []SemanticTokenIntermediate{}
 
@@ -175,9 +172,6 @@ func getSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Docume
 }
 
 // handleSemanticTokensDelta handles the textDocument/semanticTokens/full/delta request
-func (s *Server) handleSemanticTokensDelta(context *glsp.Context, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
-	return SemanticTokensDelta(s, context, params)
-}
 
 // SemanticTokensDelta handles the textDocument/semanticTokens/delta request
 func SemanticTokensDelta(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
@@ -188,7 +182,7 @@ func SemanticTokensDelta(ctx types.ServerContext, context *glsp.Context, params 
 	}
 
 	// Get current semantic tokens
-	intermediateTokens := getSemanticTokensForDocument(ctx, doc)
+	intermediateTokens := GetSemanticTokensForDocument(ctx, doc)
 	newData := encodeSemanticTokens(intermediateTokens)
 
 	// For a full implementation, we would:
@@ -220,9 +214,6 @@ func SemanticTokensDelta(ctx types.ServerContext, context *glsp.Context, params 
 }
 
 // handleSemanticTokensRange handles the textDocument/semanticTokens/range request
-func (s *Server) handleSemanticTokensRange(context *glsp.Context, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
-	return SemanticTokensRange(s, context, params)
-}
 
 // SemanticTokensRange handles the textDocument/semanticTokens/range request
 func SemanticTokensRange(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
@@ -233,7 +224,7 @@ func SemanticTokensRange(ctx types.ServerContext, context *glsp.Context, params 
 	}
 
 	// Get all semantic tokens for the document
-	intermediateTokens := getSemanticTokensForDocument(ctx, doc)
+	intermediateTokens := GetSemanticTokensForDocument(ctx, doc)
 
 	// Filter tokens to only those within the requested range
 	filteredTokens := []SemanticTokenIntermediate{}

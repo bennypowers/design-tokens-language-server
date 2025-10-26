@@ -1,4 +1,4 @@
-package lsp
+package references
 
 import (
 	"fmt"
@@ -11,9 +11,6 @@ import (
 )
 
 // handleReferences handles the textDocument/references request
-func (s *Server) handleReferences(context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	return References(s, context, params)
-}
 
 // References returns all references to a token
 func References(ctx types.ServerContext, context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
@@ -113,4 +110,20 @@ func References(ctx types.ServerContext, context *glsp.Context, params *protocol
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d references\n", len(locations))
 	return locations, nil
+}
+func isPositionInVarCall(pos protocol.Position, varCall *css.VarCall) bool {
+	// Check if position is within the var call range
+	if pos.Line < varCall.Range.Start.Line || pos.Line > varCall.Range.End.Line {
+		return false
+	}
+
+	if pos.Line == varCall.Range.Start.Line && pos.Character < varCall.Range.Start.Character {
+		return false
+	}
+
+	if pos.Line == varCall.Range.End.Line && pos.Character >= varCall.Range.End.Character {
+		return false
+	}
+
+	return true
 }

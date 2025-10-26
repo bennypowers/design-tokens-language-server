@@ -5,6 +5,13 @@ import (
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/completion"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/definition"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
+	documentcolor "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/documentColor"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/hover"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/references"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -34,7 +41,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 			},
 		}
 		// Should not panic, returns nil for non-existent document
-		result, err := Hover(server, ctx, params)
+		result, err := hover.Hover(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -46,14 +53,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := Completion(server, ctx, params)
+		result, err := completion.Completion(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("handleCompletionResolve", func(t *testing.T) {
 		item := &protocol.CompletionItem{Label: "test"}
-		result, err := CompletionResolve(server, ctx, item)
+		result, err := completion.CompletionResolve(server, ctx, item)
 		assert.NoError(t, err)
 		assert.Equal(t, item, result) // Returns same item if no data
 	})
@@ -65,7 +72,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := Definition(server, ctx, params)
+		result, err := definition.Definition(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -77,7 +84,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := References(server, ctx, params)
+		result, err := references.References(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -90,14 +97,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				End:   protocol.Position{Line: 0, Character: 5},
 			},
 		}
-		result, err := CodeAction(server, ctx, params)
+		result, err := codeaction.CodeAction(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("handleCodeActionResolve", func(t *testing.T) {
 		action := &protocol.CodeAction{Title: "test"}
-		result, err := CodeActionResolve(server, ctx, action)
+		result, err := codeaction.CodeActionResolve(server, ctx, action)
 		assert.NoError(t, err)
 		assert.Equal(t, action, result)
 	})
@@ -106,7 +113,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		params := &protocol.DocumentColorParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
-		result, err := DocumentColor(server, ctx, params)
+		result, err := documentcolor.DocumentColor(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -121,16 +128,16 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Alpha: 1.0,
 			},
 		}
-		result, err := ColorPresentation(server, ctx, params)
+		result, err := documentcolor.ColorPresentation(server, ctx, params)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, result) // Returns format options even without document
 	})
 
 	t.Run("handleDocumentDiagnostic", func(t *testing.T) {
-		params := &DocumentDiagnosticParams{
+		params := &diagnostic.DocumentDiagnosticParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
-		result, err := server.handleDocumentDiagnostic(ctx, params)
+		result, err := diagnostic.DocumentDiagnostic(server, ctx, params)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 	})

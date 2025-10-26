@@ -3,7 +3,7 @@ design-tokens-lsp
 bin
 extensions/**/*.wasm
 extensions/vscode/README.md
-coverage
+coverage/**/*
 *.out
 **/*.db
 **/cargo-target

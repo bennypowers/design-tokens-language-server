@@ -1,4 +1,4 @@
-package lsp
+package definition
 
 import (
 	"fmt"
@@ -11,9 +11,6 @@ import (
 )
 
 // handleDefinition handles the textDocument/definition request
-func (s *Server) handleDefinition(context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
-	return Definition(s, context, params)
-}
 
 // Definition returns the definition location for a token
 func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol.DefinitionParams) (any, error) {

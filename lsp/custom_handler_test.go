@@ -6,6 +6,7 @@ import (
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -29,7 +30,7 @@ func TestCustomHandler_DiagnosticMethod(t *testing.T) {
 	}
 
 	t.Run("textDocument/diagnostic with valid params", func(t *testing.T) {
-		params := DocumentDiagnosticParams{
+		params := diagnostic.DocumentDiagnosticParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
 		paramsJSON, err := json.Marshal(params)

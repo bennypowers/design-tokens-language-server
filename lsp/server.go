@@ -7,6 +7,14 @@ import (
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/completion"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/definition"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
+	documentcolor "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/documentColor"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/hover"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/references"
+	semantictokens "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/semanticTokens"
 	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -48,16 +56,16 @@ func NewServer() (*Server, error) {
 		TextDocumentDidOpen:             notify(s, "textDocument/didOpen", DidOpen),
 		TextDocumentDidChange:           notify(s, "textDocument/didChange", DidChange),
 		TextDocumentDidClose:            notify(s, "textDocument/didClose", DidClose),
-		TextDocumentHover:               method(s, "textDocument/hover", Hover),
-		TextDocumentCompletion:          method(s, "textDocument/completion", Completion),
-		CompletionItemResolve:           method(s, "completionItem/resolve", CompletionResolve),
-		TextDocumentDefinition:          method(s, "textDocument/definition", Definition),
-		TextDocumentReferences:          method(s, "textDocument/references", References),
-		TextDocumentColor:               method(s, "textDocument/documentColor", DocumentColor),
-		TextDocumentColorPresentation:   method(s, "textDocument/colorPresentation", ColorPresentation),
-		TextDocumentCodeAction:          method(s, "textDocument/codeAction", CodeAction),
-		CodeActionResolve:               method(s, "codeAction/resolve", CodeActionResolve),
-		TextDocumentSemanticTokensFull:  method(s, "textDocument/semanticTokens/full", SemanticTokensFull),
+		TextDocumentHover:               method(s, "textDocument/hover", hover.Hover),
+		TextDocumentCompletion:          method(s, "textDocument/completion", completion.Completion),
+		CompletionItemResolve:           method(s, "completionItem/resolve", completion.CompletionResolve),
+		TextDocumentDefinition:          method(s, "textDocument/definition", definition.Definition),
+		TextDocumentReferences:          method(s, "textDocument/references", references.References),
+		TextDocumentColor:               method(s, "textDocument/documentColor", documentcolor.DocumentColor),
+		TextDocumentColorPresentation:   method(s, "textDocument/colorPresentation", documentcolor.ColorPresentation),
+		TextDocumentCodeAction:          method(s, "textDocument/codeAction", codeaction.CodeAction),
+		CodeActionResolve:               method(s, "codeAction/resolve", codeaction.CodeActionResolve),
+		TextDocumentSemanticTokensFull:  method(s, "textDocument/semanticTokens/full", semantictokens.SemanticTokensFull),
 	}
 
 	// WORKAROUND: Wrap with custom handler to support LSP 3.17 features
@@ -92,12 +100,12 @@ func (s *Server) DidOpen(uri, languageID string, version int, content string) er
 
 // Hover provides hover information (exposed for testing)
 func (s *Server) Hover(params *protocol.HoverParams) (*protocol.Hover, error) {
-	return Hover(s, nil, params)
+	return hover.Hover(s, nil, params)
 }
 
 // GetDefinition provides definition information (exposed for testing)
 func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Location, error) {
-	result, err := Definition(s, nil, params)
+	result, err := definition.Definition(s, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +120,12 @@ func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Lo
 
 // GetReferences provides reference information (exposed for testing)
 func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	return References(s, nil, params)
+	return references.References(s, nil, params)
 }
 
 // GetCompletions provides completion information (exposed for testing)
 func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.CompletionList, error) {
-	result, err := Completion(s, nil, params)
+	result, err := completion.Completion(s, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -132,22 +140,22 @@ func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.Co
 
 // ResolveCompletion provides completion resolve information (exposed for testing)
 func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
-	return CompletionResolve(s, nil, item)
+	return completion.CompletionResolve(s, nil, item)
 }
 
 // DocumentColor provides color information (exposed for testing)
 func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
-	return DocumentColor(s, nil, params)
+	return documentcolor.DocumentColor(s, nil, params)
 }
 
 // ColorPresentation provides color presentations (exposed for testing)
 func (s *Server) ColorPresentation(params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
-	return ColorPresentation(s, nil, params)
+	return documentcolor.ColorPresentation(s, nil, params)
 }
 
 // CodeAction provides code actions (exposed for testing)
 func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeAction, error) {
-	result, err := CodeAction(s, nil, params)
+	result, err := codeaction.CodeAction(s, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +171,7 @@ func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeA
 
 // CodeActionResolve resolves a code action (exposed for testing)
 func (s *Server) CodeActionResolve(action *protocol.CodeAction) (*protocol.CodeAction, error) {
-	return CodeActionResolve(s, nil, action)
+	return codeaction.CodeActionResolve(s, nil, action)
 }
 
 // Initialize handles the initialize request (exposed for testing)
@@ -231,7 +239,7 @@ func (s *Server) handleInitialize(context *glsp.Context, params *protocol.Initia
 			Full: boolPtr(true),
 		},
 		// LSP 3.17: Pull diagnostics support
-		"diagnosticProvider": DiagnosticOptions{
+		"diagnosticProvider": diagnostic.DiagnosticOptions{
 			InterFileDependencies: false,
 			WorkspaceDiagnostics:  false,
 		},
@@ -413,6 +421,24 @@ func (s *Server) GLSPContext() *glsp.Context {
 // SetGLSPContext sets the GLSP context
 func (s *Server) SetGLSPContext(ctx *glsp.Context) {
 	s.context = ctx
+}
+
+// PublishDiagnostics publishes diagnostics for a document
+func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
+	fmt.Fprintf(os.Stderr, "[DTLS] Publishing diagnostics for: %s\n", uri)
+
+	diagnostics, err := diagnostic.GetDiagnostics(s, uri)
+	if err != nil {
+		return err
+	}
+
+	// Publish diagnostics to the client
+	context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
+		URI:         uri,
+		Diagnostics: diagnostics,
+	})
+
+	return nil
 }
 
 func boolPtr(b bool) *bool {

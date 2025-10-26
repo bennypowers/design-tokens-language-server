@@ -3,6 +3,7 @@ package lsp
 import (
 	"encoding/json"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -26,13 +27,13 @@ func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod bool, 
 	// This method doesn't exist in protocol.Handler (LSP 3.16), so we handle it manually
 	if context.Method == "textDocument/diagnostic" {
 		// Parse params manually since protocol.Handler doesn't know about this method
-		var params DocumentDiagnosticParams
+		var params diagnostic.DocumentDiagnosticParams
 		if err := json.Unmarshal(context.Params, &params); err != nil {
 			return nil, true, false, err
 		}
 
 		// Call our handler
-		result, err := h.server.handleDocumentDiagnostic(context, &params)
+		result, err := diagnostic.DocumentDiagnostic(h.server, context, &params)
 		if err != nil {
 			return nil, true, true, err
 		}

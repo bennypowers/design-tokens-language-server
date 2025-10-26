@@ -1,4 +1,4 @@
-package lsp
+package codeaction
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 // formatTokenValueForCSS formats a token value for safe insertion into CSS.
 // Returns the formatted value and a boolean indicating if the value is safe to use.
 // Some token types cannot be safely converted to CSS fallback values and should be skipped.
-func formatTokenValueForCSS(token *tokens.Token) (string, bool) {
+func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 	value := token.Value
 	tokenType := strings.ToLower(token.Type)
 
@@ -50,7 +50,7 @@ func formatTokenValueForCSS(token *tokens.Token) (string, bool) {
 
 	// Font family needs special handling (quoting for values with spaces/special chars)
 	if tokenType == "fontfamily" {
-		return formatFontFamilyValue(value)
+		return FormatFontFamilyValue(value)
 	}
 
 	// Check if this is a safe type
@@ -101,7 +101,7 @@ func formatTokenValueForCSS(token *tokens.Token) (string, bool) {
 
 // formatFontFamilyValue formats a font family value for CSS.
 // Returns the formatted value and whether it's safe to use.
-func formatFontFamilyValue(value string) (string, bool) {
+func FormatFontFamilyValue(value string) (string, bool) {
 	value = strings.TrimSpace(value)
 
 	// If it's already quoted, use as-is (assume it's properly formatted)
@@ -176,9 +176,6 @@ func isNamedColor(value string) bool {
 }
 
 // handleCodeAction handles the textDocument/codeAction request
-func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
-	return CodeAction(s, context, params)
-}
 
 // CodeAction handles the textDocument/codeAction request
 func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
@@ -211,7 +208,7 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 	// Check each var() call in the requested range
 	for _, varCall := range result.VarCalls {
 		// Check if var call intersects with the requested range
-		if !rangesIntersect(params.Range, protocol.Range{
+		if !RangesIntersect(params.Range, protocol.Range{
 			Start: protocol.Position{
 				Line:      varCall.Range.Start.Line,
 				Character: varCall.Range.Start.Character,
@@ -232,7 +229,7 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 
 		// Create code actions for deprecated tokens
 		if token.Deprecated {
-			actions = append(actions, createDeprecatedTokenActions(ctx, uri, *varCall, token, params.Context.Diagnostics)...)
+			actions = append(actions, CreateDeprecatedTokenActions(ctx, uri, *varCall, token, params.Context.Diagnostics)...)
 		}
 
 		// Create code actions for incorrect fallback
@@ -241,13 +238,13 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 			tokenValue := token.Value
 
 			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
-				if action := createFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics); action != nil {
+				if action := CreateFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics); action != nil {
 					actions = append(actions, *action)
 				}
 			}
 		} else if token.Type == "color" || token.Type == "dimension" {
 			// Suggest adding fallback for color and dimension tokens
-			if action := createAddFallbackAction(uri, *varCall, token); action != nil {
+			if action := CreateAddFallbackAction(uri, *varCall, token); action != nil {
 				actions = append(actions, *action)
 			}
 		}
@@ -259,9 +256,6 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 }
 
 // handleCodeActionResolve handles the codeAction/resolve request
-func (s *Server) handleCodeActionResolve(context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
-	return CodeActionResolve(s, context, action)
-}
 
 // CodeActionResolve handles the codeAction/resolve request
 func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
@@ -274,9 +268,9 @@ func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *p
 
 // createFixFallbackAction creates a code action to fix an incorrect fallback value.
 // Returns nil if the token value cannot be safely formatted for CSS.
-func createFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
+func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
 	// Format the token value for safe CSS insertion
-	formattedValue, safe := formatTokenValueForCSS(token)
+	formattedValue, safe := FormatTokenValueForCSS(token)
 	if !safe {
 		// Skip this code action - value cannot be safely inserted
 		return nil
@@ -331,9 +325,9 @@ func createFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 
 // createAddFallbackAction creates a code action to add a fallback value.
 // Returns nil if the token value cannot be safely formatted for CSS.
-func createAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
+func CreateAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
 	// Format the token value for safe CSS insertion
-	formattedValue, safe := formatTokenValueForCSS(token)
+	formattedValue, safe := FormatTokenValueForCSS(token)
 	if !safe {
 		// Skip this code action - value cannot be safely inserted
 		return nil
@@ -370,7 +364,7 @@ func createAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 }
 
 // createDeprecatedTokenActions creates code actions for deprecated tokens
-func createDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) []protocol.CodeAction {
+func CreateDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) []protocol.CodeAction {
 	var actions []protocol.CodeAction
 
 	// Find the matching diagnostic
@@ -461,7 +455,7 @@ func createDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall c
 
 	// Add a generic "Remove deprecated token" action (shows the value inline)
 	// Only offer this if the value can be safely formatted for CSS
-	formattedValue, safe := formatTokenValueForCSS(token)
+	formattedValue, safe := FormatTokenValueForCSS(token)
 	if safe {
 		kind := protocol.CodeActionKindQuickFix
 		removeAction := protocol.CodeAction{
@@ -500,7 +494,7 @@ func createDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall c
 
 // rangesIntersect checks if two ranges intersect
 // Ranges are treated as half-open intervals [start, end) where the end position is exclusive
-func rangesIntersect(a, b protocol.Range) bool {
+func RangesIntersect(a, b protocol.Range) bool {
 	// Check if a ends before or at the start of b (no intersection)
 	if a.End.Line < b.Start.Line {
 		return false
@@ -518,4 +512,16 @@ func rangesIntersect(a, b protocol.Range) bool {
 	}
 
 	return true
+}
+func isCSSValueSemanticallyEquivalent(a, b string) bool {
+	// Normalize: remove all whitespace and convert to lowercase
+	normalize := func(s string) string {
+		s = strings.ReplaceAll(s, " ", "")
+		s = strings.ReplaceAll(s, "\t", "")
+		s = strings.ReplaceAll(s, "\n", "")
+		s = strings.ToLower(s)
+		return s
+	}
+
+	return normalize(a) == normalize(b)
 }

@@ -1,4 +1,4 @@
-package lsp
+package diagnostic
 
 import (
 	"fmt"
@@ -15,9 +15,6 @@ import (
 //
 // This is an LSP 3.17 feature. Since glsp v0.2.2 only supports LSP 3.16, this handler
 // is called via CustomHandler which intercepts the method before it reaches protocol.Handler.
-func (s *Server) handleDocumentDiagnostic(context *glsp.Context, params *DocumentDiagnosticParams) (any, error) {
-	return DocumentDiagnostic(s, context, params)
-}
 
 // DocumentDiagnostic handles the textDocument/diagnostic request (pull diagnostics)
 func DocumentDiagnostic(ctx types.ServerContext, context *glsp.Context, params *DocumentDiagnosticParams) (any, error) {
@@ -124,22 +121,6 @@ func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic,
 }
 
 // PublishDiagnostics publishes diagnostics for a document
-func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Publishing diagnostics for: %s\n", uri)
-
-	diagnostics, err := GetDiagnostics(s, uri)
-	if err != nil {
-		return err
-	}
-
-	// Publish diagnostics to the client
-	context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
-		URI:         uri,
-		Diagnostics: diagnostics,
-	})
-
-	return nil
-}
 
 // isCSSValueSemanticallyEquivalent checks if two CSS values are semantically equivalent
 // Ignores whitespace and case differences

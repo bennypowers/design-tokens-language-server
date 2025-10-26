@@ -1,4 +1,4 @@
-package lsp
+package completion
 
 import (
 	"testing"

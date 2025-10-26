@@ -1,4 +1,4 @@
-package lsp
+package documentcolor
 
 import (
 	"fmt"
@@ -13,9 +13,6 @@ import (
 )
 
 // handleDocumentColor handles the textDocument/documentColor request
-func (s *Server) handleDocumentColor(context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
-	return DocumentColor(s, context, params)
-}
 
 // DocumentColor handles the textDocument/documentColor request
 func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
@@ -120,9 +117,6 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 }
 
 // handleColorPresentation handles the textDocument/colorPresentation request
-func (s *Server) handleColorPresentation(context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
-	return ColorPresentation(s, context, params)
-}
 
 // ColorPresentation handles the textDocument/colorPresentation request
 func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
