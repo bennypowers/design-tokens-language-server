@@ -84,7 +84,7 @@ func NewServer() (*Server, error) {
 	}
 
 	// Create GLSP server with debug enabled for stdio
-	s.glspServer = server.NewServer(customHandler, "design-tokens-lsp", true)
+	s.glspServer = server.NewServer(customHandler, "design-tokens-language-server", true)
 
 	return s, nil
 }

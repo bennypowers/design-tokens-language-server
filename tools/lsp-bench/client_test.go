@@ -487,7 +487,7 @@ func TestParseMemoryStatus(t *testing.T) {
 	}{
 		{
 			name: "valid VmRSS in kB",
-			statusContent: `Name:	design-tokens-lsp
+			statusContent: `Name:	design-tokens-language-server
 Umask:	0022
 State:	S (sleeping)
 VmPeak:	   12345 kB

@@ -41,7 +41,7 @@ func NewLSPClient(t *testing.T) *LSPClient {
 	projectRoot := filepath.Join(cwd, "..", "..")
 
 	// Build with -cover flag to enable coverage for integration tests (Go 1.20+)
-	cmd := exec.Command("go", "build", "-cover", "-o", "/tmp/design-tokens-lsp-test", "./cmd/design-tokens-lsp")
+	cmd := exec.Command("go", "build", "-cover", "-o", "/tmp/design-tokens-lsp-test", "./cmd/design-tokens-language-server")
 	cmd.Dir = projectRoot
 	output, buildErr := cmd.CombinedOutput()
 	require.NoError(t, buildErr, "Failed to build server: %s", string(output))

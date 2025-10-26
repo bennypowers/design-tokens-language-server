@@ -11,9 +11,9 @@ Migrating from TypeScript/Deno to Go to leverage better performance, simpler dep
 ### Core Components
 
 ```
-design-tokens-lsp/
+design-tokens-language-server/
 ├── cmd/
-│   └── design-tokens-lsp/
+│   └── design-tokens-language-server/
 │       └── main.go                    # Entry point
 ├── internal/
 │   ├── server/
@@ -490,10 +490,10 @@ echo "Baseline results saved to baseline-results.json"
 echo "Running Go implementation benchmarks..."
 
 # Build the Go LSP server
-go build -o design-tokens-lsp ./cmd/design-tokens-lsp
+go build -o design-tokens-language-server ./cmd/design-tokens-language-server
 
 # Run same benchmarks
-./tools/lsp-bench/lsp-bench "./design-tokens-lsp" \
+./tools/lsp-bench/lsp-bench "./design-tokens-language-server" \
     --testdata ./test/testdata \
     --output go-results.json
 
@@ -794,7 +794,7 @@ tree-sitter query test/queries/highlights.scm
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "program": "${workspaceFolder}/cmd/design-tokens-lsp",
+      "program": "${workspaceFolder}/cmd/design-tokens-language-server",
       "env": {
         "DTLS_LOG_LEVEL": "debug"
       }
@@ -946,7 +946,7 @@ cat baseline-results.json
 ### Step 2: Set Up Go Project
 ```bash
 # Initialize Go module (using Go 1.25.3)
-go mod init github.com/your-org/design-tokens-lsp
+go mod init github.com/your-org/design-tokens-language-server
 
 # Install dependencies
 go get github.com/tliron/glsp
@@ -956,7 +956,7 @@ go get github.com/lucasb-eyer/go-colorful
 go get github.com/stretchr/testify
 
 # Set up project structure
-mkdir -p cmd/design-tokens-lsp
+mkdir -p cmd/design-tokens-language-server
 mkdir -p internal/{server,lsp,documents,tokens,workspace,parser}
 mkdir -p test/{goldens,testdata,integration}
 mkdir -p tools/{lsp-bench,benchmark}

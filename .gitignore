@@ -1,5 +1,4 @@
 node_modules
-design-tokens-lsp
 bin
 extensions/**/*.wasm
 extensions/vscode/README.md
@@ -18,3 +17,4 @@ vendor/**/*.c
 report.xml
 tools/lsp-bench/lsp-bench
 *.test
+design-tokens-language-server

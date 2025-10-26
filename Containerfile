@@ -28,4 +28,4 @@ ENV CXX=x86_64-w64-mingw32-g++
 
 # Build script that will be executed by default
 # Allows overriding GOARCH via environment variable
-CMD ["sh", "-c", "go build -o dist/bin/design-tokens-language-server-${GOARCH:-amd64}-pc-windows-msvc.exe ./cmd/design-tokens-lsp"]
+CMD ["sh", "-c", "go build -o dist/bin/design-tokens-language-server-${GOARCH:-amd64}-pc-windows-msvc.exe ./cmd/design-tokens-language-server"]

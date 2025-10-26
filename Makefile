@@ -20,7 +20,7 @@ clean:
 ## Build native binary
 build:
 	@mkdir -p $(DIST_DIR)
-	go build $(GO_BUILD_FLAGS) -o $(DIST_DIR)/$(BINARY_NAME) ./cmd/design-tokens-lsp
+	go build $(GO_BUILD_FLAGS) -o $(DIST_DIR)/$(BINARY_NAME) ./cmd/design-tokens-language-server
 	@echo "Built native binary: $(DIST_DIR)/$(BINARY_NAME)"
 
 ## Install to ~/.local/bin (for local development)
@@ -75,7 +75,7 @@ linux-x64:
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 		go build $(GO_BUILD_FLAGS) \
 		-o $(DIST_DIR)/$(BINARY_NAME)-x86_64-unknown-linux-gnu \
-		./cmd/design-tokens-lsp
+		./cmd/design-tokens-language-server
 	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-x86_64-unknown-linux-gnu"
 
 ## Linux ARM64 (CGO cross-compilation - requires gcc-aarch64-linux-gnu)
@@ -89,7 +89,7 @@ linux-arm64:
 		CC=aarch64-linux-gnu-gcc \
 		go build $(GO_BUILD_FLAGS) \
 		-o $(DIST_DIR)/$(BINARY_NAME)-aarch64-unknown-linux-gnu \
-		./cmd/design-tokens-lsp
+		./cmd/design-tokens-language-server
 	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-aarch64-unknown-linux-gnu"
 
 ## macOS x86_64 (requires macOS host or osxcross)
@@ -102,7 +102,7 @@ darwin-x64:
 		CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
 			go build $(GO_BUILD_FLAGS) \
 			-o $(DIST_DIR)/$(BINARY_NAME)-x86_64-apple-darwin \
-			./cmd/design-tokens-lsp; \
+			./cmd/design-tokens-language-server; \
 		echo "Built: $(DIST_DIR)/$(BINARY_NAME)-x86_64-apple-darwin"; \
 	fi
 
@@ -116,7 +116,7 @@ darwin-arm64:
 		CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
 			go build $(GO_BUILD_FLAGS) \
 			-o $(DIST_DIR)/$(BINARY_NAME)-aarch64-apple-darwin \
-			./cmd/design-tokens-lsp; \
+			./cmd/design-tokens-language-server; \
 		echo "Built: $(DIST_DIR)/$(BINARY_NAME)-aarch64-apple-darwin"; \
 	fi
 
@@ -148,7 +148,7 @@ windows-x64: build-windows-cc-image
 		$(WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
 			-o dist/bin/$(BINARY_NAME)-win-x64.exe \
-			./cmd/design-tokens-lsp
+			./cmd/design-tokens-language-server
 	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-win-x64.exe"
 
 ## Windows ARM64 (requires Podman - experimental, MinGW ARM64 support varies)
@@ -164,7 +164,7 @@ windows-arm64: build-windows-cc-image
 		$(WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
 			-o dist/bin/$(BINARY_NAME)-win-arm64.exe \
-			./cmd/design-tokens-lsp || { \
+			./cmd/design-tokens-language-server || { \
 		echo "Warning: Windows ARM64 build failed - MinGW ARM64 toolchain may not be fully supported"; \
 		echo "This is expected for experimental targets and does not indicate a problem."; \
 		true; \
