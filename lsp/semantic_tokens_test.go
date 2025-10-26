@@ -13,12 +13,12 @@ import (
 // loadFixture loads a test fixture file from test/fixtures/
 func loadFixture(t *testing.T, path string) string {
 	t.Helper()
-	// Get the project root (go up from internal/lsp/)
+	// Get the project root (go up from lsp/)
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	projectRoot := filepath.Join(wd, "..", "..")
+	projectRoot := filepath.Join(wd, "..")
 	fixturePath := filepath.Join(projectRoot, "test", "fixtures", path)
 	content, err := os.ReadFile(fixturePath)
 	if err != nil {

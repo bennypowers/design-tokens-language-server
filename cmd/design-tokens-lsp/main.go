@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/lsp"
+	"github.com/bennypowers/design-tokens-language-server/lsp"
 )
 
 func main() {

@@ -76,7 +76,7 @@ func (s *Server) RunStdio() error {
 	return s.glspServer.RunStdio()
 }
 
-// TokenCount returns the number of loaded tokens (for testing)
+// TokenCount returns the number of loaded tokens (exposed for testing)
 func (s *Server) TokenCount() int {
 	return s.tokens.Count()
 }
@@ -84,11 +84,6 @@ func (s *Server) TokenCount() int {
 // Initialize handles the initialize request (exposed for testing)
 func (s *Server) Initialize(context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
 	return s.handleInitialize(context, params)
-}
-
-// Initialized handles the initialized notification (exposed for testing)
-func (s *Server) Initialized(context *glsp.Context, params *protocol.InitializedParams) error {
-	return s.handleInitialized(context, params)
 }
 
 // Shutdown handles the shutdown request (exposed for testing)
