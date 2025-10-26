@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -25,10 +26,15 @@ type SemanticTokenIntermediate struct {
 
 // handleSemanticTokensFull handles the textDocument/semanticTokens/full request
 func (s *Server) handleSemanticTokensFull(context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
+	return SemanticTokensFull(s, context, params)
+}
+
+// SemanticTokensFull handles the textDocument/semanticTokens/full request
+func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
 	uri := params.TextDocument.URI
 	fmt.Fprintf(os.Stderr, "[DTLS] Semantic tokens requested for: %s\n", uri)
 
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, fmt.Errorf("document not found: %s", uri)
 	}
@@ -39,7 +45,7 @@ func (s *Server) handleSemanticTokensFull(context *glsp.Context, params *protoco
 		return nil, nil
 	}
 
-	intermediateTokens := s.getSemanticTokensForDocument(doc)
+	intermediateTokens := getSemanticTokensForDocument(ctx, doc)
 
 	// Encode tokens using delta encoding
 	data := encodeSemanticTokens(intermediateTokens)
@@ -109,7 +115,7 @@ func stringLengthUTF16(s string) int {
 
 // getSemanticTokensForDocument extracts semantic tokens from a document
 // Positions and lengths are in UTF-16 code units (LSP default encoding)
-func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []SemanticTokenIntermediate {
+func getSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Document) []SemanticTokenIntermediate {
 	content := doc.Content()
 	tokens := []SemanticTokenIntermediate{}
 
@@ -133,7 +139,7 @@ func (s *Server) getSemanticTokensForDocument(doc *documents.Document) []Semanti
 			tokenName := strings.ReplaceAll(reference, ".", "-")
 
 			// Check if this reference exists in our token manager
-			if s.tokens.Get(tokenName) == nil {
+			if ctx.Token(tokenName) == nil {
 				continue
 			}
 
@@ -177,7 +183,7 @@ func (s *Server) handleSemanticTokensDelta(context *glsp.Context, params *protoc
 	}
 
 	// Get current semantic tokens
-	intermediateTokens := s.getSemanticTokensForDocument(doc)
+	intermediateTokens := getSemanticTokensForDocument(s, doc)
 	newData := encodeSemanticTokens(intermediateTokens)
 
 	// For a full implementation, we would:
@@ -217,7 +223,7 @@ func (s *Server) handleSemanticTokensRange(context *glsp.Context, params *protoc
 	}
 
 	// Get all semantic tokens for the document
-	intermediateTokens := s.getSemanticTokensForDocument(doc)
+	intermediateTokens := getSemanticTokensForDocument(s, doc)
 
 	// Filter tokens to only those within the requested range
 	filteredTokens := []SemanticTokenIntermediate{}

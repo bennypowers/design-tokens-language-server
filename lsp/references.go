@@ -5,24 +5,25 @@ import (
 	"os"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // handleReferences handles the textDocument/references request
 func (s *Server) handleReferences(context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	return s.GetReferences(params)
+	return References(s, context, params)
 }
 
-// GetReferences returns all references to a token
-func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Location, error) {
+// References returns all references to a token
+func References(ctx types.ServerContext, context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] References requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -43,7 +44,7 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 	// Find which token is at the cursor
 	var targetTokenName string
 	for _, varCall := range result.VarCalls {
-		if s.isPositionInVarCall(position, varCall) {
+		if isPositionInVarCall(position, varCall) {
 			targetTokenName = varCall.TokenName
 			break
 		}
@@ -54,7 +55,7 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 	}
 
 	// Look up the token
-	token := s.tokens.Get(targetTokenName)
+	token := ctx.Token(targetTokenName)
 	if token == nil {
 		return nil, nil
 	}
@@ -64,7 +65,7 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 	// Find all references across all CSS documents
 	var locations []protocol.Location
 
-	for _, document := range s.documents.GetAll() {
+	for _, document := range ctx.AllDocuments() {
 		if document.LanguageID() != "css" {
 			continue
 		}

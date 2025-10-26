@@ -136,7 +136,7 @@ func TestGetSemanticTokensForDocument(t *testing.T) {
 			doc := documents.NewDocument("file:///test.json", tt.langID, 1, tt.content)
 
 			// Get semantic tokens
-			result := s.getSemanticTokensForDocument(doc)
+			result := getSemanticTokensForDocument(s, doc)
 
 			// Check result count
 			if len(result) != len(tt.expected) {
@@ -199,7 +199,7 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	s.documents.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
 
 	// Get intermediate tokens first
-	intermediateTokens := s.getSemanticTokensForDocument(doc)
+	intermediateTokens := getSemanticTokensForDocument(s, doc)
 
 	// Expected intermediate tokens
 	// Line 1: "color" at char 13, "brand" at char 19, "primary" at char 25

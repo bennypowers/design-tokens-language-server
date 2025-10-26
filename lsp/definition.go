@@ -5,24 +5,25 @@ import (
 	"os"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // handleDefinition handles the textDocument/definition request
 func (s *Server) handleDefinition(context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
-	return s.GetDefinition(params)
+	return Definition(s, context, params)
 }
 
-// GetDefinition returns the definition location for a token
-func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Location, error) {
+// Definition returns the definition location for a token
+func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Definition requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -42,9 +43,9 @@ func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Lo
 
 	// Find var() call at the cursor position
 	for _, varCall := range result.VarCalls {
-		if s.isPositionInVarCall(position, varCall) {
+		if isPositionInVarCall(position, varCall) {
 			// Look up the token
-			token := s.tokens.Get(varCall.TokenName)
+			token := ctx.Token(varCall.TokenName)
 			if token == nil {
 				// Unknown token
 				return nil, nil
@@ -75,7 +76,7 @@ func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Lo
 }
 
 // isPositionInVarCall checks if a position is within a var() call
-func (s *Server) isPositionInVarCall(pos protocol.Position, varCall *css.VarCall) bool {
+func isPositionInVarCall(pos protocol.Position, varCall *css.VarCall) bool {
 	// Check if position is within the var call range
 	if pos.Line < varCall.Range.Start.Line || pos.Line > varCall.Range.End.Line {
 		return false

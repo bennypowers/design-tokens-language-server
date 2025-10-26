@@ -95,6 +95,26 @@ func (s *Server) Hover(params *protocol.HoverParams) (*protocol.Hover, error) {
 	return Hover(s, nil, params)
 }
 
+// GetDefinition provides definition information (exposed for testing)
+func (s *Server) GetDefinition(params *protocol.DefinitionParams) ([]protocol.Location, error) {
+	result, err := Definition(s, nil, params)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	if locations, ok := result.([]protocol.Location); ok {
+		return locations, nil
+	}
+	return nil, nil
+}
+
+// GetReferences provides reference information (exposed for testing)
+func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Location, error) {
+	return References(s, nil, params)
+}
+
 // DocumentColor provides color information (exposed for testing)
 func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	return s.handleDocumentColor(nil, params)
@@ -416,13 +436,9 @@ func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *pro
 	return ctx.(*Server).handleCompletionResolve(context, item)
 }
 
-func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
-	return ctx.(*Server).handleDefinition(context, params)
-}
+// Definition is defined in definition.go
 
-func References(ctx types.ServerContext, context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	return ctx.(*Server).handleReferences(context, params)
-}
+// References is defined in references.go
 
 func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	return ctx.(*Server).handleDocumentColor(context, params)
@@ -440,6 +456,4 @@ func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *p
 	return ctx.(*Server).handleCodeActionResolve(context, action)
 }
 
-func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
-	return ctx.(*Server).handleSemanticTokensFull(context, params)
-}
+// SemanticTokensFull is defined in semantic_tokens.go

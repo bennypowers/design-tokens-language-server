@@ -10,8 +10,6 @@ import (
 
 // TestIsPositionInVarCall tests the isPositionInVarCall function with half-open range semantics [start, end)
 func TestIsPositionInVarCall(t *testing.T) {
-	server := &Server{} // Minimal server for method call
-
 	tests := []struct {
 		name     string
 		pos      protocol.Position
@@ -82,7 +80,7 @@ func TestIsPositionInVarCall(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := server.isPositionInVarCall(tt.pos, tt.varCall)
+			result := isPositionInVarCall(tt.pos, tt.varCall)
 			assert.Equal(t, tt.expected, result, "isPositionInVarCall(%+v, %+v)", tt.pos, tt.varCall)
 		})
 	}
