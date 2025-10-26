@@ -1,103 +1,22 @@
 package codeaction
 
 import (
-	"strings"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
+	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// mockServerContext implements types.ServerContext for testing
-type mockServerContext struct {
-	docs   *documents.Manager
-	tokens *tokens.Manager
-}
-
-func (m *mockServerContext) Document(uri string) *documents.Document {
-	return m.docs.Get(uri)
-}
-
-func (m *mockServerContext) DocumentManager() *documents.Manager {
-	return m.docs
-}
-
-func (m *mockServerContext) AllDocuments() []*documents.Document {
-	return m.docs.GetAll()
-}
-
-func (m *mockServerContext) Token(name string) *tokens.Token {
-	return m.tokens.Get(name)
-}
-
-func (m *mockServerContext) TokenManager() *tokens.Manager {
-	return m.tokens
-}
-
-func (m *mockServerContext) TokenCount() int {
-	return m.tokens.Count()
-}
-
-func (m *mockServerContext) RootURI() string {
-	return "file:///workspace"
-}
-
-func (m *mockServerContext) RootPath() string {
-	return "/workspace"
-}
-
-func (m *mockServerContext) SetRootURI(uri string) {}
-
-func (m *mockServerContext) SetRootPath(path string) {}
-
-func (m *mockServerContext) LoadTokensFromConfig() error {
-	return nil
-}
-
-func (m *mockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
-	return nil
-}
-
-func (m *mockServerContext) GLSPContext() *glsp.Context {
-	return nil
-}
-
-func (m *mockServerContext) SetGLSPContext(ctx *glsp.Context) {}
-
-
-
-func (m *mockServerContext) GetConfig() types.ServerConfig {
-	return types.DefaultConfig()
-}
-
-func (m *mockServerContext) SetConfig(config types.ServerConfig) {}
-
-func (m *mockServerContext) IsTokenFile(path string) bool {
-	return false
-}
-
-func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
-	return nil
-}
-
-func newMockServerContext() *mockServerContext {
-	return &mockServerContext{
-		docs:   documents.NewManager(),
-		tokens: tokens.NewManager(),
-	}
-}
-
 func TestCodeAction_IncorrectFallback(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	// Add a color token
-	ctx.tokens.Add(&tokens.Token{
+	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -106,7 +25,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 	uri := "file:///test.css"
 	// Incorrect fallback: token is #0000ff but fallback is #ff0000
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -124,23 +43,34 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 	require.True(t, ok)
 	require.NotEmpty(t, actions)
 
-	// Should have a fix fallback action
-	foundFix := false
-	for _, action := range actions {
-		if strings.HasPrefix(action.Title, "Fix fallback value") {
-			foundFix = true
+	// Should have a fix fallback action with the correct value
+	var fixAction *protocol.CodeAction
+	for i := range actions {
+		if actions[i].Title == "Fix fallback value to '#0000ff'" {
+			fixAction = &actions[i]
 			break
 		}
 	}
-	assert.True(t, foundFix, "Should have a fix fallback action")
+	require.NotNil(t, fixAction, "Should have 'Fix fallback value to '#0000ff'' action")
+
+	// Verify it's a quick fix
+	assert.NotNil(t, fixAction.Kind)
+	assert.Equal(t, protocol.CodeActionKindQuickFix, *fixAction.Kind)
+
+	// Verify the edit contains the correct replacement
+	require.NotNil(t, fixAction.Edit)
+	require.NotNil(t, fixAction.Edit.Changes)
+	edits := fixAction.Edit.Changes[uri]
+	require.Len(t, edits, 1)
+	assert.Contains(t, edits[0].NewText, "var(--color-primary, #0000ff)")
 }
 
 func TestCodeAction_AddFallback(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	// Add a color token
-	ctx.tokens.Add(&tokens.Token{
+	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -149,7 +79,7 @@ func TestCodeAction_AddFallback(t *testing.T) {
 	uri := "file:///test.css"
 	// No fallback provided
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -167,24 +97,31 @@ func TestCodeAction_AddFallback(t *testing.T) {
 	require.True(t, ok)
 	require.NotEmpty(t, actions)
 
-	// Should suggest adding a fallback
-	foundAdd := false
-	for _, action := range actions {
-		if strings.HasPrefix(action.Title, "Add fallback value") {
-			foundAdd = true
+	// Should suggest adding a fallback with the correct value
+	var addAction *protocol.CodeAction
+	for i := range actions {
+		if actions[i].Title == "Add fallback value '#0000ff'" {
+			addAction = &actions[i]
 			break
 		}
 	}
-	assert.True(t, foundAdd, "Should suggest adding fallback")
+	require.NotNil(t, addAction, "Should have 'Add fallback value '#0000ff'' action")
+
+	// Verify the edit contains the correct value
+	require.NotNil(t, addAction.Edit)
+	require.NotNil(t, addAction.Edit.Changes)
+	edits := addAction.Edit.Changes[uri]
+	require.Len(t, edits, 1)
+	assert.Contains(t, edits[0].NewText, "var(--color-primary, #0000ff)")
 }
 
 func TestCodeAction_NonCSSDocument(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.docs.DidOpen(uri, "json", 1, jsonContent)
+	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -202,7 +139,7 @@ func TestCodeAction_NonCSSDocument(t *testing.T) {
 }
 
 func TestCodeAction_DocumentNotFound(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
@@ -221,10 +158,10 @@ func TestCodeAction_DocumentNotFound(t *testing.T) {
 }
 
 func TestCodeAction_OutsideRange(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
-	ctx.tokens.Add(&tokens.Token{
+	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -232,7 +169,7 @@ func TestCodeAction_OutsideRange(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Request range that doesn't intersect with var()
 	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
@@ -253,7 +190,7 @@ func TestCodeAction_OutsideRange(t *testing.T) {
 }
 
 func TestCodeActionResolve_ReturnsActionUnchanged(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	action := &protocol.CodeAction{

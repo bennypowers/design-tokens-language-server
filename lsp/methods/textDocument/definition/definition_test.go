@@ -1,103 +1,23 @@
 package definition
 
 import (
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// mockServerContext implements types.ServerContext for testing
-type mockServerContext struct {
-	docs   *documents.Manager
-	tokens *tokens.Manager
-}
-
-func (m *mockServerContext) Document(uri string) *documents.Document {
-	return m.docs.Get(uri)
-}
-
-func (m *mockServerContext) DocumentManager() *documents.Manager {
-	return m.docs
-}
-
-func (m *mockServerContext) AllDocuments() []*documents.Document {
-	return m.docs.GetAll()
-}
-
-func (m *mockServerContext) Token(name string) *tokens.Token {
-	return m.tokens.Get(name)
-}
-
-func (m *mockServerContext) TokenManager() *tokens.Manager {
-	return m.tokens
-}
-
-func (m *mockServerContext) TokenCount() int {
-	return m.tokens.Count()
-}
-
-func (m *mockServerContext) RootURI() string {
-	return "file:///workspace"
-}
-
-func (m *mockServerContext) RootPath() string {
-	return "/workspace"
-}
-
-func (m *mockServerContext) SetRootURI(uri string) {}
-
-func (m *mockServerContext) SetRootPath(path string) {}
-
-func (m *mockServerContext) LoadTokensFromConfig() error {
-	return nil
-}
-
-func (m *mockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
-	return nil
-}
-
-func (m *mockServerContext) GLSPContext() *glsp.Context {
-	return nil
-}
-
-func (m *mockServerContext) SetGLSPContext(ctx *glsp.Context) {}
-
-
-
-func (m *mockServerContext) GetConfig() types.ServerConfig {
-	return types.DefaultConfig()
-}
-
-func (m *mockServerContext) SetConfig(config types.ServerConfig) {}
-
-func (m *mockServerContext) IsTokenFile(path string) bool {
-	return false
-}
-
-func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
-	return nil
-}
-
-func newMockServerContext() *mockServerContext {
-	return &mockServerContext{
-		docs:   documents.NewManager(),
-		tokens: tokens.NewManager(),
-	}
-}
-
 func TestDefinition_CSSVariableReference(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	// Add a token with definition URI
-	ctx.tokens.Add(&tokens.Token{
+	ctx.TokenManager().Add(&tokens.Token{
 		Name:          "color.primary",
 		Value:         "#ff0000",
 		Type:          "color",
@@ -107,7 +27,7 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -127,12 +47,12 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 }
 
 func TestDefinition_UnknownToken(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--unknown-token); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -146,18 +66,18 @@ func TestDefinition_UnknownToken(t *testing.T) {
 }
 
 func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	// Add token without DefinitionURI
-	ctx.tokens.Add(&tokens.Token{
+	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -171,10 +91,10 @@ func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 }
 
 func TestDefinition_OutsideVarCall(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
-	ctx.tokens.Add(&tokens.Token{
+	ctx.TokenManager().Add(&tokens.Token{
 		Name:          "color.primary",
 		Value:         "#ff0000",
 		DefinitionURI: "file:///workspace/tokens.json",
@@ -183,7 +103,7 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.docs.DidOpen(uri, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Position outside the var() call
 	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
@@ -198,12 +118,12 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 }
 
 func TestDefinition_NonCSSDocument(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.docs.DidOpen(uri, "json", 1, jsonContent)
+	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -217,7 +137,7 @@ func TestDefinition_NonCSSDocument(t *testing.T) {
 }
 
 func TestDefinition_DocumentNotFound(t *testing.T) {
-	ctx := newMockServerContext()
+	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{

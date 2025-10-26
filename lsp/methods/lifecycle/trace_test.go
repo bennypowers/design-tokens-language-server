@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -10,7 +11,7 @@ import (
 
 func TestSetTrace(t *testing.T) {
 	t.Run("handles off trace level", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.SetTraceParams{
@@ -22,7 +23,7 @@ func TestSetTrace(t *testing.T) {
 	})
 
 	t.Run("handles messages trace level", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.SetTraceParams{
@@ -34,7 +35,7 @@ func TestSetTrace(t *testing.T) {
 	})
 
 	t.Run("handles verbose trace level", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.SetTraceParams{
@@ -46,7 +47,7 @@ func TestSetTrace(t *testing.T) {
 	})
 
 	t.Run("handles invalid trace level gracefully", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.SetTraceParams{

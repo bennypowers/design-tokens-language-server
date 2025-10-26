@@ -3,13 +3,14 @@ package lifecycle
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
 )
 
 func TestShutdown(t *testing.T) {
 	t.Run("completes successfully", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		err := Shutdown(ctx, glspCtx)
@@ -17,7 +18,7 @@ func TestShutdown(t *testing.T) {
 	})
 
 	t.Run("cleans up CSS parser pool", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		// Call shutdown
@@ -28,7 +29,7 @@ func TestShutdown(t *testing.T) {
 	})
 
 	t.Run("can be called multiple times safely", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		// Call shutdown multiple times

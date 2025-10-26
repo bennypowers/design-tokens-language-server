@@ -1,108 +1,18 @@
 package lifecycle
 
 import (
-	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"testing"
 
-	"github.com/bennypowers/design-tokens-language-server/internal/documents"
-	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// mockServerContext implements types.ServerContext for testing
-type mockServerContext struct {
-	rootURI  string
-	rootPath string
-	docs     *documents.Manager
-	tokens   *tokens.Manager
-	context  *glsp.Context
-}
-
-func (m *mockServerContext) Document(uri string) *documents.Document {
-	return m.docs.Get(uri)
-}
-
-func (m *mockServerContext) DocumentManager() *documents.Manager {
-	return m.docs
-}
-
-func (m *mockServerContext) AllDocuments() []*documents.Document {
-	return m.docs.GetAll()
-}
-
-func (m *mockServerContext) Token(name string) *tokens.Token {
-	return m.tokens.Get(name)
-}
-
-func (m *mockServerContext) TokenManager() *tokens.Manager {
-	return m.tokens
-}
-
-func (m *mockServerContext) TokenCount() int {
-	return m.tokens.Count()
-}
-
-func (m *mockServerContext) RootURI() string {
-	return m.rootURI
-}
-
-func (m *mockServerContext) RootPath() string {
-	return m.rootPath
-}
-
-func (m *mockServerContext) SetRootURI(uri string) {
-	m.rootURI = uri
-}
-
-func (m *mockServerContext) SetRootPath(path string) {
-	m.rootPath = path
-}
-
-func (m *mockServerContext) LoadTokensFromConfig() error {
-	return nil
-}
-
-func (m *mockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
-	return nil
-}
-
-func (m *mockServerContext) GLSPContext() *glsp.Context {
-	return m.context
-}
-
-func (m *mockServerContext) SetGLSPContext(ctx *glsp.Context) {
-	m.context = ctx
-}
-
-
-
-func (m *mockServerContext) GetConfig() types.ServerConfig {
-	return types.DefaultConfig()
-}
-
-func (m *mockServerContext) SetConfig(config types.ServerConfig) {}
-
-func (m *mockServerContext) IsTokenFile(path string) bool {
-	return false
-}
-
-func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
-	return nil
-}
-
-func newMockServerContext() *mockServerContext {
-	return &mockServerContext{
-		docs:   documents.NewManager(),
-		tokens: tokens.NewManager(),
-	}
-}
-
 func TestInitialize(t *testing.T) {
 	t.Run("sets root URI from params.RootURI", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 		rootURI := "file:///workspace"
 
@@ -120,7 +30,7 @@ func TestInitialize(t *testing.T) {
 	})
 
 	t.Run("sets root path from params.RootPath", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 		rootPath := "/workspace"
 
@@ -138,7 +48,7 @@ func TestInitialize(t *testing.T) {
 	})
 
 	t.Run("returns server capabilities", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.InitializeParams{}
@@ -159,7 +69,7 @@ func TestInitialize(t *testing.T) {
 	})
 
 	t.Run("capabilities include all LSP features", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.InitializeParams{}
@@ -199,7 +109,7 @@ func TestInitialize(t *testing.T) {
 	})
 
 	t.Run("handles client info", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		clientVersion := "1.85.0"
@@ -219,7 +129,7 @@ func TestInitialize(t *testing.T) {
 	})
 
 	t.Run("handles nil params gracefully", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.InitializeParams{}

@@ -4,45 +4,15 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// mockServerContextWithCallbacks extends mockServerContext with callbacks for testing
-type mockServerContextWithCallbacks struct {
-	*mockServerContext
-	loadTokensFunc        func() error
-	registerWatchersFunc  func(*glsp.Context) error
-	loadTokensCalled      bool
-	registerWatchersCalled bool
-}
-
-func (m *mockServerContextWithCallbacks) LoadTokensFromConfig() error {
-	m.loadTokensCalled = true
-	if m.loadTokensFunc != nil {
-		return m.loadTokensFunc()
-	}
-	return nil
-}
-
-func (m *mockServerContextWithCallbacks) RegisterFileWatchers(ctx *glsp.Context) error {
-	m.registerWatchersCalled = true
-	if m.registerWatchersFunc != nil {
-		return m.registerWatchersFunc(ctx)
-	}
-	return nil
-}
-
-func newMockWithCallbacks() *mockServerContextWithCallbacks {
-	return &mockServerContextWithCallbacks{
-		mockServerContext: newMockServerContext(),
-	}
-}
-
 func TestInitialized(t *testing.T) {
 	t.Run("stores GLSP context", func(t *testing.T) {
-		ctx := newMockServerContext()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 
 		params := &protocol.InitializedParams{}
@@ -55,28 +25,28 @@ func TestInitialized(t *testing.T) {
 	})
 
 	t.Run("calls LoadTokensFromConfig", func(t *testing.T) {
-		ctx := newMockWithCallbacks()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 		params := &protocol.InitializedParams{}
 
 		err := Initialized(ctx, glspCtx, params)
 		assert.NoError(t, err)
-		assert.True(t, ctx.loadTokensCalled, "LoadTokensFromConfig should be called")
+		assert.True(t, ctx.LoadTokensCalled, "LoadTokensFromConfig should be called")
 	})
 
 	t.Run("calls RegisterFileWatchers", func(t *testing.T) {
-		ctx := newMockWithCallbacks()
+		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
 		params := &protocol.InitializedParams{}
 
 		err := Initialized(ctx, glspCtx, params)
 		assert.NoError(t, err)
-		assert.True(t, ctx.registerWatchersCalled, "RegisterFileWatchers should be called")
+		assert.True(t, ctx.RegisterWatchersCalled, "RegisterFileWatchers should be called")
 	})
 
 	t.Run("continues on LoadTokensFromConfig error", func(t *testing.T) {
-		ctx := newMockWithCallbacks()
-		ctx.loadTokensFunc = func() error {
+		ctx := testutil.NewMockServerContext()
+		ctx.LoadTokensFunc = func() error {
 			return errors.New("load error")
 		}
 
@@ -86,12 +56,12 @@ func TestInitialized(t *testing.T) {
 		// Should not fail, just log warning
 		err := Initialized(ctx, glspCtx, params)
 		assert.NoError(t, err)
-		assert.True(t, ctx.loadTokensCalled)
+		assert.True(t, ctx.LoadTokensCalled)
 	})
 
 	t.Run("continues on RegisterFileWatchers error", func(t *testing.T) {
-		ctx := newMockWithCallbacks()
-		ctx.registerWatchersFunc = func(*glsp.Context) error {
+		ctx := testutil.NewMockServerContext()
+		ctx.RegisterWatchersFunc = func(*glsp.Context) error {
 			return errors.New("watcher error")
 		}
 
@@ -101,6 +71,6 @@ func TestInitialized(t *testing.T) {
 		// Should not fail, just log warning
 		err := Initialized(ctx, glspCtx, params)
 		assert.NoError(t, err)
-		assert.True(t, ctx.registerWatchersCalled)
+		assert.True(t, ctx.RegisterWatchersCalled)
 	})
 }
