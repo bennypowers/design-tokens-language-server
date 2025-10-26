@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/lsp"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/lifecycle"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -38,7 +39,7 @@ func TestServerInitialization(t *testing.T) {
 			},
 		}
 
-		result, err := server.Initialize(ctx, initParams)
+		result, err := lifecycle.Initialize(server, ctx, initParams)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -68,7 +69,7 @@ func TestServerInitialization(t *testing.T) {
 			},
 		}
 
-		result, err := server.Initialize(ctx, initParams)
+		result, err := lifecycle.Initialize(server, ctx, initParams)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 	})
@@ -109,11 +110,11 @@ func TestServerShutdown(t *testing.T) {
 	ctx := &glsp.Context{}
 
 	// Shutdown should not error
-	err = server.Shutdown(ctx)
+	err = lifecycle.Shutdown(server, ctx)
 	assert.NoError(t, err)
 
 	// Multiple shutdowns should be safe
-	err = server.Shutdown(ctx)
+	err = lifecycle.Shutdown(server, ctx)
 	assert.NoError(t, err)
 }
 
@@ -132,7 +133,7 @@ func TestSetTrace(t *testing.T) {
 	}
 	for _, trace := range traces {
 		t.Run(string(trace), func(t *testing.T) {
-			err := server.SetTrace(ctx, &protocol.SetTraceParams{
+			err := lifecycle.SetTrace(server, ctx, &protocol.SetTraceParams{
 				Value: trace,
 			})
 			assert.NoError(t, err)

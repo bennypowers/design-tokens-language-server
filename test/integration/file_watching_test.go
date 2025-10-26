@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/hover"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/workspace"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,11 +49,18 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
 
 	// Open CSS document
 	cssURI := "file://" + cssPath
-	err = server.DidOpen(cssURI, "css", 1, cssContent)
+	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        cssURI,
+			LanguageID: "css",
+			Version:    1,
+			Text:       cssContent,
+		},
+	})
 	require.NoError(t, err)
 
 	// Test initial hover
-	hover1, err := server.Hover(&protocol.HoverParams{
+	hover1, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: cssURI},
 			Position:     protocol.Position{Line: 1, Character: 15},
@@ -79,7 +89,7 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
 
 	// Simulate file change notification
 	tokensURI := "file://" + tokensPath
-	err = server.HandleDidChangeWatchedFiles(&protocol.DidChangeWatchedFilesParams{
+	err = workspace.DidChangeWatchedFiles(server, nil, &protocol.DidChangeWatchedFilesParams{
 		Changes: []protocol.FileEvent{
 			{
 				URI:  tokensURI,
@@ -90,7 +100,7 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test hover after update
-	hover2, err := server.Hover(&protocol.HoverParams{
+	hover2, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: cssURI},
 			Position:     protocol.Position{Line: 1, Character: 15},
@@ -135,11 +145,18 @@ func TestFileWatching_TokenFileDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	cssURI := "file://" + cssPath
-	err = server.DidOpen(cssURI, "css", 1, cssContent)
+	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        cssURI,
+			LanguageID: "css",
+			Version:    1,
+			Text:       cssContent,
+		},
+	})
 	require.NoError(t, err)
 
 	// Verify token exists initially
-	hover1, err := server.Hover(&protocol.HoverParams{
+	hover1, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: cssURI},
 			Position:     protocol.Position{Line: 1, Character: 15},
@@ -154,7 +171,7 @@ func TestFileWatching_TokenFileDeleted(t *testing.T) {
 
 	// Simulate file deletion notification
 	tokensURI := "file://" + tokensPath
-	err = server.HandleDidChangeWatchedFiles(&protocol.DidChangeWatchedFilesParams{
+	err = workspace.DidChangeWatchedFiles(server, nil, &protocol.DidChangeWatchedFilesParams{
 		Changes: []protocol.FileEvent{
 			{
 				URI:  tokensURI,
@@ -165,7 +182,7 @@ func TestFileWatching_TokenFileDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	// After deletion, hover should show "Unknown token"
-	hover2, err := server.Hover(&protocol.HoverParams{
+	hover2, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: cssURI},
 			Position:     protocol.Position{Line: 1, Character: 15},
@@ -225,7 +242,14 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	cssURI := "file://" + cssPath
-	err = server.DidOpen(cssURI, "css", 1, cssContent)
+	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        cssURI,
+			LanguageID: "css",
+			Version:    1,
+			Text:       cssContent,
+		},
+	})
 	require.NoError(t, err)
 
 	// Update only the spacing file
@@ -242,7 +266,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
 
 	// Simulate file change notification
 	tokens2URI := "file://" + tokens2Path
-	err = server.HandleDidChangeWatchedFiles(&protocol.DidChangeWatchedFilesParams{
+	err = workspace.DidChangeWatchedFiles(server, nil, &protocol.DidChangeWatchedFilesParams{
 		Changes: []protocol.FileEvent{
 			{
 				URI:  tokens2URI,
@@ -253,7 +277,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test that spacing value updated
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: cssURI},
 			Position:     protocol.Position{Line: 2, Character: 17},
@@ -300,7 +324,7 @@ func TestFileWatching_NonTokenFileIgnored(t *testing.T) {
 
 	// Simulate change to non-token file
 	pkgURI := "file://" + pkgPath
-	err = server.HandleDidChangeWatchedFiles(&protocol.DidChangeWatchedFilesParams{
+	err = workspace.DidChangeWatchedFiles(server, nil, &protocol.DidChangeWatchedFilesParams{
 		Changes: []protocol.FileEvent{
 			{
 				URI:  pkgURI,
@@ -348,7 +372,7 @@ func TestFileWatching_YmlExtension(t *testing.T) {
 
 			// Simulate file change to .yml file
 			tokensURI := "file://" + tokensPath
-			err = server.HandleDidChangeWatchedFiles(&protocol.DidChangeWatchedFilesParams{
+			err = workspace.DidChangeWatchedFiles(server, nil, &protocol.DidChangeWatchedFilesParams{
 				Changes: []protocol.FileEvent{
 					{
 						URI:  tokensURI,
