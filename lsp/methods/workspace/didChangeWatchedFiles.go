@@ -2,10 +2,9 @@ package workspace
 
 import (
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 
+	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
 	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -21,7 +20,7 @@ func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, param
 
 	for _, change := range params.Changes {
 		uri := change.URI
-		path := uriToPath(uri)
+		path := uriutil.URIToPath(uri)
 		fmt.Fprintf(os.Stderr, "[DTLS] File change: %s (type: %d)\n", path, change.Type)
 
 		// Check if this is a token file we're watching
@@ -67,34 +66,4 @@ func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, param
 	}
 
 	return nil
-}
-
-// uriToPath converts a URI to a file path
-func uriToPath(uri string) string {
-	// Parse the URI
-	u, err := url.Parse(uri)
-	if err != nil {
-		return uri
-	}
-
-	// Return the path component
-	path := u.Path
-
-	// On Windows, file:///C:/path becomes /C:/path, so we need to trim the leading slash
-	if len(path) > 2 && path[0] == '/' && path[2] == ':' {
-		path = path[1:]
-	}
-
-	// Decode percent-encoded characters
-	decoded, err := url.PathUnescape(path)
-	if err != nil {
-		return path
-	}
-
-	// Convert forward slashes to backslashes on Windows if needed
-	if strings.Contains(decoded, ":") {
-		decoded = strings.ReplaceAll(decoded, "/", "\\")
-	}
-
-	return decoded
 }

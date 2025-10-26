@@ -111,41 +111,6 @@ func matchGlobPattern(pattern, path string) (bool, error) {
 	return doublestar.Match(pattern, normalizedPath)
 }
 
-// pathToURI converts a file path to a file:// URI
-func pathToURI(path string) string {
-	// Convert to absolute path
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		absPath = path
-	}
-
-	// Convert to forward slashes
-	absPath = filepath.ToSlash(absPath)
-
-	// Add file:// prefix
-	if !strings.HasPrefix(absPath, "/") {
-		absPath = "/" + absPath
-	}
-
-	return "file://" + absPath
-}
-
-// uriToPath converts a file:// URI to a file path
-func uriToPath(uri string) string {
-	// Remove file:// prefix
-	path := strings.TrimPrefix(uri, "file://")
-
-	// Convert forward slashes to OS-specific separators
-	path = filepath.FromSlash(path)
-
-	// On Windows, remove leading slash from /C:/path
-	if len(path) > 2 && path[0] == filepath.Separator && path[2] == ':' {
-		path = path[1:]
-	}
-
-	return path
-}
-
 // ReloadTokens clears and reloads all token files
 func (s *Server) ReloadTokens(config TokenFileConfig) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Reloading all tokens\n")

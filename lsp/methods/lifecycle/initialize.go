@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
 	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
@@ -23,11 +24,11 @@ func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol
 	if params.RootURI != nil {
 		ctx.SetRootURI(*params.RootURI)
 		// Convert URI to file path
-		ctx.SetRootPath(uriToPath(*params.RootURI))
+		ctx.SetRootPath(uriutil.URIToPath(*params.RootURI))
 		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root: %s\n", ctx.RootPath())
 	} else if params.RootPath != nil {
 		ctx.SetRootPath(*params.RootPath)
-		ctx.SetRootURI(pathToURI(*params.RootPath))
+		ctx.SetRootURI(uriutil.PathToURI(*params.RootPath))
 		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root (from rootPath): %s\n", ctx.RootPath())
 	}
 
@@ -81,23 +82,6 @@ func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol
 			Version: strPtr("1.0.0-alpha"),
 		},
 	}, nil
-}
-
-// Helper functions (copied from lsp/token_loader.go to avoid circular dependency)
-
-func pathToURI(path string) string {
-	// Simple file:// URI conversion
-	// TODO: Handle Windows paths properly
-	return "file://" + path
-}
-
-func uriToPath(uri string) string {
-	// Simple URI to path conversion
-	// Handles file:// URIs
-	if len(uri) > 7 && uri[:7] == "file://" {
-		return uri[7:]
-	}
-	return uri
 }
 
 func boolPtr(b bool) *bool {

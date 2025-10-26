@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
 	"github.com/bennypowers/design-tokens-language-server/lsp/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -165,7 +166,7 @@ func TestPathConversion(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				got := uriToPath(tt.uri)
+				got := uriutil.URIToPath(tt.uri)
 				assert.Equal(t, tt.want, got)
 			})
 		}
@@ -191,7 +192,7 @@ func TestPathConversion(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				got := pathToURI(tt.path)
+				got := uriutil.PathToURI(tt.path)
 				assert.Equal(t, tt.want, got)
 			})
 		}
@@ -204,8 +205,8 @@ func TestPathConversion(t *testing.T) {
 		}
 
 		for _, path := range paths {
-			uri := pathToURI(path)
-			got := uriToPath(uri)
+			uri := uriutil.PathToURI(path)
+			got := uriutil.URIToPath(uri)
 			assert.Equal(t, path, got, "round trip should preserve path")
 		}
 	})

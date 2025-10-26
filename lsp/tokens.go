@@ -10,6 +10,7 @@ import (
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/json"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/yaml"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
 )
 
 // LoadTokenFile loads a token file (JSON or YAML) and adds tokens to the manager
@@ -47,8 +48,8 @@ func (s *Server) loadTokenFileInternal(filePath, prefix string) error {
 		return err // Error already wrapped by parser
 	}
 
-	// Convert filepath to URI using the helper from token_loader
-	fileURI := pathToURI(filePath)
+	// Convert filepath to URI
+	fileURI := uriutil.PathToURI(filePath)
 
 	// Add all tokens to the manager
 	var errs []error
