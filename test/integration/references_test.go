@@ -3,6 +3,8 @@ package integration_test
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/references"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +18,7 @@ func TestReferencesOnVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request references - see fixture for position
-	locations, err := server.GetReferences(&protocol.ReferenceParams{
+	locations, err := references.References(server, nil, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -53,7 +55,7 @@ func TestReferencesMultipleFiles(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test2.css", "references-multi-file-2.css")
 
 	// Request references from first file - see fixture for position
-	locations, err := server.GetReferences(&protocol.ReferenceParams{
+	locations, err := references.References(server, nil, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test1.css",
@@ -90,7 +92,7 @@ func TestReferencesOutsideVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request references - see fixture for position
-	locations, err := server.GetReferences(&protocol.ReferenceParams{
+	locations, err := references.References(server, nil, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -116,7 +118,7 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request references with IncludeDeclaration
-	locations, err := server.GetReferences(&protocol.ReferenceParams{
+	locations, err := references.References(server, nil, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -142,10 +144,18 @@ func TestReferencesNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.json",
+			LanguageID: "json",
+			Version:    1,
+			Text:       `{"color": "red"}`,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request references
-	locations, err := server.GetReferences(&protocol.ReferenceParams{
+	locations, err := references.References(server, nil, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -171,10 +181,18 @@ func TestReferencesUnknownToken(t *testing.T) {
 .button {
     color: var(--unknown-token);
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request references on unknown token
-	locations, err := server.GetReferences(&protocol.ReferenceParams{
+	locations, err := references.References(server, nil, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",

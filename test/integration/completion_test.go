@@ -3,6 +3,8 @@ package integration_test
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/completion"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +18,7 @@ func TestCompletionBasic(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-context.css")
 
 	// Request completion - see fixture for position
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -29,7 +31,9 @@ func TestCompletionBasic(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, completions)
+	require.NotNil(t, result)
+	completions, ok := result.(*protocol.CompletionList)
+	require.True(t, ok)
 
 	// Should have color tokens
 	assert.GreaterOrEqual(t, len(completions.Items), 2)
@@ -51,7 +55,7 @@ func TestCompletionWithPrefix(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-prefix.css")
 
 	// Request completion - see fixture for position
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -64,7 +68,9 @@ func TestCompletionWithPrefix(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, completions)
+	require.NotNil(t, result)
+	completions, ok := result.(*protocol.CompletionList)
+	require.True(t, ok)
 
 	// Should have the prefixed token
 	assert.GreaterOrEqual(t, len(completions.Items), 1)
@@ -83,10 +89,18 @@ func TestCompletionNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.json",
+			LanguageID: "json",
+			Version:    1,
+			Text:       `{"color": "red"}`,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request completion
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -96,7 +110,7 @@ func TestCompletionNonCSSFile(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, completions)
+	assert.Nil(t, result)
 }
 
 // TestCompletionResolve tests completion item resolve
@@ -113,7 +127,7 @@ func TestCompletionResolve(t *testing.T) {
 	}
 
 	// Resolve it
-	resolved, err := server.ResolveCompletion(&item)
+	resolved, err := completion.CompletionResolve(server, nil, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 
@@ -137,7 +151,7 @@ func TestCompletionFiltering(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-filter.css")
 
 	// Request completion - see fixture for position
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -150,7 +164,9 @@ func TestCompletionFiltering(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, completions)
+	require.NotNil(t, result)
+	completions, ok := result.(*protocol.CompletionList)
+	require.True(t, ok)
 
 	// Should only have color tokens, not spacing
 	labels := make([]string, len(completions.Items))
@@ -168,7 +184,7 @@ func TestCompletionOutsideBlock(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-outside.css")
 
 	// Request completion - see fixture for position
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -182,7 +198,9 @@ func TestCompletionOutsideBlock(t *testing.T) {
 
 	require.NoError(t, err)
 	// Should return nil or empty when not in a valid completion context
-	if completions != nil {
+	if result != nil {
+		completions, ok := result.(*protocol.CompletionList)
+		require.True(t, ok)
 		assert.Len(t, completions.Items, 0)
 	}
 }
@@ -194,7 +212,7 @@ func TestCompletionSnippetFormat(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-context.css")
 
 	// Request completion - see fixture for position
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -207,7 +225,9 @@ func TestCompletionSnippetFormat(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, completions)
+	require.NotNil(t, result)
+	completions, ok := result.(*protocol.CompletionList)
+	require.True(t, ok)
 	require.GreaterOrEqual(t, len(completions.Items), 1)
 
 	// Check first item has snippet format
@@ -229,7 +249,7 @@ func TestCompletionResolveNoData(t *testing.T) {
 	}
 
 	// Resolve it - should still find the token and add documentation
-	resolved, err := server.ResolveCompletion(&item)
+	resolved, err := completion.CompletionResolve(server, nil, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	assert.Equal(t, "--color-primary", resolved.Label)
@@ -250,7 +270,7 @@ func TestCompletionResolveUnknownToken(t *testing.T) {
 	}
 
 	// Resolve it - should return unchanged without documentation
-	resolved, err := server.ResolveCompletion(&item)
+	resolved, err := completion.CompletionResolve(server, nil, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	assert.Equal(t, "--unknown-token", resolved.Label)
@@ -264,7 +284,7 @@ func TestCompletionParseError(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-parse-error.css")
 
 	// Request completion
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -278,7 +298,9 @@ func TestCompletionParseError(t *testing.T) {
 
 	require.NoError(t, err)
 	// May return nil if parsing fails completely
-	if completions != nil {
+	if result != nil {
+		completions, ok := result.(*protocol.CompletionList)
+		require.True(t, ok)
 		// Should still try to provide completions
 		assert.GreaterOrEqual(t, len(completions.Items), 0)
 	}
@@ -291,7 +313,7 @@ func TestCompletionEmptyWord(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-empty-word.css")
 
 	// Request completion at a position with no word (before semicolon)
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -304,7 +326,7 @@ func TestCompletionEmptyWord(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, completions) // Should return nil when word is empty
+	assert.Nil(t, result) // Should return nil when word is empty
 }
 
 // TestCompletionPositionOutOfBounds tests completion when position is out of bounds
@@ -314,7 +336,7 @@ func TestCompletionPositionOutOfBounds(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request completion at line that doesn't exist
-	completions, err := server.GetCompletions(&protocol.CompletionParams{
+	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -327,7 +349,7 @@ func TestCompletionPositionOutOfBounds(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, completions) // Should return nil for out of bounds position
+	assert.Nil(t, result) // Should return nil for out of bounds position
 }
 
 // TestCompletionResolveWithDeprecated tests resolving deprecated token
@@ -355,7 +377,7 @@ func TestCompletionResolveWithDeprecated(t *testing.T) {
 	}
 
 	// Resolve it
-	resolved, err := server.ResolveCompletion(&item)
+	resolved, err := completion.CompletionResolve(server, nil, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 
@@ -378,7 +400,7 @@ func TestCompletionResolveDataNotMap(t *testing.T) {
 	}
 
 	// Resolve it - should fall back to Label
-	resolved, err := server.ResolveCompletion(&item)
+	resolved, err := completion.CompletionResolve(server, nil, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	assert.Equal(t, "--color-primary", resolved.Label)

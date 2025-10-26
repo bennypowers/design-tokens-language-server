@@ -3,6 +3,7 @@ package integration_test
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
 	documentcolor "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/documentColor"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
@@ -177,7 +178,15 @@ func TestDocumentColorNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.json",
+			LanguageID: "json",
+			Version:    1,
+			Text:       `{"color": "red"}`,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request colors
 	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
@@ -201,7 +210,15 @@ func TestDocumentColorVariables(t *testing.T) {
     --color-primary: #0000ff;
     --color-secondary: #00ff00;
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request colors
 	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
@@ -234,7 +251,15 @@ func TestDocumentColorInvalidColorValue(t *testing.T) {
 	content := `.button {
     color: var(--color-invalid);
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request colors
 	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{

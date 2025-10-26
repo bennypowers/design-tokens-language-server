@@ -3,6 +3,8 @@ package integration_test
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/definition"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +18,7 @@ func TestDefinitionOnVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request definition - see fixture for position
-	locations, err := server.GetDefinition(&protocol.DefinitionParams{
+	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -31,7 +33,7 @@ func TestDefinitionOnVarCall(t *testing.T) {
 	require.NoError(t, err)
 	// Since LoadTokensFromJSON doesn't set DefinitionURI, this returns nil
 	// When loading from a file, this would return the token file location
-	assert.Nil(t, locations)
+	assert.Nil(t, result)
 }
 
 // TestDefinitionOutsideVarCall tests that definition returns nil outside var() calls
@@ -40,7 +42,7 @@ func TestDefinitionOutsideVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request definition - see fixture for position
-	locations, err := server.GetDefinition(&protocol.DefinitionParams{
+	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -53,7 +55,7 @@ func TestDefinitionOutsideVarCall(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, locations)
+	assert.Nil(t, result)
 }
 
 // TestDefinitionNonCSSFile tests that definition returns nil for non-CSS files
@@ -62,10 +64,18 @@ func TestDefinitionNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.json",
+			LanguageID: "json",
+			Version:    1,
+			Text:       `{"color": "red"}`,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request definition
-	locations, err := server.GetDefinition(&protocol.DefinitionParams{
+	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -75,7 +85,7 @@ func TestDefinitionNonCSSFile(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, locations)
+	assert.Nil(t, result)
 }
 
 // TestDefinitionUnknownToken tests definition for an unknown token
@@ -88,10 +98,18 @@ func TestDefinitionUnknownToken(t *testing.T) {
 .button {
     color: var(--unknown-token);
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request definition on unknown token
-	locations, err := server.GetDefinition(&protocol.DefinitionParams{
+	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -104,6 +122,6 @@ func TestDefinitionUnknownToken(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, locations)
+	assert.Nil(t, result)
 }
 

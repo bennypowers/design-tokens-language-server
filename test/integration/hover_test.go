@@ -3,6 +3,8 @@ package integration_test
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/hover"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +18,7 @@ func TestHoverOnVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request hover - see fixture for position
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -49,7 +51,7 @@ func TestHoverOnUnknownToken(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "unknown-token.css")
 
 	// Request hover - see fixture for position
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -78,7 +80,7 @@ func TestHoverWithPrefix(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "prefixed-var-call.css")
 
 	// Request hover - see fixture for position
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -106,7 +108,7 @@ func TestHoverOutsideVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request hover - see fixture for position
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -128,10 +130,18 @@ func TestHoverNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.json",
+			LanguageID: "json",
+			Version:    1,
+			Text:       `{"color": "red"}`,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request hover
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -153,10 +163,18 @@ func TestHoverOnVariableDeclaration(t *testing.T) {
 	content := `:root {
     --color-primary: #0000ff;
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request hover on the variable name
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -186,10 +204,18 @@ func TestHoverOnVariableDeclarationUnknown(t *testing.T) {
 	content := `:root {
     --unknown-var: #123456;
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request hover on the unknown variable name
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -225,10 +251,18 @@ func TestHoverWithDeprecated(t *testing.T) {
 	content := `.button {
     color: var(--color-old);
 }`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
 
 	// Request hover
-	hover, err := server.Hover(&protocol.HoverParams{
+	hover, err := hover.Hover(server, nil, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
