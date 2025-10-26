@@ -5,15 +5,11 @@ import (
 
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestGetWordAtPosition tests the getWordAtPosition helper function
 func TestGetWordAtPosition(t *testing.T) {
-	s, err := NewServer()
-	require.NoError(t, err)
-
-	tests := []struct {
+	tests := []struct{
 		name     string
 		content  string
 		position protocol.Position
@@ -83,7 +79,7 @@ func TestGetWordAtPosition(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := s.getWordAtPosition(tt.content, tt.position)
+			result := getWordAtPosition(tt.content, tt.position)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -120,12 +116,9 @@ func TestIsWordChar(t *testing.T) {
 
 // TestIsInCompletionContext tests the isInCompletionContext helper function
 func TestIsInCompletionContext(t *testing.T) {
-	s, err := NewServer()
-	require.NoError(t, err)
-
 	// For now, this function always returns true
 	// It's a placeholder for future enhancement
-	result := s.isInCompletionContext(nil, protocol.Position{Line: 0, Character: 0})
+	result := isInCompletionContext(nil, protocol.Position{Line: 0, Character: 0})
 	assert.True(t, result)
 }
 

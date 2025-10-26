@@ -115,6 +115,26 @@ func (s *Server) GetReferences(params *protocol.ReferenceParams) ([]protocol.Loc
 	return References(s, nil, params)
 }
 
+// GetCompletions provides completion information (exposed for testing)
+func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.CompletionList, error) {
+	result, err := Completion(s, nil, params)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	if list, ok := result.(*protocol.CompletionList); ok {
+		return list, nil
+	}
+	return nil, nil
+}
+
+// ResolveCompletion provides completion resolve information (exposed for testing)
+func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
+	return CompletionResolve(s, nil, item)
+}
+
 // DocumentColor provides color information (exposed for testing)
 func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	return s.handleDocumentColor(nil, params)
@@ -428,13 +448,9 @@ func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.D
 
 // Feature handler wrappers (these will eventually be full implementations)
 
-func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol.CompletionParams) (any, error) {
-	return ctx.(*Server).handleCompletion(context, params)
-}
+// Completion is defined in completion.go
 
-func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
-	return ctx.(*Server).handleCompletionResolve(context, item)
-}
+// CompletionResolve is defined in completion.go
 
 // Definition is defined in definition.go
 

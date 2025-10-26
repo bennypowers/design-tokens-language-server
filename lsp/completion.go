@@ -7,24 +7,25 @@ import (
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/position"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // handleCompletion handles the textDocument/completion request
 func (s *Server) handleCompletion(context *glsp.Context, params *protocol.CompletionParams) (any, error) {
-	return s.GetCompletions(params)
+	return Completion(s, context, params)
 }
 
-// GetCompletions returns completion items for a document
-func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.CompletionList, error) {
+// Completion handles the textDocument/completion request
+func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol.CompletionParams) (any, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Completion requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -43,7 +44,7 @@ func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.Co
 	}
 
 	// Get the word at the cursor position
-	word := s.getWordAtPosition(doc.Content(), position)
+	word := getWordAtPosition(doc.Content(), position)
 	if word == "" {
 		return nil, nil
 	}
@@ -51,7 +52,7 @@ func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.Co
 	fmt.Fprintf(os.Stderr, "[DTLS] Completion word: '%s'\n", word)
 
 	// Check if we're in a valid completion context (inside a block or property value)
-	if !s.isInCompletionContext(result, position) {
+	if !isInCompletionContext(result, position) {
 		return nil, nil
 	}
 
@@ -59,7 +60,7 @@ func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.Co
 	var items []protocol.CompletionItem
 	normalizedWord := normalizeTokenName(word)
 
-	for _, token := range s.tokens.GetAll() {
+	for _, token := range ctx.TokenManager().GetAll() {
 		cssVar := token.CSSVariableName()
 		normalizedLabel := normalizeTokenName(cssVar)
 
@@ -92,11 +93,11 @@ func (s *Server) GetCompletions(params *protocol.CompletionParams) (*protocol.Co
 
 // handleCompletionResolve handles the completionItem/resolve request
 func (s *Server) handleCompletionResolve(context *glsp.Context, params *protocol.CompletionItem) (*protocol.CompletionItem, error) {
-	return s.ResolveCompletion(params)
+	return CompletionResolve(s, context, params)
 }
 
-// ResolveCompletion resolves a completion item with additional details
-func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
+// CompletionResolve resolves a completion item with additional details
+func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
 	// Get token name from data
 	var tokenName string
 	if item.Data != nil {
@@ -112,7 +113,7 @@ func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.Com
 	}
 
 	// Look up the token
-	token := s.tokens.Get(tokenName)
+	token := ctx.Token(tokenName)
 	if token == nil {
 		return item, nil
 	}
@@ -158,7 +159,7 @@ func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.Com
 
 // getWordAtPosition extracts the word at the given position.
 // LSP positions use UTF-16 code units, so this function converts them to byte offsets.
-func (s *Server) getWordAtPosition(content string, pos protocol.Position) string {
+func getWordAtPosition(content string, pos protocol.Position) string {
 	lines := strings.Split(content, "\n")
 	if int(pos.Line) >= len(lines) {
 		return ""
@@ -199,7 +200,7 @@ func isWordChar(c byte) bool {
 }
 
 // isInCompletionContext checks if the position is in a valid completion context
-func (s *Server) isInCompletionContext(result *css.ParseResult, pos protocol.Position) bool {
+func isInCompletionContext(result *css.ParseResult, pos protocol.Position) bool {
 	// For now, we'll accept completions anywhere in CSS
 	// In the future, we can be more specific about only completing inside blocks
 	return true
