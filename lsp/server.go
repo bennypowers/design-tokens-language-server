@@ -222,8 +222,13 @@ func (s *Server) IsTokenFile(path string) bool {
 			tokenPath = filepath.Join(s.rootPath, tokenPath)
 		}
 
+		// Normalize both paths before comparison to handle redundant separators
+		// and relative components (e.g., /foo//bar vs /foo/bar, /foo/./bar vs /foo/bar)
+		cleanPath := filepath.Clean(path)
+		cleanTokenPath := filepath.Clean(tokenPath)
+
 		// Check if the paths match
-		if path == tokenPath {
+		if cleanPath == cleanTokenPath {
 			return true
 		}
 	}
@@ -316,6 +321,15 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 			},
 			protocol.FileSystemWatcher{
 				GlobPattern: rootPattern + "/**/design-tokens.yaml",
+			},
+			protocol.FileSystemWatcher{
+				GlobPattern: rootPattern + "/**/tokens.yml",
+			},
+			protocol.FileSystemWatcher{
+				GlobPattern: rootPattern + "/**/*.tokens.yml",
+			},
+			protocol.FileSystemWatcher{
+				GlobPattern: rootPattern + "/**/design-tokens.yml",
 			},
 		)
 	}

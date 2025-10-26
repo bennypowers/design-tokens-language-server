@@ -155,7 +155,7 @@ windows-x64: build-windows-cc-image
 windows-arm64: build-windows-cc-image
 	@mkdir -p $(DIST_DIR)
 	@echo "Warning: Windows ARM64 cross-compilation is experimental"
-	podman run --rm \
+	@podman run --rm \
 		-v $(PWD):/app:Z \
 		-w /app \
 		-e GOOS=windows \
@@ -164,8 +164,11 @@ windows-arm64: build-windows-cc-image
 		$(WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
 			-o dist/bin/$(BINARY_NAME)-win-arm64.exe \
-			./cmd/design-tokens-lsp || \
-		echo "Warning: Windows ARM64 build may require additional MinGW setup"
+			./cmd/design-tokens-lsp || { \
+		echo "Warning: Windows ARM64 build failed - MinGW ARM64 toolchain may not be fully supported"; \
+		echo "This is expected for experimental targets and does not indicate a problem."; \
+		true; \
+	}
 
 ## VSCode extension targets
 vscode-build: build

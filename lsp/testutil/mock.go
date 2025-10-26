@@ -113,9 +113,18 @@ func (m *MockServerContext) IsTokenFile(path string) bool {
 	}
 
 	for _, item := range m.config.TokensFiles {
+		// Handle string entries
 		if str, ok := item.(string); ok {
 			if str == path {
 				return true
+			}
+		}
+		// Handle object-style entries like {"path": "..."}
+		if obj, ok := item.(map[string]interface{}); ok {
+			if pathVal, exists := obj["path"]; exists {
+				if pathStr, ok := pathVal.(string); ok && pathStr == path {
+					return true
+				}
 			}
 		}
 	}
