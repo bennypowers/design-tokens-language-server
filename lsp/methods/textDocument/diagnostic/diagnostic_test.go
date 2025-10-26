@@ -275,6 +275,8 @@ func TestGetDiagnostics_DeprecatedWithoutMessage(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 
 	// Deprecated token without custom message
+	// Note: Token name uses DTCG dot notation, CSS variable uses hyphens
+	// The conversion happens in CSSVariableName(): "color.legacy" → "--color-legacy"
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:       "color.legacy",
 		Value:      "#ff0000",
