@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"encoding/json"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestCustomHandler_DiagnosticMethod(t *testing.T) {
 	server := &Server{
 		documents:   documents.NewManager(),
 		tokens:      tokens.NewManager(),
-		config:      ServerConfig{},
+		config:      types.ServerConfig{},
 		loadedFiles: make(map[string]string),
 	}
 

@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
@@ -28,7 +29,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 	server := &Server{
 		documents:   documents.NewManager(),
 		tokens:      tokens.NewManager(),
-		config:      ServerConfig{},
+		config:      types.ServerConfig{},
 		loadedFiles: make(map[string]string),
 	}
 
@@ -229,7 +230,7 @@ func TestServer_Close(t *testing.T) {
 		server := &Server{
 			documents:   documents.NewManager(),
 			tokens:      tokens.NewManager(),
-			config:      ServerConfig{},
+			config:      types.ServerConfig{},
 			loadedFiles: make(map[string]string),
 		}
 

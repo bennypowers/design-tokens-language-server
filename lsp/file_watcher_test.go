@@ -3,6 +3,7 @@ package lsp
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/workspace"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -100,7 +101,7 @@ func TestIsTokenFile(t *testing.T) {
 			s.rootPath = tt.rootPath
 			s.config.TokensFiles = tt.configFiles
 
-			result := s.isTokenFile(tt.path)
+			result := s.IsTokenFile(tt.path)
 			if result != tt.expectedResult {
 				t.Errorf("Expected %v, got %v", tt.expectedResult, result)
 			}
@@ -129,7 +130,7 @@ func TestHandleDidChangeWatchedFiles(t *testing.T) {
 	}
 
 	// Handle the change
-	err = s.handleDidChangeWatchedFiles(nil, params)
+	err = workspace.DidChangeWatchedFiles(s, nil, params)
 	if err != nil {
 		t.Errorf("handleDidChangeWatchedFiles failed: %v", err)
 	}
@@ -161,7 +162,7 @@ func TestHandleDidChangeWatchedFiles_MultipleChanges(t *testing.T) {
 		},
 	}
 
-	err = s.handleDidChangeWatchedFiles(nil, params)
+	err = workspace.DidChangeWatchedFiles(s, nil, params)
 	if err != nil {
 		t.Errorf("handleDidChangeWatchedFiles failed: %v", err)
 	}
@@ -185,7 +186,7 @@ func TestHandleDidChangeWatchedFiles_DeletedFile(t *testing.T) {
 		},
 	}
 
-	err = s.handleDidChangeWatchedFiles(nil, params)
+	err = workspace.DidChangeWatchedFiles(s, nil, params)
 	if err != nil {
 		t.Errorf("handleDidChangeWatchedFiles failed: %v", err)
 	}
@@ -210,7 +211,7 @@ func TestHandleDidChangeWatchedFiles_NonTokenFile(t *testing.T) {
 	}
 
 	// Should not trigger a reload since it's not a token file
-	err = s.handleDidChangeWatchedFiles(nil, params)
+	err = workspace.DidChangeWatchedFiles(s, nil, params)
 	if err != nil {
 		t.Errorf("handleDidChangeWatchedFiles failed: %v", err)
 	}

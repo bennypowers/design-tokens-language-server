@@ -26,6 +26,11 @@ type ServerContext interface {
 	SetRootURI(uri string)
 	SetRootPath(path string)
 
+	// Configuration
+	GetConfig() ServerConfig
+	SetConfig(config ServerConfig)
+	IsTokenFile(path string) bool
+
 	// Workspace initialization (called by Initialize handler)
 	LoadTokensFromConfig() error
 	RegisterFileWatchers(ctx *glsp.Context) error

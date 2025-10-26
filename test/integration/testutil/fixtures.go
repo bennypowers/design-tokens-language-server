@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/lsp"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
 	"github.com/stretchr/testify/require"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // FixtureRoot returns the path to the test fixtures directory
@@ -81,6 +83,14 @@ func LoadTokensWithPrefix(t *testing.T, server *lsp.Server, prefix string) {
 func OpenCSSFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {
 	t.Helper()
 	content := LoadCSSFixture(t, fixtureName)
-	err := server.DidOpen(uri, "css", 1, content)
+	params := &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        uri,
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	}
+	err := textDocument.DidOpen(server, nil, params)
 	require.NoError(t, err, "Failed to open CSS fixture: %s", fixtureName)
 }

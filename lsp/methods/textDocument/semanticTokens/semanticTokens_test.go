@@ -8,6 +8,7 @@ import (
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
 	"github.com/bennypowers/design-tokens-language-server/lsp"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
 	semantictokens "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/semanticTokens"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -198,7 +199,7 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 
 	// Register the document
-	s.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
+	textDocument.DidOpen(s, nil, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
 
 	// Get intermediate tokens first
 	intermediateTokens := semantictokens.GetSemanticTokensForDocument(s, doc)
@@ -272,7 +273,7 @@ func TestSemanticTokensRange(t *testing.T) {
 	// Load fixture document
 	content := loadFixture(t, "semantic-tokens/range-test.json")
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
-	s.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
+	textDocument.DidOpen(s, nil, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
 
 	// Request semantic tokens for range (lines 1-2 only)
 	params := &protocol.SemanticTokensRangeParams{
@@ -320,7 +321,7 @@ func TestSemanticTokensDelta(t *testing.T) {
 	// Load initial document fixture
 	content1 := loadFixture(t, "semantic-tokens/delta-test-initial.json")
 	doc := documents.NewDocument("file:///test.json", "json", 1, content1)
-	s.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
+	textDocument.DidOpen(s, nil, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
 
 	// Get initial semantic tokens
 	fullParams := &protocol.SemanticTokensParams{

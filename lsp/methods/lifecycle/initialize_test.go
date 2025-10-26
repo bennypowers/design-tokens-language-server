@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
@@ -74,6 +75,18 @@ func (m *mockServerContext) GLSPContext() *glsp.Context {
 
 func (m *mockServerContext) SetGLSPContext(ctx *glsp.Context) {
 	m.context = ctx
+}
+
+
+
+func (m *mockServerContext) GetConfig() types.ServerConfig {
+	return types.DefaultConfig()
+}
+
+func (m *mockServerContext) SetConfig(config types.ServerConfig) {}
+
+func (m *mockServerContext) IsTokenFile(path string) bool {
+	return false
 }
 
 func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {

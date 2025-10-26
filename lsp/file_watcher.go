@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,75 +10,8 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// HandleDidChangeWatchedFiles is exported for testing
-func (s *Server) HandleDidChangeWatchedFiles(params *protocol.DidChangeWatchedFilesParams) error {
-	return s.handleDidChangeWatchedFiles(nil, params)
-}
-
-// handleDidChangeWatchedFiles handles the workspace/didChangeWatchedFiles notification
-func (s *Server) handleDidChangeWatchedFiles(context *glsp.Context, params *protocol.DidChangeWatchedFilesParams) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Watched files changed: %d files\n", len(params.Changes))
-
-	// Track if we need to reload tokens
-	needsReload := false
-
-	for _, change := range params.Changes {
-		uri := change.URI
-		path := uriToPath(uri)
-		fmt.Fprintf(os.Stderr, "[DTLS] File change: %s (type: %d)\n", path, change.Type)
-
-		// Check if this is a token file we're watching
-		if s.isTokenFile(path) {
-			needsReload = true
-
-			// If the file was deleted, we might want to handle it differently
-			if change.Type == protocol.FileChangeTypeDeleted {
-				fmt.Fprintf(os.Stderr, "[DTLS] Token file deleted: %s\n", path)
-			}
-		}
-	}
-
-	// Reload all token files if any token file changed
-	if needsReload {
-		fmt.Fprintf(os.Stderr, "[DTLS] Reloading token files due to changes\n")
-		if err := s.reloadTokenFiles(); err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to reload tokens: %v\n", err)
-		}
-
-		// Republish diagnostics for all open documents
-		if s.context != nil {
-			for _, doc := range s.documents.GetAll() {
-				if err := s.PublishDiagnostics(s.context, doc.URI()); err != nil {
-					fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", doc.URI(), err)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-// reloadTokenFiles reloads all tracked token files
-func (s *Server) reloadTokenFiles() error {
-	// Clear existing tokens
-	s.tokens.Clear()
-
-	// Reload all tracked files
-	var errs []error
-	for filepath, prefix := range s.loadedFiles {
-		if err := s.loadTokenFileInternal(filepath, prefix); err != nil {
-			errs = append(errs, fmt.Errorf("failed to reload %s: %w", filepath, err))
-		}
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
-}
-
-// isTokenFile checks if a file path is one of our token files
-func (s *Server) isTokenFile(path string) bool {
+// IsTokenFile checks if a file path is one of our token files
+func (s *Server) IsTokenFile(path string) bool {
 	// Check if it's a JSON or YAML file
 	ext := filepath.Ext(path)
 	if ext != ".json" && ext != ".yaml" && ext != ".yml" {
@@ -138,7 +70,7 @@ func (s *Server) isTokenFile(path string) bool {
 }
 
 // registerFileWatchers registers file watchers with the client
-func (s *Server) registerFileWatchers(context *glsp.Context) error {
+func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	// Guard against nil context (can happen in tests without real LSP connection)
 	if context == nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Skipping file watcher registration (no client context)\n")

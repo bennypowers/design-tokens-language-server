@@ -3,6 +3,7 @@ package integration_test
 import (
 	"testing"
 
+	codeaction "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func TestCodeActionFixIncorrectFallback(t *testing.T) {
 	require.Len(t, diagnostics, 1)
 
 	// Request code actions
-	actions, err := server.CodeAction(&protocol.CodeActionParams{
+	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -32,7 +33,9 @@ func TestCodeActionFixIncorrectFallback(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, actions)
+	require.NotNil(t, result)
+	actions, ok := result.([]protocol.CodeAction)
+	require.True(t, ok)
 
 	// Should have at least one action to fix the fallback
 	assert.GreaterOrEqual(t, len(actions), 1)
@@ -77,7 +80,7 @@ func TestCodeActionAddFallback(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request code actions at a var call without fallback
-	actions, err := server.CodeAction(&protocol.CodeActionParams{
+	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -91,7 +94,9 @@ func TestCodeActionAddFallback(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, actions)
+	require.NotNil(t, result)
+	actions, ok := result.([]protocol.CodeAction)
+	require.True(t, ok)
 
 	// Should have action to add fallback
 	assert.GreaterOrEqual(t, len(actions), 1)
@@ -130,7 +135,7 @@ func TestCodeActionDeprecatedToken(t *testing.T) {
 	require.Len(t, diagnostics, 1)
 
 	// Request code actions
-	actions, err := server.CodeAction(&protocol.CodeActionParams{
+	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -141,7 +146,9 @@ func TestCodeActionDeprecatedToken(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, actions)
+	require.NotNil(t, result)
+	actions, ok := result.([]protocol.CodeAction)
+	require.True(t, ok)
 
 	// Should have at least 2 actions: replace with recommended + replace with literal
 	assert.GreaterOrEqual(t, len(actions), 2)
@@ -189,7 +196,7 @@ func TestCodeActionNoActions(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "correct-fallback.css")
 
 	// Request code actions
-	actions, err := server.CodeAction(&protocol.CodeActionParams{
+	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -206,7 +213,14 @@ func TestCodeActionNoActions(t *testing.T) {
 
 	// Should have no actions (or only add fallback suggestions)
 	// since the fallback is already correct
-	if actions != nil {
+	var actions []protocol.CodeAction
+	if result != nil {
+		var ok bool
+		actions, ok = result.([]protocol.CodeAction)
+		require.True(t, ok)
+	}
+
+	if len(actions) > 0 {
 		for _, action := range actions {
 			// Should not have any "Fix" actions, only suggestions
 			assert.NotContains(t, action.Title, "Fix")
@@ -238,7 +252,7 @@ func TestCodeActionResolve(t *testing.T) {
 	}
 
 	// Resolve the action
-	resolved, err := server.CodeActionResolve(&action)
+	resolved, err := codeaction.CodeActionResolve(server, nil, &action)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 

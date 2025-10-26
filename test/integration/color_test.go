@@ -3,6 +3,7 @@ package integration_test
 import (
 	"testing"
 
+	documentcolor "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/documentColor"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func TestDocumentColorBasic(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "colors-basic.css")
 
 	// Request document colors
-	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -52,7 +53,7 @@ func TestDocumentColorMixed(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "colors-mixed.css")
 
 	// Request document colors
-	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -83,7 +84,7 @@ func TestDocumentColorEmpty(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request document colors
-	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -102,7 +103,7 @@ func TestColorPresentation(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
 	// Request color presentations for a blue color
-	presentations, err := server.ColorPresentation(&protocol.ColorPresentationParams{
+	presentations, err := documentcolor.ColorPresentation(server, nil, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -139,7 +140,7 @@ func TestColorPresentationWithAlpha(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
 	// Request color presentations for a semi-transparent red
-	presentations, err := server.ColorPresentation(&protocol.ColorPresentationParams{
+	presentations, err := documentcolor.ColorPresentation(server, nil, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -179,7 +180,7 @@ func TestDocumentColorNonCSSFile(t *testing.T) {
 	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
 
 	// Request colors
-	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.json",
 		},
@@ -203,7 +204,7 @@ func TestDocumentColorVariables(t *testing.T) {
 	server.DidOpen("file:///test.css", "css", 1, content)
 
 	// Request colors
-	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -236,7 +237,7 @@ func TestDocumentColorInvalidColorValue(t *testing.T) {
 	server.DidOpen("file:///test.css", "css", 1, content)
 
 	// Request colors
-	colors, err := server.DocumentColor(&protocol.DocumentColorParams{
+	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
