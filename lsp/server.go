@@ -286,6 +286,11 @@ func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }
 
+// GetDiagnostics returns diagnostics for a document (for testing)
+func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
+	return diagnostic.GetDiagnostics(s, uri)
+}
+
 // Workspace method wrappers that adapt Server methods to ServerContext interface
 
 func DidChangeConfiguration(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeConfigurationParams) error {

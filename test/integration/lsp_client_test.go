@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bennypowers/design-tokens-language-server/lsp"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -324,7 +324,7 @@ func (c *LSPClient) Hover(uri string, line, character int) (*protocol.Hover, err
 }
 
 // Diagnostic sends a diagnostic request
-func (c *LSPClient) Diagnostic(uri string) (*lsp.RelatedFullDocumentDiagnosticReport, error) {
+func (c *LSPClient) Diagnostic(uri string) (*diagnostic.RelatedFullDocumentDiagnosticReport, error) {
 	params := map[string]interface{}{
 		"textDocument": map[string]interface{}{
 			"uri": uri,
@@ -342,13 +342,13 @@ func (c *LSPClient) Diagnostic(uri string) (*lsp.RelatedFullDocumentDiagnosticRe
 		return nil, nil
 	}
 
-	var diagnostic lsp.RelatedFullDocumentDiagnosticReport
-	err = json.Unmarshal(response, &diagnostic)
+	var diag diagnostic.RelatedFullDocumentDiagnosticReport
+	err = json.Unmarshal(response, &diag)
 	if err != nil {
 		return nil, err
 	}
 
-	return &diagnostic, nil
+	return &diag, nil
 }
 
 // DidChangeConfiguration sends a didChangeConfiguration notification
