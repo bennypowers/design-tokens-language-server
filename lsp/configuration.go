@@ -12,9 +12,6 @@ import (
 
 // GetConfig returns the current server configuration
 func (s *Server) GetConfig() types.ServerConfig {
-	if s.config.TokensFiles == nil {
-		return types.DefaultConfig()
-	}
 	return s.config
 }
 
