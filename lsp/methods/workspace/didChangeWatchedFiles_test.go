@@ -144,3 +144,32 @@ func TestHandleDidChangeWatchedFiles_NonTokenFile(t *testing.T) {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
 }
+
+func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	ctx.SetRootPath("/workspace")
+
+	// Empty TokensFiles means auto-discovery mode
+	config := ctx.GetConfig()
+	config.TokensFiles = []any{}
+	ctx.SetConfig(config)
+
+	params := &protocol.DidChangeWatchedFilesParams{
+		Changes: []protocol.FileEvent{
+			{
+				URI:  "file:///workspace/new-tokens.json",
+				Type: protocol.FileChangeTypeCreated,
+			},
+		},
+	}
+
+	// When a new token file is created in auto-discovery mode,
+	// the reload should discover it
+	err := DidChangeWatchedFiles(ctx, nil, params)
+	if err != nil {
+		t.Errorf("DidChangeWatchedFiles failed: %v", err)
+	}
+
+	// The handler should have triggered a reload which would
+	// call LoadTokensFromConfig, which would discover the new file
+}
