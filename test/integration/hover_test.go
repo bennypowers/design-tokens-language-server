@@ -121,3 +121,129 @@ func TestHoverOutsideVarCall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, hover, "Should return nil when not hovering over var() call")
 }
+
+// TestHoverNonCSSFile tests that hover returns nil for non-CSS files
+func TestHoverNonCSSFile(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open a JSON file
+	server.DidOpen("file:///test.json", "json", 1, `{"color": "red"}`)
+
+	// Request hover
+	hover, err := server.Hover(&protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.json",
+			},
+			Position: protocol.Position{Line: 0, Character: 5},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, hover)
+}
+
+// TestHoverOnVariableDeclaration tests hover on CSS variable declaration
+func TestHoverOnVariableDeclaration(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open CSS file with variable declaration
+	content := `:root {
+    --color-primary: #0000ff;
+}`
+	server.DidOpen("file:///test.css", "css", 1, content)
+
+	// Request hover on the variable name
+	hover, err := server.Hover(&protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.css",
+			},
+			Position: protocol.Position{
+				Line:      1,
+				Character: 8, // On "--color-primary"
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+
+	content_hover, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, content_hover.Value, "--color-primary")
+	assert.Contains(t, content_hover.Value, "#0000ff")
+}
+
+// TestHoverOnVariableDeclarationUnknown tests hover on unknown variable declaration
+func TestHoverOnVariableDeclarationUnknown(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+
+	// Open CSS file with unknown variable declaration
+	content := `:root {
+    --unknown-var: #123456;
+}`
+	server.DidOpen("file:///test.css", "css", 1, content)
+
+	// Request hover on the unknown variable name
+	hover, err := server.Hover(&protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.css",
+			},
+			Position: protocol.Position{
+				Line:      1,
+				Character: 8, // On "--unknown-var"
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, hover) // Should return nil for unknown variable declaration
+}
+
+// TestHoverWithDeprecated tests hover on deprecated token
+func TestHoverWithDeprecated(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	// Load deprecated token
+	tokens := []byte(`{
+		"color-old": {
+			"$type": "color",
+			"$value": "#ff0000",
+			"$description": "Old color",
+			"$deprecated": true
+		}
+	}`)
+	err := server.LoadTokensFromJSON(tokens, "")
+	require.NoError(t, err)
+
+	// Open CSS file using deprecated token
+	content := `.button {
+    color: var(--color-old);
+}`
+	server.DidOpen("file:///test.css", "css", 1, content)
+
+	// Request hover
+	hover, err := server.Hover(&protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: "file:///test.css",
+			},
+			Position: protocol.Position{
+				Line:      1,
+				Character: 18,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+
+	content_hover, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, content_hover.Value, "DEPRECATED")
+}
