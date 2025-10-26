@@ -21,7 +21,7 @@ func TestCustomHandler_DiagnosticMethod(t *testing.T) {
 		documents:   documents.NewManager(),
 		tokens:      tokens.NewManager(),
 		config:      types.ServerConfig{},
-		loadedFiles: make(map[string]string),
+		loadedFiles: make(map[string]*TokenFileOptions),
 	}
 
 	// Create custom handler

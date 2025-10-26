@@ -19,6 +19,9 @@ type TokenFileConfig struct {
 	// CSS variable prefix
 	Prefix string
 
+	// GroupMarkers indicate terminal paths that are also groups
+	GroupMarkers []string
+
 	// Root directory to search from
 	RootDir string
 }
@@ -87,7 +90,11 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 	// Load each token file
 	var errs []error
 	for _, filePath := range tokenFiles {
-		if err := s.LoadTokenFile(filePath, config.Prefix); err != nil {
+		opts := &TokenFileOptions{
+			Prefix:       config.Prefix,
+			GroupMarkers: config.GroupMarkers,
+		}
+		if err := s.LoadTokenFileWithOptions(filePath, opts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to load %s: %w", filePath, err))
 			continue
 		}

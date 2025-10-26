@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/yaml"
+	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -165,4 +166,105 @@ func TestParseFileInvalidYAML(t *testing.T) {
 	_, err = parser.ParseFile(tmpfile.Name(), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse file")
+}
+
+// TestParseWithGroupMarkers tests parsing tokens where a node is both a token and a group
+func TestParseWithGroupMarkers(t *testing.T) {
+	t.Run("basic group marker - node with $value and children", func(t *testing.T) {
+		yamlData := `
+color:
+  $value: '#ff0000'
+  $type: color
+  primary:
+    $value: '#0000ff'
+    $type: color
+`
+
+		parser := yaml.NewParser()
+		groupMarkers := []string{"color"}
+		tokens, err := parser.ParseWithGroupMarkers([]byte(yamlData), "", groupMarkers)
+		require.NoError(t, err)
+		require.Len(t, tokens, 2, "Should extract both 'color' and 'color-primary'")
+
+		// Check color token
+		colorToken := findTokenByName(tokens, "color")
+		require.NotNil(t, colorToken, "Should have 'color' token")
+		assert.Equal(t, "#ff0000", colorToken.Value)
+		assert.Equal(t, "color", colorToken.Type)
+
+		// Check color-primary token
+		primaryToken := findTokenByName(tokens, "color-primary")
+		require.NotNil(t, primaryToken, "Should have 'color-primary' token")
+		assert.Equal(t, "#0000ff", primaryToken.Value)
+		assert.Equal(t, "color", primaryToken.Type)
+	})
+
+	t.Run("nested group marker", func(t *testing.T) {
+		yamlData := `
+spacing:
+  scale:
+    $value: 4px
+    $type: dimension
+    small:
+      $value: 8px
+      $type: dimension
+    large:
+      $value: 16px
+      $type: dimension
+`
+
+		parser := yaml.NewParser()
+		groupMarkers := []string{"scale"}
+		tokens, err := parser.ParseWithGroupMarkers([]byte(yamlData), "", groupMarkers)
+		require.NoError(t, err)
+		require.Len(t, tokens, 3)
+
+		// Check scale token
+		scaleToken := findTokenByName(tokens, "spacing-scale")
+		require.NotNil(t, scaleToken)
+		assert.Equal(t, "4px", scaleToken.Value)
+
+		// Check children
+		smallToken := findTokenByName(tokens, "spacing-scale-small")
+		require.NotNil(t, smallToken)
+		assert.Equal(t, "8px", smallToken.Value)
+
+		largeToken := findTokenByName(tokens, "spacing-scale-large")
+		require.NotNil(t, largeToken)
+		assert.Equal(t, "16px", largeToken.Value)
+	})
+
+	t.Run("multiple group markers", func(t *testing.T) {
+		yamlData := `
+color:
+  $value: '#000000'
+  primary:
+    $value: '#0000ff'
+size:
+  $value: 16px
+  small:
+    $value: 12px
+`
+
+		parser := yaml.NewParser()
+		groupMarkers := []string{"color", "size"}
+		tokens, err := parser.ParseWithGroupMarkers([]byte(yamlData), "", groupMarkers)
+		require.NoError(t, err)
+		require.Len(t, tokens, 4)
+
+		assert.NotNil(t, findTokenByName(tokens, "color"))
+		assert.NotNil(t, findTokenByName(tokens, "color-primary"))
+		assert.NotNil(t, findTokenByName(tokens, "size"))
+		assert.NotNil(t, findTokenByName(tokens, "size-small"))
+	})
+}
+
+// Helper function to find a token by name in a slice
+func findTokenByName(tokens []*tokens.Token, name string) *tokens.Token {
+	for _, token := range tokens {
+		if token.Name == name {
+			return token
+		}
+	}
+	return nil
 }

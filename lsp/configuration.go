@@ -106,13 +106,21 @@ func (s *Server) loadExplicitTokenFiles() error {
 
 		// TODO: Handle npm: protocol
 
-		// Load the file
-		if err := s.LoadTokenFile(path, prefix); err != nil {
+		// Load the file with per-file options
+		opts := &TokenFileOptions{
+			Prefix:       prefix,
+			GroupMarkers: groupMarkers,
+		}
+		if err := s.LoadTokenFileWithOptions(path, opts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to load %s: %w", path, err))
 			continue
 		}
 
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s)\n", path, prefix)
+		if len(groupMarkers) > 0 {
+			fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s, groupMarkers: %v)\n", path, prefix, groupMarkers)
+		} else {
+			fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s)\n", path, prefix)
+		}
 	}
 
 	if len(errs) > 0 {
@@ -130,7 +138,8 @@ func (s *Server) loadTokenFilesAutoDiscover() error {
 			"**/*.tokens.json",
 			"**/design-tokens.json",
 		},
-		Prefix: s.config.Prefix,
+		Prefix:       s.config.Prefix,
+		GroupMarkers: s.config.GroupMarkers,
 	}
 
 	return s.LoadTokenFiles(tokenConfig)
@@ -200,14 +209,18 @@ func (s *Server) reloadPreviouslyLoadedFiles() error {
 	// Clear existing tokens
 	s.tokens.Clear()
 
-	// Reload each previously loaded file with its original prefix
+	// Reload each previously loaded file with its original options (prefix, groupMarkers)
 	var errs []error
-	for path, prefix := range s.loadedFiles {
-		if err := s.loadTokenFileInternal(path, prefix); err != nil {
+	for path, opts := range s.loadedFiles {
+		if err := s.loadTokenFileInternal(path, opts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to reload %s: %w", path, err))
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "[DTLS] Reloaded %s (prefix: %s)\n", path, prefix)
+		if len(opts.GroupMarkers) > 0 {
+			fmt.Fprintf(os.Stderr, "[DTLS] Reloaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
+		} else {
+			fmt.Fprintf(os.Stderr, "[DTLS] Reloaded %s (prefix: %s)\n", path, opts.Prefix)
+		}
 	}
 
 	if len(errs) > 0 {

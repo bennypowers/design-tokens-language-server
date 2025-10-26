@@ -35,11 +35,11 @@ type Server struct {
 	tokens            *tokens.Manager
 	glspServer        *server.Server
 	context           *glsp.Context
-	rootURI           string                // Workspace root URI
-	rootPath          string                // Workspace root path (file system)
-	config            types.ServerConfig    // Server configuration
-	loadedFiles       map[string]string     // Track loaded files: filepath -> prefix
-	autoDiscoveryMode bool                  // True if using auto-discovery instead of explicit files
+	rootURI           string                      // Workspace root URI
+	rootPath          string                      // Workspace root path (file system)
+	config            types.ServerConfig          // Server configuration
+	loadedFiles       map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
+	autoDiscoveryMode bool                        // True if using auto-discovery instead of explicit files
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -48,7 +48,7 @@ func NewServer() (*Server, error) {
 		documents:   documents.NewManager(),
 		tokens:      tokens.NewManager(),
 		config:      types.DefaultConfig(),
-		loadedFiles: make(map[string]string),
+		loadedFiles: make(map[string]*TokenFileOptions),
 	}
 
 	// Create the GLSP server with our handlers wrapped with middleware

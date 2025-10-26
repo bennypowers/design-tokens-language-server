@@ -13,21 +13,48 @@ import (
 	"github.com/bennypowers/design-tokens-language-server/internal/uriutil"
 )
 
+// TokenFileOptions holds per-file configuration for token loading
+type TokenFileOptions struct {
+	// Prefix is the CSS variable prefix for tokens in this file
+	Prefix string
+
+	// GroupMarkers indicate terminal paths that are also groups
+	// e.g., a token named "color" that is also the parent of "color.primary"
+	GroupMarkers []string
+}
+
 // LoadTokenFile loads a token file (JSON or YAML) and adds tokens to the manager
+// This is a convenience wrapper around LoadTokenFileWithOptions for backward compatibility
 func (s *Server) LoadTokenFile(filepath, prefix string) error {
-	err := s.loadTokenFileInternal(filepath, prefix)
+	return s.LoadTokenFileWithOptions(filepath, &TokenFileOptions{
+		Prefix:       prefix,
+		GroupMarkers: nil, // Use global defaults
+	})
+}
+
+// LoadTokenFileWithOptions loads a token file with per-file configuration options
+func (s *Server) LoadTokenFileWithOptions(filepath string, opts *TokenFileOptions) error {
+	if opts == nil {
+		opts = &TokenFileOptions{}
+	}
+
+	err := s.loadTokenFileInternal(filepath, opts)
 	if err != nil {
 		return err
 	}
 
 	// Track this file for reload on change (only on successful load)
-	s.loadedFiles[filepath] = prefix
+	s.loadedFiles[filepath] = opts
 
 	return nil
 }
 
 // loadTokenFileInternal loads a token file without tracking it
-func (s *Server) loadTokenFileInternal(filePath, prefix string) error {
+func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) error {
+	if opts == nil {
+		opts = &TokenFileOptions{}
+	}
+
 	var parsedTokens []*tokens.Token
 	var err error
 
@@ -36,10 +63,10 @@ func (s *Server) loadTokenFileInternal(filePath, prefix string) error {
 	switch ext {
 	case ".json":
 		parser := json.NewParser()
-		parsedTokens, err = parser.ParseFile(filePath, prefix)
+		parsedTokens, err = parser.ParseFileWithGroupMarkers(filePath, opts.Prefix, opts.GroupMarkers)
 	case ".yaml", ".yml":
 		parser := yaml.NewParser()
-		parsedTokens, err = parser.ParseFile(filePath, prefix)
+		parsedTokens, err = parser.ParseFileWithGroupMarkers(filePath, opts.Prefix, opts.GroupMarkers)
 	default:
 		return fmt.Errorf("unsupported file type %s: %s", ext, filePath)
 	}
@@ -75,7 +102,13 @@ func (s *Server) loadTokenFileInternal(filePath, prefix string) error {
 		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", successCount, filePath)
+	// Log groupMarkers if provided (for future use when parsers support them)
+	if len(opts.GroupMarkers) > 0 {
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s (prefix: %s, groupMarkers: %v)\n",
+			successCount, filePath, opts.Prefix, opts.GroupMarkers)
+	} else {
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %d tokens from %s\n", successCount, filePath)
+	}
 	return nil
 }
 

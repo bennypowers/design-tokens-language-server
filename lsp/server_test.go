@@ -31,7 +31,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		documents:   documents.NewManager(),
 		tokens:      tokens.NewManager(),
 		config:      types.ServerConfig{},
-		loadedFiles: make(map[string]string),
+		loadedFiles: make(map[string]*TokenFileOptions),
 	}
 
 	// Dummy context (nil is fine for these simple wrappers)
@@ -232,7 +232,7 @@ func TestServer_Close(t *testing.T) {
 			documents:   documents.NewManager(),
 			tokens:      tokens.NewManager(),
 			config:      types.ServerConfig{},
-			loadedFiles: make(map[string]string),
+			loadedFiles: make(map[string]*TokenFileOptions),
 		}
 
 		// Should not panic
@@ -249,7 +249,7 @@ func TestPublishDiagnostics_NilContext(t *testing.T) {
 			documents:   documents.NewManager(),
 			tokens:      tokens.NewManager(),
 			config:      types.ServerConfig{},
-			loadedFiles: make(map[string]string),
+			loadedFiles: make(map[string]*TokenFileOptions),
 			context:     nil, // No server context
 		}
 
@@ -273,7 +273,7 @@ func TestPublishDiagnostics_NilContext(t *testing.T) {
 			documents:   documents.NewManager(),
 			tokens:      tokens.NewManager(),
 			config:      types.ServerConfig{},
-			loadedFiles: make(map[string]string),
+			loadedFiles: make(map[string]*TokenFileOptions),
 			// In a real scenario, context would be set by SetGLSPContext
 			// For this test, we're just verifying the error path isn't triggered
 		}
