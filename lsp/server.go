@@ -299,18 +299,23 @@ func (s *Server) handleSetTrace(context *glsp.Context, params *protocol.SetTrace
 
 // handleDidOpen handles the textDocument/didOpen notification
 func (s *Server) handleDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
+	return DidOpen(s, context, params)
+}
+
+// DidOpen handles the textDocument/didOpen notification
+func DidOpen(ctx types.ServerContext, context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Document opened: %s (language: %s, version: %d)\n",
 		params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version))
 
-	err := s.documents.DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID,
+	err := ctx.DocumentManager().DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID,
 		int(params.TextDocument.Version), params.TextDocument.Text)
 	if err != nil {
 		return err
 	}
 
 	// Publish diagnostics for the opened document
-	if s.context != nil {
-		s.PublishDiagnostics(s.context, params.TextDocument.URI)
+	if glspCtx := ctx.GLSPContext(); glspCtx != nil {
+		ctx.PublishDiagnostics(glspCtx, params.TextDocument.URI)
 	}
 
 	return nil
@@ -318,6 +323,11 @@ func (s *Server) handleDidOpen(context *glsp.Context, params *protocol.DidOpenTe
 
 // handleDidChange handles the textDocument/didChange notification
 func (s *Server) handleDidChange(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
+	return DidChange(s, context, params)
+}
+
+// DidChange handles the textDocument/didChange notification
+func DidChange(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
 	uri := params.TextDocument.URI
 	version := int(params.TextDocument.Version)
 
@@ -331,14 +341,14 @@ func (s *Server) handleDidChange(context *glsp.Context, params *protocol.DidChan
 		}
 	}
 
-	err := s.documents.DidChange(uri, version, changes)
+	err := ctx.DocumentManager().DidChange(uri, version, changes)
 	if err != nil {
 		return err
 	}
 
 	// Publish diagnostics after document change
-	if s.context != nil {
-		s.PublishDiagnostics(s.context, uri)
+	if glspCtx := ctx.GLSPContext(); glspCtx != nil {
+		ctx.PublishDiagnostics(glspCtx, uri)
 	}
 
 	return nil
@@ -346,11 +356,16 @@ func (s *Server) handleDidChange(context *glsp.Context, params *protocol.DidChan
 
 // handleDidClose handles the textDocument/didClose notification
 func (s *Server) handleDidClose(context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
+	return DidClose(s, context, params)
+}
+
+// DidClose handles the textDocument/didClose notification
+func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Document closed: %s\n", uri)
 
-	return s.documents.DidClose(uri)
+	return ctx.DocumentManager().DidClose(uri)
 }
 
 // ServerContext interface implementation
@@ -434,17 +449,11 @@ func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, param
 	return ctx.(*Server).handleDidChangeWatchedFiles(context, params)
 }
 
-func DidOpen(ctx types.ServerContext, context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
-	return ctx.(*Server).handleDidOpen(context, params)
-}
+// DidOpen is defined above with the document lifecycle handlers
 
-func DidChange(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
-	return ctx.(*Server).handleDidChange(context, params)
-}
+// DidChange is defined above with the document lifecycle handlers
 
-func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
-	return ctx.(*Server).handleDidClose(context, params)
-}
+// DidClose is defined above with the document lifecycle handlers
 
 // Feature handler wrappers (these will eventually be full implementations)
 
