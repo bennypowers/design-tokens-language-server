@@ -170,13 +170,24 @@ func (s *Server) SetGLSPContext(ctx *glsp.Context) {
 func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Publishing diagnostics for: %s\n", uri)
 
+	// Select a working context: use passed-in context if non-nil, otherwise fall back to server's context
+	workingContext := context
+	if workingContext == nil {
+		workingContext = s.context
+	}
+
+	// If we still don't have a context, fail fast
+	if workingContext == nil {
+		return fmt.Errorf("cannot publish diagnostics: no client context available")
+	}
+
 	diagnostics, err := diagnostic.GetDiagnostics(s, uri)
 	if err != nil {
 		return err
 	}
 
-	// Publish diagnostics to the client
-	context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
+	// Publish diagnostics to the client using the selected context
+	workingContext.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
 		URI:         uri,
 		Diagnostics: diagnostics,
 	})
