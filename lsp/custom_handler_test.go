@@ -64,20 +64,50 @@ func TestCustomHandler_DiagnosticMethod(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("other methods fall through to protocol.Handler", func(t *testing.T) {
-		// Test that non-custom methods are passed to the base handler
-		// We'll use a method that exists in protocol.Handler
+	t.Run("standard LSP methods not intercepted by CustomHandler", func(t *testing.T) {
+		// Test that CustomHandler doesn't intercept standard LSP methods
+		// (i.e., they fall through to the base handler, not handled by our custom code)
+
+		// Send a hover request with valid params
+		params := protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
+				Position:     protocol.Position{Line: 0, Character: 0},
+			},
+		}
+		paramsJSON, err := json.Marshal(params)
+		require.NoError(t, err)
+
 		ctx := &glsp.Context{
 			Method: "textDocument/hover",
-			Params: []byte(`{}`),
+			Params: paramsJSON,
 		}
 
-		// This will fail because we haven't set up the full handler,
-		// but we're just testing that it falls through
+		// Call the handler - it should fall through to protocol.Handler
 		_, validMethod, _, _ := handler.Handle(ctx)
 
-		// The base handler should recognize the method (it won't handle it correctly
-		// without full setup, but validMethod should still be set)
-		assert.True(t, validMethod || !validMethod, "Should pass through to base handler")
+		// The method should be recognized by the base handler
+		// If CustomHandler tried to intercept it, we'd get different behavior
+		assert.True(t, validMethod, "Should pass through to base handler and recognize the method")
+	})
+
+	t.Run("semanticTokens/delta IS intercepted by CustomHandler", func(t *testing.T) {
+		// Verify that our custom LSP 3.17 method IS intercepted
+		params := protocol.SemanticTokensDeltaParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.json"},
+		}
+		paramsJSON, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		ctx := &glsp.Context{
+			Method: "textDocument/semanticTokens/delta",
+			Params: paramsJSON,
+		}
+
+		_, validMethod, validParams, _ := handler.Handle(ctx)
+
+		// CustomHandler should intercept this method
+		assert.True(t, validMethod, "CustomHandler should recognize semanticTokens/delta")
+		assert.True(t, validParams, "CustomHandler should parse params successfully")
 	})
 }
