@@ -137,12 +137,12 @@ func (s *Server) ResolveCompletion(item *protocol.CompletionItem) (*protocol.Com
 
 // DocumentColor provides color information (exposed for testing)
 func (s *Server) DocumentColor(params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
-	return s.handleDocumentColor(nil, params)
+	return DocumentColor(s, nil, params)
 }
 
 // ColorPresentation provides color presentations (exposed for testing)
 func (s *Server) ColorPresentation(params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
-	return s.handleColorPresentation(nil, params)
+	return ColorPresentation(s, nil, params)
 }
 
 // CodeAction provides code actions (exposed for testing)
@@ -456,13 +456,9 @@ func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.D
 
 // References is defined in references.go
 
-func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
-	return ctx.(*Server).handleDocumentColor(context, params)
-}
+// DocumentColor is defined in color.go
 
-func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
-	return ctx.(*Server).handleColorPresentation(context, params)
-}
+// ColorPresentation is defined in color.go
 
 func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
 	return ctx.(*Server).handleCodeAction(context, params)

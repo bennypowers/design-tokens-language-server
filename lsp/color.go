@@ -7,18 +7,24 @@ import (
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // handleDocumentColor handles the textDocument/documentColor request
 func (s *Server) handleDocumentColor(context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
+	return DocumentColor(s, context, params)
+}
+
+// DocumentColor handles the textDocument/documentColor request
+func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] DocumentColor requested: %s\n", uri)
 
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -42,7 +48,7 @@ func (s *Server) handleDocumentColor(context *glsp.Context, params *protocol.Doc
 	// Find all var() calls that reference color tokens
 	for _, varCall := range result.VarCalls {
 		// Look up the token
-		token := s.tokens.Get(varCall.TokenName)
+		token := ctx.Token(varCall.TokenName)
 		if token == nil {
 			continue
 		}
@@ -77,7 +83,7 @@ func (s *Server) handleDocumentColor(context *glsp.Context, params *protocol.Doc
 	// Also check variable declarations
 	for _, variable := range result.Variables {
 		// Look up the token
-		token := s.tokens.Get(variable.Name)
+		token := ctx.Token(variable.Name)
 		if token == nil {
 			continue
 		}
@@ -115,6 +121,11 @@ func (s *Server) handleDocumentColor(context *glsp.Context, params *protocol.Doc
 
 // handleColorPresentation handles the textDocument/colorPresentation request
 func (s *Server) handleColorPresentation(context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
+	return ColorPresentation(s, context, params)
+}
+
+// ColorPresentation handles the textDocument/colorPresentation request
+func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
 	uri := params.TextDocument.URI
 	color := params.Color
 
