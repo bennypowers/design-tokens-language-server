@@ -42,7 +42,10 @@ func (s *Server) LoadTokensFromConfig() error {
 
 	// If we have previously loaded files (from tests or programmatic loading),
 	// reload them
-	if len(s.loadedFiles) > 0 {
+	s.loadedFilesMu.RLock()
+	hasLoadedFiles := len(s.loadedFiles) > 0
+	s.loadedFilesMu.RUnlock()
+	if hasLoadedFiles {
 		return s.reloadPreviouslyLoadedFiles()
 	}
 
@@ -209,9 +212,17 @@ func (s *Server) reloadPreviouslyLoadedFiles() error {
 	// Clear existing tokens
 	s.tokens.Clear()
 
+	// Copy loadedFiles to avoid holding the lock during file I/O
+	s.loadedFilesMu.RLock()
+	filesToReload := make(map[string]*TokenFileOptions, len(s.loadedFiles))
+	for path, opts := range s.loadedFiles {
+		filesToReload[path] = opts
+	}
+	s.loadedFilesMu.RUnlock()
+
 	// Reload each previously loaded file with its original options (prefix, groupMarkers)
 	var errs []error
-	for path, opts := range s.loadedFiles {
+	for path, opts := range filesToReload {
 		if err := s.loadTokenFileInternal(path, opts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to reload %s: %w", path, err))
 			continue

@@ -91,23 +91,7 @@ func TestCustomHandler_DiagnosticMethod(t *testing.T) {
 		assert.True(t, validMethod, "Should pass through to base handler and recognize the method")
 	})
 
-	t.Run("semanticTokens/delta IS intercepted by CustomHandler", func(t *testing.T) {
-		// Verify that our custom LSP 3.17 method IS intercepted
-		params := protocol.SemanticTokensDeltaParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.json"},
-		}
-		paramsJSON, err := json.Marshal(params)
-		require.NoError(t, err)
-
-		ctx := &glsp.Context{
-			Method: "textDocument/semanticTokens/delta",
-			Params: paramsJSON,
-		}
-
-		_, validMethod, validParams, _ := handler.Handle(ctx)
-
-		// CustomHandler should intercept this method
-		assert.True(t, validMethod, "CustomHandler should recognize semanticTokens/delta")
-		assert.True(t, validParams, "CustomHandler should parse params successfully")
-	})
+	// NOTE: semanticTokens/delta test removed
+	// Delta support was disabled because the implementation lacks proper result caching
+	// and would corrupt client state. See custom_handler.go for details.
 }

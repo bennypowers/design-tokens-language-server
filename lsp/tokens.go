@@ -44,7 +44,9 @@ func (s *Server) LoadTokenFileWithOptions(filepath string, opts *TokenFileOption
 	}
 
 	// Track this file for reload on change (only on successful load)
+	s.loadedFilesMu.Lock()
 	s.loadedFiles[filepath] = opts
+	s.loadedFilesMu.Unlock()
 
 	return nil
 }

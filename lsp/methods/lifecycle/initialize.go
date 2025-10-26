@@ -59,7 +59,7 @@ func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol
 				"tokenModifiers": []string{},
 			},
 			"full": map[string]any{
-				"delta": true,
+				"delta": false, // Disabled: delta implementation needs proper result caching and diffing
 			},
 		},
 		// LSP 3.17: Pull diagnostics support

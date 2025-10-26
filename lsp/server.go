@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/parser/css"
@@ -39,6 +40,7 @@ type Server struct {
 	rootPath          string                      // Workspace root path (file system)
 	config            types.ServerConfig          // Server configuration
 	loadedFiles       map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
+	loadedFilesMu     sync.RWMutex                // Protects loadedFiles from concurrent access
 	autoDiscoveryMode bool                        // True if using auto-discovery instead of explicit files
 }
 
@@ -204,7 +206,10 @@ func (s *Server) IsTokenFile(path string) bool {
 	}
 
 	// Check if it's in our loaded files map (for programmatically loaded tokens)
-	if _, exists := s.loadedFiles[path]; exists {
+	s.loadedFilesMu.RLock()
+	_, exists := s.loadedFiles[path]
+	s.loadedFilesMu.RUnlock()
+	if exists {
 		return true
 	}
 
@@ -262,7 +267,9 @@ func (s *Server) IsTokenFile(path string) bool {
 // RemoveLoadedFile removes a file from the loaded files tracking map
 // This should be called when a token file is deleted to prevent stale entries
 func (s *Server) RemoveLoadedFile(path string) {
+	s.loadedFilesMu.Lock()
 	delete(s.loadedFiles, path)
+	s.loadedFilesMu.Unlock()
 }
 
 // RegisterFileWatchers registers file watchers with the client

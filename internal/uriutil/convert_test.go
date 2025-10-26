@@ -45,8 +45,26 @@ func TestPathToURI(t *testing.T) {
 		{
 			name:     "Windows UNC path",
 			input:    "\\\\server\\share\\file.txt",
-			expected: "file:////server/share/file.txt",
+			expected: "file://server/share/file.txt",
 			windows:  true,
+		},
+		{
+			name:     "Path with spaces (POSIX)",
+			input:    "/home/user/my project",
+			expected: "file:///home/user/my%20project",
+			posix:    true,
+		},
+		{
+			name:     "Path with spaces (Windows)",
+			input:    "C:\\Foo Bar\\file.txt",
+			expected: "file:///C:/Foo%20Bar/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Path with unicode (POSIX)",
+			input:    "/home/user/文件",
+			expected: "file:///home/user/%E6%96%87%E4%BB%B6",
+			posix:    true,
 		},
 	}
 
@@ -88,9 +106,9 @@ func TestURIToPath(t *testing.T) {
 			posix:    true,
 		},
 		{
-			name:     "POSIX URI with spaces",
+			name:     "POSIX URI with spaces (percent-encoded)",
 			input:    "file:///home/user/my%20project",
-			expected: "/home/user/my%20project", // Note: percent-encoding not handled yet
+			expected: "/home/user/my project", // Percent-decoded
 			posix:    true,
 		},
 		// Windows tests
@@ -108,9 +126,21 @@ func TestURIToPath(t *testing.T) {
 		},
 		{
 			name:     "Windows UNC URI",
-			input:    "file:////server/share/file.txt",
+			input:    "file://server/share/file.txt",
 			expected: "\\\\" + "server" + string(filepath.Separator) + "share" + string(filepath.Separator) + "file.txt",
 			windows:  true,
+		},
+		{
+			name:     "Windows URI with spaces (percent-encoded)",
+			input:    "file:///C:/Foo%20Bar/file.txt",
+			expected: "C:" + string(filepath.Separator) + "Foo Bar" + string(filepath.Separator) + "file.txt",
+			windows:  true,
+		},
+		{
+			name:     "URI with unicode (percent-encoded)",
+			input:    "file:///home/user/%E6%96%87%E4%BB%B6",
+			expected: "/home/user/文件",
+			posix:    true,
 		},
 		// Cross-platform tests (should work on both)
 		{
@@ -161,6 +191,26 @@ func TestRoundTrip(t *testing.T) {
 		{
 			name:    "Windows D drive",
 			path:    "D:\\workspace\\tokens",
+			windows: true,
+		},
+		{
+			name:  "POSIX path with spaces",
+			path:  "/home/user/my project",
+			posix: true,
+		},
+		{
+			name:    "Windows path with spaces",
+			path:    "C:\\Foo Bar\\baz",
+			windows: true,
+		},
+		{
+			name:  "POSIX path with unicode",
+			path:  "/home/user/文件",
+			posix: true,
+		},
+		{
+			name:    "Windows UNC path",
+			path:    "\\\\server\\share\\file.txt",
 			windows: true,
 		},
 	}

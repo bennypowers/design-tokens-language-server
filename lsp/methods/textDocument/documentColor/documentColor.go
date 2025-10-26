@@ -148,13 +148,18 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 func parseColor(value string) (*protocol.Color, error) {
 	value = strings.TrimSpace(value)
 
-	// Parse hex colors (#RGB, #RRGGBB, #RRGGBBAA)
+	// Parse hex colors (#RGB, #RGBA, #RRGGBB, #RRGGBBAA)
 	if strings.HasPrefix(value, "#") {
 		hex := strings.TrimPrefix(value, "#")
 
-		// Expand 3-digit hex to 6-digit
+		// Expand 3-digit hex to 6-digit (#RGB -> #RRGGBB)
 		if len(hex) == 3 {
 			hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+		}
+
+		// Expand 4-digit hex to 8-digit (#RGBA -> #RRGGBBAA)
+		if len(hex) == 4 {
+			hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2], hex[3], hex[3]})
 		}
 
 		// Parse 6 or 8 digit hex

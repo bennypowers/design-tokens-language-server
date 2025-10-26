@@ -356,8 +356,52 @@ func TestParseColor(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "invalid hex - wrong length",
-			input:       "#ff00",
+			name:  "4-digit hex color (#RGBA) - red with full alpha",
+			input: "#f00f",
+			expected: &protocol.Color{
+				Red:   1.0,
+				Green: 0.0,
+				Blue:  0.0,
+				Alpha: 1.0,
+			},
+			expectError: false,
+		},
+		{
+			name:  "4-digit hex color (#RGBA) - blue with half alpha",
+			input: "#00f8",
+			expected: &protocol.Color{
+				Red:   0.0,
+				Green: 0.0,
+				Blue:  1.0,
+				Alpha: protocol.Decimal(136.0 / 255.0), // 0x88 = 136
+			},
+			expectError: false,
+		},
+		{
+			name:  "4-digit hex color (#RGBA) - green with zero alpha",
+			input: "#0f00",
+			expected: &protocol.Color{
+				Red:   0.0,
+				Green: 1.0,
+				Blue:  0.0,
+				Alpha: 0.0,
+			},
+			expectError: false,
+		},
+		{
+			name:  "4-digit hex color (#RGBA) - gray with half alpha",
+			input: "#8888",
+			expected: &protocol.Color{
+				Red:   protocol.Decimal(136.0 / 255.0),
+				Green: protocol.Decimal(136.0 / 255.0),
+				Blue:  protocol.Decimal(136.0 / 255.0),
+				Alpha: protocol.Decimal(136.0 / 255.0),
+			},
+			expectError: false,
+		},
+		{
+			name:        "invalid hex - 5 digits (unsupported length)",
+			input:       "#ff000",
 			expected:    nil,
 			expectError: true,
 		},

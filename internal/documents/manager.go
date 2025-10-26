@@ -138,7 +138,16 @@ func applyIncrementalChange(content string, changeRange protocol.Range, text str
 		endCharUTF16 = startCharUTF16
 	}
 
-	// Convert UTF-16 positions to byte offsets
+	// Final validation: ensure line indices are within bounds after normalization
+	// This must happen before we access lines[startLine] or lines[endLine]
+	if startLine >= len(lines) {
+		return "", fmt.Errorf("start line %d out of bounds after normalization (total lines: %d)", startLine, len(lines))
+	}
+	if endLine >= len(lines) {
+		return "", fmt.Errorf("end line %d out of bounds after normalization (total lines: %d)", endLine, len(lines))
+	}
+
+	// Convert UTF-16 positions to byte offsets (safe now that we've validated bounds)
 	startCharByte := position.UTF16ToByteOffset(lines[startLine], startCharUTF16)
 	endCharByte := position.UTF16ToByteOffset(lines[endLine], endCharUTF16)
 

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
-	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -42,23 +41,14 @@ func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod bool, 
 		return result, true, true, nil
 	}
 
-	// WORKAROUND: Intercept textDocument/semanticTokens/delta for LSP 3.17
-	// This method doesn't exist in protocol.Handler (LSP 3.16), so we handle it manually
-	if context.Method == "textDocument/semanticTokens/delta" {
-		// Parse params manually since protocol.Handler doesn't know about this method
-		var params protocol.SemanticTokensDeltaParams
-		if err := json.Unmarshal(context.Params, &params); err != nil {
-			return nil, true, false, err
-		}
-
-		// Call our handler
-		result, err := semantictokens.SemanticTokensDelta(h.server, context, &params)
-		if err != nil {
-			return nil, true, true, err
-		}
-
-		return result, true, true, nil
-	}
+	// NOTE: textDocument/semanticTokens/delta handler removed
+	// Delta support is disabled in capabilities (see initialize.go) because the implementation
+	// lacks proper result caching and diffing, which would corrupt client state.
+	// If delta support is re-enabled in the future, implement proper resultId bookkeeping:
+	//   1. Store token arrays by resultID when full responses are produced
+	//   2. Look up previous array using params.PreviousResultID
+	//   3. Compute correct SemanticTokensEdit(s) with proper Start/DeleteCount/Data
+	//   4. Update and return new resultID atomically
 
 	// Fall through to default protocol.Handler
 	return h.Handler.Handle(context)
