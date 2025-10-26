@@ -22,7 +22,9 @@ func DidOpen(ctx types.ServerContext, context *glsp.Context, params *protocol.Di
 
 	// Publish diagnostics for the opened document
 	if glspCtx := ctx.GLSPContext(); glspCtx != nil {
-		ctx.PublishDiagnostics(glspCtx, params.TextDocument.URI)
+		if err := ctx.PublishDiagnostics(glspCtx, params.TextDocument.URI); err != nil {
+			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", params.TextDocument.URI, err)
+		}
 	}
 
 	return nil
@@ -50,7 +52,9 @@ func DidChange(ctx types.ServerContext, context *glsp.Context, params *protocol.
 
 	// Publish diagnostics after document change
 	if glspCtx := ctx.GLSPContext(); glspCtx != nil {
-		ctx.PublishDiagnostics(glspCtx, uri)
+		if err := ctx.PublishDiagnostics(glspCtx, uri); err != nil {
+			fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", uri, err)
+		}
 	}
 
 	return nil
