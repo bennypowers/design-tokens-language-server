@@ -7,6 +7,8 @@ import (
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/lifecycle"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/completion"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/definition"
@@ -47,15 +49,15 @@ func NewServer() (*Server, error) {
 
 	// Create the GLSP server with our handlers wrapped with middleware
 	protocolHandler := protocol.Handler{
-		Initialize:                      method(s, "initialize", Initialize),
-		Initialized:                     notify(s, "initialized", Initialized),
-		Shutdown:                        noParam(s, "shutdown", Shutdown),
-		SetTrace:                        notify(s, "$/setTrace", SetTrace),
+		Initialize:                      method(s, "initialize", lifecycle.Initialize),
+		Initialized:                     notify(s, "initialized", lifecycle.Initialized),
+		Shutdown:                        noParam(s, "shutdown", lifecycle.Shutdown),
+		SetTrace:                        notify(s, "$/setTrace", lifecycle.SetTrace),
 		WorkspaceDidChangeConfiguration: notify(s, "workspace/didChangeConfiguration", DidChangeConfiguration),
 		WorkspaceDidChangeWatchedFiles:  notify(s, "workspace/didChangeWatchedFiles", DidChangeWatchedFiles),
-		TextDocumentDidOpen:             notify(s, "textDocument/didOpen", DidOpen),
-		TextDocumentDidChange:           notify(s, "textDocument/didChange", DidChange),
-		TextDocumentDidClose:            notify(s, "textDocument/didClose", DidClose),
+		TextDocumentDidOpen:             notify(s, "textDocument/didOpen", textDocument.DidOpen),
+		TextDocumentDidChange:           notify(s, "textDocument/didChange", textDocument.DidChange),
+		TextDocumentDidClose:            notify(s, "textDocument/didClose", textDocument.DidClose),
 		TextDocumentHover:               method(s, "textDocument/hover", hover.Hover),
 		TextDocumentCompletion:          method(s, "textDocument/completion", completion.Completion),
 		CompletionItemResolve:           method(s, "completionItem/resolve", completion.CompletionResolve),
@@ -176,109 +178,17 @@ func (s *Server) CodeActionResolve(action *protocol.CodeAction) (*protocol.CodeA
 
 // Initialize handles the initialize request (exposed for testing)
 func (s *Server) Initialize(context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
-	return s.handleInitialize(context, params)
+	return lifecycle.Initialize(s, context, params)
 }
 
 // Shutdown handles the shutdown request (exposed for testing)
 func (s *Server) Shutdown(context *glsp.Context) error {
-	return s.handleShutdown(context)
+	return lifecycle.Shutdown(s, context)
 }
 
 // SetTrace handles the setTrace notification (exposed for testing)
 func (s *Server) SetTrace(context *glsp.Context, params *protocol.SetTraceParams) error {
-	return s.handleSetTrace(context, params)
-}
-
-// handleInitialize handles the initialize request
-func (s *Server) handleInitialize(context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
-	clientName := "unknown"
-	if params.ClientInfo != nil {
-		clientName = params.ClientInfo.Name
-	}
-
-	fmt.Fprintf(os.Stderr, "[DTLS] Initializing for client: %s\n", clientName)
-
-	// Store the workspace root
-	if params.RootURI != nil {
-		s.rootURI = *params.RootURI
-		// Convert URI to file path
-		s.rootPath = uriToPath(*params.RootURI)
-		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root: %s\n", s.rootPath)
-	} else if params.RootPath != nil {
-		s.rootPath = *params.RootPath
-		s.rootURI = pathToURI(s.rootPath)
-		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root (from rootPath): %s\n", s.rootPath)
-	}
-
-	// Build server capabilities
-	//
-	// WORKAROUND: We use map[string]any instead of protocol.ServerCapabilities to include
-	// LSP 3.17 fields that don't exist in glsp v0.2.2's protocol.ServerCapabilities struct.
-	// When glsp is updated to LSP 3.17, we can switch back to using protocol_3_17.ServerCapabilities.
-	syncKind := protocol.TextDocumentSyncKindIncremental
-	capabilities := map[string]any{
-		"textDocumentSync": protocol.TextDocumentSyncOptions{
-			OpenClose: boolPtr(true),
-			Change:    &syncKind,
-		},
-		"hoverProvider":      true,
-		"completionProvider": protocol.CompletionOptions{
-			ResolveProvider: boolPtr(true),
-		},
-		"definitionProvider": true,
-		"referencesProvider": true,
-		"codeActionProvider": protocol.CodeActionOptions{
-			ResolveProvider: boolPtr(true),
-		},
-		"colorProvider": true,
-		"semanticTokensProvider": protocol.SemanticTokensOptions{
-			Legend: protocol.SemanticTokensLegend{
-				TokenTypes:     []string{"class", "property"}, // Match TypeScript: class for first part, property for rest
-				TokenModifiers: []string{},
-			},
-			Full: boolPtr(true),
-		},
-		// LSP 3.17: Pull diagnostics support
-		"diagnosticProvider": diagnostic.DiagnosticOptions{
-			InterFileDependencies: false,
-			WorkspaceDiagnostics:  false,
-		},
-	}
-
-	// WORKAROUND: Return custom struct with any type for Capabilities field
-	// protocol.InitializeResult expects ServerCapabilities (LSP 3.16), but we need to
-	// include LSP 3.17 fields. When glsp is updated, we can use protocol_3_17.InitializeResult.
-	return struct {
-		Capabilities any                                      `json:"capabilities"`
-		ServerInfo   *protocol.InitializeResultServerInfo `json:"serverInfo,omitempty"`
-	}{
-		Capabilities: capabilities,
-		ServerInfo: &protocol.InitializeResultServerInfo{
-			Name:    "design-tokens-language-server",
-			Version: strPtr("1.0.0-alpha"),
-		},
-	}, nil
-}
-
-// handleInitialized handles the initialized notification
-func (s *Server) handleInitialized(context *glsp.Context, params *protocol.InitializedParams) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Server initialized\n")
-	// Store context for later use (diagnostics)
-	s.context = context
-
-	// Load token files from workspace using configuration
-	if err := s.loadTokensFromConfig(); err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load token files: %v\n", err)
-		// Don't fail initialization, just log the error
-	}
-
-	// Register file watchers for token files
-	if err := s.registerFileWatchers(context); err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to register file watchers: %v\n", err)
-		// Don't fail initialization, just log the error
-	}
-
-	return nil
+	return lifecycle.SetTrace(s, context, params)
 }
 
 // Close releases server resources including the CSS parser pool.
@@ -289,91 +199,6 @@ func (s *Server) Close() error {
 	// Clean up the CSS parser pool
 	css.ClosePool()
 	return nil
-}
-
-// handleShutdown handles the shutdown request
-func (s *Server) handleShutdown(context *glsp.Context) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Server shutting down\n")
-
-	// Delegate to Close() for resource cleanup
-	return s.Close()
-}
-
-// handleSetTrace handles the setTrace notification
-func (s *Server) handleSetTrace(context *glsp.Context, params *protocol.SetTraceParams) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Trace level set to: %s\n", params.Value)
-	return nil
-}
-
-// handleDidOpen handles the textDocument/didOpen notification
-func (s *Server) handleDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
-	return DidOpen(s, context, params)
-}
-
-// DidOpen handles the textDocument/didOpen notification
-func DidOpen(ctx types.ServerContext, context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Document opened: %s (language: %s, version: %d)\n",
-		params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version))
-
-	err := ctx.DocumentManager().DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID,
-		int(params.TextDocument.Version), params.TextDocument.Text)
-	if err != nil {
-		return err
-	}
-
-	// Publish diagnostics for the opened document
-	if glspCtx := ctx.GLSPContext(); glspCtx != nil {
-		ctx.PublishDiagnostics(glspCtx, params.TextDocument.URI)
-	}
-
-	return nil
-}
-
-// handleDidChange handles the textDocument/didChange notification
-func (s *Server) handleDidChange(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
-	return DidChange(s, context, params)
-}
-
-// DidChange handles the textDocument/didChange notification
-func DidChange(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
-	uri := params.TextDocument.URI
-	version := int(params.TextDocument.Version)
-
-	fmt.Fprintf(os.Stderr, "[DTLS] Document changed: %s (version: %d, changes: %d)\n", uri, version, len(params.ContentChanges))
-
-	// Convert any[] to proper type, filtering out invalid entries
-	changes := make([]protocol.TextDocumentContentChangeEvent, 0, len(params.ContentChanges))
-	for _, change := range params.ContentChanges {
-		if changeEvent, ok := change.(protocol.TextDocumentContentChangeEvent); ok {
-			changes = append(changes, changeEvent)
-		}
-	}
-
-	err := ctx.DocumentManager().DidChange(uri, version, changes)
-	if err != nil {
-		return err
-	}
-
-	// Publish diagnostics after document change
-	if glspCtx := ctx.GLSPContext(); glspCtx != nil {
-		ctx.PublishDiagnostics(glspCtx, uri)
-	}
-
-	return nil
-}
-
-// handleDidClose handles the textDocument/didClose notification
-func (s *Server) handleDidClose(context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
-	return DidClose(s, context, params)
-}
-
-// DidClose handles the textDocument/didClose notification
-func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
-	uri := params.TextDocument.URI
-
-	fmt.Fprintf(os.Stderr, "[DTLS] Document closed: %s\n", uri)
-
-	return ctx.DocumentManager().DidClose(uri)
 }
 
 // ServerContext interface implementation
@@ -413,6 +238,26 @@ func (s *Server) RootPath() string {
 	return s.rootPath
 }
 
+// SetRootURI sets the workspace root URI
+func (s *Server) SetRootURI(uri string) {
+	s.rootURI = uri
+}
+
+// SetRootPath sets the workspace root path
+func (s *Server) SetRootPath(path string) {
+	s.rootPath = path
+}
+
+// LoadTokensFromConfig loads tokens based on current configuration
+func (s *Server) LoadTokensFromConfig() error {
+	return s.loadTokensFromConfig()
+}
+
+// RegisterFileWatchers registers file watchers for token files
+func (s *Server) RegisterFileWatchers(ctx *glsp.Context) error {
+	return s.registerFileWatchers(ctx)
+}
+
 // GLSPContext returns the GLSP context
 func (s *Server) GLSPContext() *glsp.Context {
 	return s.context
@@ -441,31 +286,7 @@ func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }
 
-func boolPtr(b bool) *bool {
-	return &b
-}
-
-func strPtr(s string) *string {
-	return &s
-}
-
-// Lifecycle method wrappers that adapt Server methods to ServerContext interface
-
-func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
-	return ctx.(*Server).handleInitialize(context, params)
-}
-
-func Initialized(ctx types.ServerContext, context *glsp.Context, params *protocol.InitializedParams) error {
-	return ctx.(*Server).handleInitialized(context, params)
-}
-
-func Shutdown(ctx types.ServerContext, context *glsp.Context) error {
-	return ctx.(*Server).handleShutdown(context)
-}
-
-func SetTrace(ctx types.ServerContext, context *glsp.Context, params *protocol.SetTraceParams) error {
-	return ctx.(*Server).handleSetTrace(context, params)
-}
+// Workspace method wrappers that adapt Server methods to ServerContext interface
 
 func DidChangeConfiguration(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeConfigurationParams) error {
 	return ctx.(*Server).handleDidChangeConfiguration(context, params)
@@ -474,14 +295,6 @@ func DidChangeConfiguration(ctx types.ServerContext, context *glsp.Context, para
 func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeWatchedFilesParams) error {
 	return ctx.(*Server).handleDidChangeWatchedFiles(context, params)
 }
-
-// DidOpen is defined above with the document lifecycle handlers
-
-// DidChange is defined above with the document lifecycle handlers
-
-// DidClose is defined above with the document lifecycle handlers
-
-// Feature handler wrappers (these will eventually be full implementations)
 
 // Completion is defined in completion.go
 

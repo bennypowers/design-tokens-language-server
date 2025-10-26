@@ -23,6 +23,12 @@ type ServerContext interface {
 	// Workspace operations
 	RootURI() string
 	RootPath() string
+	SetRootURI(uri string)
+	SetRootPath(path string)
+
+	// Workspace initialization (called by Initialize handler)
+	LoadTokensFromConfig() error
+	RegisterFileWatchers(ctx *glsp.Context) error
 
 	// LSP context (for publishing diagnostics, etc.)
 	GLSPContext() *glsp.Context

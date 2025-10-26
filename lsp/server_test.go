@@ -5,6 +5,8 @@ import (
 
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/lifecycle"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/completion"
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/definition"
@@ -151,11 +153,11 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Text:       "body { color: red; }",
 			},
 		}
-		err := server.handleDidOpen(ctx, params)
+		err := textDocument.DidOpen(server, ctx, params)
 		assert.NoError(t, err)
 	})
 
-	t.Run("handleDidChange", func(t *testing.T) {
+	t.Run("didChange", func(t *testing.T) {
 		// First open a document
 		server.documents.DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
@@ -169,56 +171,32 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 			},
 			ContentChanges: []any{textChange},
 		}
-		err := server.handleDidChange(ctx, params)
+		err := textDocument.DidChange(server, ctx, params)
 		assert.NoError(t, err)
 	})
 
-	t.Run("handleDidClose", func(t *testing.T) {
+	t.Run("didClose", func(t *testing.T) {
 		// Ensure document exists
 		server.documents.DidOpen("file:///test2.css", "css", 1, "")
 
 		params := &protocol.DidCloseTextDocumentParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test2.css"},
 		}
-		err := server.handleDidClose(ctx, params)
+		err := textDocument.DidClose(server, ctx, params)
 		assert.NoError(t, err)
 	})
 
-	t.Run("handleShutdown", func(t *testing.T) {
-		err := server.handleShutdown(ctx)
+	t.Run("shutdown", func(t *testing.T) {
+		err := lifecycle.Shutdown(server, ctx)
 		assert.NoError(t, err)
 	})
 
-	t.Run("handleSetTrace", func(t *testing.T) {
+	t.Run("setTrace", func(t *testing.T) {
 		params := &protocol.SetTraceParams{Value: "off"}
-		err := server.handleSetTrace(ctx, params)
+		err := lifecycle.SetTrace(server, ctx, params)
 		assert.NoError(t, err)
 	})
 }
-
-// TestHelperFunctions tests the utility helper functions
-func TestHelperFunctions(t *testing.T) {
-	t.Run("boolPtr", func(t *testing.T) {
-		truePtr := boolPtr(true)
-		assert.NotNil(t, truePtr)
-		assert.True(t, *truePtr)
-
-		falsePtr := boolPtr(false)
-		assert.NotNil(t, falsePtr)
-		assert.False(t, *falsePtr)
-	})
-
-	t.Run("strPtr", func(t *testing.T) {
-		str := strPtr("test-string")
-		assert.NotNil(t, str)
-		assert.Equal(t, "test-string", *str)
-
-		emptyStr := strPtr("")
-		assert.NotNil(t, emptyStr)
-		assert.Equal(t, "", *emptyStr)
-	})
-}
-
 // TestServer_Close tests that Close() properly releases resources
 func TestServer_Close(t *testing.T) {
 	t.Run("Close releases CSS parser pool", func(t *testing.T) {
