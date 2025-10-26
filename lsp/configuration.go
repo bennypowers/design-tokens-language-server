@@ -24,16 +24,23 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 
 // loadTokensFromConfig loads tokens based on current configuration
 func (s *Server) LoadTokensFromConfig() error {
-	// Clear existing tokens
-	s.tokens.Clear()
-
 	// If tokensFiles is specified, load those files
 	if len(s.config.TokensFiles) > 0 {
+		// Clear existing tokens before loading configured files
+		s.tokens.Clear()
 		return s.loadExplicitTokenFiles()
+	}
+
+	// If we have previously loaded files (from tests or programmatic loading),
+	// reload them
+	if len(s.loadedFiles) > 0 {
+		return s.reloadPreviouslyLoadedFiles()
 	}
 
 	// Otherwise, auto-discover token files
 	if s.rootPath != "" {
+		// Clear existing tokens before auto-discover
+		s.tokens.Clear()
 		return s.loadTokenFilesAutoDiscover()
 	}
 
@@ -117,4 +124,26 @@ func (s *Server) loadTokenFilesAutoDiscover() error {
 	}
 
 	return s.LoadTokenFiles(tokenConfig)
+}
+
+// reloadPreviouslyLoadedFiles reloads all files that were previously loaded
+// This is used when tokens need to be refreshed (e.g., file watching)
+func (s *Server) reloadPreviouslyLoadedFiles() error {
+	// Clear existing tokens
+	s.tokens.Clear()
+
+	// Reload each previously loaded file with its original prefix
+	var errs []error
+	for path, prefix := range s.loadedFiles {
+		if err := s.loadTokenFileInternal(path, prefix); err != nil {
+			errs = append(errs, fmt.Errorf("failed to reload %s: %w", path, err))
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "[DTLS] Reloaded %s (prefix: %s)\n", path, prefix)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
