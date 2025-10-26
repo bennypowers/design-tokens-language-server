@@ -261,12 +261,7 @@ func TestCompletionResolveUnknownToken(t *testing.T) {
 func TestCompletionParseError(t *testing.T) {
 	server := testutil.NewTestServer(t)
 	testutil.LoadBasicTokens(t, server)
-
-	// Open CSS file with invalid syntax that might fail parsing
-	content := `/* Invalid CSS */
-.button {
-    color: --col`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-parse-error.css")
 
 	// Request completion
 	completions, err := server.GetCompletions(&protocol.CompletionParams{
@@ -293,12 +288,7 @@ func TestCompletionParseError(t *testing.T) {
 func TestCompletionEmptyWord(t *testing.T) {
 	server := testutil.NewTestServer(t)
 	testutil.LoadBasicTokens(t, server)
-
-	// Open CSS file
-	content := `.button {
-    color: ;
-}`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-empty-word.css")
 
 	// Request completion at a position with no word (before semicolon)
 	completions, err := server.GetCompletions(&protocol.CompletionParams{
@@ -321,12 +311,7 @@ func TestCompletionEmptyWord(t *testing.T) {
 func TestCompletionPositionOutOfBounds(t *testing.T) {
 	server := testutil.NewTestServer(t)
 	testutil.LoadBasicTokens(t, server)
-
-	// Open CSS file
-	content := `.button {
-    color: red;
-}`
-	server.DidOpen("file:///test.css", "css", 1, content)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request completion at line that doesn't exist
 	completions, err := server.GetCompletions(&protocol.CompletionParams{
