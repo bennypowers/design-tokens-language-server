@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	codeaction "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/codeAction"
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ func TestCodeActionFixIncorrectFallback(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "incorrect-fallback.css")
 
 	// Get diagnostics first
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 	require.Len(t, diagnostics, 1)
 
@@ -130,7 +131,7 @@ func TestCodeActionDeprecatedToken(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "deprecated-token.css")
 
 	// Get diagnostics first
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 	require.Len(t, diagnostics, 1)
 

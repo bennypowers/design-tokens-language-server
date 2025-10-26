@@ -183,11 +183,6 @@ func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }
 
-// GetDiagnostics returns diagnostics for a document (for testing)
-func (s *Server) GetDiagnostics(uri string) ([]protocol.Diagnostic, error) {
-	return diagnostic.GetDiagnostics(s, uri)
-}
-
 // IsTokenFile checks if a file path is one of our token files
 func (s *Server) IsTokenFile(path string) bool {
 	// Check if it's a JSON or YAML file

@@ -3,6 +3,7 @@ package integration_test
 import (
 	"testing"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
 	"github.com/bennypowers/design-tokens-language-server/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func TestDiagnosticsIncorrectFallback(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "incorrect-fallback.css")
 
 	// Get diagnostics
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 	require.NotNil(t, diagnostics)
 
@@ -35,7 +36,7 @@ func TestDiagnosticsCorrectFallback(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "correct-fallback.css")
 
 	// Get diagnostics
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 
 	// Should have no diagnostics
@@ -62,7 +63,7 @@ func TestDiagnosticsSemanticEquivalence(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "semantic-equivalence.css")
 
 	// Get diagnostics
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 
 	// Should have no diagnostics (values are semantically equivalent)
@@ -76,7 +77,7 @@ func TestDiagnosticsDeprecatedToken(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "deprecated-token.css")
 
 	// Get diagnostics
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 	require.NotNil(t, diagnostics)
 
@@ -97,7 +98,7 @@ func TestDiagnosticsUnknownToken(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "unknown-token.css")
 
 	// Get diagnostics
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 
 	// Should have no diagnostics (unknown tokens are not errors, just missing hover info)
@@ -111,7 +112,7 @@ func TestDiagnosticsMultipleIssues(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "multiple-issues.css")
 
 	// Get diagnostics
-	diagnostics, err := server.GetDiagnostics("file:///test.css")
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
 	require.NoError(t, err)
 	require.NotNil(t, diagnostics)
 
