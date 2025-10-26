@@ -6,19 +6,20 @@ import (
 	"strings"
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// handleHover handles the textDocument/hover request
-func (s *Server) handleHover(context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
+// Hover handles the textDocument/hover request
+func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Hover requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -39,9 +40,9 @@ func (s *Server) handleHover(context *glsp.Context, params *protocol.HoverParams
 
 	// Find var() call at the cursor position
 	for _, varCall := range result.VarCalls {
-		if s.isPositionInRange(position, varCall.Range) {
+		if isPositionInRange(position, varCall.Range) {
 			// Look up the token
-			token := s.tokens.Get(varCall.TokenName)
+			token := ctx.Token(varCall.TokenName)
 			if token == nil {
 				// Token not found
 				return &protocol.Hover{
@@ -99,9 +100,9 @@ func (s *Server) handleHover(context *glsp.Context, params *protocol.HoverParams
 
 	// Also check variable declarations
 	for _, variable := range result.Variables {
-		if s.isPositionInRange(position, variable.Range) {
+		if isPositionInRange(position, variable.Range) {
 			// Look up the token by the variable name
-			token := s.tokens.Get(variable.Name)
+			token := ctx.Token(variable.Name)
 			if token == nil {
 				return nil, nil
 			}
@@ -133,7 +134,7 @@ func (s *Server) handleHover(context *glsp.Context, params *protocol.HoverParams
 }
 
 // isPositionInRange checks if a position is within a range
-func (s *Server) isPositionInRange(pos protocol.Position, r css.Range) bool {
+func isPositionInRange(pos protocol.Position, r css.Range) bool {
 	// Convert to comparable format
 	posLine := pos.Line
 	posChar := pos.Character

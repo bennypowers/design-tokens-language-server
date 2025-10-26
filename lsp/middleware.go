@@ -5,15 +5,16 @@ import (
 	"os"
 	"runtime/debug"
 
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 )
 
 // method wraps an LSP handler that returns (result, error) with middleware
 // Returns the underlying function type so it's compatible with protocol.Handler field types
 func method[P, R any](
-	s *Server,
+	s types.ServerContext,
 	methodName string,
-	handler func(*Server, *glsp.Context, P) (R, error),
+	handler func(types.ServerContext, *glsp.Context, P) (R, error),
 ) func(*glsp.Context, P) (R, error) {
 	return func(ctx *glsp.Context, params P) (result R, err error) {
 		// Panic recovery - prevents LSP server crashes
@@ -47,9 +48,9 @@ func method[P, R any](
 
 // notify wraps an LSP notification handler that returns only error
 func notify[P any](
-	s *Server,
+	s types.ServerContext,
 	methodName string,
-	handler func(*Server, *glsp.Context, P) error,
+	handler func(types.ServerContext, *glsp.Context, P) error,
 ) func(*glsp.Context, P) error {
 	return func(ctx *glsp.Context, params P) (err error) {
 		defer func() {
@@ -75,9 +76,9 @@ func notify[P any](
 
 // noParam wraps an LSP handler that takes no params (like Shutdown)
 func noParam(
-	s *Server,
+	s types.ServerContext,
 	methodName string,
-	handler func(*Server, *glsp.Context) error,
+	handler func(types.ServerContext, *glsp.Context) error,
 ) func(*glsp.Context) error {
 	return func(ctx *glsp.Context) (err error) {
 		defer func() {

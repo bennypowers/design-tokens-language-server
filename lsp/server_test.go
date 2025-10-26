@@ -34,7 +34,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 			},
 		}
 		// Should not panic, returns nil for non-existent document
-		result, err := server.handleHover(ctx, params)
+		result, err := Hover(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -46,14 +46,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := server.handleCompletion(ctx, params)
+		result, err := Completion(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("handleCompletionResolve", func(t *testing.T) {
 		item := &protocol.CompletionItem{Label: "test"}
-		result, err := server.handleCompletionResolve(ctx, item)
+		result, err := CompletionResolve(server, ctx, item)
 		assert.NoError(t, err)
 		assert.Equal(t, item, result) // Returns same item if no data
 	})
@@ -65,7 +65,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := server.handleDefinition(ctx, params)
+		result, err := Definition(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -77,7 +77,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := server.handleReferences(ctx, params)
+		result, err := References(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -90,14 +90,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				End:   protocol.Position{Line: 0, Character: 5},
 			},
 		}
-		result, err := server.handleCodeAction(ctx, params)
+		result, err := CodeAction(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("handleCodeActionResolve", func(t *testing.T) {
 		action := &protocol.CodeAction{Title: "test"}
-		result, err := server.handleCodeActionResolve(ctx, action)
+		result, err := CodeActionResolve(server, ctx, action)
 		assert.NoError(t, err)
 		assert.Equal(t, action, result)
 	})
@@ -106,7 +106,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		params := &protocol.DocumentColorParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
-		result, err := server.handleDocumentColor(ctx, params)
+		result, err := DocumentColor(server, ctx, params)
 		assert.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -121,7 +121,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Alpha: 1.0,
 			},
 		}
-		result, err := server.handleColorPresentation(ctx, params)
+		result, err := ColorPresentation(server, ctx, params)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, result) // Returns format options even without document
 	})

@@ -10,8 +10,6 @@ import (
 
 // TestIsPositionInRange tests the isPositionInRange function with half-open range semantics [start, end)
 func TestIsPositionInRange(t *testing.T) {
-	server := &Server{} // Minimal server for method call
-
 	tests := []struct {
 		name     string
 		pos      protocol.Position
@@ -112,7 +110,7 @@ func TestIsPositionInRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := server.isPositionInRange(tt.pos, tt.r)
+			result := isPositionInRange(tt.pos, tt.r)
 			assert.Equal(t, tt.expected, result, "isPositionInRange(%+v, %+v)", tt.pos, tt.r)
 		})
 	}

@@ -7,10 +7,14 @@ import (
 	"github.com/bennypowers/design-tokens-language-server/internal/documents"
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/tliron/glsp/server"
 )
+
+// Verify that Server implements ServerContext interface
+var _ types.ServerContext = (*Server)(nil)
 
 // Server represents the Design Tokens Language Server
 type Server struct {
@@ -35,25 +39,25 @@ func NewServer() (*Server, error) {
 
 	// Create the GLSP server with our handlers wrapped with middleware
 	protocolHandler := protocol.Handler{
-		Initialize:                      method(s, "initialize", (*Server).handleInitialize),
-		Initialized:                     notify(s, "initialized", (*Server).handleInitialized),
-		Shutdown:                        noParam(s, "shutdown", (*Server).handleShutdown),
-		SetTrace:                        notify(s, "$/setTrace", (*Server).handleSetTrace),
-		WorkspaceDidChangeConfiguration: notify(s, "workspace/didChangeConfiguration", (*Server).handleDidChangeConfiguration),
-		WorkspaceDidChangeWatchedFiles:  notify(s, "workspace/didChangeWatchedFiles", (*Server).handleDidChangeWatchedFiles),
-		TextDocumentDidOpen:             notify(s, "textDocument/didOpen", (*Server).handleDidOpen),
-		TextDocumentDidChange:           notify(s, "textDocument/didChange", (*Server).handleDidChange),
-		TextDocumentDidClose:            notify(s, "textDocument/didClose", (*Server).handleDidClose),
-		TextDocumentHover:               method(s, "textDocument/hover", (*Server).handleHover),
-		TextDocumentCompletion:          method(s, "textDocument/completion", (*Server).handleCompletion),
-		CompletionItemResolve:           method(s, "completionItem/resolve", (*Server).handleCompletionResolve),
-		TextDocumentDefinition:          method(s, "textDocument/definition", (*Server).handleDefinition),
-		TextDocumentReferences:          method(s, "textDocument/references", (*Server).handleReferences),
-		TextDocumentColor:               method(s, "textDocument/documentColor", (*Server).handleDocumentColor),
-		TextDocumentColorPresentation:   method(s, "textDocument/colorPresentation", (*Server).handleColorPresentation),
-		TextDocumentCodeAction:          method(s, "textDocument/codeAction", (*Server).handleCodeAction),
-		CodeActionResolve:               method(s, "codeAction/resolve", (*Server).handleCodeActionResolve),
-		TextDocumentSemanticTokensFull:  method(s, "textDocument/semanticTokens/full", (*Server).handleSemanticTokensFull),
+		Initialize:                      method(s, "initialize", Initialize),
+		Initialized:                     notify(s, "initialized", Initialized),
+		Shutdown:                        noParam(s, "shutdown", Shutdown),
+		SetTrace:                        notify(s, "$/setTrace", SetTrace),
+		WorkspaceDidChangeConfiguration: notify(s, "workspace/didChangeConfiguration", DidChangeConfiguration),
+		WorkspaceDidChangeWatchedFiles:  notify(s, "workspace/didChangeWatchedFiles", DidChangeWatchedFiles),
+		TextDocumentDidOpen:             notify(s, "textDocument/didOpen", DidOpen),
+		TextDocumentDidChange:           notify(s, "textDocument/didChange", DidChange),
+		TextDocumentDidClose:            notify(s, "textDocument/didClose", DidClose),
+		TextDocumentHover:               method(s, "textDocument/hover", Hover),
+		TextDocumentCompletion:          method(s, "textDocument/completion", Completion),
+		CompletionItemResolve:           method(s, "completionItem/resolve", CompletionResolve),
+		TextDocumentDefinition:          method(s, "textDocument/definition", Definition),
+		TextDocumentReferences:          method(s, "textDocument/references", References),
+		TextDocumentColor:               method(s, "textDocument/documentColor", DocumentColor),
+		TextDocumentColorPresentation:   method(s, "textDocument/colorPresentation", ColorPresentation),
+		TextDocumentCodeAction:          method(s, "textDocument/codeAction", CodeAction),
+		CodeActionResolve:               method(s, "codeAction/resolve", CodeActionResolve),
+		TextDocumentSemanticTokensFull:  method(s, "textDocument/semanticTokens/full", SemanticTokensFull),
 	}
 
 	// WORKAROUND: Wrap with custom handler to support LSP 3.17 features
@@ -88,7 +92,7 @@ func (s *Server) DidOpen(uri, languageID string, version int, content string) er
 
 // Hover provides hover information (exposed for testing)
 func (s *Server) Hover(params *protocol.HoverParams) (*protocol.Hover, error) {
-	return s.handleHover(nil, params)
+	return Hover(s, nil, params)
 }
 
 // DocumentColor provides color information (exposed for testing)
@@ -309,10 +313,133 @@ func (s *Server) handleDidClose(context *glsp.Context, params *protocol.DidClose
 	return s.documents.DidClose(uri)
 }
 
+// ServerContext interface implementation
+
+// Document returns the document with the given URI
+func (s *Server) Document(uri string) *documents.Document {
+	return s.documents.Get(uri)
+}
+
+// DocumentManager returns the document manager
+func (s *Server) DocumentManager() *documents.Manager {
+	return s.documents
+}
+
+// AllDocuments returns all tracked documents
+func (s *Server) AllDocuments() []*documents.Document {
+	return s.documents.GetAll()
+}
+
+// Token returns the token with the given name
+func (s *Server) Token(name string) *tokens.Token {
+	return s.tokens.Get(name)
+}
+
+// TokenManager returns the token manager
+func (s *Server) TokenManager() *tokens.Manager {
+	return s.tokens
+}
+
+// RootURI returns the workspace root URI
+func (s *Server) RootURI() string {
+	return s.rootURI
+}
+
+// RootPath returns the workspace root path
+func (s *Server) RootPath() string {
+	return s.rootPath
+}
+
+// GLSPContext returns the GLSP context
+func (s *Server) GLSPContext() *glsp.Context {
+	return s.context
+}
+
+// SetGLSPContext sets the GLSP context
+func (s *Server) SetGLSPContext(ctx *glsp.Context) {
+	s.context = ctx
+}
+
 func boolPtr(b bool) *bool {
 	return &b
 }
 
 func strPtr(s string) *string {
 	return &s
+}
+
+// Lifecycle method wrappers that adapt Server methods to ServerContext interface
+
+func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol.InitializeParams) (interface{}, error) {
+	return ctx.(*Server).handleInitialize(context, params)
+}
+
+func Initialized(ctx types.ServerContext, context *glsp.Context, params *protocol.InitializedParams) error {
+	return ctx.(*Server).handleInitialized(context, params)
+}
+
+func Shutdown(ctx types.ServerContext, context *glsp.Context) error {
+	return ctx.(*Server).handleShutdown(context)
+}
+
+func SetTrace(ctx types.ServerContext, context *glsp.Context, params *protocol.SetTraceParams) error {
+	return ctx.(*Server).handleSetTrace(context, params)
+}
+
+func DidChangeConfiguration(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeConfigurationParams) error {
+	return ctx.(*Server).handleDidChangeConfiguration(context, params)
+}
+
+func DidChangeWatchedFiles(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeWatchedFilesParams) error {
+	return ctx.(*Server).handleDidChangeWatchedFiles(context, params)
+}
+
+func DidOpen(ctx types.ServerContext, context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
+	return ctx.(*Server).handleDidOpen(context, params)
+}
+
+func DidChange(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
+	return ctx.(*Server).handleDidChange(context, params)
+}
+
+func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
+	return ctx.(*Server).handleDidClose(context, params)
+}
+
+// Feature handler wrappers (these will eventually be full implementations)
+
+func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol.CompletionParams) (any, error) {
+	return ctx.(*Server).handleCompletion(context, params)
+}
+
+func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
+	return ctx.(*Server).handleCompletionResolve(context, item)
+}
+
+func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
+	return ctx.(*Server).handleDefinition(context, params)
+}
+
+func References(ctx types.ServerContext, context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
+	return ctx.(*Server).handleReferences(context, params)
+}
+
+func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
+	return ctx.(*Server).handleDocumentColor(context, params)
+}
+
+func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
+	return ctx.(*Server).handleColorPresentation(context, params)
+}
+
+func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
+	return ctx.(*Server).handleCodeAction(context, params)
+}
+
+func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
+	return ctx.(*Server).handleCodeActionResolve(context, action)
+}
+
+func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
+	return ctx.(*Server).handleSemanticTokensFull(context, params)
 }
