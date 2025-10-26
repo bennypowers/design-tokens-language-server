@@ -370,17 +370,12 @@ func TestFormatFontFamilyValue(t *testing.T) {
 
 // TestCreateFixFallbackAction tests the createFixFallbackAction helper
 func TestCreateFixFallbackAction(t *testing.T) {
-	s, err := NewServer()
-	require.NoError(t, err)
-
 	// Add a test token
 	token := &tokens.Token{
 		Name:  "color-primary",
 		Value: "#ff0000",
 		Type:  "color",
 	}
-	s.tokens.Add(token)
-
 	tests := []struct {
 		name        string
 		uri         string
@@ -439,7 +434,7 @@ func TestCreateFixFallbackAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := s.createFixFallbackAction(tt.uri, tt.varCall, tt.token, tt.diagnostics)
+			action := createFixFallbackAction(tt.uri, tt.varCall, tt.token, tt.diagnostics)
 
 			if tt.expectNil {
 				assert.Nil(t, action)
@@ -461,9 +456,6 @@ func TestCreateFixFallbackAction(t *testing.T) {
 
 // TestCreateAddFallbackAction tests the createAddFallbackAction helper
 func TestCreateAddFallbackAction(t *testing.T) {
-	s, err := NewServer()
-	require.NoError(t, err)
-
 	token := &tokens.Token{
 		Name:  "spacing-large",
 		Value: "24px",
@@ -515,7 +507,7 @@ func TestCreateAddFallbackAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := s.createAddFallbackAction(tt.uri, tt.varCall, tt.token)
+			action := createAddFallbackAction(tt.uri, tt.varCall, tt.token)
 
 			if tt.expectNil {
 				assert.Nil(t, action)
@@ -677,7 +669,7 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actions := s.createDeprecatedTokenActions(tt.uri, tt.varCall, tt.token, tt.diagnostics)
+			actions := createDeprecatedTokenActions(s, tt.uri, tt.varCall, tt.token, tt.diagnostics)
 			assert.Len(t, actions, tt.expectedNumActions)
 
 			// Check action title if specified

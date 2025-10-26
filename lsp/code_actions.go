@@ -8,6 +8,7 @@ import (
 
 	"github.com/bennypowers/design-tokens-language-server/internal/parser/css"
 	"github.com/bennypowers/design-tokens-language-server/internal/tokens"
+	"github.com/bennypowers/design-tokens-language-server/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -176,12 +177,17 @@ func isNamedColor(value string) bool {
 
 // handleCodeAction handles the textDocument/codeAction request
 func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
+	return CodeAction(s, context, params)
+}
+
+// CodeAction handles the textDocument/codeAction request
+func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeAction requested: %s\n", uri)
 
 	// Get document
-	doc := s.documents.Get(uri)
+	doc := ctx.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -219,14 +225,14 @@ func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeAc
 		}
 
 		// Look up the token
-		token := s.tokens.Get(varCall.TokenName)
+		token := ctx.Token(varCall.TokenName)
 		if token == nil {
 			continue
 		}
 
 		// Create code actions for deprecated tokens
 		if token.Deprecated {
-			actions = append(actions, s.createDeprecatedTokenActions(uri, *varCall, token, params.Context.Diagnostics)...)
+			actions = append(actions, createDeprecatedTokenActions(ctx, uri, *varCall, token, params.Context.Diagnostics)...)
 		}
 
 		// Create code actions for incorrect fallback
@@ -235,13 +241,13 @@ func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeAc
 			tokenValue := token.Value
 
 			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
-				if action := s.createFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics); action != nil {
+				if action := createFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics); action != nil {
 					actions = append(actions, *action)
 				}
 			}
 		} else if token.Type == "color" || token.Type == "dimension" {
 			// Suggest adding fallback for color and dimension tokens
-			if action := s.createAddFallbackAction(uri, *varCall, token); action != nil {
+			if action := createAddFallbackAction(uri, *varCall, token); action != nil {
 				actions = append(actions, *action)
 			}
 		}
@@ -254,6 +260,11 @@ func (s *Server) handleCodeAction(context *glsp.Context, params *protocol.CodeAc
 
 // handleCodeActionResolve handles the codeAction/resolve request
 func (s *Server) handleCodeActionResolve(context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
+	return CodeActionResolve(s, context, action)
+}
+
+// CodeActionResolve handles the codeAction/resolve request
+func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeActionResolve requested: %s\n", action.Title)
 
 	// For now, we compute the edit immediately in CodeAction
@@ -263,7 +274,7 @@ func (s *Server) handleCodeActionResolve(context *glsp.Context, action *protocol
 
 // createFixFallbackAction creates a code action to fix an incorrect fallback value.
 // Returns nil if the token value cannot be safely formatted for CSS.
-func (s *Server) createFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
+func createFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
 	// Format the token value for safe CSS insertion
 	formattedValue, safe := formatTokenValueForCSS(token)
 	if !safe {
@@ -320,7 +331,7 @@ func (s *Server) createFixFallbackAction(uri string, varCall css.VarCall, token 
 
 // createAddFallbackAction creates a code action to add a fallback value.
 // Returns nil if the token value cannot be safely formatted for CSS.
-func (s *Server) createAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
+func createAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
 	// Format the token value for safe CSS insertion
 	formattedValue, safe := formatTokenValueForCSS(token)
 	if !safe {
@@ -359,7 +370,7 @@ func (s *Server) createAddFallbackAction(uri string, varCall css.VarCall, token 
 }
 
 // createDeprecatedTokenActions creates code actions for deprecated tokens
-func (s *Server) createDeprecatedTokenActions(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) []protocol.CodeAction {
+func createDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) []protocol.CodeAction {
 	var actions []protocol.CodeAction
 
 	// Find the matching diagnostic
@@ -405,7 +416,7 @@ func (s *Server) createDeprecatedTokenActions(uri string, varCall css.VarCall, t
 		// Convert dot notation to CSS variable name
 		cssVarName := "--" + strings.ReplaceAll(recommendedToken, ".", "-")
 
-		replacementToken := s.tokens.Get(cssVarName)
+		replacementToken := ctx.Token(cssVarName)
 		if replacementToken != nil {
 			// Create replacement action
 			newText := fmt.Sprintf("var(%s)", cssVarName)

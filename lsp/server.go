@@ -147,14 +147,14 @@ func (s *Server) ColorPresentation(params *protocol.ColorPresentationParams) ([]
 
 // CodeAction provides code actions (exposed for testing)
 func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeAction, error) {
-	result, err := s.handleCodeAction(nil, params)
+	result, err := CodeAction(s, nil, params)
 	if err != nil {
 		return nil, err
 	}
 	if result == nil {
 		return nil, nil
 	}
-	// handleCodeAction returns any, could be []protocol.CodeAction
+	// CodeAction returns any, could be []protocol.CodeAction
 	if actions, ok := result.([]protocol.CodeAction); ok {
 		return actions, nil
 	}
@@ -163,7 +163,7 @@ func (s *Server) CodeAction(params *protocol.CodeActionParams) ([]protocol.CodeA
 
 // CodeActionResolve resolves a code action (exposed for testing)
 func (s *Server) CodeActionResolve(action *protocol.CodeAction) (*protocol.CodeAction, error) {
-	return s.handleCodeActionResolve(nil, action)
+	return CodeActionResolve(s, nil, action)
 }
 
 // Initialize handles the initialize request (exposed for testing)
@@ -460,12 +460,8 @@ func DidClose(ctx types.ServerContext, context *glsp.Context, params *protocol.D
 
 // ColorPresentation is defined in color.go
 
-func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
-	return ctx.(*Server).handleCodeAction(context, params)
-}
+// CodeAction is defined in code_actions.go
 
-func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
-	return ctx.(*Server).handleCodeActionResolve(context, action)
-}
+// CodeActionResolve is defined in code_actions.go
 
 // SemanticTokensFull is defined in semantic_tokens.go
