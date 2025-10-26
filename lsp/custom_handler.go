@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/diagnostic"
+	semantictokens "github.com/bennypowers/design-tokens-language-server/lsp/methods/textDocument/semanticTokens"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -34,6 +35,24 @@ func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod bool, 
 
 		// Call our handler
 		result, err := diagnostic.DocumentDiagnostic(h.server, context, &params)
+		if err != nil {
+			return nil, true, true, err
+		}
+
+		return result, true, true, nil
+	}
+
+	// WORKAROUND: Intercept textDocument/semanticTokens/delta for LSP 3.17
+	// This method doesn't exist in protocol.Handler (LSP 3.16), so we handle it manually
+	if context.Method == "textDocument/semanticTokens/delta" {
+		// Parse params manually since protocol.Handler doesn't know about this method
+		var params protocol.SemanticTokensDeltaParams
+		if err := json.Unmarshal(context.Params, &params); err != nil {
+			return nil, true, false, err
+		}
+
+		// Call our handler
+		result, err := semantictokens.SemanticTokensDelta(h.server, context, &params)
 		if err != nil {
 			return nil, true, true, err
 		}

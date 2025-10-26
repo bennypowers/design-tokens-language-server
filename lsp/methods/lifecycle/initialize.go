@@ -52,12 +52,14 @@ func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol
 			ResolveProvider: boolPtr(true),
 		},
 		"colorProvider": true,
-		"semanticTokensProvider": protocol.SemanticTokensOptions{
-			Legend: protocol.SemanticTokensLegend{
-				TokenTypes:     []string{"class", "property"}, // Match TypeScript: class for first part, property for rest
-				TokenModifiers: []string{},
+		"semanticTokensProvider": map[string]any{
+			"legend": map[string]any{
+				"tokenTypes":     []string{"class", "property"}, // Match TypeScript: class for first part, property for rest
+				"tokenModifiers": []string{},
 			},
-			Full: boolPtr(true),
+			"full": map[string]any{
+				"delta": true,
+			},
 		},
 		// LSP 3.17: Pull diagnostics support
 		"diagnosticProvider": diagnostic.DiagnosticOptions{
