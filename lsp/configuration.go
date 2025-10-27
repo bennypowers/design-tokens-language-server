@@ -79,6 +79,7 @@ func (s *Server) loadExplicitTokenFiles() error {
 			// Convert to TokenFileSpec
 			pathVal, ok := v["path"]
 			if !ok {
+				errs = append(errs, fmt.Errorf("token file entry missing required 'path' field: %v", v))
 				continue
 			}
 			path, _ = pathVal.(string)
@@ -88,9 +89,12 @@ func (s *Server) loadExplicitTokenFiles() error {
 				prefix = s.config.Prefix
 			}
 			if gmVal, ok := v["groupMarkers"]; ok {
-				if gmSlice, ok := gmVal.([]any); ok {
-					for _, gm := range gmSlice {
-						if gmStr, ok := gm.(string); ok {
+				switch gm := gmVal.(type) {
+				case []string:
+					groupMarkers = append(groupMarkers, gm...)
+				case []any:
+					for _, item := range gm {
+						if gmStr, ok := item.(string); ok {
 							groupMarkers = append(groupMarkers, gmStr)
 						}
 					}
