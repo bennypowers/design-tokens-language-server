@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/lsp/testutil"
+	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -172,4 +173,55 @@ func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
 
 	// The handler should have triggered a reload which would
 	// call LoadTokensFromConfig, which would discover the new file
+}
+
+func TestHandleDidChangeWatchedFiles_PublishesDiagnostics(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	ctx.SetRootPath("/workspace")
+
+	// Set up GLSP context
+	glspCtx := &glsp.Context{}
+	ctx.SetGLSPContext(glspCtx)
+
+	// Track PublishDiagnostics calls
+	publishedURIs := []string{}
+	ctx.PublishDiagnosticsFunc = func(context *glsp.Context, uri string) error {
+		publishedURIs = append(publishedURIs, uri)
+		return nil
+	}
+
+	// Set up IsTokenFile to recognize the path
+	ctx.IsTokenFileFunc = func(path string) bool {
+		return path == "/workspace/tokens.json"
+	}
+
+	config := ctx.GetConfig()
+	config.TokensFiles = []any{"/workspace/tokens.json"}
+	ctx.SetConfig(config)
+
+	// Open a document so we have something to publish diagnostics for
+	ctx.DocumentManager().DidOpen("file:///workspace/test.css", "css", 1, ".test { color: red; }")
+
+	params := &protocol.DidChangeWatchedFilesParams{
+		Changes: []protocol.FileEvent{
+			{
+				URI:  "file:///workspace/tokens.json",
+				Type: protocol.FileChangeTypeChanged,
+			},
+		},
+	}
+
+	// Handle the change
+	err := DidChangeWatchedFiles(ctx, nil, params)
+	if err != nil {
+		t.Errorf("DidChangeWatchedFiles failed: %v", err)
+	}
+
+	// Should have published diagnostics for the open document
+	if len(publishedURIs) != 1 {
+		t.Errorf("Expected 1 diagnostics publish, got %d", len(publishedURIs))
+	}
+	if len(publishedURIs) > 0 && publishedURIs[0] != "file:///workspace/test.css" {
+		t.Errorf("Expected diagnostics for test.css, got %s", publishedURIs[0])
+	}
 }
