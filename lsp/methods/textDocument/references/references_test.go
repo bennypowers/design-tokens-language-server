@@ -3,7 +3,6 @@ package references
 import (
 	"testing"
 
-	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
 	"github.com/stretchr/testify/assert"
@@ -12,71 +11,10 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-func TestReferences_FindAllReferences(t *testing.T) {
+// TestReferences_CSSFile tests that references returns nil for CSS files (let css-ls handle it)
+func TestReferences_CSSFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-
-	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
-		Name:          "color.primary",
-		Value:         "#ff0000",
-		Type:          "color",
-		DefinitionURI: "file:///workspace/tokens.json",
-		Path:          []string{"color", "primary"},
-	})
-
-	// Open multiple CSS documents with references
-	uri1 := "file:///test1.css"
-	cssContent1 := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri1, "css", 1, cssContent1)
-
-	uri2 := "file:///test2.css"
-	cssContent2 := `.link { background: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri2, "css", 1, cssContent2)
-
-	// Request references from first document
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
-		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: uri1},
-			Position:     protocol.Position{Line: 0, Character: 24}, // Inside var()
-		},
-		Context: protocol.ReferenceContext{
-			IncludeDeclaration: false,
-		},
-	})
-
-	require.NoError(t, err)
-	require.NotNil(t, result)
-
-	// Should find references in both documents
-	assert.GreaterOrEqual(t, len(result), 2)
-
-	// Check that locations are correct
-	foundInDoc1 := false
-	foundInDoc2 := false
-	for _, loc := range result {
-		if loc.URI == uri1 {
-			foundInDoc1 = true
-		}
-		if loc.URI == uri2 {
-			foundInDoc2 = true
-		}
-	}
-	assert.True(t, foundInDoc1, "Should find reference in test1.css")
-	assert.True(t, foundInDoc2, "Should find reference in test2.css")
-}
-
-func TestReferences_WithIncludeDeclaration(t *testing.T) {
-	ctx := testutil.NewMockServerContext()
-	glspCtx := &glsp.Context{}
-
-	// Add a token with definition URI
-	ctx.TokenManager().Add(&tokens.Token{
-		Name:          "color.primary",
-		Value:         "#ff0000",
-		DefinitionURI: "file:///workspace/tokens.json",
-		Path:          []string{"color", "primary"},
-	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
@@ -86,6 +24,175 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24},
+		},
+		Context: protocol.ReferenceContext{
+			IncludeDeclaration: false,
+		},
+	})
+
+	require.NoError(t, err)
+	// Should return nil for CSS files
+	assert.Nil(t, result)
+}
+
+// TestReferences_JSONFile_FindsReferencesInCSS tests finding CSS var() references from JSON token file
+func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+
+	// Add a token with extension data
+	token := &tokens.Token{
+		Name:          "color-primary",
+		Value:         "#ff0000",
+		Type:          "color",
+		Path:          []string{"color", "primary"},
+		Reference:     "{color.primary}",
+		DefinitionURI: "file:///tokens.json",
+	}
+	ctx.TokenManager().Add(token)
+
+	// Open JSON token file
+	jsonURI := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#ff0000"
+    }
+  }
+}`
+	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+
+	// Open CSS files with var() calls
+	cssURI1 := "file:///styles1.css"
+	cssContent1 := `.button { color: var(--color-primary); }`
+	ctx.DocumentManager().DidOpen(cssURI1, "css", 1, cssContent1)
+
+	cssURI2 := "file:///styles2.css"
+	cssContent2 := `.link { background: var(--color-primary, red); }`
+	ctx.DocumentManager().DidOpen(cssURI2, "css", 1, cssContent2)
+
+	// Request references from the JSON token file (cursor on token)
+	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
+			Position:     protocol.Position{Line: 2, Character: 6}, // On "primary" key
+		},
+		Context: protocol.ReferenceContext{
+			IncludeDeclaration: false,
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Should find references in both CSS files
+	assert.GreaterOrEqual(t, len(result), 2)
+
+	foundInCSS1 := false
+	foundInCSS2 := false
+	for _, loc := range result {
+		if loc.URI == cssURI1 {
+			foundInCSS1 = true
+		}
+		if loc.URI == cssURI2 {
+			foundInCSS2 = true
+		}
+	}
+	assert.True(t, foundInCSS1, "Should find var() reference in styles1.css")
+	assert.True(t, foundInCSS2, "Should find var() reference in styles2.css")
+}
+
+// TestReferences_JSONFile_FindsReferencesInJSON tests finding token references in other JSON files
+func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+
+	// Add tokens
+	primaryToken := &tokens.Token{
+		Name:          "color-primary",
+		Value:         "#ff0000",
+		Type:          "color",
+		Path:          []string{"color", "primary"},
+		Reference:     "{color.primary}",
+		DefinitionURI: "file:///tokens.json",
+	}
+	ctx.TokenManager().Add(primaryToken)
+
+	// Open JSON token file with token definition
+	jsonURI := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#ff0000"
+    },
+    "brand": {
+      "$type": "color",
+      "$value": "{color.primary}"
+    }
+  }
+}`
+	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+
+	// Request references from the JSON file
+	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
+			Position:     protocol.Position{Line: 2, Character: 6}, // On "primary"
+		},
+		Context: protocol.ReferenceContext{
+			IncludeDeclaration: false,
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Should find reference in the same JSON file where brand references primary
+	foundReference := false
+	for _, loc := range result {
+		if loc.URI == jsonURI && loc.Range.Start.Line == 8 {
+			foundReference = true
+		}
+	}
+	assert.True(t, foundReference, "Should find {color.primary} reference in brand token")
+}
+
+// TestReferences_WithIncludeDeclaration tests including the token definition
+func TestReferences_WithIncludeDeclaration(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+
+	token := &tokens.Token{
+		Name:          "color-primary",
+		Value:         "#ff0000",
+		Type:          "color",
+		Path:          []string{"color", "primary"},
+		Reference:     "{color.primary}",
+		DefinitionURI: "file:///tokens.json",
+	}
+	ctx.TokenManager().Add(token)
+
+	jsonURI := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#ff0000"
+    }
+  }
+}`
+	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+
+	cssURI := "file:///styles.css"
+	cssContent := `.button { color: var(--color-primary); }`
+	ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
+
+	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
+			Position:     protocol.Position{Line: 2, Character: 6},
 		},
 		Context: protocol.ReferenceContext{
 			IncludeDeclaration: true,
@@ -95,29 +202,37 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	// Should include the declaration location
+	// Should include declaration
 	foundDeclaration := false
 	for _, loc := range result {
-		if loc.URI == "file:///workspace/tokens.json" {
+		if loc.URI == jsonURI && loc.Range.Start.Line == 2 {
 			foundDeclaration = true
-			break
 		}
 	}
 	assert.True(t, foundDeclaration, "Should include declaration when IncludeDeclaration is true")
 }
 
+// TestReferences_UnknownToken tests when cursor is not on a token
 func TestReferences_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
-	uri := "file:///test.css"
-	cssContent := `.button { color: var(--unknown-token); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	jsonURI := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#ff0000"
+    }
+  }
+}`
+	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
+	// Position not on a token
 	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
-			Position:     protocol.Position{Line: 0, Character: 24},
+			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
+			Position:     protocol.Position{Line: 0, Character: 0}, // On opening brace
 		},
 		Context: protocol.ReferenceContext{
 			IncludeDeclaration: false,
@@ -128,63 +243,14 @@ func TestReferences_UnknownToken(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestReferences_OutsideVarCall(t *testing.T) {
-	ctx := testutil.NewMockServerContext()
-	glspCtx := &glsp.Context{}
-
-	ctx.TokenManager().Add(&tokens.Token{
-		Name:  "color.primary",
-		Value: "#ff0000",
-	})
-
-	uri := "file:///test.css"
-	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
-
-	// Position outside var() call
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
-		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
-			Position:     protocol.Position{Line: 0, Character: 5}, // Inside ".button"
-		},
-		Context: protocol.ReferenceContext{
-			IncludeDeclaration: false,
-		},
-	})
-
-	require.NoError(t, err)
-	assert.Nil(t, result)
-}
-
-func TestReferences_NonCSSDocument(t *testing.T) {
-	ctx := testutil.NewMockServerContext()
-	glspCtx := &glsp.Context{}
-
-	uri := "file:///test.json"
-	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
-
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
-		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
-			Position:     protocol.Position{Line: 0, Character: 10},
-		},
-		Context: protocol.ReferenceContext{
-			IncludeDeclaration: false,
-		},
-	})
-
-	require.NoError(t, err)
-	assert.Nil(t, result)
-}
-
+// TestReferences_DocumentNotFound tests when document doesn't exist
 func TestReferences_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
 	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
+			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.json"},
 			Position:     protocol.Position{Line: 0, Character: 10},
 		},
 		Context: protocol.ReferenceContext{
@@ -196,29 +262,37 @@ func TestReferences_DocumentNotFound(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestReferences_OnlyNonCSSDocuments(t *testing.T) {
+// TestReferences_YAMLFile tests references from YAML token files
+func TestReferences_YAMLFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
-	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
-		Name:  "color.primary",
-		Value: "#ff0000",
-	})
+	token := &tokens.Token{
+		Name:          "color-primary",
+		Value:         "#ff0000",
+		Type:          "color",
+		Path:          []string{"color", "primary"},
+		Reference:     "{color.primary}",
+		DefinitionURI: "file:///tokens.yaml",
+	}
+	ctx.TokenManager().Add(token)
 
-	// Open only JSON documents (no CSS documents)
-	uri := "file:///test.json"
-	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+	yamlURI := "file:///tokens.yaml"
+	yamlContent := `color:
+  primary:
+    $type: color
+    $value: "#ff0000"
+`
+	ctx.DocumentManager().DidOpen(yamlURI, "yaml", 1, yamlContent)
 
-	uri2 := "file:///test.css"
+	cssURI := "file:///styles.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri2, "css", 1, cssContent)
+	ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
 
 	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
-			TextDocument: protocol.TextDocumentIdentifier{URI: uri2},
-			Position:     protocol.Position{Line: 0, Character: 24},
+			TextDocument: protocol.TextDocumentIdentifier{URI: yamlURI},
+			Position:     protocol.Position{Line: 1, Character: 3}, // On "primary"
 		},
 		Context: protocol.ReferenceContext{
 			IncludeDeclaration: false,
@@ -228,84 +302,12 @@ func TestReferences_OnlyNonCSSDocuments(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	// Should only include the CSS document reference
-	assert.Len(t, result, 1)
-	assert.Equal(t, uri2, result[0].URI)
-}
-
-func TestIsPositionInVarCall(t *testing.T) {
-	tests := []struct {
-		name     string
-		pos      protocol.Position
-		varCall  *css.VarCall
-		expected bool
-	}{
-		{
-			name: "position at start boundary - included",
-			pos:  protocol.Position{Line: 0, Character: 10},
-			varCall: &css.VarCall{
-				TokenName: "color-primary",
-				Range: css.Range{
-					Start: css.Position{Line: 0, Character: 10},
-					End:   css.Position{Line: 0, Character: 30},
-				},
-			},
-			expected: true,
-		},
-		{
-			name: "position at end boundary - excluded",
-			pos:  protocol.Position{Line: 0, Character: 30},
-			varCall: &css.VarCall{
-				TokenName: "color-primary",
-				Range: css.Range{
-					Start: css.Position{Line: 0, Character: 10},
-					End:   css.Position{Line: 0, Character: 30},
-				},
-			},
-			expected: false,
-		},
-		{
-			name: "position inside var call",
-			pos:  protocol.Position{Line: 0, Character: 20},
-			varCall: &css.VarCall{
-				TokenName: "color-primary",
-				Range: css.Range{
-					Start: css.Position{Line: 0, Character: 10},
-					End:   css.Position{Line: 0, Character: 30},
-				},
-			},
-			expected: true,
-		},
-		{
-			name: "position before var call",
-			pos:  protocol.Position{Line: 0, Character: 5},
-			varCall: &css.VarCall{
-				TokenName: "color-primary",
-				Range: css.Range{
-					Start: css.Position{Line: 0, Character: 10},
-					End:   css.Position{Line: 0, Character: 30},
-				},
-			},
-			expected: false,
-		},
-		{
-			name: "position after var call",
-			pos:  protocol.Position{Line: 0, Character: 35},
-			varCall: &css.VarCall{
-				TokenName: "color-primary",
-				Range: css.Range{
-					Start: css.Position{Line: 0, Character: 10},
-					End:   css.Position{Line: 0, Character: 30},
-				},
-			},
-			expected: false,
-		},
+	// Should find var() reference in CSS
+	foundInCSS := false
+	for _, loc := range result {
+		if loc.URI == cssURI {
+			foundInCSS = true
+		}
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isPositionInVarCall(tt.pos, tt.varCall)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	assert.True(t, foundInCSS, "Should find var() reference in CSS from YAML token file")
 }
