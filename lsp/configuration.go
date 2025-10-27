@@ -36,7 +36,7 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 	s.config = config
 }
 
-// setAutoDiscoveryMode updates the auto-discovery mode (must hold configMu.Lock)
+// setAutoDiscoveryMode updates the auto-discovery mode
 func (s *Server) setAutoDiscoveryMode(mode bool) {
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
