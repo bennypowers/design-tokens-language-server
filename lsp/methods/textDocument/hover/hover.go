@@ -140,6 +140,16 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 					Kind:  protocol.MarkupKindMarkdown,
 					Value: content,
 				},
+				Range: &protocol.Range{
+					Start: protocol.Position{
+						Line:      variable.Range.Start.Line,
+						Character: variable.Range.Start.Character,
+					},
+					End: protocol.Position{
+						Line:      variable.Range.End.Line,
+						Character: variable.Range.End.Character,
+					},
+				},
 			}, nil
 		}
 	}

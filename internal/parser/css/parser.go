@@ -190,13 +190,15 @@ func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source
 	}
 
 	// Create variable with UTF-16 positions for LSP
+	// Range covers only the property name (LHS), not the entire declaration
+	// This ensures hover only triggers on the property name, not on the value
 	variable := &Variable{
 		Name:  propertyName,
 		Value: value,
 		Type:  VariableDeclaration,
 		Range: Range{
-			Start: positionToUTF16(source, node.StartPosition()),
-			End:   positionToUTF16(source, node.EndPosition()),
+			Start: positionToUTF16(source, propertyNode.StartPosition()),
+			End:   positionToUTF16(source, propertyNode.EndPosition()),
 		},
 	}
 
