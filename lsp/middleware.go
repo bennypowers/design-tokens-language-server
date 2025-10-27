@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	"bennypowers.dev/dtls/lsp/methods/workspace"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 )
@@ -20,8 +21,11 @@ func method[P, R any](
 		// Panic recovery - prevents LSP server crashes
 		defer func() {
 			if r := recover(); r != nil {
+				stackTrace := string(debug.Stack())
 				fmt.Fprintf(os.Stderr, "[LSP] PANIC in %s: %v\nStack trace:\n%s",
-					methodName, r, string(debug.Stack()))
+					methodName, r, stackTrace)
+				// Log panic to LSP client
+				workspace.LogError(ctx, "Internal error in %s: %v", methodName, r)
 				err = fmt.Errorf("internal error in %s", methodName)
 				var zero R
 				result = zero
@@ -37,6 +41,8 @@ func method[P, R any](
 		// Error context wrapping
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[LSP] %s error: %v\n", methodName, err)
+			// Log error to LSP client via window/logMessage
+			workspace.LogError(ctx, "%s: %v", methodName, err)
 			return result, fmt.Errorf("%s: %w", methodName, err)
 		}
 
@@ -55,8 +61,11 @@ func notify[P any](
 	return func(ctx *glsp.Context, params P) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
+				stackTrace := string(debug.Stack())
 				fmt.Fprintf(os.Stderr, "[LSP] PANIC in %s: %v\nStack trace:\n%s",
-					methodName, r, string(debug.Stack()))
+					methodName, r, stackTrace)
+				// Log panic to LSP client
+				workspace.LogError(ctx, "Internal error in %s: %v", methodName, r)
 				err = fmt.Errorf("internal error in %s", methodName)
 			}
 		}()
@@ -66,6 +75,8 @@ func notify[P any](
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[LSP] %s error: %v\n", methodName, err)
+			// Log error to LSP client via window/logMessage
+			workspace.LogError(ctx, "%s: %v", methodName, err)
 			return fmt.Errorf("%s: %w", methodName, err)
 		}
 
@@ -83,8 +94,11 @@ func noParam(
 	return func(ctx *glsp.Context) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
+				stackTrace := string(debug.Stack())
 				fmt.Fprintf(os.Stderr, "[LSP] PANIC in %s: %v\nStack trace:\n%s",
-					methodName, r, string(debug.Stack()))
+					methodName, r, stackTrace)
+				// Log panic to LSP client
+				workspace.LogError(ctx, "Internal error in %s: %v", methodName, r)
 				err = fmt.Errorf("internal error in %s", methodName)
 			}
 		}()
@@ -94,6 +108,8 @@ func noParam(
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[LSP] %s error: %v\n", methodName, err)
+			// Log error to LSP client via window/logMessage
+			workspace.LogError(ctx, "%s: %v", methodName, err)
 			return fmt.Errorf("%s: %w", methodName, err)
 		}
 
