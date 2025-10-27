@@ -1,6 +1,9 @@
 package position
 
-import "unicode/utf8"
+import (
+	"unicode/utf16"
+	"unicode/utf8"
+)
 
 // UTF16ToByteOffset converts a UTF-16 code unit offset to a byte offset in a string.
 // LSP positions use UTF-16 code units, but Go strings are UTF-8 byte sequences.
@@ -22,18 +25,16 @@ func UTF16ToByteOffset(s string, utf16Col int) int {
 			continue
 		}
 
-		// Characters above U+FFFF (outside BMP) use surrogate pairs in UTF-16
-		// If target falls within the surrogate pair, clamp to the start of the rune
-		if r > 0xFFFF {
-			// If we're at the first unit of a surrogate pair and target is the second unit,
-			// stop here (clamp to code-point boundary)
-			if units + 1 == utf16Col {
-				break
-			}
-			units += 2
-		} else {
-			units++
+		// Use stdlib utf16.RuneLen to determine UTF-16 length (1 or 2 code units)
+		runeUTF16Len := utf16.RuneLen(r)
+
+		// If target falls within a surrogate pair, clamp to the start of the rune
+		if runeUTF16Len == 2 && units + 1 == utf16Col {
+			// Stop here (clamp to code-point boundary)
+			break
 		}
+
+		units += runeUTF16Len
 
 		byteOffset += size
 	}
@@ -67,11 +68,7 @@ func ByteOffsetToUTF16(s string, byteOffset int) int {
 			break
 		}
 
-		if r > 0xFFFF {
-			utf16Count += 2 // Surrogate pair
-		} else {
-			utf16Count++
-		}
+		utf16Count += utf16.RuneLen(r)
 
 		currentOffset += size
 	}
@@ -83,11 +80,7 @@ func ByteOffsetToUTF16(s string, byteOffset int) int {
 func StringLengthUTF16(s string) int {
 	utf16Count := 0
 	for _, r := range s {
-		if r > 0xFFFF {
-			utf16Count += 2
-		} else {
-			utf16Count++
-		}
+		utf16Count += utf16.RuneLen(r)
 	}
 	return utf16Count
 }

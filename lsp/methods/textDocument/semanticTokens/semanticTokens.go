@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -80,36 +81,6 @@ func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) []uint
 	return data
 }
 
-// byteOffsetToUTF16 converts a byte offset within a string to UTF-16 code units
-func byteOffsetToUTF16(s string, byteOffset int) int {
-	if byteOffset > len(s) {
-		byteOffset = len(s)
-	}
-
-	utf16Count := 0
-	for _, r := range []rune(s[:byteOffset]) {
-		if r <= 0xFFFF {
-			utf16Count++
-		} else {
-			utf16Count += 2 // Surrogate pair
-		}
-	}
-	return utf16Count
-}
-
-// stringLengthUTF16 returns the length of a string in UTF-16 code units
-func stringLengthUTF16(s string) int {
-	utf16Count := 0
-	for _, r := range []rune(s) {
-		if r <= 0xFFFF {
-			utf16Count++
-		} else {
-			utf16Count += 2 // Surrogate pair
-		}
-	}
-	return utf16Count
-}
-
 // GetSemanticTokensForDocument extracts semantic tokens from a document
 // Positions and lengths are in UTF-16 code units (LSP default encoding)
 func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Document) []SemanticTokenIntermediate {
@@ -146,7 +117,7 @@ func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Docume
 			// Calculate the starting position of the reference within the line
 			// The reference starts at match[2] (after the opening {)
 			// Convert byte offset to UTF-16 code units
-			partStartChar := byteOffsetToUTF16(line, referenceStart)
+			partStartChar := position.ByteOffsetToUTF16(line, referenceStart)
 
 			for i, part := range parts {
 				tokenType := 1 // property (default)
@@ -157,13 +128,13 @@ func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Docume
 				tokens = append(tokens, SemanticTokenIntermediate{
 					Line:           lineNum,
 					StartChar:      partStartChar,
-					Length:         stringLengthUTF16(part),
+					Length:         position.StringLengthUTF16(part),
 					TokenType:      tokenType,
 					TokenModifiers: 0,
 				})
 
 				// Move to the next part (add UTF-16 length of part + 1 for the dot)
-				partStartChar += stringLengthUTF16(part) + 1
+				partStartChar += position.StringLengthUTF16(part) + 1
 			}
 		}
 	}
