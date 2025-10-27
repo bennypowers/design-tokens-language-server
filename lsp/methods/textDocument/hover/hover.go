@@ -1,15 +1,53 @@
 package hover
 
 import (
+	"bytes"
 	"fmt"
 	"os"
-	"strings"
+	"text/template"
 
 	"bennypowers.dev/dtls/internal/parser/css"
+	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
+
+// Template for token hover content
+var tokenHoverTemplate = template.Must(template.New("tokenHover").Parse(`# {{.CSSVariableName}}
+{{if .Description}}
+{{.Description}}
+{{end}}
+**Value**: ` + "`{{.Value}}`" + `
+{{if .Type}}**Type**: ` + "`{{.Type}}`" + `
+{{end}}{{if .Deprecated}}
+⚠️ **DEPRECATED**{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
+{{end}}{{if .FilePath}}
+*Defined in: {{.FilePath}}*
+{{end}}`))
+
+// Template for unknown token message
+var unknownTokenTemplate = template.Must(template.New("unknownToken").Parse(`❌ **Unknown token**: ` + "`{{.}}`" + `
+
+This token is not defined in any loaded token files.`))
+
+// renderTokenHover renders the hover markdown for a token
+func renderTokenHover(token *tokens.Token) (string, error) {
+	var buf bytes.Buffer
+	if err := tokenHoverTemplate.Execute(&buf, token); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// renderUnknownToken renders the hover markdown for an unknown token
+func renderUnknownToken(tokenName string) (string, error) {
+	var buf bytes.Buffer
+	if err := unknownTokenTemplate.Execute(&buf, tokenName); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
 
 // Hover handles the textDocument/hover request
 func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
@@ -44,45 +82,31 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 			// Look up the token
 			token := ctx.Token(varCall.TokenName)
 			if token == nil {
-				// Token not found
+				// Token not found - render unknown token message
+				content, err := renderUnknownToken(varCall.TokenName)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[DTLS] Failed to render unknown token message: %v\n", err)
+					return nil, nil
+				}
 				return &protocol.Hover{
 					Contents: protocol.MarkupContent{
 						Kind:  protocol.MarkupKindMarkdown,
-						Value: fmt.Sprintf("❌ **Unknown token**: `%s`\n\nThis token is not defined in any loaded token files.", varCall.TokenName),
+						Value: content,
 					},
 				}, nil
 			}
 
-			// Build hover content
-			var content strings.Builder
-			content.WriteString(fmt.Sprintf("# %s\n\n", token.CSSVariableName()))
-
-			if token.Description != "" {
-				content.WriteString(fmt.Sprintf("%s\n\n", token.Description))
-			}
-
-			content.WriteString(fmt.Sprintf("**Value**: `%s`\n", token.Value))
-
-			if token.Type != "" {
-				content.WriteString(fmt.Sprintf("**Type**: `%s`\n", token.Type))
-			}
-
-			if token.Deprecated {
-				content.WriteString("\n⚠️ **DEPRECATED**")
-				if token.DeprecationMessage != "" {
-					content.WriteString(fmt.Sprintf(": %s", token.DeprecationMessage))
-				}
-				content.WriteString("\n")
-			}
-
-			if token.FilePath != "" {
-				content.WriteString(fmt.Sprintf("\n*Defined in: %s*\n", token.FilePath))
+			// Render token hover content using template
+			content, err := renderTokenHover(token)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[DTLS] Failed to render token hover: %v\n", err)
+				return nil, nil
 			}
 
 			return &protocol.Hover{
 				Contents: protocol.MarkupContent{
 					Kind:  protocol.MarkupKindMarkdown,
-					Value: content.String(),
+					Value: content,
 				},
 				Range: &protocol.Range{
 					Start: protocol.Position{
@@ -107,25 +131,17 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 				return nil, nil
 			}
 
-			// Build hover content for declaration
-			// TODO: use go templating instead of string.Builder
-			var content strings.Builder
-			content.WriteString(fmt.Sprintf("# %s\n\n", token.CSSVariableName()))
-
-			if token.Description != "" {
-				content.WriteString(fmt.Sprintf("%s\n\n", token.Description))
-			}
-
-			content.WriteString(fmt.Sprintf("**Value**: `%s`\n", token.Value))
-
-			if token.Type != "" {
-				content.WriteString(fmt.Sprintf("**Type**: `%s`\n", token.Type))
+			// Render token hover content using template
+			content, err := renderTokenHover(token)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[DTLS] Failed to render token hover for declaration: %v\n", err)
+				return nil, nil
 			}
 
 			return &protocol.Hover{
 				Contents: protocol.MarkupContent{
 					Kind:  protocol.MarkupKindMarkdown,
-					Value: content.String(),
+					Value: content,
 				},
 			}, nil
 		}

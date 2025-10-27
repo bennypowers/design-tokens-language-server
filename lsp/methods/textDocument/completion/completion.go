@@ -1,16 +1,40 @@
 package completion
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
+	"text/template"
 
-	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/position"
+	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
+
+// Template for token documentation
+var tokenDocTemplate = template.Must(template.New("tokenDoc").Parse(`# {{.CSSVariableName}}
+{{if .Description}}
+{{.Description}}
+{{end}}
+**Value**: ` + "`{{.Value}}`" + `
+{{if .Type}}**Type**: ` + "`{{.Type}}`" + `
+{{end}}{{if .Deprecated}}
+⚠️ **DEPRECATED**{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
+{{end}}{{if .FilePath}}
+*Defined in: {{.FilePath}}*
+{{end}}`))
+
+// renderTokenDoc renders the documentation markdown for a token
+func renderTokenDoc(token *tokens.Token) (string, error) {
+	var buf bytes.Buffer
+	if err := tokenDocTemplate.Execute(&buf, token); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
 
 // handleCompletion handles the textDocument/completion request
 
@@ -32,14 +56,6 @@ func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol
 		return nil, nil
 	}
 
-	// Parse CSS to find context
-	parser := css.AcquireParser()
-	defer css.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
-	if err != nil {
-		return nil, nil
-	}
-
 	// Get the word at the cursor position
 	word := getWordAtPosition(doc.Content(), position)
 	if word == "" {
@@ -49,7 +65,7 @@ func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol
 	fmt.Fprintf(os.Stderr, "[DTLS] Completion word: '%s'\n", word)
 
 	// Check if we're in a valid completion context (inside a block or property value)
-	if !isInCompletionContext(result, position) {
+	if !isInCompletionContext(doc.Content(), position) {
 		return nil, nil
 	}
 
@@ -112,37 +128,17 @@ func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *pro
 		return item, nil
 	}
 
-	// Build documentation
-	// TODO: use go templating instead of string.Builder
-	var doc strings.Builder
-	doc.WriteString(fmt.Sprintf("# %s\n\n", token.CSSVariableName()))
-
-	if token.Description != "" {
-		doc.WriteString(fmt.Sprintf("%s\n\n", token.Description))
-	}
-
-	doc.WriteString(fmt.Sprintf("**Value**: `%s`\n", token.Value))
-
-	if token.Type != "" {
-		doc.WriteString(fmt.Sprintf("**Type**: `%s`\n", token.Type))
-	}
-
-	if token.Deprecated {
-		doc.WriteString("\n⚠️ **DEPRECATED**")
-		if token.DeprecationMessage != "" {
-			doc.WriteString(fmt.Sprintf(": %s", token.DeprecationMessage))
-		}
-		doc.WriteString("\n")
-	}
-
-	if token.FilePath != "" {
-		doc.WriteString(fmt.Sprintf("\n*Defined in: %s*\n", token.FilePath))
+	// Render documentation using template
+	documentation, err := renderTokenDoc(token)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[DTLS] Failed to render token documentation: %v\n", err)
+		return item, nil
 	}
 
 	// Add documentation
 	item.Documentation = protocol.MarkupContent{
 		Kind:  protocol.MarkupKindMarkdown,
-		Value: doc.String(),
+		Value: documentation,
 	}
 
 	// Add detail (value preview)
@@ -194,12 +190,54 @@ func isWordChar(c byte) bool {
 		c == '-' || c == '_'
 }
 
-// isInCompletionContext checks if the position is in a valid completion context
-func isInCompletionContext(result *css.ParseResult, pos protocol.Position) bool {
-	// TODO: this is a stub implementation that must be implemented for real before merging
-	// For now, we'll accept completions anywhere in CSS
-	// In the future, we can be more specific about only completing inside blocks
-	return true
+// isInCompletionContext checks if the position is in a valid completion context.
+// Completions are valid inside CSS blocks (between { and }) where var() calls can be used.
+// This implementation counts braces up to the cursor position to determine if we're inside a block.
+func isInCompletionContext(content string, pos protocol.Position) bool {
+	lines := strings.Split(content, "\n")
+	if int(pos.Line) >= len(lines) {
+		return false
+	}
+
+	// Get all content up to and including the cursor position
+	var textUpToCursor strings.Builder
+	for i := 0; i <= int(pos.Line); i++ {
+		if i < int(pos.Line) {
+			textUpToCursor.WriteString(lines[i])
+			textUpToCursor.WriteString("\n")
+		} else {
+			// For the cursor line, only include text up to the cursor position
+			line := lines[i]
+			// Convert UTF-16 character offset to byte offset
+			utf16Col := int(pos.Character)
+			byteOffset := position.UTF16ToByteOffset(line, utf16Col)
+			if byteOffset > len(line) {
+				byteOffset = len(line)
+			}
+			textUpToCursor.WriteString(line[:byteOffset])
+		}
+	}
+
+	// Count opening and closing braces
+	// If we have more opening braces than closing braces, we're inside a block
+	openBraces := 0
+	closeBraces := 0
+	text := textUpToCursor.String()
+
+	// Simple character-by-character scan
+	// Note: This doesn't handle strings or comments, but it's good enough
+	// for most cases. A more sophisticated implementation would skip
+	// content inside strings and comments.
+	for _, ch := range text {
+		if ch == '{' {
+			openBraces++
+		} else if ch == '}' {
+			closeBraces++
+		}
+	}
+
+	// We're inside a block if we have unclosed braces
+	return openBraces > closeBraces
 }
 
 // normalizeTokenName normalizes a token name for comparison

@@ -377,10 +377,82 @@ func TestIsWordChar(t *testing.T) {
 
 // TestIsInCompletionContext tests the isInCompletionContext helper function
 func TestIsInCompletionContext(t *testing.T) {
-	// For now, this function always returns true
-	// It's a placeholder for future enhancement
-	result := isInCompletionContext(nil, protocol.Position{Line: 0, Character: 0})
-	assert.True(t, result)
+	tests := []struct {
+		name     string
+		content  string
+		position protocol.Position
+		expected bool
+	}{
+		{
+			name: "inside CSS block",
+			content: `.button {
+  color: red;
+}`,
+			position: protocol.Position{Line: 1, Character: 5},
+			expected: true,
+		},
+		{
+			name: "outside CSS block - before opening brace",
+			content: `.button {
+  color: red;
+}`,
+			position: protocol.Position{Line: 0, Character: 5},
+			expected: false,
+		},
+		{
+			name: "outside CSS block - after closing brace",
+			content: `.button {
+  color: red;
+}`,
+			position: protocol.Position{Line: 2, Character: 2},
+			expected: false,
+		},
+		{
+			name: "nested blocks - inside inner block",
+			content: `.outer {
+  .inner {
+    color: red;
+  }
+}`,
+			position: protocol.Position{Line: 2, Character: 10},
+			expected: true,
+		},
+		{
+			name: "at opening brace",
+			content: `.button {
+  color: red;
+}`,
+			position: protocol.Position{Line: 0, Character: 8},
+			expected: false, // At the brace itself, not inside yet
+		},
+		{
+			name: "after opening brace",
+			content: `.button {
+  color: red;
+}`,
+			position: protocol.Position{Line: 0, Character: 9},
+			expected: true, // Now inside the block
+		},
+		{
+			name: "empty file",
+			content:  "",
+			position: protocol.Position{Line: 0, Character: 0},
+			expected: false,
+		},
+		{
+			name:     "single line with block",
+			content:  `.button { color: red; }`,
+			position: protocol.Position{Line: 0, Character: 15},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isInCompletionContext(tt.content, tt.position)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 // TestNormalizeTokenName tests the normalizeTokenName helper function

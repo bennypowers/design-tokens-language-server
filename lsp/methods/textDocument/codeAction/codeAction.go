@@ -298,12 +298,13 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeActionResolve requested: %s\n", action.Title)
 
-	// Handle fixAll action
+	// Handle fixAllFallbacks which uses lazy resolution
 	if action.Title == "Fix all token fallback values" {
 		return resolveFixAllFallbacks(ctx, action)
 	}
 
-	// For other actions, we compute the edit immediately in CodeAction
+	// For other actions (fixFallback, toggle, add, deprecated),
+	// we compute the edit immediately in CodeAction, so just return as-is
 	return action, nil
 }
 
@@ -386,16 +387,10 @@ func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction
 }
 
 // createFixFallbackAction creates a code action to fix an incorrect fallback value.
-// Returns nil if the token value cannot be safely formatted for CSS.
+// The edit is created immediately for simplicity (Go implementation),
+// but can also be resolved lazily if Edit is nil (TypeScript compat).
 func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
-	// Format the token value for safe CSS insertion
-	formattedValue, safe := FormatTokenValueForCSS(token)
-	if !safe {
-		// Skip this code action - value cannot be safely inserted
-		return nil
-	}
-
-	// Find the matching diagnostic
+	// Try to find the matching diagnostic
 	var matchingDiag *protocol.Diagnostic
 	for i := range diagnostics {
 		if diagnostics[i].Range.Start.Line == varCall.Range.Start.Line &&
@@ -405,7 +400,13 @@ func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 		}
 	}
 
-	// Create the replacement text with formatted value
+	// Format the token value for CSS
+	formattedValue, safe := FormatTokenValueForCSS(token)
+	if !safe {
+		return nil
+	}
+
+	// Create the replacement text
 	newText := fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
 
 	kind := protocol.CodeActionKindQuickFix
@@ -433,6 +434,7 @@ func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 		},
 	}
 
+	// Include diagnostic if we found one
 	if matchingDiag != nil {
 		action.Diagnostics = []protocol.Diagnostic{*matchingDiag}
 		preferred := true
