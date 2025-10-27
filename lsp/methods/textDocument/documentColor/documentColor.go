@@ -12,8 +12,6 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// handleDocumentColor handles the textDocument/documentColor request
-
 // DocumentColor handles the textDocument/documentColor request
 func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	uri := params.TextDocument.URI
@@ -116,30 +114,56 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 	return colors, nil
 }
 
-// handleColorPresentation handles the textDocument/colorPresentation request
-
 // ColorPresentation handles the textDocument/colorPresentation request
+// Returns token names that have the same color value as the requested color
 func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
 	uri := params.TextDocument.URI
 	color := params.Color
 
 	fmt.Fprintf(os.Stderr, "[DTLS] ColorPresentation requested: %s\n", uri)
 
-	// Convert the color to different formats
-	presentations := []protocol.ColorPresentation{
-		{
-			Label: formatColorHex(color),
-		},
-		{
-			Label: formatColorRGB(color),
-		},
-		{
-			Label: formatColorRGBA(color),
-		},
-		{
-			Label: formatColorHSL(color),
-		},
+	// Convert protocol.Color to csscolorparser.Color for comparison
+	requestedColor := csscolorparser.Color{
+		R: float64(color.Red),
+		G: float64(color.Green),
+		B: float64(color.Blue),
+		A: float64(color.Alpha),
 	}
+	requestedHex := requestedColor.HexString() // Includes alpha if < 1.0
+
+	var presentations []protocol.ColorPresentation
+
+	// Find all tokens with matching color values
+	for _, token := range ctx.TokenManager().GetAll() {
+		// Only process color tokens
+		if token.Type != "color" {
+			continue
+		}
+
+		// Parse the token's color value
+		tokenColor, err := parseColor(token.Value)
+		if err != nil {
+			// Skip tokens with invalid color values
+			continue
+		}
+
+		// Convert to csscolorparser.Color for comparison
+		c := csscolorparser.Color{
+			R: float64(tokenColor.Red),
+			G: float64(tokenColor.Green),
+			B: float64(tokenColor.Blue),
+			A: float64(tokenColor.Alpha),
+		}
+
+		// Compare hex strings (includes alpha channel)
+		if c.HexString() == requestedHex {
+			presentations = append(presentations, protocol.ColorPresentation{
+				Label: token.Name,
+			})
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "[DTLS] Found %d matching color tokens\n", len(presentations))
 
 	return presentations, nil
 }
@@ -163,89 +187,4 @@ func parseColor(value string) (*protocol.Color, error) {
 		Blue:  protocol.Decimal(parsed.B),
 		Alpha: protocol.Decimal(parsed.A),
 	}, nil
-}
-
-// formatColorHex formats a color as hex
-func formatColorHex(color protocol.Color) string {
-	r := uint8(color.Red * 255)
-	g := uint8(color.Green * 255)
-	b := uint8(color.Blue * 255)
-
-	if color.Alpha < 1.0 {
-		a := uint8(color.Alpha * 255)
-		return fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, a)
-	}
-
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
-}
-
-// formatColorRGB formats a color as rgb()
-func formatColorRGB(color protocol.Color) string {
-	r := uint8(color.Red * 255)
-	g := uint8(color.Green * 255)
-	b := uint8(color.Blue * 255)
-	return fmt.Sprintf("rgb(%d, %d, %d)", r, g, b)
-}
-
-// formatColorRGBA formats a color as rgba()
-func formatColorRGBA(color protocol.Color) string {
-	r := uint8(color.Red * 255)
-	g := uint8(color.Green * 255)
-	b := uint8(color.Blue * 255)
-	return fmt.Sprintf("rgba(%d, %d, %d, %.2f)", r, g, b, color.Alpha)
-}
-
-// formatColorHSL formats a color as hsl()
-func formatColorHSL(color protocol.Color) string {
-	h, s, l := rgbToHSL(float64(color.Red), float64(color.Green), float64(color.Blue))
-	return fmt.Sprintf("hsl(%.0f, %.0f%%, %.0f%%)", h, s*100, l*100)
-}
-
-// rgbToHSL converts RGB to HSL
-func rgbToHSL(r, g, b float64) (h, s, l float64) {
-	max := r
-	if g > max {
-		max = g
-	}
-	if b > max {
-		max = b
-	}
-
-	min := r
-	if g < min {
-		min = g
-	}
-	if b < min {
-		min = b
-	}
-
-	l = (max + min) / 2
-
-	if max == min {
-		h = 0
-		s = 0
-	} else {
-		d := max - min
-		if l > 0.5 {
-			s = d / (2 - max - min)
-		} else {
-			s = d / (max + min)
-		}
-
-		switch max {
-		case r:
-			h = (g - b) / d
-			if g < b {
-				h += 6
-			}
-		case g:
-			h = (b-r)/d + 2
-		case b:
-			h = (r-g)/d + 4
-		}
-
-		h *= 60
-	}
-
-	return h, s, l
 }

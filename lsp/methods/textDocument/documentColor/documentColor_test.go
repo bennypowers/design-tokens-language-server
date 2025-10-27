@@ -126,137 +126,97 @@ func TestDocumentColor_DocumentNotFound(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestColorPresentation_AllFormats(t *testing.T) {
+func TestColorPresentation_MatchingTokens(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
-	color := protocol.Color{
-		Red:   1.0,
-		Green: 0.0,
-		Blue:  0.0,
-		Alpha: 1.0,
-	}
+	// Add multiple tokens with red color
+	ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.primary",
+		Value: "#ff0000",
+		Type:  "color",
+	})
+	ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.danger",
+		Value: "rgb(255, 0, 0)", // Same color, different format
+		Type:  "color",
+	})
+	ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.safe",
+		Value: "#00ff00", // Different color
+		Type:  "color",
+	})
 
+	// Request presentations for red color
 	result, err := ColorPresentation(ctx, glspCtx, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
-		Color:        color,
+		Color: protocol.Color{
+			Red:   1.0,
+			Green: 0.0,
+			Blue:  0.0,
+			Alpha: 1.0,
+		},
 	})
 
 	require.NoError(t, err)
-	require.Len(t, result, 4)
+	require.Len(t, result, 2) // Should match color.primary and color.danger
 
-	// Check format labels
+	// Check that we got token names, not format strings
 	labels := make([]string, len(result))
 	for i, p := range result {
 		labels[i] = p.Label
 	}
 
-	assert.Contains(t, labels, "#ff0000")               // Hex
-	assert.Contains(t, labels, "rgb(255, 0, 0)")        // RGB
-	assert.Contains(t, labels, "rgba(255, 0, 0, 1.00)") // RGBA
-	// HSL format should also be present
-	foundHSL := false
-	for _, label := range labels {
-		if len(label) > 3 && label[:3] == "hsl" {
-			foundHSL = true
-			break
-		}
-	}
-	assert.True(t, foundHSL, "Should include HSL format")
+	assert.Contains(t, labels, "color.primary")
+	assert.Contains(t, labels, "color.danger")
+	assert.NotContains(t, labels, "color.safe") // Green should not match
 }
 
 func TestColorPresentation_WithAlpha(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 
-	color := protocol.Color{
-		Red:   1.0,
-		Green: 0.0,
-		Blue:  0.0,
-		Alpha: 0.5,
-	}
+	// Add tokens with alpha channel (using same hex value to ensure exact match)
+	ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.overlay",
+		Value: "#ff000080", // Red with alpha=0x80/255≈0.502
+		Type:  "color",
+	})
+	ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.transparent",
+		Value: "rgba(255, 0, 0, 0.5)", // csscolorparser converts to #ff000080
+		Type:  "color",
+	})
+	ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.opaque",
+		Value: "#ff0000", // Same color but fully opaque - should NOT match
+		Type:  "color",
+	})
 
+	// Request presentations for semi-transparent red
+	// Alpha 0.5 will be converted to #ff000080 by csscolorparser
 	result, err := ColorPresentation(ctx, glspCtx, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
-		Color:        color,
+		Color: protocol.Color{
+			Red:   1.0,
+			Green: 0.0,
+			Blue:  0.0,
+			Alpha: 0.5,
+		},
 	})
 
 	require.NoError(t, err)
-	require.Len(t, result, 4)
+	require.Len(t, result, 2) // Should match overlay and transparent
 
-	// Hex with alpha should be 8 digits
-	foundHexAlpha := false
-	for _, p := range result {
-		if len(p.Label) == 9 && p.Label[0] == '#' {
-			foundHexAlpha = true
-			assert.Equal(t, "#ff00007f", p.Label) // 0x7F = 127 = uint8(0.5 * 255)
-			break
-		}
-	}
-	assert.True(t, foundHexAlpha, "Should include hex with alpha")
-}
-
-func TestRgbToHSL(t *testing.T) {
-	tests := []struct {
-		name     string
-		r, g, b  float64
-		h, s, l  float64
-	}{
-		{
-			name: "red",
-			r:    1.0,
-			g:    0.0,
-			b:    0.0,
-			h:    0.0,
-			s:    1.0,
-			l:    0.5,
-		},
-		{
-			name: "green",
-			r:    0.0,
-			g:    1.0,
-			b:    0.0,
-			h:    120.0,
-			s:    1.0,
-			l:    0.5,
-		},
-		{
-			name: "blue",
-			r:    0.0,
-			g:    0.0,
-			b:    1.0,
-			h:    240.0,
-			s:    1.0,
-			l:    0.5,
-		},
-		{
-			name: "black",
-			r:    0.0,
-			g:    0.0,
-			b:    0.0,
-			h:    0.0,
-			s:    0.0,
-			l:    0.0,
-		},
-		{
-			name: "white",
-			r:    1.0,
-			g:    1.0,
-			b:    1.0,
-			h:    0.0,
-			s:    0.0,
-			l:    1.0,
-		},
+	labels := make([]string, len(result))
+	for i, p := range result {
+		labels[i] = p.Label
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h, s, l := rgbToHSL(tt.r, tt.g, tt.b)
-			assert.InDelta(t, tt.h, h, 0.1, "Hue mismatch")
-			assert.InDelta(t, tt.s, s, 0.01, "Saturation mismatch")
-			assert.InDelta(t, tt.l, l, 0.01, "Lightness mismatch")
-		})
-	}
+	// Should match tokens with alpha, not opaque ones
+	assert.Contains(t, labels, "color.overlay")
+	assert.Contains(t, labels, "color.transparent")
+	assert.NotContains(t, labels, "color.opaque") // Different alpha should not match
 }
 
 // TestParseColor tests the parseColor helper function

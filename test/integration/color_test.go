@@ -99,11 +99,12 @@ func TestDocumentColorEmpty(t *testing.T) {
 	}
 }
 
-// TestColorPresentation tests color presentation formatting
+// TestColorPresentation tests that ColorPresentation returns matching token names
 func TestColorPresentation(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
 
-	// Request color presentations for a blue color
+	// Request color presentations for blue (#0000ff from basic tokens)
 	presentations, err := documentcolor.ColorPresentation(server, nil, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
@@ -123,24 +124,35 @@ func TestColorPresentation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, presentations)
 
-	// Should have multiple format options (hex, rgb, rgba, hsl)
-	assert.GreaterOrEqual(t, len(presentations), 3)
-
-	// Check for hex format
+	// Should return token names that match this color
 	labels := make([]string, len(presentations))
 	for i, p := range presentations {
 		labels[i] = p.Label
 	}
 
-	assert.Contains(t, labels, "#0000ff")
-	assert.Contains(t, labels, "rgb(0, 0, 255)")
+	// Basic tokens should have color-primary = #0000ff (blue)
+	assert.Contains(t, labels, "color-primary")
 }
 
 // TestColorPresentationWithAlpha tests color presentation with alpha channel
 func TestColorPresentationWithAlpha(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
-	// Request color presentations for a semi-transparent red
+	// Load tokens with alpha channel
+	tokens := []byte(`{
+		"color-overlay": {
+			"$type": "color",
+			"$value": "rgba(255, 0, 0, 0.5)"
+		},
+		"color-solid": {
+			"$type": "color",
+			"$value": "#ff0000"
+		}
+	}`)
+	err := server.LoadTokensFromJSON(tokens, "")
+	require.NoError(t, err)
+
+	// Request color presentations for semi-transparent red
 	presentations, err := documentcolor.ColorPresentation(server, nil, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
@@ -160,16 +172,15 @@ func TestColorPresentationWithAlpha(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, presentations)
 
-	// Check for hex with alpha format
+	// Should return only tokens with matching alpha
 	labels := make([]string, len(presentations))
 	for i, p := range presentations {
 		labels[i] = p.Label
 	}
 
-	// Hex with alpha should include alpha channel (0.5 * 255 = 127.5 -> 0x7f)
-	assert.Contains(t, labels, "#ff00007f")
-	// RGBA should show alpha
-	assert.Contains(t, labels, "rgba(255, 0, 0, 0.50)")
+	// Should match the semi-transparent token, not the solid one
+	assert.Contains(t, labels, "color-overlay")
+	assert.NotContains(t, labels, "color-solid") // Different alpha
 }
 
 // TestDocumentColorNonCSSFile tests that color returns nil for non-CSS files
