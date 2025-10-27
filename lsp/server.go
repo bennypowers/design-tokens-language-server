@@ -324,35 +324,11 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 		// Auto-discover mode: watch common patterns
 		// Convert root path to forward-slash separated filesystem path
 		rootPattern := filepath.ToSlash(filepath.Clean(s.rootPath))
-		watchers = append(watchers,
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/tokens.json",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/*.tokens.json",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/design-tokens.json",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/tokens.yaml",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/*.tokens.yaml",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/design-tokens.yaml",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/tokens.yml",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/*.tokens.yml",
-			},
-			protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/**/design-tokens.yml",
-			},
-		)
+		for _, pattern := range types.AutoDiscoverPatterns {
+			watchers = append(watchers, protocol.FileSystemWatcher{
+				GlobPattern: rootPattern + "/" + pattern,
+			})
+		}
 	}
 
 	if len(watchers) == 0 {

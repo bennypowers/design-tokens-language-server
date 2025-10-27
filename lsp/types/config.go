@@ -43,3 +43,23 @@ func DefaultConfig() ServerConfig {
 		},
 	}
 }
+
+// AutoDiscoverPatterns are the glob patterns used to auto-discover token files
+// when TokensFiles is not explicitly configured.
+// These patterns match common token file naming conventions:
+//   - tokens.{ext}           (e.g., tokens.json, tokens.yaml)
+//   - *.tokens.{ext}         (e.g., colors.tokens.json, spacing.tokens.yaml)
+//   - design-tokens.{ext}    (e.g., design-tokens.json, design-tokens.yaml)
+//
+// Supported extensions: json, yaml, yml
+var AutoDiscoverPatterns = []string{
+	"**/tokens.json",
+	"**/*.tokens.json",
+	"**/design-tokens.json",
+	"**/tokens.yaml",
+	"**/*.tokens.yaml",
+	"**/design-tokens.yaml",
+	"**/tokens.yml",
+	"**/*.tokens.yml",
+	"**/design-tokens.yml",
+}

@@ -163,12 +163,8 @@ func (s *Server) loadExplicitTokenFiles() error {
 // loadTokenFilesAutoDiscover auto-discovers and loads token files
 func (s *Server) loadTokenFilesAutoDiscover() error {
 	tokenConfig := TokenFileConfig{
-		RootDir: s.rootPath,
-		Patterns: []string{
-			"**/tokens.json",
-			"**/*.tokens.json",
-			"**/design-tokens.json",
-		},
+		RootDir:      s.rootPath,
+		Patterns:     types.AutoDiscoverPatterns,
 		Prefix:       s.config.Prefix,
 		GroupMarkers: s.config.GroupMarkers,
 	}
