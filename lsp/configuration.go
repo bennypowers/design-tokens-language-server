@@ -103,14 +103,6 @@ func (s *Server) LoadTokensFromConfig() error {
 		return s.reloadPreviouslyLoadedFiles()
 	}
 
-	// Otherwise, auto-discover token files
-	if state.RootPath != "" {
-		// Clear existing tokens before auto-discover
-		s.tokens.Clear()
-		s.setAutoDiscoveryMode(true)
-		return s.loadTokenFilesAutoDiscover()
-	}
-
 	return nil
 }
 
