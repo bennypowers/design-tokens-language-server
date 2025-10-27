@@ -26,11 +26,28 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 
 // loadTokensFromConfig loads tokens based on current configuration
 func (s *Server) LoadTokensFromConfig() error {
-	// If tokensFiles is specified, load those files
-	if len(s.config.TokensFiles) > 0 {
+	// If tokensFiles is explicitly provided (nil vs empty are distinct):
+	//  - empty slice => switch to auto-discovery or reload previously loaded files
+	//  - non-empty   => load explicit files
+	if s.config.TokensFiles != nil {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
 		s.autoDiscoveryMode = false
+		if len(s.config.TokensFiles) == 0 {
+			// Empty TokensFiles: try auto-discovery if we have a workspace root
+			if s.rootPath != "" {
+				s.autoDiscoveryMode = true
+				return s.loadTokenFilesAutoDiscover()
+			}
+			// No workspace root: check if we have programmatically loaded files to reload
+			s.loadedFilesMu.RLock()
+			hasLoadedFiles := len(s.loadedFiles) > 0
+			s.loadedFilesMu.RUnlock()
+			if hasLoadedFiles {
+				return s.reloadPreviouslyLoadedFiles()
+			}
+			return nil
+		}
 		return s.loadExplicitTokenFiles()
 	}
 
@@ -46,6 +63,12 @@ func (s *Server) LoadTokensFromConfig() error {
 	s.loadedFilesMu.RLock()
 	hasLoadedFiles := len(s.loadedFiles) > 0
 	s.loadedFilesMu.RUnlock()
+	// Prefer discovery when we have a workspace root but no active discovery and no files yet.
+	if s.rootPath != "" && !hasLoadedFiles {
+		s.tokens.Clear()
+		s.autoDiscoveryMode = true
+		return s.loadTokenFilesAutoDiscover()
+	}
 	if hasLoadedFiles {
 		return s.reloadPreviouslyLoadedFiles()
 	}
