@@ -14,6 +14,7 @@ import (
 )
 
 // Template for token hover content
+// Note: {{.CSSVariableName}} calls the Token.CSSVariableName() method (not a field)
 var tokenHoverTemplate = template.Must(template.New("tokenHover").Parse(`# {{.CSSVariableName}}
 {{if .Description}}
 {{.Description}}

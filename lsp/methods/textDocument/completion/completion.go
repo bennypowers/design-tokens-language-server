@@ -15,6 +15,7 @@ import (
 )
 
 // Template for token documentation
+// Note: {{.CSSVariableName}} calls the Token.CSSVariableName() method (not a field)
 var tokenDocTemplate = template.Must(template.New("tokenDoc").Parse(`# {{.CSSVariableName}}
 {{if .Description}}
 {{.Description}}
