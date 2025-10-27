@@ -551,8 +551,8 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 		Value: "#ff0000",
 		Type:  "color",
 	}
-	s.TokenManager().Add(oldToken)
-	s.TokenManager().Add(newToken)
+	_ = s.TokenManager().Add(oldToken)
+	_ = s.TokenManager().Add(newToken)
 
 	tests := []struct {
 		name               string
@@ -678,7 +678,7 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 		Value: "16px",
 		Type:  "dimension",
 	}
-	s.TokenManager().Add(spacingBase)
+	_ = s.TokenManager().Add(spacingBase)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -704,7 +704,7 @@ func TestToggleFallback(t *testing.T) {
 		Value: "#ff0000",
 		Type:  "color",
 	}
-	s.TokenManager().Add(token)
+	_ = s.TokenManager().Add(token)
 
 	tests := []struct {
 		name           string
@@ -751,7 +751,7 @@ func TestToggleFallback(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Open document
 			uri := "file:///test.css"
-			s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
+			_ = s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
 
 			// Request code actions at cursor position (single-char range)
 			params := &protocol.CodeActionParams{
@@ -813,8 +813,8 @@ func TestToggleRangeFallbacks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add test tokens
-	s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
-	s.TokenManager().Add(&tokens.Token{Name: "color-secondary", Value: "#00ff00", Type: "color"})
+	_ = s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
+	_ = s.TokenManager().Add(&tokens.Token{Name: "color-secondary", Value: "#00ff00", Type: "color"})
 
 	tests := []struct {
 		name           string
@@ -855,7 +855,7 @@ func TestToggleRangeFallbacks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			uri := "file:///test.css"
-			s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
+			_ = s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
 
 			params := &protocol.CodeActionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -910,8 +910,8 @@ func TestFixAllFallbacks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add test tokens
-	s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
-	s.TokenManager().Add(&tokens.Token{Name: "color-secondary", Value: "#00ff00", Type: "color"})
+	_ = s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
+	_ = s.TokenManager().Add(&tokens.Token{Name: "color-secondary", Value: "#00ff00", Type: "color"})
 
 	cssContent := `.button {
   color: var(--color-primary, blue);
@@ -920,7 +920,7 @@ func TestFixAllFallbacks(t *testing.T) {
 }`
 
 	uri := "file:///test.css"
-	s.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = s.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Create diagnostics for incorrect fallbacks
 	diagnostics := []protocol.Diagnostic{

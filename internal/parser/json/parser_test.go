@@ -195,7 +195,7 @@ func TestParseFile(t *testing.T) {
 	// Create a temporary file
 	tmpfile, err := os.CreateTemp("", "tokens-*.json")
 	require.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	// Write test data
 	jsonData := `{
@@ -248,7 +248,7 @@ func TestParseFileInvalidJSON(t *testing.T) {
 	// Create a temporary file with invalid JSON
 	tmpfile, err := os.CreateTemp("", "invalid-*.json")
 	require.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	_, err = tmpfile.Write([]byte("{ invalid json }"))
 	require.NoError(t, err)

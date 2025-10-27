@@ -19,18 +19,18 @@ func TestCompletion_CSSVariableCompletion(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add some tokens
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
 		Value:       "#ff0000",
 		Type:        "color",
 		Description: "Primary brand color",
 	})
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.secondary",
 		Value: "#00ff00",
 		Type:  "color",
 	})
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "spacing.small",
 		Value: "8px",
 		Type:  "dimension",
@@ -38,7 +38,7 @@ func TestCompletion_CSSVariableCompletion(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: --col }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -72,18 +72,18 @@ func TestCompletion_AllTokens(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "spacing.small",
 		Value: "8px",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: -- }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -109,7 +109,7 @@ func TestCompletion_NonCSSDocument(t *testing.T) {
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -143,14 +143,14 @@ func TestCompletion_NoWordAtPosition(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `.button {  }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -168,7 +168,7 @@ func TestCompletionResolve_AddsDocumentation(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
 		Value:       "#ff0000",
 		Type:        "color",
@@ -208,7 +208,7 @@ func TestCompletionResolve_DeprecatedToken(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:               "color.old-primary",
 		Value:              "#cc0000",
 		Type:               "color",
@@ -257,7 +257,7 @@ func TestCompletionResolve_NoData(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})

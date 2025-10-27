@@ -274,7 +274,7 @@ func (c *LSPClient) Initialize(rootURI string) error {
 // Shutdown sends the shutdown request
 func (c *LSPClient) Shutdown() {
 	id := c.sendRequest("shutdown", nil)
-	_ = c.waitForResponse(id, 2*time.Second)
+	_, _ = c.waitForResponse(id, 2*time.Second)
 	c.sendNotification("exit", nil)
 }
 

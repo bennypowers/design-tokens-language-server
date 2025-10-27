@@ -39,54 +39,9 @@ func (p *Parser) ParseWithGroupMarkers(data []byte, prefix string, groupMarkers 
 
 	// Extract tokens
 	result := []*tokens.Token{}
-	p.extractTokensWithGroupMarkers(rawData, "", prefix, groupMarkers, &result)
+	p.extractTokensWithPathAndGroupMarkers(rawData, []string{}, "", prefix, groupMarkers, &result)
 
 	return result, nil
-}
-
-// extractTokens recursively extracts tokens from the JSON structure
-func (p *Parser) extractTokens(data map[string]any, path, prefix string, result *[]*tokens.Token) {
-	p.extractTokensWithPath(data, []string{}, path, prefix, result)
-}
-
-// extractTokensWithGroupMarkers recursively extracts tokens with group marker support
-func (p *Parser) extractTokensWithGroupMarkers(data map[string]any, path, prefix string, groupMarkers []string, result *[]*tokens.Token) {
-	p.extractTokensWithPathAndGroupMarkers(data, []string{}, path, prefix, groupMarkers, result)
-}
-
-// extractTokensWithPath recursively extracts tokens tracking the JSON path
-func (p *Parser) extractTokensWithPath(data map[string]any, jsonPath []string, path, prefix string, result *[]*tokens.Token) {
-	// Sort keys to ensure deterministic order
-	keys := make([]string, 0, len(data))
-	for key := range data {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		value := data[key]
-		valueMap, isMap := value.(map[string]any)
-		if !isMap {
-			continue
-		}
-
-		currentPath := append(jsonPath, key)
-
-		// Check if this is a token (has $value)
-		if dollarValue, hasValue := valueMap["$value"]; hasValue {
-			token := p.createToken(key, path, dollarValue, valueMap, prefix, currentPath)
-			*result = append(*result, token)
-		} else {
-			// This is a group, recurse into it
-			newPath := path
-			if path == "" {
-				newPath = key
-			} else {
-				newPath = path + "-" + key
-			}
-			p.extractTokensWithPath(valueMap, currentPath, newPath, prefix, result)
-		}
-	}
 }
 
 // extractTokensWithPathAndGroupMarkers recursively extracts tokens with group marker support
@@ -106,7 +61,7 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]any, jsonP
 		}
 
 		currentPath := append(jsonPath, key)
-		newPath := path
+		var newPath string
 		if path == "" {
 			newPath = key
 		} else {

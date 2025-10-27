@@ -312,9 +312,9 @@ func TestDocumentManagerGetAll(t *testing.T) {
 	assert.Empty(t, docs, "Should have no documents initially")
 
 	// Open multiple documents
-	manager.DidOpen("file:///test1.css", "css", 1, "content1")
-	manager.DidOpen("file:///test2.css", "css", 1, "content2")
-	manager.DidOpen("file:///test3.json", "json", 1, "content3")
+	_ = manager.DidOpen("file:///test1.css", "css", 1, "content1")
+	_ = manager.DidOpen("file:///test2.css", "css", 1, "content2")
+	_ = manager.DidOpen("file:///test3.json", "json", 1, "content3")
 
 	docs = manager.GetAll()
 	require.Len(t, docs, 3, "Should have 3 documents")

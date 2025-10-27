@@ -208,7 +208,7 @@ func TestHandleDidChangeWatchedFiles_PublishesDiagnostics(t *testing.T) {
 	ctx.SetConfig(config)
 
 	// Open a document so we have something to publish diagnostics for
-	ctx.DocumentManager().DidOpen("file:///workspace/test.css", "css", 1, ".test { color: red; }")
+	_ = ctx.DocumentManager().DidOpen("file:///workspace/test.css", "css", 1, ".test { color: red; }")
 
 	params := &protocol.DidChangeWatchedFilesParams{
 		Changes: []protocol.FileEvent{

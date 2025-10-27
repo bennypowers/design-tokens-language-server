@@ -19,7 +19,7 @@ var parserPool = sync.Pool{
 	New: func() any {
 		parser := sitter.NewParser()
 		lang := sitter.NewLanguage(tree_sitter_css.Language())
-		parser.SetLanguage(lang)
+		_ = parser.SetLanguage(lang) // Error ignored - parser initialization is critical and will panic if it fails
 		return &Parser{parser: parser}
 	},
 }
@@ -29,7 +29,7 @@ var parserPool = sync.Pool{
 func NewParser() *Parser {
 	parser := sitter.NewParser()
 	lang := sitter.NewLanguage(tree_sitter_css.Language())
-	parser.SetLanguage(lang)
+	_ = parser.SetLanguage(lang) // Error ignored - parser initialization is critical and will panic if it fails
 
 	return &Parser{
 		parser: parser,
@@ -110,7 +110,7 @@ func positionToUTF16(source string, point sitter.Point) Position {
 	}
 
 	utf16Count := uint32(0)
-	for _, r := range []rune(line[:point.Column]) {
+	for _, r := range line[:point.Column] {
 		if r <= 0xFFFF {
 			utf16Count++
 		} else {

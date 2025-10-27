@@ -19,7 +19,7 @@ func TestServerInitialization(t *testing.T) {
 	t.Run("Initialize with workspace root", func(t *testing.T) {
 		server, err := lsp.NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		// Create temp workspace
 		tmpDir := t.TempDir()
@@ -59,7 +59,7 @@ func TestServerInitialization(t *testing.T) {
 	t.Run("Initialize without workspace root", func(t *testing.T) {
 		server, err := lsp.NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		ctx := &glsp.Context{}
 		initParams := &protocol.InitializeParams{
@@ -80,7 +80,7 @@ func TestServerInitialization(t *testing.T) {
 	t.Run("Load tokens from workspace configuration", func(t *testing.T) {
 		server, err := lsp.NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		// Create temp workspace with token file
 		tmpDir := t.TempDir()
@@ -127,7 +127,7 @@ func TestServerShutdown(t *testing.T) {
 func TestSetTrace(t *testing.T) {
 	server, err := lsp.NewServer()
 	require.NoError(t, err)
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	ctx := &glsp.Context{}
 

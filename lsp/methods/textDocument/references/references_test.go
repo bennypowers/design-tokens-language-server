@@ -20,7 +20,7 @@ func TestReferences_CSSFile(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -52,7 +52,7 @@ func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
 		Reference:     "{color.primary}",
 		DefinitionURI: "file:///tokens.json",
 	}
-	ctx.TokenManager().Add(token)
+	_ = ctx.TokenManager().Add(token)
 
 	// Open JSON token file
 	jsonURI := "file:///tokens.json"
@@ -64,16 +64,16 @@ func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
     }
   }
 }`
-	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
 	// Open CSS files with var() calls
 	cssURI1 := "file:///styles1.css"
 	cssContent1 := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(cssURI1, "css", 1, cssContent1)
+	_ = ctx.DocumentManager().DidOpen(cssURI1, "css", 1, cssContent1)
 
 	cssURI2 := "file:///styles2.css"
 	cssContent2 := `.link { background: var(--color-primary, red); }`
-	ctx.DocumentManager().DidOpen(cssURI2, "css", 1, cssContent2)
+	_ = ctx.DocumentManager().DidOpen(cssURI2, "css", 1, cssContent2)
 
 	// Request references from the JSON token file (cursor on token)
 	result, err := References(req, &protocol.ReferenceParams{
@@ -121,7 +121,7 @@ func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
 		Reference:     "{color.primary}",
 		DefinitionURI: "file:///tokens.json",
 	}
-	ctx.TokenManager().Add(primaryToken)
+	_ = ctx.TokenManager().Add(primaryToken)
 
 	// Open JSON token file with token definition
 	jsonURI := "file:///tokens.json"
@@ -137,7 +137,7 @@ func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
     }
   }
 }`
-	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
 	// Request references from the JSON file
 	result, err := References(req, &protocol.ReferenceParams{
@@ -177,7 +177,7 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
 		Reference:     "{color.primary}",
 		DefinitionURI: "file:///tokens.json",
 	}
-	ctx.TokenManager().Add(token)
+	_ = ctx.TokenManager().Add(token)
 
 	jsonURI := "file:///tokens.json"
 	jsonContent := `{
@@ -188,11 +188,11 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
     }
   }
 }`
-	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
 	cssURI := "file:///styles.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
 
 	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -232,7 +232,7 @@ func TestReferences_UnknownToken(t *testing.T) {
     }
   }
 }`
-	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
 	// Position not on a token
 	result, err := References(req, &protocol.ReferenceParams{
@@ -283,7 +283,7 @@ func TestReferences_YAMLFile(t *testing.T) {
 		Reference:     "{color.primary}",
 		DefinitionURI: "file:///tokens.yaml",
 	}
-	ctx.TokenManager().Add(token)
+	_ = ctx.TokenManager().Add(token)
 
 	yamlURI := "file:///tokens.yaml"
 	yamlContent := `color:
@@ -291,11 +291,11 @@ func TestReferences_YAMLFile(t *testing.T) {
     $type: color
     $value: "#ff0000"
 `
-	ctx.DocumentManager().DidOpen(yamlURI, "yaml", 1, yamlContent)
+	_ = ctx.DocumentManager().DidOpen(yamlURI, "yaml", 1, yamlContent)
 
 	cssURI := "file:///styles.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
 
 	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{

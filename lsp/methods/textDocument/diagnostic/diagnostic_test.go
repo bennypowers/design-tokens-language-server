@@ -16,7 +16,7 @@ func TestGetDiagnostics_DeprecatedToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 
 	// Add a deprecated token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:               "color.old",
 		Value:              "#ff0000",
 		Type:               "color",
@@ -26,7 +26,7 @@ func TestGetDiagnostics_DeprecatedToken(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-old); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestGetDiagnostics_IncorrectFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 
 	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -51,7 +51,7 @@ func TestGetDiagnostics_IncorrectFallback(t *testing.T) {
 	uri := "file:///test.css"
 	// Fallback is #ff0000 but token value is #0000ff
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestGetDiagnostics_CorrectFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 
 	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 		Type:  "color",
@@ -75,7 +75,7 @@ func TestGetDiagnostics_CorrectFallback(t *testing.T) {
 	uri := "file:///test.css"
 	// Fallback matches token value
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestGetDiagnostics_UnknownToken(t *testing.T) {
 	uri := "file:///test.css"
 	// Reference to unknown token (no diagnostic expected)
 	cssContent := `.button { color: var(--unknown-token); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestGetDiagnostics_NonCSSDocument(t *testing.T) {
 
 	uri := "file:///test.json"
 	jsonContent := `{"test": "value"}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestGetDiagnostics_InvalidCSS(t *testing.T) {
 	uri := "file:///test.css"
 	// Totally invalid CSS that might fail to parse
 	cssContent := `{ { { invalid }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	_, err := GetDiagnostics(ctx, uri)
 	// Should not error, just return nil or empty
@@ -132,13 +132,13 @@ func TestGetDiagnostics_MultipleIssues(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 
 	// Add tokens
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:       "color.deprecated",
 		Value:      "#ff0000",
 		Type:       "color",
 		Deprecated: true,
 	})
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.wrong",
 		Value: "#0000ff",
 		Type:  "color",
@@ -149,7 +149,7 @@ func TestGetDiagnostics_MultipleIssues(t *testing.T) {
 		color: var(--color-deprecated);
 		background: var(--color-wrong, #ff0000);
 	}`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestDocumentDiagnostic(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a deprecated token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:       "spacing.old",
 		Value:      "8px",
 		Type:       "dimension",
@@ -171,7 +171,7 @@ func TestDocumentDiagnostic(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { padding: var(--spacing-old); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	params := &DocumentDiagnosticParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -257,7 +257,7 @@ func TestGetDiagnostics_FallbackSemanticEquivalence(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 
 	// Add a token with uppercase hex value
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#FF0000",
 		Type:  "color",
@@ -266,7 +266,7 @@ func TestGetDiagnostics_FallbackSemanticEquivalence(t *testing.T) {
 	uri := "file:///test.css"
 	// Fallback uses lowercase (should be treated as equivalent)
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
@@ -279,7 +279,7 @@ func TestGetDiagnostics_DeprecatedWithoutMessage(t *testing.T) {
 	// Deprecated token without custom message
 	// Note: Token name uses DTCG dot notation, CSS variable uses hyphens
 	// The conversion happens in CSSVariableName(): "color.legacy" → "--color-legacy"
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:       "color.legacy",
 		Value:      "#ff0000",
 		Type:       "color",
@@ -288,7 +288,7 @@ func TestGetDiagnostics_DeprecatedWithoutMessage(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-legacy); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)

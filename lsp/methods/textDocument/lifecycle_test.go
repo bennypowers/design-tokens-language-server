@@ -111,7 +111,7 @@ func TestDidChange(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
-		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		// Change the document
 		textChange := protocol.TextDocumentContentChangeEvent{}
@@ -142,7 +142,7 @@ func TestDidChange(t *testing.T) {
 		ctx.SetGLSPContext(glspCtx)
 
 		// First open a document
-		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		textChange := protocol.TextDocumentContentChangeEvent{}
 		textChange.Text = "body { color: blue; }"
@@ -167,7 +167,7 @@ func TestDidChange(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
-		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		// Incremental change with range
 		textChange := protocol.TextDocumentContentChangeEvent{}
@@ -200,7 +200,7 @@ func TestDidChange(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
-		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		change1 := protocol.TextDocumentContentChangeEvent{}
 		change1.Text = "body { color: blue; }"
@@ -230,7 +230,7 @@ func TestDidChange(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
-		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		validChange := protocol.TextDocumentContentChangeEvent{}
 		validChange.Text = "body { color: blue; }"
@@ -260,7 +260,7 @@ func TestDidClose(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
-		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		params := &protocol.DidCloseTextDocumentParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
@@ -294,8 +294,8 @@ func TestDidClose(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 		// Open two documents
-		ctx.DocumentManager().DidOpen("file:///test1.css", "css", 1, "body { color: red; }")
-		ctx.DocumentManager().DidOpen("file:///test2.css", "css", 1, "div { color: blue; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test1.css", "css", 1, "body { color: red; }")
+		_ = ctx.DocumentManager().DidOpen("file:///test2.css", "css", 1, "div { color: blue; }")
 
 		// Close first document
 		params := &protocol.DidCloseTextDocumentParams{

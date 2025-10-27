@@ -510,7 +510,7 @@ func TestHover_NonCSSDocument(t *testing.T) {
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{

@@ -19,7 +19,7 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with definition URI
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:          "color.primary",
 		Value:         "#ff0000",
 		Type:          "color",
@@ -29,7 +29,7 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -55,7 +55,7 @@ func TestDefinition_UnknownToken(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--unknown-token); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -74,14 +74,14 @@ func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add token without DefinitionURI
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -99,7 +99,7 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:          "color.primary",
 		Value:         "#ff0000",
 		DefinitionURI: "file:///workspace/tokens.json",
@@ -108,7 +108,7 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Position outside the var() call
 	result, err := Definition(req, &protocol.DefinitionParams{
@@ -129,7 +129,7 @@ func TestDefinition_NonCSSDocument(t *testing.T) {
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{

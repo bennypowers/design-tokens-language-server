@@ -83,9 +83,9 @@ func TestTokenManagerGetAll(t *testing.T) {
 	assert.Empty(t, allTokens)
 
 	// Add multiple tokens
-	manager.Add(&tokens.Token{Name: "color-primary", Value: "#0000ff"})
-	manager.Add(&tokens.Token{Name: "color-secondary", Value: "#ff0000"})
-	manager.Add(&tokens.Token{Name: "spacing-small", Value: "8px"})
+	_ = manager.Add(&tokens.Token{Name: "color-primary", Value: "#0000ff"})
+	_ = manager.Add(&tokens.Token{Name: "color-secondary", Value: "#ff0000"})
+	_ = manager.Add(&tokens.Token{Name: "spacing-small", Value: "8px"})
 
 	// Should return all tokens
 	allTokens = manager.GetAll()
@@ -105,7 +105,7 @@ func TestTokenManagerGetAll(t *testing.T) {
 func TestTokenManagerRemove(t *testing.T) {
 	manager := tokens.NewManager()
 
-	manager.Add(&tokens.Token{Name: "color-primary", Value: "#0000ff"})
+	_ = manager.Add(&tokens.Token{Name: "color-primary", Value: "#0000ff"})
 
 	// Token should exist
 	token := manager.Get("color-primary")
@@ -128,8 +128,8 @@ func TestTokenManagerRemove(t *testing.T) {
 func TestTokenManagerClear(t *testing.T) {
 	manager := tokens.NewManager()
 
-	manager.Add(&tokens.Token{Name: "token1", Value: "value1"})
-	manager.Add(&tokens.Token{Name: "token2", Value: "value2"})
+	_ = manager.Add(&tokens.Token{Name: "token1", Value: "value1"})
+	_ = manager.Add(&tokens.Token{Name: "token2", Value: "value2"})
 
 	// Should have tokens
 	assert.Len(t, manager.GetAll(), 2)
@@ -166,10 +166,10 @@ func TestTokenManagerDuplicateNames(t *testing.T) {
 func TestTokenManagerFindByPrefix(t *testing.T) {
 	manager := tokens.NewManager()
 
-	manager.Add(&tokens.Token{Name: "color-primary", Value: "#0000ff"})
-	manager.Add(&tokens.Token{Name: "color-secondary", Value: "#ff0000"})
-	manager.Add(&tokens.Token{Name: "color-accent", Value: "#00ff00"})
-	manager.Add(&tokens.Token{Name: "spacing-small", Value: "8px"})
+	_ = manager.Add(&tokens.Token{Name: "color-primary", Value: "#0000ff"})
+	_ = manager.Add(&tokens.Token{Name: "color-secondary", Value: "#ff0000"})
+	_ = manager.Add(&tokens.Token{Name: "color-accent", Value: "#00ff00"})
+	_ = manager.Add(&tokens.Token{Name: "spacing-small", Value: "8px"})
 
 	// Find all color tokens
 	colorTokens := manager.FindByPrefix("color")
@@ -209,7 +209,7 @@ func TestTokenManagerConcurrentAccess(t *testing.T) {
 	manager := tokens.NewManager()
 
 	// Add initial token
-	manager.Add(&tokens.Token{Name: "token1", Value: "value1"})
+	_ = manager.Add(&tokens.Token{Name: "token1", Value: "value1"})
 
 	// Concurrent reads and writes
 	done := make(chan bool, 4)
@@ -235,7 +235,7 @@ func TestTokenManagerConcurrentAccess(t *testing.T) {
 	// Writer 1
 	go func() {
 		for i := 0; i < 100; i++ {
-			manager.Add(&tokens.Token{Name: "token2", Value: "value2"})
+			_ = manager.Add(&tokens.Token{Name: "token2", Value: "value2"})
 		}
 		done <- true
 	}()
@@ -243,7 +243,7 @@ func TestTokenManagerConcurrentAccess(t *testing.T) {
 	// Writer 2
 	go func() {
 		for i := 0; i < 100; i++ {
-			manager.Add(&tokens.Token{Name: "token3", Value: "value3"})
+			_ = manager.Add(&tokens.Token{Name: "token3", Value: "value3"})
 		}
 		done <- true
 	}()

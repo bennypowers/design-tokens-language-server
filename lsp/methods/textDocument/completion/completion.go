@@ -229,9 +229,10 @@ func isInCompletionContext(content string, pos protocol.Position) bool {
 	// for most cases. A more sophisticated implementation would skip
 	// content inside strings and comments.
 	for _, ch := range text {
-		if ch == '{' {
+		switch ch {
+		case '{':
 			openBraces++
-		} else if ch == '}' {
+		case '}':
 			closeBraces++
 		}
 	}

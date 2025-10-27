@@ -104,7 +104,7 @@ func TestParseFile(t *testing.T) {
 	// Create a temporary file
 	tmpfile, err := os.CreateTemp("", "tokens-*.yaml")
 	require.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	// Write test data
 	yamlData := `color:
@@ -155,7 +155,7 @@ func TestParseFileInvalidYAML(t *testing.T) {
 	// Create a temporary file with invalid YAML
 	tmpfile, err := os.CreateTemp("", "invalid-*.yaml")
 	require.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
 	_, err = tmpfile.Write([]byte("invalid: yaml: content: ["))
 	require.NoError(t, err)

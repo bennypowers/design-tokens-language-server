@@ -18,7 +18,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -27,7 +27,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 	uri := "file:///test.css"
 	// Incorrect fallback: token is #0000ff but fallback is #ff0000
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -73,7 +73,7 @@ func TestCodeAction_AddFallback(t *testing.T) {
 		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -82,7 +82,7 @@ func TestCodeAction_AddFallback(t *testing.T) {
 	uri := "file:///test.css"
 	// No fallback provided
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -125,7 +125,7 @@ func TestCodeAction_NonCSSDocument(t *testing.T) {
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
-	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
 	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -167,7 +167,7 @@ func TestCodeAction_OutsideRange(t *testing.T) {
 	glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#0000ff",
 		Type:  "color",
@@ -175,7 +175,7 @@ func TestCodeAction_OutsideRange(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Request range that doesn't intersect with var()
 	result, err := CodeAction(req, &protocol.CodeActionParams{

@@ -37,7 +37,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		// Set workspace root and explicit token files
 		server.SetRootPath(tmpDir)
@@ -74,7 +74,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -108,7 +108,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -136,7 +136,7 @@ color:
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -169,7 +169,7 @@ color:
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -201,7 +201,7 @@ color:
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -222,7 +222,7 @@ color:
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -250,7 +250,7 @@ color:
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		// Load file programmatically (simulates test usage)
 		err = server.LoadTokenFile(tokensFile, "")
@@ -284,7 +284,7 @@ color:
 
 		server, err := NewServer()
 		require.NoError(t, err)
-		defer server.Close()
+		defer func() { _ = server.Close() }()
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
@@ -307,7 +307,7 @@ color:
 func TestSetRootPath(t *testing.T) {
 	server, err := NewServer()
 	require.NoError(t, err)
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	// Initially empty
 	assert.Empty(t, server.GetState().RootPath)

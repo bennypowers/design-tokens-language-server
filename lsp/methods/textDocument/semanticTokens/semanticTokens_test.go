@@ -261,8 +261,8 @@ func TestSemanticTokensRange(t *testing.T) {
 		Value: "#F7F7F7",
 		Type:  "color",
 	}
-	s.TokenManager().Add(token1)
-	s.TokenManager().Add(token2)
+	_ = s.TokenManager().Add(token1)
+	_ = s.TokenManager().Add(token2)
 
 	// Load fixture document
 	content := loadFixture(t, "semantic-tokens/range-test.json")
@@ -309,7 +309,7 @@ func TestSemanticTokensDelta(t *testing.T) {
 		Value: "#FF6B35",
 		Type:  "color",
 	}
-	s.TokenManager().Add(token)
+	_ = s.TokenManager().Add(token)
 
 	// Load initial document fixture
 	content1 := loadFixture(t, "semantic-tokens/delta-test-initial.json")
