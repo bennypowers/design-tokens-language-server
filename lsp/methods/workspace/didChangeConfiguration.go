@@ -6,12 +6,11 @@ import (
 	"os"
 
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // DidChangeConfiguration handles the workspace/didChangeConfiguration notification
-func DidChangeConfiguration(ctx types.ServerContext, context *glsp.Context, params *protocol.DidChangeConfigurationParams) error {
+func DidChangeConfiguration(req *types.RequestContext, params *protocol.DidChangeConfigurationParams) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Configuration changed\n")
 
 	// Parse the settings
@@ -22,20 +21,19 @@ func DidChangeConfiguration(ctx types.ServerContext, context *glsp.Context, para
 	}
 
 	// Update server configuration
-	ctx.SetConfig(config)
+	req.Server.SetConfig(config)
 
 	fmt.Fprintf(os.Stderr, "[DTLS] New configuration: %+v\n", config)
 
 	// Reload tokens with new configuration
-	if err := ctx.LoadTokensFromConfig(); err != nil {
+	if err := req.Server.LoadTokensFromConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to reload tokens: %v\n", err)
 	}
 
 	// Republish diagnostics for all open documents
-	glspCtx := ctx.GLSPContext()
-	if glspCtx != nil {
-		for _, doc := range ctx.AllDocuments() {
-			if err := ctx.PublishDiagnostics(glspCtx, doc.URI()); err != nil {
+	if req.GLSP != nil {
+		for _, doc := range req.Server.AllDocuments() {
+			if err := req.Server.PublishDiagnostics(req.GLSP, doc.URI()); err != nil {
 				fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", doc.URI(), err)
 			}
 		}

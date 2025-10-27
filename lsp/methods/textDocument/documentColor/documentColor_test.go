@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -14,6 +15,7 @@ import (
 func TestDocumentColor_ColorTokenInVar(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	ctx.TokenManager().Add(&tokens.Token{
@@ -26,7 +28,7 @@ func TestDocumentColor_ColorTokenInVar(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := DocumentColor(ctx, glspCtx, &protocol.DocumentColorParams{
+	result, err := DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 	})
 
@@ -44,6 +46,7 @@ func TestDocumentColor_ColorTokenInVar(t *testing.T) {
 func TestDocumentColor_ColorTokenInDeclaration(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	ctx.TokenManager().Add(&tokens.Token{
@@ -56,7 +59,7 @@ func TestDocumentColor_ColorTokenInDeclaration(t *testing.T) {
 	cssContent := `:root { --color-primary: #00ff00; }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := DocumentColor(ctx, glspCtx, &protocol.DocumentColorParams{
+	result, err := DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 	})
 
@@ -78,6 +81,7 @@ func TestDocumentColor_ColorTokenInDeclaration(t *testing.T) {
 func TestDocumentColor_NonColorToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a non-color token
 	ctx.TokenManager().Add(&tokens.Token{
@@ -90,7 +94,7 @@ func TestDocumentColor_NonColorToken(t *testing.T) {
 	cssContent := `.button { padding: var(--spacing-small); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := DocumentColor(ctx, glspCtx, &protocol.DocumentColorParams{
+	result, err := DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 	})
 
@@ -101,12 +105,13 @@ func TestDocumentColor_NonColorToken(t *testing.T) {
 func TestDocumentColor_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
 	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
-	result, err := DocumentColor(ctx, glspCtx, &protocol.DocumentColorParams{
+	result, err := DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 	})
 
@@ -117,8 +122,9 @@ func TestDocumentColor_NonCSSDocument(t *testing.T) {
 func TestDocumentColor_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	result, err := DocumentColor(ctx, glspCtx, &protocol.DocumentColorParams{
+	result, err := DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
 	})
 
@@ -129,6 +135,7 @@ func TestDocumentColor_DocumentNotFound(t *testing.T) {
 func TestColorPresentation_MatchingTokens(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add multiple tokens with red color
 	ctx.TokenManager().Add(&tokens.Token{
@@ -148,7 +155,7 @@ func TestColorPresentation_MatchingTokens(t *testing.T) {
 	})
 
 	// Request presentations for red color
-	result, err := ColorPresentation(ctx, glspCtx, &protocol.ColorPresentationParams{
+	result, err := ColorPresentation(req, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		Color: protocol.Color{
 			Red:   1.0,
@@ -175,6 +182,7 @@ func TestColorPresentation_MatchingTokens(t *testing.T) {
 func TestColorPresentation_WithAlpha(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add tokens with alpha channel (using same hex value to ensure exact match)
 	ctx.TokenManager().Add(&tokens.Token{
@@ -195,7 +203,7 @@ func TestColorPresentation_WithAlpha(t *testing.T) {
 
 	// Request presentations for semi-transparent red
 	// Alpha 0.5 will be converted to #ff000080 by csscolorparser
-	result, err := ColorPresentation(ctx, glspCtx, &protocol.ColorPresentationParams{
+	result, err := ColorPresentation(req, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		Color: protocol.Color{
 			Red:   1.0,

@@ -6,21 +6,20 @@ import (
 
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // handleDefinition handles the textDocument/definition request
 
 // Definition returns the definition location for a token
-func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
+func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (any, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Definition requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -42,7 +41,7 @@ func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol
 	for _, varCall := range result.VarCalls {
 		if isPositionInVarCall(position, varCall) {
 			// Look up the token
-			token := ctx.Token(varCall.TokenName)
+			token := req.Server.Token(varCall.TokenName)
 			if token == nil {
 				// Unknown token
 				return nil, nil

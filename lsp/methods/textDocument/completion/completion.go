@@ -10,7 +10,6 @@ import (
 	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -40,14 +39,14 @@ func renderTokenDoc(token *tokens.Token) (string, error) {
 // handleCompletion handles the textDocument/completion request
 
 // Completion handles the textDocument/completion request
-func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol.CompletionParams) (any, error) {
+func Completion(req *types.RequestContext, params *protocol.CompletionParams) (any, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Completion requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -74,7 +73,7 @@ func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol
 	var items []protocol.CompletionItem
 	normalizedWord := normalizeTokenName(word)
 
-	for _, token := range ctx.TokenManager().GetAll() {
+	for _, token := range req.Server.TokenManager().GetAll() {
 		cssVar := token.CSSVariableName()
 		normalizedLabel := normalizeTokenName(cssVar)
 
@@ -108,7 +107,7 @@ func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol
 // handleCompletionResolve handles the completionItem/resolve request
 
 // CompletionResolve resolves a completion item with additional details
-func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
+func CompletionResolve(req *types.RequestContext, item *protocol.CompletionItem) (*protocol.CompletionItem, error) {
 	// Get token name from data
 	var tokenName string
 	if item.Data != nil {
@@ -124,7 +123,7 @@ func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *pro
 	}
 
 	// Look up the token
-	token := ctx.Token(tokenName)
+	token := req.Server.Token(tokenName)
 	if token == nil {
 		return item, nil
 	}
@@ -191,7 +190,7 @@ func isWordChar(c byte) bool {
 		c == '-' || c == '_'
 }
 
-// isInCompletionContext checks if the position is in a valid completion context.
+// isInCompletionContext checks if the position is in a valid completion req.GLSP.
 // Completions are valid inside CSS blocks (between { and }) where var() calls can be used.
 // This implementation counts braces up to the cursor position to determine if we're inside a block.
 func isInCompletionContext(content string, pos protocol.Position) bool {

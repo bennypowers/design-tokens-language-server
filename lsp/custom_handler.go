@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -32,8 +33,9 @@ func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod bool, 
 			return nil, true, false, err
 		}
 
-		// Call our handler
-		result, err := diagnostic.DocumentDiagnostic(h.server, context, &params)
+		// Create request context and call our handler
+		req := types.NewRequestContext(h.server, context)
+		result, err := diagnostic.DocumentDiagnostic(req, &params)
 		if err != nil {
 			return nil, true, true, err
 		}

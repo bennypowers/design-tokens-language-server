@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -14,10 +15,11 @@ func TestInitialized(t *testing.T) {
 	t.Run("stores GLSP context", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.InitializedParams{}
 
-		err := Initialized(ctx, glspCtx, params)
+		err := Initialized(req, params)
 		assert.NoError(t, err)
 
 		// Verify context was stored
@@ -27,9 +29,10 @@ func TestInitialized(t *testing.T) {
 	t.Run("calls LoadTokensFromConfig", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		params := &protocol.InitializedParams{}
 
-		err := Initialized(ctx, glspCtx, params)
+		err := Initialized(req, params)
 		assert.NoError(t, err)
 		assert.True(t, ctx.LoadTokensCalled, "LoadTokensFromConfig should be called")
 	})
@@ -37,9 +40,10 @@ func TestInitialized(t *testing.T) {
 	t.Run("calls RegisterFileWatchers", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		params := &protocol.InitializedParams{}
 
-		err := Initialized(ctx, glspCtx, params)
+		err := Initialized(req, params)
 		assert.NoError(t, err)
 		assert.True(t, ctx.RegisterWatchersCalled, "RegisterFileWatchers should be called")
 	})
@@ -51,10 +55,11 @@ func TestInitialized(t *testing.T) {
 		}
 
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		params := &protocol.InitializedParams{}
 
 		// Should not fail, just log warning
-		err := Initialized(ctx, glspCtx, params)
+		err := Initialized(req, params)
 		assert.NoError(t, err)
 		assert.True(t, ctx.LoadTokensCalled)
 	})
@@ -66,10 +71,11 @@ func TestInitialized(t *testing.T) {
 		}
 
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		params := &protocol.InitializedParams{}
 
 		// Should not fail, just log warning
-		err := Initialized(ctx, glspCtx, params)
+		err := Initialized(req, params)
 		assert.NoError(t, err)
 		assert.True(t, ctx.RegisterWatchersCalled)
 	})

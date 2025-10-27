@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/definition"
+	"bennypowers.dev/dtls/lsp/types"
 	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,8 @@ func TestDefinitionOnVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request definition - see fixture for position
-	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := definition.Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -42,7 +44,8 @@ func TestDefinitionOutsideVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request definition - see fixture for position
-	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := definition.Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -64,7 +67,8 @@ func TestDefinitionNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.json",
 			LanguageID: "json",
@@ -75,7 +79,8 @@ func TestDefinitionNonCSSFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request definition
-	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
+	req = types.NewRequestContext(server, nil)
+	result, err := definition.Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -98,7 +103,8 @@ func TestDefinitionUnknownToken(t *testing.T) {
 .button {
     color: var(--unknown-token);
 }`
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.css",
 			LanguageID: "css",
@@ -109,7 +115,8 @@ func TestDefinitionUnknownToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request definition on unknown token
-	result, err := definition.Definition(server, nil, &protocol.DefinitionParams{
+	req = types.NewRequestContext(server, nil)
+	result, err := definition.Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",

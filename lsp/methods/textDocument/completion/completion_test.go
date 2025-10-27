@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -15,6 +16,7 @@ import (
 func TestCompletion_CSSVariableCompletion(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add some tokens
 	ctx.TokenManager().Add(&tokens.Token{
@@ -38,7 +40,7 @@ func TestCompletion_CSSVariableCompletion(t *testing.T) {
 	cssContent := `.button { color: --col }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := Completion(ctx, glspCtx, &protocol.CompletionParams{
+	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 20}, // Inside "--col"
@@ -68,6 +70,7 @@ func TestCompletion_CSSVariableCompletion(t *testing.T) {
 func TestCompletion_AllTokens(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -82,7 +85,7 @@ func TestCompletion_AllTokens(t *testing.T) {
 	cssContent := `.button { color: -- }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := Completion(ctx, glspCtx, &protocol.CompletionParams{
+	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 18}, // Inside "--"
@@ -102,12 +105,13 @@ func TestCompletion_AllTokens(t *testing.T) {
 func TestCompletion_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
 	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
-	result, err := Completion(ctx, glspCtx, &protocol.CompletionParams{
+	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -121,8 +125,9 @@ func TestCompletion_NonCSSDocument(t *testing.T) {
 func TestCompletion_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	result, err := Completion(ctx, glspCtx, &protocol.CompletionParams{
+	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -136,6 +141,7 @@ func TestCompletion_DocumentNotFound(t *testing.T) {
 func TestCompletion_NoWordAtPosition(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -146,7 +152,7 @@ func TestCompletion_NoWordAtPosition(t *testing.T) {
 	cssContent := `.button {  }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := Completion(ctx, glspCtx, &protocol.CompletionParams{
+	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -160,6 +166,7 @@ func TestCompletion_NoWordAtPosition(t *testing.T) {
 func TestCompletionResolve_AddsDocumentation(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
@@ -176,7 +183,7 @@ func TestCompletionResolve_AddsDocumentation(t *testing.T) {
 		},
 	}
 
-	resolved, err := CompletionResolve(ctx, glspCtx, item)
+	resolved, err := CompletionResolve(req, item)
 
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
@@ -199,6 +206,7 @@ func TestCompletionResolve_AddsDocumentation(t *testing.T) {
 func TestCompletionResolve_DeprecatedToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:               "color.old-primary",
@@ -215,7 +223,7 @@ func TestCompletionResolve_DeprecatedToken(t *testing.T) {
 		},
 	}
 
-	resolved, err := CompletionResolve(ctx, glspCtx, item)
+	resolved, err := CompletionResolve(req, item)
 
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
@@ -229,6 +237,7 @@ func TestCompletionResolve_DeprecatedToken(t *testing.T) {
 func TestCompletionResolve_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	item := &protocol.CompletionItem{
 		Label: "--unknown-token",
@@ -237,7 +246,7 @@ func TestCompletionResolve_UnknownToken(t *testing.T) {
 		},
 	}
 
-	resolved, err := CompletionResolve(ctx, glspCtx, item)
+	resolved, err := CompletionResolve(req, item)
 
 	require.NoError(t, err)
 	assert.Equal(t, item, resolved) // Should return item unchanged
@@ -246,6 +255,7 @@ func TestCompletionResolve_UnknownToken(t *testing.T) {
 func TestCompletionResolve_NoData(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -257,7 +267,7 @@ func TestCompletionResolve_NoData(t *testing.T) {
 		// No Data field - should fall back to Label
 	}
 
-	resolved, err := CompletionResolve(ctx, glspCtx, item)
+	resolved, err := CompletionResolve(req, item)
 
 	require.NoError(t, err)
 	require.NotNil(t, resolved)

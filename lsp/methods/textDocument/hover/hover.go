@@ -9,7 +9,6 @@ import (
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -51,14 +50,14 @@ func renderUnknownToken(tokenName string) (string, error) {
 }
 
 // Hover handles the textDocument/hover request
-func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
+func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.Hover, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Hover requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -80,7 +79,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 	for _, varCall := range result.VarCalls {
 		if isPositionInRange(position, varCall.Range) {
 			// Look up the token
-			token := ctx.Token(varCall.TokenName)
+			token := req.Server.Token(varCall.TokenName)
 			if token == nil {
 				// Token not found - render unknown token message
 				content, err := renderUnknownToken(varCall.TokenName)
@@ -124,7 +123,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 	for _, variable := range result.Variables {
 		if isPositionInRange(position, variable.Range) {
 			// Look up the token by the variable name
-			token := ctx.Token(variable.Name)
+			token := req.Server.Token(variable.Name)
 			if token == nil {
 				return nil, nil
 			}

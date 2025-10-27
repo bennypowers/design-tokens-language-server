@@ -7,12 +7,11 @@ import (
 	"bennypowers.dev/dtls/internal/uriutil"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // Initialize handles the LSP initialize request
-func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol.InitializeParams) (any, error) {
+func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (any, error) {
 	clientName := "unknown"
 	if params.ClientInfo != nil {
 		clientName = params.ClientInfo.Name
@@ -22,14 +21,14 @@ func Initialize(ctx types.ServerContext, context *glsp.Context, params *protocol
 
 	// Store the workspace root
 	if params.RootURI != nil {
-		ctx.SetRootURI(*params.RootURI)
+		req.Server.SetRootURI(*params.RootURI)
 		// Convert URI to file path
-		ctx.SetRootPath(uriutil.URIToPath(*params.RootURI))
-		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root: %s\n", ctx.RootPath())
+		req.Server.SetRootPath(uriutil.URIToPath(*params.RootURI))
+		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root: %s\n", req.Server.RootPath())
 	} else if params.RootPath != nil {
-		ctx.SetRootPath(*params.RootPath)
-		ctx.SetRootURI(uriutil.PathToURI(*params.RootPath))
-		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root (from rootPath): %s\n", ctx.RootPath())
+		req.Server.SetRootPath(*params.RootPath)
+		req.Server.SetRootURI(uriutil.PathToURI(*params.RootPath))
+		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root (from rootPath): %s\n", req.Server.RootPath())
 	}
 
 	// Build server capabilities

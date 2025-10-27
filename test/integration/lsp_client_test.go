@@ -48,7 +48,7 @@ func NewLSPClient(t *testing.T) *LSPClient {
 
 	// Start the server process with coverage output
 	coverDir := filepath.Join(projectRoot, "coverage", "integration")
-	os.MkdirAll(coverDir, 0755)
+	_ = os.MkdirAll(coverDir, 0755)
 
 	serverCmd := exec.Command("/tmp/design-tokens-lsp-test")
 	serverCmd.Env = append(os.Environ(),
@@ -91,9 +91,9 @@ func NewLSPClient(t *testing.T) *LSPClient {
 // Close shuts down the LSP client
 func (c *LSPClient) Close() {
 	c.Shutdown()
-	c.stdin.Close()
-	c.stdout.Close()
-	c.cmd.Wait()
+	_ = c.stdin.Close()
+	_ = c.stdout.Close()
+	_ = c.cmd.Wait()
 }
 
 // sendRequest sends a JSON-RPC request and returns the message ID
@@ -176,7 +176,7 @@ func (c *LSPClient) readResponses() {
 		}
 
 		// Read empty line
-		c.reader.ReadString('\n')
+		_, _ = c.reader.ReadString('\n')
 
 		// Read JSON content
 		content := make([]byte, contentLength)
@@ -274,7 +274,7 @@ func (c *LSPClient) Initialize(rootURI string) error {
 // Shutdown sends the shutdown request
 func (c *LSPClient) Shutdown() {
 	id := c.sendRequest("shutdown", nil)
-	c.waitForResponse(id, 2*time.Second)
+	_ = c.waitForResponse(id, 2*time.Second)
 	c.sendNotification("exit", nil)
 }
 

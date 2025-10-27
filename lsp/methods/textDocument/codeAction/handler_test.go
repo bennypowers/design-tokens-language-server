@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -14,6 +15,7 @@ import (
 func TestCodeAction_IncorrectFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	ctx.TokenManager().Add(&tokens.Token{
@@ -27,7 +29,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary, #ff0000); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
+	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 		Range: protocol.Range{
 			Start: protocol.Position{Line: 0, Character: 17},
@@ -68,6 +70,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 func TestCodeAction_AddFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	ctx.TokenManager().Add(&tokens.Token{
@@ -81,7 +84,7 @@ func TestCodeAction_AddFallback(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
+	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 		Range: protocol.Range{
 			Start: protocol.Position{Line: 0, Character: 17},
@@ -118,12 +121,13 @@ func TestCodeAction_AddFallback(t *testing.T) {
 func TestCodeAction_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
 	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
-	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
+	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 		Range: protocol.Range{
 			Start: protocol.Position{Line: 0, Character: 0},
@@ -141,8 +145,9 @@ func TestCodeAction_NonCSSDocument(t *testing.T) {
 func TestCodeAction_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
+	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
 		Range: protocol.Range{
 			Start: protocol.Position{Line: 0, Character: 0},
@@ -160,6 +165,7 @@ func TestCodeAction_DocumentNotFound(t *testing.T) {
 func TestCodeAction_OutsideRange(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -172,7 +178,7 @@ func TestCodeAction_OutsideRange(t *testing.T) {
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Request range that doesn't intersect with var()
-	result, err := CodeAction(ctx, glspCtx, &protocol.CodeActionParams{
+	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 		Range: protocol.Range{
 			Start: protocol.Position{Line: 0, Character: 0},
@@ -192,13 +198,14 @@ func TestCodeAction_OutsideRange(t *testing.T) {
 func TestCodeActionResolve_ReturnsActionUnchanged(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	action := &protocol.CodeAction{
 		Title: "Test action",
 		Kind:  ptrCodeActionKind(protocol.CodeActionKindQuickFix),
 	}
 
-	resolved, err := CodeActionResolve(ctx, glspCtx, action)
+	resolved, err := CodeActionResolve(req, action)
 
 	require.NoError(t, err)
 	assert.Equal(t, action, resolved) // Should return same action

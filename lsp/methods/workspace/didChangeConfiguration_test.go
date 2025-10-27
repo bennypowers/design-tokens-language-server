@@ -14,6 +14,7 @@ import (
 func TestDidChangeConfiguration_WithValidConfig(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
 	ctx.SetGLSPContext(glspCtx)
 
 	// Prepare configuration with tokens files
@@ -30,7 +31,7 @@ func TestDidChangeConfiguration_WithValidConfig(t *testing.T) {
 		Settings: settings,
 	}
 
-	err := DidChangeConfiguration(ctx, glspCtx, params)
+	err := DidChangeConfiguration(req, params)
 	require.NoError(t, err)
 
 	// Verify config was updated
@@ -41,12 +42,13 @@ func TestDidChangeConfiguration_WithValidConfig(t *testing.T) {
 func TestDidChangeConfiguration_WithNilSettings(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	params := &protocol.DidChangeConfigurationParams{
 		Settings: nil,
 	}
 
-	err := DidChangeConfiguration(ctx, glspCtx, params)
+	err := DidChangeConfiguration(req, params)
 	require.NoError(t, err)
 
 	// Should use default config
@@ -57,13 +59,14 @@ func TestDidChangeConfiguration_WithNilSettings(t *testing.T) {
 func TestDidChangeConfiguration_WithInvalidSettings(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Settings that's not a map
 	params := &protocol.DidChangeConfigurationParams{
 		Settings: "invalid",
 	}
 
-	err := DidChangeConfiguration(ctx, glspCtx, params)
+	err := DidChangeConfiguration(req, params)
 	// Should not error (warns and uses defaults)
 	require.NoError(t, err)
 }
@@ -71,6 +74,7 @@ func TestDidChangeConfiguration_WithInvalidSettings(t *testing.T) {
 func TestDidChangeConfiguration_WithAlternateKey(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Using hyphenated key instead of camelCase
 	settings := map[string]any{
@@ -83,7 +87,7 @@ func TestDidChangeConfiguration_WithAlternateKey(t *testing.T) {
 		Settings: settings,
 	}
 
-	err := DidChangeConfiguration(ctx, glspCtx, params)
+	err := DidChangeConfiguration(req, params)
 	require.NoError(t, err)
 
 	config := ctx.GetConfig()
@@ -93,6 +97,7 @@ func TestDidChangeConfiguration_WithAlternateKey(t *testing.T) {
 func TestDidChangeConfiguration_WithoutGLSPContext(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	// Don't set GLSP context
+	req := types.NewRequestContext(ctx, nil)
 
 	settings := map[string]any{
 		"designTokensLanguageServer": map[string]any{
@@ -105,7 +110,7 @@ func TestDidChangeConfiguration_WithoutGLSPContext(t *testing.T) {
 	}
 
 	// Should not panic when glspCtx is nil
-	err := DidChangeConfiguration(ctx, nil, params)
+	err := DidChangeConfiguration(req, params)
 	require.NoError(t, err)
 }
 

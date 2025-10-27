@@ -9,7 +9,6 @@ import (
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -28,11 +27,11 @@ type SemanticTokenIntermediate struct {
 // handleSemanticTokensFull handles the textDocument/semanticTokens/full request
 
 // SemanticTokensFull handles the textDocument/semanticTokens/full request
-func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
+func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
 	uri := params.TextDocument.URI
 	fmt.Fprintf(os.Stderr, "[DTLS] Semantic tokens requested for: %s\n", uri)
 
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, fmt.Errorf("document not found: %s", uri)
 	}
@@ -43,7 +42,7 @@ func SemanticTokensFull(ctx types.ServerContext, context *glsp.Context, params *
 		return nil, nil
 	}
 
-	intermediateTokens := GetSemanticTokensForDocument(ctx, doc)
+	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
 
 	// Encode tokens using delta encoding
 	data := encodeSemanticTokens(intermediateTokens)
@@ -145,15 +144,15 @@ func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Docume
 // handleSemanticTokensDelta handles the textDocument/semanticTokens/full/delta request
 
 // SemanticTokensDelta handles the textDocument/semanticTokens/delta request
-func SemanticTokensDelta(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
+func SemanticTokensDelta(req *types.RequestContext, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
 	// Get the current document
-	doc := ctx.Document(params.TextDocument.URI)
+	doc := req.Server.Document(params.TextDocument.URI)
 	if doc == nil {
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
 	// Get current semantic tokens
-	intermediateTokens := GetSemanticTokensForDocument(ctx, doc)
+	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
 	newData := encodeSemanticTokens(intermediateTokens)
 
 	// For a full implementation, we would:
@@ -187,15 +186,15 @@ func SemanticTokensDelta(ctx types.ServerContext, context *glsp.Context, params 
 // handleSemanticTokensRange handles the textDocument/semanticTokens/range request
 
 // SemanticTokensRange handles the textDocument/semanticTokens/range request
-func SemanticTokensRange(ctx types.ServerContext, context *glsp.Context, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
+func SemanticTokensRange(req *types.RequestContext, params *protocol.SemanticTokensRangeParams) (*protocol.SemanticTokens, error) {
 	// Get the document
-	doc := ctx.Document(params.TextDocument.URI)
+	doc := req.Server.Document(params.TextDocument.URI)
 	if doc == nil {
 		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
 	}
 
 	// Get all semantic tokens for the document
-	intermediateTokens := GetSemanticTokensForDocument(ctx, doc)
+	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
 
 	// Filter tokens to only those within the requested range
 	filteredTokens := []SemanticTokenIntermediate{}

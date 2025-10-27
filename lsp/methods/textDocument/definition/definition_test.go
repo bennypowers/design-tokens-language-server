@@ -6,6 +6,7 @@ import (
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -15,6 +16,7 @@ import (
 func TestDefinition_CSSVariableReference(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with definition URI
 	ctx.TokenManager().Add(&tokens.Token{
@@ -29,7 +31,7 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
+	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24}, // Inside var()
@@ -49,12 +51,13 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 func TestDefinition_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--unknown-token); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
+	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24},
@@ -68,6 +71,7 @@ func TestDefinition_UnknownToken(t *testing.T) {
 func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add token without DefinitionURI
 	ctx.TokenManager().Add(&tokens.Token{
@@ -79,7 +83,7 @@ func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
+	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24},
@@ -93,6 +97,7 @@ func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 func TestDefinition_OutsideVarCall(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	ctx.TokenManager().Add(&tokens.Token{
 		Name:          "color.primary",
@@ -106,7 +111,7 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Position outside the var() call
-	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
+	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 5}, // Inside ".button"
@@ -120,12 +125,13 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 func TestDefinition_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
 	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
-	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
+	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -139,8 +145,9 @@ func TestDefinition_NonCSSDocument(t *testing.T) {
 func TestDefinition_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	result, err := Definition(ctx, glspCtx, &protocol.DefinitionParams{
+	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
 			Position:     protocol.Position{Line: 0, Character: 10},

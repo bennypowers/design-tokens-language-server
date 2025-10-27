@@ -7,9 +7,10 @@ import (
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/tokens"
-	"bennypowers.dev/dtls/lsp"
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
+	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -123,10 +124,7 @@ func TestGetSemanticTokensForDocument(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a server with token manager
-			s, err := lsp.NewServer()
-			if err != nil {
-				t.Fatalf("Failed to create server: %v", err)
-			}
+			s := testutil.NewMockServerContext()
 
 			// Add test tokens
 			for _, token := range tt.tokens {
@@ -176,10 +174,7 @@ func TestGetSemanticTokensForDocument(t *testing.T) {
 
 func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	// Test that the delta encoding is correct
-	s, err := lsp.NewServer()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	s := testutil.NewMockServerContext()
 
 	// Add a test token
 	token := &tokens.Token{
@@ -199,7 +194,8 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 
 	// Register the document
-	textDocument.DidOpen(s, nil, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
+	req := types.NewRequestContext(s, nil)
+	_ = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
 
 	// Get intermediate tokens first
 	intermediateTokens := semantictokens.GetSemanticTokensForDocument(s, doc)
@@ -217,7 +213,8 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 			URI: doc.URI(),
 		},
 	}
-	result, err := semantictokens.SemanticTokensFull(s, nil, params)
+	req = types.NewRequestContext(s, nil)
+	result, err := semantictokens.SemanticTokensFull(req, params)
 
 	if err != nil {
 		t.Fatalf("handleSemanticTokensFull failed: %v", err)
@@ -251,10 +248,7 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 }
 
 func TestSemanticTokensRange(t *testing.T) {
-	s, err := lsp.NewServer()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	s := testutil.NewMockServerContext()
 
 	// Add test tokens
 	token1 := &tokens.Token{
@@ -273,7 +267,8 @@ func TestSemanticTokensRange(t *testing.T) {
 	// Load fixture document
 	content := loadFixture(t, "semantic-tokens/range-test.json")
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
-	textDocument.DidOpen(s, nil, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
+	req := types.NewRequestContext(s, nil)
+	_ = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
 
 	// Request semantic tokens for range (lines 1-2 only)
 	params := &protocol.SemanticTokensRangeParams{
@@ -286,7 +281,8 @@ func TestSemanticTokensRange(t *testing.T) {
 		},
 	}
 
-	result, err := semantictokens.SemanticTokensRange(s, nil, params)
+	req = types.NewRequestContext(s, nil)
+	result, err := semantictokens.SemanticTokensRange(req, params)
 	if err != nil {
 		t.Fatalf("handleSemanticTokensRange failed: %v", err)
 	}
@@ -305,10 +301,7 @@ func TestSemanticTokensRange(t *testing.T) {
 }
 
 func TestSemanticTokensDelta(t *testing.T) {
-	s, err := lsp.NewServer()
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	s := testutil.NewMockServerContext()
 
 	// Add test token
 	token := &tokens.Token{
@@ -321,20 +314,22 @@ func TestSemanticTokensDelta(t *testing.T) {
 	// Load initial document fixture
 	content1 := loadFixture(t, "semantic-tokens/delta-test-initial.json")
 	doc := documents.NewDocument("file:///test.json", "json", 1, content1)
-	textDocument.DidOpen(s, nil, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
+	req := types.NewRequestContext(s, nil)
+	_ = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
 
 	// Get initial semantic tokens
 	fullParams := &protocol.SemanticTokensParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: doc.URI()},
 	}
-	fullResult, err := semantictokens.SemanticTokensFull(s, nil, fullParams)
+	req = types.NewRequestContext(s, nil)
+	fullResult, err := semantictokens.SemanticTokensFull(req, fullParams)
 	if err != nil || fullResult == nil {
 		t.Fatalf("Failed to get initial tokens: %v", err)
 	}
 
 	// Now modify the document - load modified fixture
 	content2 := loadFixture(t, "semantic-tokens/delta-test-modified.json")
-	s.DocumentManager().DidChange(doc.URI(), 2, []protocol.TextDocumentContentChangeEvent{
+	_ = s.DocumentManager().DidChange(doc.URI(), 2, []protocol.TextDocumentContentChangeEvent{
 		{Text: content2},
 	})
 
@@ -344,7 +339,8 @@ func TestSemanticTokensDelta(t *testing.T) {
 		PreviousResultID: "result-1", // Assume we tracked this
 	}
 
-	result, err := semantictokens.SemanticTokensDelta(s, nil, deltaParams)
+	req = types.NewRequestContext(s, nil)
+	result, err := semantictokens.SemanticTokensDelta(req, deltaParams)
 	if err != nil {
 		t.Fatalf("handleSemanticTokensDelta failed: %v", err)
 	}

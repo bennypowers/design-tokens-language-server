@@ -19,9 +19,9 @@ type MockServerContext struct {
 	glspContext *glsp.Context
 
 	// Optional callbacks for custom behavior in tests
-	LoadTokensFunc        func() error
-	RegisterWatchersFunc  func(*glsp.Context) error
-	IsTokenFileFunc       func(string) bool
+	LoadTokensFunc         func() error
+	RegisterWatchersFunc   func(*glsp.Context) error
+	IsTokenFileFunc        func(string) bool
 	PublishDiagnosticsFunc func(*glsp.Context, string) error
 
 	// Tracking flags for tests that need to verify methods were called

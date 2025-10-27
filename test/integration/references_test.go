@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/references"
+	"bennypowers.dev/dtls/lsp/types"
 	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,8 @@ func TestReferencesOnVarCall(t *testing.T) {
 	require.NoError(t, err)
 
 	// Open the token file as a document
-	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///tokens.json",
 			LanguageID: "json",
@@ -44,7 +46,8 @@ func TestReferencesOnVarCall(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request references from the token file (cursor on "primary")
-	locations, err := references.References(server, nil, &protocol.ReferenceParams{
+	req = types.NewRequestContext(server, nil)
+	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///tokens.json",
@@ -97,7 +100,8 @@ func TestReferencesMultipleFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	// Open the token file as a document
-	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///tokens.json",
 			LanguageID: "json",
@@ -108,7 +112,8 @@ func TestReferencesMultipleFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request references from token file (cursor on "primary")
-	locations, err := references.References(server, nil, &protocol.ReferenceParams{
+	req = types.NewRequestContext(server, nil)
+	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///tokens.json",
@@ -146,7 +151,8 @@ func TestReferencesOutsideVarCall(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request references on CSS file - should always return nil
-	locations, err := references.References(server, nil, &protocol.ReferenceParams{
+	req := types.NewRequestContext(server, nil)
+	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -192,7 +198,8 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	token.DefinitionURI = "file:///tokens.json"
 
 	// Open the token file as a document
-	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///tokens.json",
 			LanguageID: "json",
@@ -203,7 +210,8 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request references from token file with IncludeDeclaration
-	locations, err := references.References(server, nil, &protocol.ReferenceParams{
+	req = types.NewRequestContext(server, nil)
+	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///tokens.json",
@@ -240,7 +248,8 @@ func TestReferencesNonCSSFile(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
 	// Open a JSON file without token structure
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.json",
 			LanguageID: "json",
@@ -251,7 +260,8 @@ func TestReferencesNonCSSFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request references - cursor on "color" which is not a design token
-	locations, err := references.References(server, nil, &protocol.ReferenceParams{
+	req = types.NewRequestContext(server, nil)
+	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -277,7 +287,8 @@ func TestReferencesUnknownToken(t *testing.T) {
 .button {
     color: var(--unknown-token);
 }`
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.css",
 			LanguageID: "css",
@@ -288,7 +299,8 @@ func TestReferencesUnknownToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request references on CSS file - always returns nil
-	locations, err := references.References(server, nil, &protocol.ReferenceParams{
+	req = types.NewRequestContext(server, nil)
+	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",

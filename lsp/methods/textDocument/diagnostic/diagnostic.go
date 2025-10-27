@@ -7,7 +7,6 @@ import (
 
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -17,11 +16,11 @@ import (
 // is called via CustomHandler which intercepts the method before it reaches protocol.Handler.
 
 // DocumentDiagnostic handles the textDocument/diagnostic request (pull diagnostics)
-func DocumentDiagnostic(ctx types.ServerContext, context *glsp.Context, params *DocumentDiagnosticParams) (any, error) {
+func DocumentDiagnostic(req *types.RequestContext, params *DocumentDiagnosticParams) (any, error) {
 	uri := params.TextDocument.URI
 	fmt.Fprintf(os.Stderr, "[DTLS] Pull diagnostics requested for: %s\n", uri)
 
-	diagnostics, err := GetDiagnostics(ctx, uri)
+	diagnostics, err := GetDiagnostics(req.Server, uri)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Error getting diagnostics: %v\n", err)
 		return nil, err

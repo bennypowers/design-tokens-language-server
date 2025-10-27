@@ -1,7 +1,6 @@
 package documentcolor
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -9,18 +8,17 @@ import (
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/mazznoer/csscolorparser"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // DocumentColor handles the textDocument/documentColor request
-func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
+func DocumentColor(req *types.RequestContext, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] DocumentColor requested: %s\n", uri)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -44,7 +42,7 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 	// Find all var() calls that reference color tokens
 	for _, varCall := range result.VarCalls {
 		// Look up the token
-		token := ctx.Token(varCall.TokenName)
+		token := req.Server.Token(varCall.TokenName)
 		if token == nil {
 			continue
 		}
@@ -80,7 +78,7 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 	// Also check variable declarations
 	for _, variable := range result.Variables {
 		// Look up the token
-		token := ctx.Token(variable.Name)
+		token := req.Server.Token(variable.Name)
 		if token == nil {
 			continue
 		}
@@ -115,10 +113,11 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d colors\n", len(colors))
 
-	// If there were parse errors, return them as a single aggregated error
-	// The middleware will log this error to the LSP client via window/logMessage
-	if len(parseErrors) > 0 {
-		return colors, errors.Join(parseErrors...)
+	// Add parse errors as warnings
+	// Don't fail the operation - we can still return partial results
+	// Middleware will log these warnings after successful completion
+	for _, err := range parseErrors {
+		req.AddWarning(err)
 	}
 
 	return colors, nil
@@ -126,7 +125,7 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 
 // ColorPresentation handles the textDocument/colorPresentation request
 // Returns token names that have the same color value as the requested color
-func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
+func ColorPresentation(req *types.RequestContext, params *protocol.ColorPresentationParams) ([]protocol.ColorPresentation, error) {
 	uri := params.TextDocument.URI
 	color := params.Color
 
@@ -145,7 +144,7 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 	var parseErrors []error
 
 	// Find all tokens with matching color values
-	for _, token := range ctx.TokenManager().GetAll() {
+	for _, token := range req.Server.TokenManager().GetAll() {
 		// Only process color tokens
 		if token.Type != "color" {
 			continue
@@ -177,10 +176,11 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d matching color tokens\n", len(presentations))
 
-	// If there were parse errors, return them as a single aggregated error
-	// The middleware will log this error to the LSP client via window/logMessage
-	if len(parseErrors) > 0 {
-		return presentations, errors.Join(parseErrors...)
+	// Add parse errors as warnings
+	// Don't fail the operation - we can still return partial results
+	// Middleware will log these warnings after successful completion
+	for _, err := range parseErrors {
+		req.AddWarning(err)
 	}
 
 	return presentations, nil

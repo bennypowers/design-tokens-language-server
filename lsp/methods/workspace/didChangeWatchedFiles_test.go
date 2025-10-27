@@ -4,12 +4,14 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 func TestHandleDidChangeWatchedFiles(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	config := ctx.GetConfig()
@@ -27,7 +29,7 @@ func TestHandleDidChangeWatchedFiles(t *testing.T) {
 	}
 
 	// Handle the change
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
@@ -35,6 +37,7 @@ func TestHandleDidChangeWatchedFiles(t *testing.T) {
 
 func TestHandleDidChangeWatchedFiles_MultipleChanges(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	config := ctx.GetConfig()
@@ -58,7 +61,7 @@ func TestHandleDidChangeWatchedFiles_MultipleChanges(t *testing.T) {
 		},
 	}
 
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
@@ -66,6 +69,7 @@ func TestHandleDidChangeWatchedFiles_MultipleChanges(t *testing.T) {
 
 func TestHandleDidChangeWatchedFiles_DeletedFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	config := ctx.GetConfig()
@@ -81,7 +85,7 @@ func TestHandleDidChangeWatchedFiles_DeletedFile(t *testing.T) {
 		},
 	}
 
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
@@ -92,6 +96,7 @@ func TestHandleDidChangeWatchedFiles_DeletedFile(t *testing.T) {
 
 func TestHandleDidChangeWatchedFiles_DeletedAndModified(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	config := ctx.GetConfig()
@@ -113,7 +118,7 @@ func TestHandleDidChangeWatchedFiles_DeletedAndModified(t *testing.T) {
 		},
 	}
 
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
@@ -124,6 +129,7 @@ func TestHandleDidChangeWatchedFiles_DeletedAndModified(t *testing.T) {
 
 func TestHandleDidChangeWatchedFiles_NonTokenFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	config := ctx.GetConfig()
@@ -140,7 +146,7 @@ func TestHandleDidChangeWatchedFiles_NonTokenFile(t *testing.T) {
 	}
 
 	// Should not trigger a reload since it's not a token file
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
@@ -148,6 +154,7 @@ func TestHandleDidChangeWatchedFiles_NonTokenFile(t *testing.T) {
 
 func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	// Empty TokensFiles means no tokens are loaded initially
@@ -166,7 +173,7 @@ func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
 
 	// When a new token file is created and explicitly configured,
 	// the reload should load it
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}
@@ -177,6 +184,7 @@ func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
 
 func TestHandleDidChangeWatchedFiles_PublishesDiagnostics(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	req := types.NewRequestContext(ctx, nil)
 	ctx.SetRootPath("/workspace")
 
 	// Set up GLSP context
@@ -212,7 +220,7 @@ func TestHandleDidChangeWatchedFiles_PublishesDiagnostics(t *testing.T) {
 	}
 
 	// Handle the change
-	err := DidChangeWatchedFiles(ctx, nil, params)
+	err := DidChangeWatchedFiles(req, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
 	}

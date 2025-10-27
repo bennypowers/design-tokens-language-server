@@ -6,11 +6,10 @@ import (
 
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 )
 
 // Shutdown handles the LSP shutdown request
-func Shutdown(ctx types.ServerContext, context *glsp.Context) error {
+func Shutdown(req *types.RequestContext) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Server shutting down\n")
 
 	// Clean up the CSS parser pool

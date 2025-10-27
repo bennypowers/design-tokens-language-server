@@ -19,8 +19,8 @@ func TestServer_AllDocuments(t *testing.T) {
 	}
 
 	// Add some documents
-	server.documents.DidOpen("file:///test1.css", "css", 1, ".button { }")
-	server.documents.DidOpen("file:///test2.css", "css", 1, ".link { }")
+	_ = server.documents.DidOpen("file:///test1.css", "css", 1, ".button { }")
+	_ = server.documents.DidOpen("file:///test2.css", "css", 1, ".link { }")
 
 	all := server.AllDocuments()
 	assert.Len(t, all, 2)
@@ -45,7 +45,7 @@ func TestServer_TokenCount(t *testing.T) {
 	}
 
 	// Add a token
-	server.tokens.Add(&tokens.Token{
+	_ = server.tokens.Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 		Type:  "color",

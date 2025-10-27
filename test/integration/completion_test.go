@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/completion"
+	"bennypowers.dev/dtls/lsp/types"
 	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,8 @@ func TestCompletionBasic(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-context.css")
 
 	// Request completion - see fixture for position
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -55,7 +57,8 @@ func TestCompletionWithPrefix(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-prefix.css")
 
 	// Request completion - see fixture for position
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -89,7 +92,8 @@ func TestCompletionNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.json",
 			LanguageID: "json",
@@ -100,7 +104,8 @@ func TestCompletionNonCSSFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request completion
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req = types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -127,7 +132,8 @@ func TestCompletionResolve(t *testing.T) {
 	}
 
 	// Resolve it
-	resolved, err := completion.CompletionResolve(server, nil, &item)
+	req := types.NewRequestContext(server, nil)
+	resolved, err := completion.CompletionResolve(req, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 
@@ -151,7 +157,8 @@ func TestCompletionFiltering(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-filter.css")
 
 	// Request completion - see fixture for position
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -184,7 +191,8 @@ func TestCompletionOutsideBlock(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-outside.css")
 
 	// Request completion - see fixture for position
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -212,7 +220,8 @@ func TestCompletionSnippetFormat(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-context.css")
 
 	// Request completion - see fixture for position
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -249,7 +258,8 @@ func TestCompletionResolveNoData(t *testing.T) {
 	}
 
 	// Resolve it - should still find the token and add documentation
-	resolved, err := completion.CompletionResolve(server, nil, &item)
+	req := types.NewRequestContext(server, nil)
+	resolved, err := completion.CompletionResolve(req, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	assert.Equal(t, "--color-primary", resolved.Label)
@@ -270,7 +280,8 @@ func TestCompletionResolveUnknownToken(t *testing.T) {
 	}
 
 	// Resolve it - should return unchanged without documentation
-	resolved, err := completion.CompletionResolve(server, nil, &item)
+	req := types.NewRequestContext(server, nil)
+	resolved, err := completion.CompletionResolve(req, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	assert.Equal(t, "--unknown-token", resolved.Label)
@@ -284,7 +295,8 @@ func TestCompletionParseError(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-parse-error.css")
 
 	// Request completion
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -313,7 +325,8 @@ func TestCompletionEmptyWord(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-empty-word.css")
 
 	// Request completion at a position with no word (before semicolon)
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -336,7 +349,8 @@ func TestCompletionPositionOutOfBounds(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request completion at line that doesn't exist
-	result, err := completion.Completion(server, nil, &protocol.CompletionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := completion.Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -377,7 +391,8 @@ func TestCompletionResolveWithDeprecated(t *testing.T) {
 	}
 
 	// Resolve it
-	resolved, err := completion.CompletionResolve(server, nil, &item)
+	req := types.NewRequestContext(server, nil)
+	resolved, err := completion.CompletionResolve(req, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 
@@ -400,7 +415,8 @@ func TestCompletionResolveDataNotMap(t *testing.T) {
 	}
 
 	// Resolve it - should fall back to Label
-	resolved, err := completion.CompletionResolve(server, nil, &item)
+	req := types.NewRequestContext(server, nil)
+	resolved, err := completion.CompletionResolve(req, &item)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 	assert.Equal(t, "--color-primary", resolved.Label)

@@ -7,6 +7,7 @@ import (
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp"
 	codeaction "bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
+	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -762,7 +763,8 @@ func TestToggleFallback(t *testing.T) {
 				Context: protocol.CodeActionContext{},
 			}
 
-			result, err := codeaction.CodeAction(s, nil, params)
+			req := types.NewRequestContext(s, nil)
+			result, err := codeaction.CodeAction(req, params)
 			require.NoError(t, err)
 
 			if tt.expectedAction == "" {
@@ -864,7 +866,8 @@ func TestToggleRangeFallbacks(t *testing.T) {
 				Context: protocol.CodeActionContext{},
 			}
 
-			result, err := codeaction.CodeAction(s, nil, params)
+			req := types.NewRequestContext(s, nil)
+			result, err := codeaction.CodeAction(req, params)
 			require.NoError(t, err)
 
 			if tt.expectedAction == "" {
@@ -950,7 +953,8 @@ func TestFixAllFallbacks(t *testing.T) {
 		},
 	}
 
-	result, err := codeaction.CodeAction(s, nil, params)
+	req := types.NewRequestContext(s, nil)
+	result, err := codeaction.CodeAction(req, params)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -970,7 +974,8 @@ func TestFixAllFallbacks(t *testing.T) {
 	assert.Equal(t, codeActionKindSourceFixAll, *fixAllAction.Kind)
 
 	// Resolve the action to get edits
-	resolved, err := codeaction.CodeActionResolve(s, nil, fixAllAction)
+	req = types.NewRequestContext(s, nil)
+	resolved, err := codeaction.CodeActionResolve(req, fixAllAction)
 	require.NoError(t, err)
 	require.NotNil(t, resolved.Edit)
 	require.NotNil(t, resolved.Edit.Changes)

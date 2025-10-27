@@ -6,6 +6,7 @@ import (
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -60,9 +61,10 @@ func TestIsPositionInRange(t *testing.T) {
 func TestHover_CSSVariableReference(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
 		Value:       "#ff0000",
 		Type:        "color",
@@ -73,10 +75,10 @@ func TestHover_CSSVariableReference(t *testing.T) {
 	// Open a CSS document with var() call
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover over --color-primary in var() call
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24},
@@ -102,9 +104,10 @@ func TestHover_CSSVariableReference(t *testing.T) {
 func TestHover_DeprecatedToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add deprecated token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:               "color.old-primary",
 		Value:              "#cc0000",
 		Type:               "color",
@@ -114,9 +117,9 @@ func TestHover_DeprecatedToken(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-old-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 28},
@@ -136,12 +139,13 @@ func TestHover_DeprecatedToken(t *testing.T) {
 func TestHover_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--unknown-token); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 28},
@@ -161,8 +165,9 @@ func TestHover_UnknownToken(t *testing.T) {
 func TestHover_VarCallWithFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "spacing.large",
 		Value: "2rem",
 		Type:  "dimension",
@@ -170,10 +175,10 @@ func TestHover_VarCallWithFallback(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `.card { padding: var(--spacing-large, 1rem); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover over the token name in var() call with fallback
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 28},
@@ -192,8 +197,9 @@ func TestHover_VarCallWithFallback(t *testing.T) {
 func TestHover_NestedVarCalls(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 		Type:  "color",
@@ -202,9 +208,9 @@ func TestHover_NestedVarCalls(t *testing.T) {
 	uri := "file:///test.css"
 	// Nested var() - hover should work on the inner one
 	cssContent := `.element { background: linear-gradient(var(--color-primary), white); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 47},
@@ -222,18 +228,19 @@ func TestHover_NestedVarCalls(t *testing.T) {
 func TestHover_VarCallOutsideCursorRange(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover on "color:" property, not in var() range
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 12},
@@ -247,9 +254,10 @@ func TestHover_VarCallOutsideCursorRange(t *testing.T) {
 func TestHover_VariableDeclaration(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
 		Value:       "#ff0000",
 		Type:        "color",
@@ -258,10 +266,10 @@ func TestHover_VariableDeclaration(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `:root { --color-primary: #ff0000; }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover over variable declaration (on the property name)
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -289,14 +297,15 @@ func TestHover_VariableDeclaration(t *testing.T) {
 func TestHover_VariableDeclaration_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	// --local-var is not a known design token, just a local CSS custom property
 	cssContent := `:root { --local-var: blue; }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover over unknown variable declaration
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -310,9 +319,10 @@ func TestHover_VariableDeclaration_UnknownToken(t *testing.T) {
 func TestHover_VariableDeclaration_OnValue(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 		Type:  "color",
@@ -320,11 +330,11 @@ func TestHover_VariableDeclaration_OnValue(t *testing.T) {
 
 	uri := "file:///test.css"
 	cssContent := `:root { --color-primary: #ff0000; }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover on the value side (RHS) - should not trigger hover
 	// Character 25 is on "#ff0000"
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 25},
@@ -338,15 +348,16 @@ func TestHover_VariableDeclaration_OnValue(t *testing.T) {
 func TestHover_VariableDeclaration_Boundaries(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `:root { --color-primary: #ff0000; }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	tests := []struct {
 		name      string
@@ -363,7 +374,7 @@ func TestHover_VariableDeclaration_Boundaries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+			hover, err := Hover(req, &protocol.HoverParams{
 				TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 					TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 					Position:     protocol.Position{Line: 0, Character: tt.character},
@@ -383,9 +394,10 @@ func TestHover_VariableDeclaration_Boundaries(t *testing.T) {
 func TestHover_VariableDeclaration_WithPrefix(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with prefix
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
 		Value:       "#0000ff",
 		Type:        "color",
@@ -396,9 +408,9 @@ func TestHover_VariableDeclaration_WithPrefix(t *testing.T) {
 	uri := "file:///test.css"
 	// Token with prefix: --ds-color-primary
 	cssContent := `:root { --ds-color-primary: #0000ff; }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 12},
@@ -418,13 +430,14 @@ func TestHover_VariableDeclaration_WithPrefix(t *testing.T) {
 func TestHover_VariableDeclaration_MultipleInSameBlock(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 		Type:  "color",
 	})
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.secondary",
 		Value: "#00ff00",
 		Type:  "color",
@@ -435,10 +448,10 @@ func TestHover_VariableDeclaration_MultipleInSameBlock(t *testing.T) {
   --color-primary: #ff0000;
   --color-secondary: #00ff00;
 }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Test first declaration
-	hover1, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover1, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 1, Character: 5},
@@ -451,7 +464,7 @@ func TestHover_VariableDeclaration_MultipleInSameBlock(t *testing.T) {
 	assert.Contains(t, content1.Value, "--color-primary")
 
 	// Test second declaration
-	hover2, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover2, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 2, Character: 5},
@@ -467,18 +480,19 @@ func TestHover_VariableDeclaration_MultipleInSameBlock(t *testing.T) {
 func TestHover_InvalidPosition(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	ctx.TokenManager().Add(&tokens.Token{
+	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
 		Value: "#ff0000",
 	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
-	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
 	// Hover outside var() call
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 5},
@@ -492,12 +506,13 @@ func TestHover_InvalidPosition(t *testing.T) {
 func TestHover_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
 	ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
 
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -511,8 +526,9 @@ func TestHover_NonCSSDocument(t *testing.T) {
 func TestHover_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	hover, err := Hover(ctx, glspCtx, &protocol.HoverParams{
+	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
 			Position:     protocol.Position{Line: 0, Character: 10},

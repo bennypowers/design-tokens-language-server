@@ -40,7 +40,7 @@ func (s *Server) LoadTokensFromConfig() error {
 	cfg := s.GetConfig()
 
 	// If tokensFiles is explicitly provided and non-empty, load those files
-	if cfg.TokensFiles != nil && len(cfg.TokensFiles) > 0 {
+	if len(cfg.TokensFiles) > 0 {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
 		return s.loadExplicitTokenFiles()

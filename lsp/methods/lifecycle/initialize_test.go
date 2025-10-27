@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/uriutil"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -15,13 +16,14 @@ func TestInitialize(t *testing.T) {
 	t.Run("sets root URI from params.RootURI", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		rootURI := "file:///workspace"
 
 		params := &protocol.InitializeParams{
 			RootURI: &rootURI,
 		}
 
-		result, err := Initialize(ctx, glspCtx, params)
+		result, err := Initialize(req, params)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -33,13 +35,14 @@ func TestInitialize(t *testing.T) {
 	t.Run("sets root path from params.RootPath", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		rootPath := "/workspace"
 
 		params := &protocol.InitializeParams{
 			RootPath: &rootPath,
 		}
 
-		result, err := Initialize(ctx, glspCtx, params)
+		result, err := Initialize(req, params)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -51,10 +54,11 @@ func TestInitialize(t *testing.T) {
 	t.Run("returns server capabilities", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.InitializeParams{}
 
-		result, err := Initialize(ctx, glspCtx, params)
+		result, err := Initialize(req, params)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -72,10 +76,11 @@ func TestInitialize(t *testing.T) {
 	t.Run("capabilities include all LSP features", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.InitializeParams{}
 
-		result, err := Initialize(ctx, glspCtx, params)
+		result, err := Initialize(req, params)
 		require.NoError(t, err)
 
 		initResult := result.(struct {
@@ -112,6 +117,7 @@ func TestInitialize(t *testing.T) {
 	t.Run("handles client info", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		clientVersion := "1.85.0"
 		params := &protocol.InitializeParams{
@@ -124,7 +130,7 @@ func TestInitialize(t *testing.T) {
 			},
 		}
 
-		result, err := Initialize(ctx, glspCtx, params)
+		result, err := Initialize(req, params)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 	})
@@ -132,10 +138,11 @@ func TestInitialize(t *testing.T) {
 	t.Run("handles nil params gracefully", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.InitializeParams{}
 
-		result, err := Initialize(ctx, glspCtx, params)
+		result, err := Initialize(req, params)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 

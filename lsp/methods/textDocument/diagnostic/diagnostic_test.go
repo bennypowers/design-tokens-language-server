@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -158,6 +159,7 @@ func TestGetDiagnostics_MultipleIssues(t *testing.T) {
 func TestDocumentDiagnostic(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a deprecated token
 	ctx.TokenManager().Add(&tokens.Token{
@@ -175,7 +177,7 @@ func TestDocumentDiagnostic(t *testing.T) {
 		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 	}
 
-	result, err := DocumentDiagnostic(ctx, glspCtx, params)
+	result, err := DocumentDiagnostic(req, params)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 

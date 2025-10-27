@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -14,6 +15,7 @@ func TestDidOpen(t *testing.T) {
 	t.Run("opens document successfully", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.DidOpenTextDocumentParams{
 			TextDocument: protocol.TextDocumentItem{
@@ -24,7 +26,7 @@ func TestDidOpen(t *testing.T) {
 			},
 		}
 
-		err := DidOpen(ctx, glspCtx, params)
+		err := DidOpen(req, params)
 		require.NoError(t, err)
 
 		// Verify document was opened
@@ -39,6 +41,7 @@ func TestDidOpen(t *testing.T) {
 	t.Run("publishes diagnostics after opening", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		ctx.SetGLSPContext(glspCtx)
 
 		params := &protocol.DidOpenTextDocumentParams{
@@ -50,7 +53,7 @@ func TestDidOpen(t *testing.T) {
 			},
 		}
 
-		err := DidOpen(ctx, glspCtx, params)
+		err := DidOpen(req, params)
 		require.NoError(t, err)
 
 		// Diagnostics are published asynchronously, no direct assertion needed
@@ -59,6 +62,7 @@ func TestDidOpen(t *testing.T) {
 	t.Run("handles JSON document", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.DidOpenTextDocumentParams{
 			TextDocument: protocol.TextDocumentItem{
@@ -69,7 +73,7 @@ func TestDidOpen(t *testing.T) {
 			},
 		}
 
-		err := DidOpen(ctx, glspCtx, params)
+		err := DidOpen(req, params)
 		require.NoError(t, err)
 
 		doc := ctx.Document("file:///tokens.json")
@@ -80,6 +84,7 @@ func TestDidOpen(t *testing.T) {
 	t.Run("handles YAML document", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.DidOpenTextDocumentParams{
 			TextDocument: protocol.TextDocumentItem{
@@ -90,7 +95,7 @@ func TestDidOpen(t *testing.T) {
 			},
 		}
 
-		err := DidOpen(ctx, glspCtx, params)
+		err := DidOpen(req, params)
 		require.NoError(t, err)
 
 		doc := ctx.Document("file:///tokens.yaml")
@@ -103,6 +108,7 @@ func TestDidChange(t *testing.T) {
 	t.Run("updates document content", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
 		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
@@ -119,7 +125,7 @@ func TestDidChange(t *testing.T) {
 			ContentChanges: []interface{}{textChange},
 		}
 
-		err := DidChange(ctx, glspCtx, params)
+		err := DidChange(req, params)
 		require.NoError(t, err)
 
 		// Verify document was updated
@@ -132,6 +138,7 @@ func TestDidChange(t *testing.T) {
 	t.Run("publishes diagnostics after change", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 		ctx.SetGLSPContext(glspCtx)
 
 		// First open a document
@@ -148,7 +155,7 @@ func TestDidChange(t *testing.T) {
 			ContentChanges: []interface{}{textChange},
 		}
 
-		err := DidChange(ctx, glspCtx, params)
+		err := DidChange(req, params)
 		require.NoError(t, err)
 
 		// Diagnostics are published asynchronously, no direct assertion needed
@@ -157,6 +164,7 @@ func TestDidChange(t *testing.T) {
 	t.Run("handles incremental changes", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
 		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
@@ -177,7 +185,7 @@ func TestDidChange(t *testing.T) {
 			ContentChanges: []interface{}{textChange},
 		}
 
-		err := DidChange(ctx, glspCtx, params)
+		err := DidChange(req, params)
 		require.NoError(t, err)
 
 		// Verify version was updated
@@ -189,6 +197,7 @@ func TestDidChange(t *testing.T) {
 	t.Run("handles multiple changes", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
 		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
@@ -207,7 +216,7 @@ func TestDidChange(t *testing.T) {
 			ContentChanges: []interface{}{change1, change2},
 		}
 
-		err := DidChange(ctx, glspCtx, params)
+		err := DidChange(req, params)
 		require.NoError(t, err)
 
 		doc := ctx.Document("file:///test.css")
@@ -218,6 +227,7 @@ func TestDidChange(t *testing.T) {
 	t.Run("filters invalid change events", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
 		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
@@ -238,7 +248,7 @@ func TestDidChange(t *testing.T) {
 		}
 
 		// Should not error, just skip invalid changes
-		err := DidChange(ctx, glspCtx, params)
+		err := DidChange(req, params)
 		require.NoError(t, err)
 	})
 }
@@ -247,6 +257,7 @@ func TestDidClose(t *testing.T) {
 	t.Run("closes document successfully", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		// First open a document
 		ctx.DocumentManager().DidOpen("file:///test.css", "css", 1, "body { color: red; }")
@@ -255,7 +266,7 @@ func TestDidClose(t *testing.T) {
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
 
-		err := DidClose(ctx, glspCtx, params)
+		err := DidClose(req, params)
 		require.NoError(t, err)
 
 		// Verify document was closed
@@ -266,19 +277,21 @@ func TestDidClose(t *testing.T) {
 	t.Run("returns error when closing non-existent document", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		params := &protocol.DidCloseTextDocumentParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
 		}
 
 		// Should return error
-		err := DidClose(ctx, glspCtx, params)
+		err := DidClose(req, params)
 		assert.Error(t, err)
 	})
 
 	t.Run("closes multiple documents independently", func(t *testing.T) {
 		ctx := testutil.NewMockServerContext()
 		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 		// Open two documents
 		ctx.DocumentManager().DidOpen("file:///test1.css", "css", 1, "body { color: red; }")
@@ -289,7 +302,7 @@ func TestDidClose(t *testing.T) {
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test1.css"},
 		}
 
-		err := DidClose(ctx, glspCtx, params)
+		err := DidClose(req, params)
 		require.NoError(t, err)
 
 		// First should be closed, second should remain

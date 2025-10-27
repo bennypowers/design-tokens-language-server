@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	documentcolor "bennypowers.dev/dtls/lsp/methods/textDocument/documentColor"
+	"bennypowers.dev/dtls/lsp/types"
 	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,8 @@ func TestDocumentColorBasic(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "colors-basic.css")
 
 	// Request document colors
-	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
+	req := types.NewRequestContext(server, nil)
+	colors, err := documentcolor.DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -54,7 +56,8 @@ func TestDocumentColorMixed(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "colors-mixed.css")
 
 	// Request document colors
-	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
+	req := types.NewRequestContext(server, nil)
+	colors, err := documentcolor.DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -85,7 +88,8 @@ func TestDocumentColorEmpty(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "no-var-call.css")
 
 	// Request document colors
-	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
+	req := types.NewRequestContext(server, nil)
+	colors, err := documentcolor.DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -105,7 +109,8 @@ func TestColorPresentation(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Request color presentations for blue (#0000ff from basic tokens)
-	presentations, err := documentcolor.ColorPresentation(server, nil, &protocol.ColorPresentationParams{
+	req := types.NewRequestContext(server, nil)
+	presentations, err := documentcolor.ColorPresentation(req, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -153,7 +158,8 @@ func TestColorPresentationWithAlpha(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request color presentations for semi-transparent red
-	presentations, err := documentcolor.ColorPresentation(server, nil, &protocol.ColorPresentationParams{
+	req := types.NewRequestContext(server, nil)
+	presentations, err := documentcolor.ColorPresentation(req, &protocol.ColorPresentationParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -189,7 +195,8 @@ func TestDocumentColorNonCSSFile(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 
 	// Open a JSON file
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.json",
 			LanguageID: "json",
@@ -200,7 +207,8 @@ func TestDocumentColorNonCSSFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request colors
-	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
+	req = types.NewRequestContext(server, nil)
+	colors, err := documentcolor.DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.json",
 		},
@@ -221,7 +229,8 @@ func TestDocumentColorVariables(t *testing.T) {
     --color-primary: #0000ff;
     --color-secondary: #00ff00;
 }`
-	err := textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.css",
 			LanguageID: "css",
@@ -232,7 +241,8 @@ func TestDocumentColorVariables(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request colors
-	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
+	req = types.NewRequestContext(server, nil)
+	colors, err := documentcolor.DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -262,7 +272,8 @@ func TestDocumentColorInvalidColorValue(t *testing.T) {
 	content := `.button {
     color: var(--color-invalid);
 }`
-	err = textDocument.DidOpen(server, nil, &protocol.DidOpenTextDocumentParams{
+	req := types.NewRequestContext(server, nil)
+	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        "file:///test.css",
 			LanguageID: "css",
@@ -273,7 +284,8 @@ func TestDocumentColorInvalidColorValue(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request colors
-	colors, err := documentcolor.DocumentColor(server, nil, &protocol.DocumentColorParams{
+	req = types.NewRequestContext(server, nil)
+	colors, err := documentcolor.DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},

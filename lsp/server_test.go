@@ -46,7 +46,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 			},
 		}
 		// Should not panic, returns nil for non-existent document
-		result, err := hover.Hover(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := hover.Hover(req, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -58,14 +59,16 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := completion.Completion(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := completion.Completion(req, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("CompletionResolve", func(t *testing.T) {
 		item := &protocol.CompletionItem{Label: "test"}
-		result, err := completion.CompletionResolve(server, ctx, item)
+		req := types.NewRequestContext(server, ctx)
+		result, err := completion.CompletionResolve(req, item)
 		assert.NoError(t, err)
 		assert.Equal(t, item, result) // Returns same item if no data
 	})
@@ -77,7 +80,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := definition.Definition(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := definition.Definition(req, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -89,7 +93,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Position:     protocol.Position{Line: 0, Character: 0},
 			},
 		}
-		result, err := references.References(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := references.References(req, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
@@ -102,14 +107,16 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				End:   protocol.Position{Line: 0, Character: 5},
 			},
 		}
-		result, err := codeaction.CodeAction(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := codeaction.CodeAction(req, params)
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("CodeActionResolve", func(t *testing.T) {
 		action := &protocol.CodeAction{Title: "test"}
-		result, err := codeaction.CodeActionResolve(server, ctx, action)
+		req := types.NewRequestContext(server, ctx)
+		result, err := codeaction.CodeActionResolve(req, action)
 		assert.NoError(t, err)
 		assert.Equal(t, action, result)
 	})
@@ -118,7 +125,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		params := &protocol.DocumentColorParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
-		result, err := documentcolor.DocumentColor(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := documentcolor.DocumentColor(req, params)
 		assert.NoError(t, err)
 		assert.Empty(t, result)
 	})
@@ -133,7 +141,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Alpha: 1.0,
 			},
 		}
-		result, err := documentcolor.ColorPresentation(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := documentcolor.ColorPresentation(req, params)
 		assert.NoError(t, err)
 		// Returns empty array when no tokens match (new behavior matches TypeScript)
 		assert.Empty(t, result)
@@ -143,7 +152,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		params := &diagnostic.DocumentDiagnosticParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
-		result, err := diagnostic.DocumentDiagnostic(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		result, err := diagnostic.DocumentDiagnostic(req, params)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 	})
@@ -157,13 +167,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 				Text:       "body { color: red; }",
 			},
 		}
-		err := textDocument.DidOpen(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		err := textDocument.DidOpen(req, params)
 		assert.NoError(t, err)
 	})
 
 	t.Run("didChange", func(t *testing.T) {
 		// First open a document
-		server.documents.DidOpen("file:///test.css", "css", 1, "body { color: red; }")
+		_ = server.documents.DidOpen("file:///test.css", "css", 1, "body { color: red; }")
 
 		textChange := protocol.TextDocumentContentChangeEvent{}
 		textChange.Text = "body { color: blue; }"
@@ -175,29 +186,33 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 			},
 			ContentChanges: []any{textChange},
 		}
-		err := textDocument.DidChange(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		err := textDocument.DidChange(req, params)
 		assert.NoError(t, err)
 	})
 
 	t.Run("didClose", func(t *testing.T) {
 		// Ensure document exists
-		server.documents.DidOpen("file:///test2.css", "css", 1, "")
+		_ = server.documents.DidOpen("file:///test2.css", "css", 1, "")
 
 		params := &protocol.DidCloseTextDocumentParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test2.css"},
 		}
-		err := textDocument.DidClose(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		err := textDocument.DidClose(req, params)
 		assert.NoError(t, err)
 	})
 
 	t.Run("shutdown", func(t *testing.T) {
-		err := lifecycle.Shutdown(server, ctx)
+		req := types.NewRequestContext(server, ctx)
+		err := lifecycle.Shutdown(req)
 		assert.NoError(t, err)
 	})
 
 	t.Run("setTrace", func(t *testing.T) {
 		params := &protocol.SetTraceParams{Value: "off"}
-		err := lifecycle.SetTrace(server, ctx, params)
+		req := types.NewRequestContext(server, ctx)
+		err := lifecycle.SetTrace(req, params)
 		assert.NoError(t, err)
 	})
 }

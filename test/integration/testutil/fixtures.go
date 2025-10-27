@@ -7,6 +7,7 @@ import (
 
 	"bennypowers.dev/dtls/lsp"
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/require"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -91,6 +92,7 @@ func OpenCSSFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {
 			Text:       content,
 		},
 	}
-	err := textDocument.DidOpen(server, nil, params)
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, params)
 	require.NoError(t, err, "Failed to open CSS fixture: %s", fixtureName)
 }

@@ -7,6 +7,7 @@ import (
 
 	"bennypowers.dev/dtls/lsp"
 	"bennypowers.dev/dtls/lsp/methods/lifecycle"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -39,7 +40,8 @@ func TestServerInitialization(t *testing.T) {
 			},
 		}
 
-		result, err := lifecycle.Initialize(server, ctx, initParams)
+		req := types.NewRequestContext(server, ctx)
+		result, err := lifecycle.Initialize(req, initParams)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -69,7 +71,8 @@ func TestServerInitialization(t *testing.T) {
 			},
 		}
 
-		result, err := lifecycle.Initialize(server, ctx, initParams)
+		req := types.NewRequestContext(server, ctx)
+		result, err := lifecycle.Initialize(req, initParams)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 	})
@@ -110,11 +113,13 @@ func TestServerShutdown(t *testing.T) {
 	ctx := &glsp.Context{}
 
 	// Shutdown should not error
-	err = lifecycle.Shutdown(server, ctx)
+	req := types.NewRequestContext(server, ctx)
+	err = lifecycle.Shutdown(req)
 	assert.NoError(t, err)
 
 	// Multiple shutdowns should be safe
-	err = lifecycle.Shutdown(server, ctx)
+	req = types.NewRequestContext(server, ctx)
+	err = lifecycle.Shutdown(req)
 	assert.NoError(t, err)
 }
 
@@ -133,7 +138,8 @@ func TestSetTrace(t *testing.T) {
 	}
 	for _, trace := range traces {
 		t.Run(string(trace), func(t *testing.T) {
-			err := lifecycle.SetTrace(server, ctx, &protocol.SetTraceParams{
+			req := types.NewRequestContext(server, ctx)
+			err := lifecycle.SetTrace(req, &protocol.SetTraceParams{
 				Value: trace,
 			})
 			assert.NoError(t, err)

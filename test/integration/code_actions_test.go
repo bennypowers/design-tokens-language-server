@@ -5,6 +5,7 @@ import (
 
 	codeaction "bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
+	"bennypowers.dev/dtls/lsp/types"
 	"bennypowers.dev/dtls/test/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,8 @@ func TestCodeActionFixIncorrectFallback(t *testing.T) {
 	require.Len(t, diagnostics, 1)
 
 	// Request code actions
-	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -81,7 +83,8 @@ func TestCodeActionAddFallback(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
 	// Request code actions at a var call without fallback
-	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -136,7 +139,8 @@ func TestCodeActionDeprecatedToken(t *testing.T) {
 	require.Len(t, diagnostics, 1)
 
 	// Request code actions
-	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -197,7 +201,8 @@ func TestCodeActionNoActions(t *testing.T) {
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "correct-fallback.css")
 
 	// Request code actions
-	result, err := codeaction.CodeAction(server, nil, &protocol.CodeActionParams{
+	req := types.NewRequestContext(server, nil)
+	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -253,7 +258,8 @@ func TestCodeActionResolve(t *testing.T) {
 	}
 
 	// Resolve the action
-	resolved, err := codeaction.CodeActionResolve(server, nil, &action)
+	req := types.NewRequestContext(server, nil)
+	resolved, err := codeaction.CodeActionResolve(req, &action)
 	require.NoError(t, err)
 	require.NotNil(t, resolved)
 

@@ -7,7 +7,6 @@ import (
 
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tidwall/jsonc"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"gopkg.in/yaml.v3"
 )
@@ -15,14 +14,14 @@ import (
 // References returns all references to a token
 // For CSS files: returns nil (let css-ls handle it)
 // For JSON/YAML files: finds all references to the token at cursor
-func References(ctx types.ServerContext, context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
+func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]protocol.Location, error) {
 	uri := params.TextDocument.URI
 	position := params.Position
 
 	fmt.Fprintf(os.Stderr, "[DTLS] References requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -40,7 +39,7 @@ func References(ctx types.ServerContext, context *glsp.Context, params *protocol
 	}
 
 	// Look up the token
-	token := ctx.Token(tokenName)
+	token := req.Server.Token(tokenName)
 	fmt.Fprintf(os.Stderr, "[DTLS] Token lookup result: %v\n", token != nil)
 	if token == nil {
 		return nil, nil
@@ -57,7 +56,7 @@ func References(ctx types.ServerContext, context *glsp.Context, params *protocol
 	// Deduplicate locations using a map (JSON.stringify equivalent)
 	locationMap := make(map[string]protocol.Location)
 
-	for _, document := range ctx.AllDocuments() {
+	for _, document := range req.Server.AllDocuments() {
 		docContent := document.Content()
 		docURI := document.URI()
 
@@ -105,7 +104,7 @@ func References(ctx types.ServerContext, context *glsp.Context, params *protocol
 	// Include declaration if requested
 	if params.Context.IncludeDeclaration && token.DefinitionURI != "" {
 		// Find the range for this token in its definition file
-		defDoc := ctx.Document(token.DefinitionURI)
+		defDoc := req.Server.Document(token.DefinitionURI)
 		if defDoc != nil {
 			// Find the token definition in the document
 			// For now, use a simple approach: find the token path

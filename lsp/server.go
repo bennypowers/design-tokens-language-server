@@ -359,3 +359,4 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Sent file watcher registration request (%d watchers)\n", len(watchers))
 	return nil
 }
+

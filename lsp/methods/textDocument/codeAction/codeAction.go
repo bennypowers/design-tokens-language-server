@@ -9,7 +9,6 @@ import (
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
-	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -178,13 +177,13 @@ func isNamedColor(value string) bool {
 // handleCodeAction handles the textDocument/codeAction request
 
 // CodeAction handles the textDocument/codeAction request
-func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol.CodeActionParams) (any, error) {
+func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (any, error) {
 	uri := params.TextDocument.URI
 
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeAction requested: %s\n", uri)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, nil
 	}
@@ -226,14 +225,14 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 		varCallsInRange = append(varCallsInRange, *varCall)
 
 		// Look up the token
-		token := ctx.Token(varCall.TokenName)
+		token := req.Server.Token(varCall.TokenName)
 		if token == nil {
 			continue
 		}
 
 		// Create code actions for deprecated tokens
 		if token.Deprecated {
-			actions = append(actions, CreateDeprecatedTokenActions(ctx, uri, *varCall, token, params.Context.Diagnostics)...)
+			actions = append(actions, CreateDeprecatedTokenActions(req.Server, uri, *varCall, token, params.Context.Diagnostics)...)
 		}
 
 		// Create code actions for incorrect fallback
@@ -261,12 +260,12 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 
 	if isSingleChar && len(varCallsInRange) > 0 {
 		// Single var() - create toggleFallback action
-		if action := CreateToggleFallbackAction(ctx, uri, varCallsInRange[0]); action != nil {
+		if action := CreateToggleFallbackAction(req.Server, uri, varCallsInRange[0]); action != nil {
 			actions = append(actions, *action)
 		}
 	} else if !isSingleChar && len(varCallsInRange) > 0 {
 		// Multiple var() calls - create toggleRangeFallbacks action
-		if action := CreateToggleRangeFallbacksAction(ctx, uri, varCallsInRange); action != nil {
+		if action := CreateToggleRangeFallbacksAction(req.Server, uri, varCallsInRange); action != nil {
 			actions = append(actions, *action)
 		}
 	}
@@ -294,12 +293,12 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 // handleCodeActionResolve handles the codeAction/resolve request
 
 // CodeActionResolve handles the codeAction/resolve request
-func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
+func CodeActionResolve(req *types.RequestContext, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeActionResolve requested: %s\n", action.Title)
 
 	// Handle fixAllFallbacks which uses lazy resolution
 	if action.Title == "Fix all token fallback values" {
-		return resolveFixAllFallbacks(ctx, action)
+		return resolveFixAllFallbacks(req.Server, action)
 	}
 
 	// For other actions (fixFallback, toggle, add, deprecated),

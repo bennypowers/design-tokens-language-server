@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
+	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -15,12 +16,13 @@ import (
 func TestReferences_CSSFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24},
@@ -39,6 +41,7 @@ func TestReferences_CSSFile(t *testing.T) {
 func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with extension data
 	token := &tokens.Token{
@@ -73,7 +76,7 @@ func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
 	ctx.DocumentManager().DidOpen(cssURI2, "css", 1, cssContent2)
 
 	// Request references from the JSON token file (cursor on token)
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
 			Position:     protocol.Position{Line: 2, Character: 6}, // On "primary" key
@@ -107,6 +110,7 @@ func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
 func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add tokens
 	primaryToken := &tokens.Token{
@@ -136,7 +140,7 @@ func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
 	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
 	// Request references from the JSON file
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
 			Position:     protocol.Position{Line: 2, Character: 6}, // On "primary"
@@ -163,6 +167,7 @@ func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
 func TestReferences_WithIncludeDeclaration(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	token := &tokens.Token{
 		Name:          "color-primary",
@@ -189,7 +194,7 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
 
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
 			Position:     protocol.Position{Line: 2, Character: 6},
@@ -216,6 +221,7 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
 func TestReferences_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	jsonURI := "file:///tokens.json"
 	jsonContent := `{
@@ -229,7 +235,7 @@ func TestReferences_UnknownToken(t *testing.T) {
 	ctx.DocumentManager().DidOpen(jsonURI, "json", 1, jsonContent)
 
 	// Position not on a token
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: jsonURI},
 			Position:     protocol.Position{Line: 0, Character: 0}, // On opening brace
@@ -247,8 +253,9 @@ func TestReferences_UnknownToken(t *testing.T) {
 func TestReferences_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.json"},
 			Position:     protocol.Position{Line: 0, Character: 10},
@@ -266,6 +273,7 @@ func TestReferences_DocumentNotFound(t *testing.T) {
 func TestReferences_YAMLFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
 
 	token := &tokens.Token{
 		Name:          "color-primary",
@@ -289,7 +297,7 @@ func TestReferences_YAMLFile(t *testing.T) {
 	cssContent := `.button { color: var(--color-primary); }`
 	ctx.DocumentManager().DidOpen(cssURI, "css", 1, cssContent)
 
-	result, err := References(ctx, glspCtx, &protocol.ReferenceParams{
+	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: yamlURI},
 			Position:     protocol.Position{Line: 1, Character: 3}, // On "primary"
