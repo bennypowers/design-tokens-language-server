@@ -1,14 +1,15 @@
 package lsp
 
 import (
-	"bennypowers.dev/dtls/lsp/types"
 	"testing"
+
+	"bennypowers.dev/dtls/lsp/types"
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/methods/lifecycle"
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
-	"bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
+	codeaction "bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/completion"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/definition"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
@@ -37,7 +38,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 	// Dummy context (nil is fine for these simple wrappers)
 	var ctx *glsp.Context
 
-	t.Run("handleHover", func(t *testing.T) {
+	t.Run("Hover", func(t *testing.T) {
 		params := &protocol.HoverParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
@@ -50,7 +51,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("handleCompletion", func(t *testing.T) {
+	t.Run("Completion", func(t *testing.T) {
 		params := &protocol.CompletionParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
@@ -62,14 +63,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("handleCompletionResolve", func(t *testing.T) {
+	t.Run("CompletionResolve", func(t *testing.T) {
 		item := &protocol.CompletionItem{Label: "test"}
 		result, err := completion.CompletionResolve(server, ctx, item)
 		assert.NoError(t, err)
 		assert.Equal(t, item, result) // Returns same item if no data
 	})
 
-	t.Run("handleDefinition", func(t *testing.T) {
+	t.Run("Definition", func(t *testing.T) {
 		params := &protocol.DefinitionParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
@@ -81,7 +82,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("handleReferences", func(t *testing.T) {
+	t.Run("References", func(t *testing.T) {
 		params := &protocol.ReferenceParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
@@ -93,7 +94,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("handleCodeAction", func(t *testing.T) {
+	t.Run("CodeAction", func(t *testing.T) {
 		params := &protocol.CodeActionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 			Range: protocol.Range{
@@ -106,14 +107,14 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("handleCodeActionResolve", func(t *testing.T) {
+	t.Run("CodeActionResolve", func(t *testing.T) {
 		action := &protocol.CodeAction{Title: "test"}
 		result, err := codeaction.CodeActionResolve(server, ctx, action)
 		assert.NoError(t, err)
 		assert.Equal(t, action, result)
 	})
 
-	t.Run("handleDocumentColor", func(t *testing.T) {
+	t.Run("DocumentColor", func(t *testing.T) {
 		params := &protocol.DocumentColorParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
@@ -122,7 +123,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.Empty(t, result)
 	})
 
-	t.Run("handleColorPresentation", func(t *testing.T) {
+	t.Run("ColorPresentation", func(t *testing.T) {
 		params := &protocol.ColorPresentationParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 			Color: protocol.Color{
@@ -137,7 +138,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.NotEmpty(t, result) // Returns format options even without document
 	})
 
-	t.Run("handleDocumentDiagnostic", func(t *testing.T) {
+	t.Run("DocumentDiagnostic", func(t *testing.T) {
 		params := &diagnostic.DocumentDiagnosticParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: "file:///test.css"},
 		}
@@ -146,7 +147,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.NotNil(t, result)
 	})
 
-	t.Run("handleDidOpen", func(t *testing.T) {
+	t.Run("DidOpen", func(t *testing.T) {
 		params := &protocol.DidOpenTextDocumentParams{
 			TextDocument: protocol.TextDocumentItem{
 				URI:        "file:///test.css",
@@ -199,6 +200,7 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
 // TestServer_Close tests that Close() properly releases resources
 func TestServer_Close(t *testing.T) {
 	t.Run("Close releases CSS parser pool", func(t *testing.T) {
