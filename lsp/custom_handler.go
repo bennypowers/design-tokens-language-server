@@ -17,8 +17,8 @@ import (
 // When glsp is updated to support LSP 3.17, this wrapper can be removed and we can
 // register handlers directly in protocol.Handler (protocol_3_17.Handler).
 type CustomHandler struct {
-	protocol.Handler
-	server *Server
+	*protocol.Handler // Pointer to avoid copying embedded mutex
+	server            *Server
 }
 
 // Handle implements glsp.Handler interface

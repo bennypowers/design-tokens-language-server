@@ -26,14 +26,17 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 
 // loadTokensFromConfig loads tokens based on current configuration
 func (s *Server) LoadTokensFromConfig() error {
+	// Snapshot config to ensure consistency throughout this function
+	cfg := s.GetConfig()
+
 	// If tokensFiles is explicitly provided (nil vs empty are distinct):
 	//  - empty slice => switch to auto-discovery or reload previously loaded files
 	//  - non-empty   => load explicit files
-	if s.config.TokensFiles != nil {
+	if cfg.TokensFiles != nil {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
 		s.autoDiscoveryMode = false
-		if len(s.config.TokensFiles) == 0 {
+		if len(cfg.TokensFiles) == 0 {
 			// Empty TokensFiles: try auto-discovery if we have a workspace root
 			if s.rootPath != "" {
 				s.autoDiscoveryMode = true
@@ -86,9 +89,12 @@ func (s *Server) LoadTokensFromConfig() error {
 
 // loadExplicitTokenFiles loads tokens from explicitly configured files
 func (s *Server) loadExplicitTokenFiles() error {
+	// Snapshot config to ensure consistency throughout this function
+	cfg := s.GetConfig()
+
 	var errs []error
 
-	for _, item := range s.config.TokensFiles {
+	for _, item := range cfg.TokensFiles {
 		var path, prefix string
 		var groupMarkers []string
 
@@ -96,8 +102,8 @@ func (s *Server) loadExplicitTokenFiles() error {
 		switch v := item.(type) {
 		case string:
 			path = v
-			prefix = s.config.Prefix
-			groupMarkers = s.config.GroupMarkers
+			prefix = cfg.Prefix
+			groupMarkers = cfg.GroupMarkers
 		case map[string]any:
 			// Convert to TokenFileSpec
 			pathVal, ok := v["path"]
@@ -109,7 +115,7 @@ func (s *Server) loadExplicitTokenFiles() error {
 			if prefixVal, ok := v["prefix"]; ok {
 				prefix, _ = prefixVal.(string)
 			} else {
-				prefix = s.config.Prefix
+				prefix = cfg.Prefix
 			}
 			if gmVal, ok := v["groupMarkers"]; ok {
 				switch gm := gmVal.(type) {
@@ -124,7 +130,7 @@ func (s *Server) loadExplicitTokenFiles() error {
 				}
 			}
 			if len(groupMarkers) == 0 {
-				groupMarkers = s.config.GroupMarkers
+				groupMarkers = cfg.GroupMarkers
 			}
 		default:
 			continue
@@ -162,11 +168,14 @@ func (s *Server) loadExplicitTokenFiles() error {
 
 // loadTokenFilesAutoDiscover auto-discovers and loads token files
 func (s *Server) loadTokenFilesAutoDiscover() error {
+	// Snapshot config to ensure consistency throughout this function
+	cfg := s.GetConfig()
+
 	tokenConfig := TokenFileConfig{
 		RootDir:      s.rootPath,
 		Patterns:     types.AutoDiscoverPatterns,
-		Prefix:       s.config.Prefix,
-		GroupMarkers: s.config.GroupMarkers,
+		Prefix:       cfg.Prefix,
+		GroupMarkers: cfg.GroupMarkers,
 	}
 
 	return s.LoadTokenFiles(tokenConfig)

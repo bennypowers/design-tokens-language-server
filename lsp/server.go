@@ -82,7 +82,7 @@ func NewServer() (*Server, error) {
 	// before they reach protocol.Handler, which only knows about LSP 3.16 methods.
 	// When glsp is updated to LSP 3.17, we can remove CustomHandler and use protocol_3_17.Handler directly.
 	customHandler := &CustomHandler{
-		Handler: protocolHandler,
+		Handler: &protocolHandler,
 		server:  s,
 	}
 
@@ -206,16 +206,22 @@ func (s *Server) IsTokenFile(path string) bool {
 		return false
 	}
 
+	// Normalize input path early for consistent comparisons
+	cleanPath := filepath.Clean(path)
+
 	// Check if it's in our loaded files map (for programmatically loaded tokens)
 	s.loadedFilesMu.RLock()
-	_, exists := s.loadedFiles[path]
+	_, exists := s.loadedFiles[cleanPath]
 	s.loadedFilesMu.RUnlock()
 	if exists {
 		return true
 	}
 
+	// Get config snapshot for thread-safe access
+	cfg := s.GetConfig()
+
 	// Check if it matches any of our configured token files
-	for _, item := range s.config.TokensFiles {
+	for _, item := range cfg.TokensFiles {
 		var tokenPath string
 		switch v := item.(type) {
 		case string:
@@ -235,9 +241,7 @@ func (s *Server) IsTokenFile(path string) bool {
 			tokenPath = filepath.Join(s.rootPath, tokenPath)
 		}
 
-		// Normalize both paths before comparison to handle redundant separators
-		// and relative components (e.g., /foo//bar vs /foo/bar, /foo/./bar vs /foo/bar)
-		cleanPath := filepath.Clean(path)
+		// Normalize token path before comparison
 		cleanTokenPath := filepath.Clean(tokenPath)
 
 		// Check if the paths match
@@ -247,8 +251,8 @@ func (s *Server) IsTokenFile(path string) bool {
 	}
 
 	// If we're in auto-discover mode, check common patterns
-	if len(s.config.TokensFiles) == 0 {
-		filename := filepath.Base(path)
+	if s.autoDiscoveryMode {
+		filename := filepath.Base(cleanPath)
 		if filename == "tokens.json" ||
 			strings.HasSuffix(filename, ".tokens.json") ||
 			filename == "design-tokens.json" ||
@@ -281,12 +285,15 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 		return nil
 	}
 
+	// Get config snapshot for thread-safe access
+	cfg := s.GetConfig()
+
 	// Build list of watchers based on configuration
 	watchers := []protocol.FileSystemWatcher{}
 
-	if len(s.config.TokensFiles) > 0 {
+	if !s.autoDiscoveryMode && len(cfg.TokensFiles) > 0 {
 		// Watch explicitly configured files
-		for _, item := range s.config.TokensFiles {
+		for _, item := range cfg.TokensFiles {
 			var tokenPath string
 			switch v := item.(type) {
 			case string:
@@ -320,7 +327,7 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 				GlobPattern: pattern,
 			})
 		}
-	} else if s.rootPath != "" {
+	} else if s.autoDiscoveryMode && s.rootPath != "" {
 		// Auto-discover mode: watch common patterns
 		// Convert root path to forward-slash separated filesystem path
 		rootPattern := filepath.ToSlash(filepath.Clean(s.rootPath))
@@ -365,7 +372,7 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	// are not fatal (the client continues working, just without file watching),
 	// this fire-and-forget approach with logging is acceptable.
 	go func() {
-		var result interface{}
+		var result any
 		context.Call("client/registerCapability", params, &result)
 		fmt.Fprintf(os.Stderr, "[DTLS] File watcher registration completed\n")
 	}()

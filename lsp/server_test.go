@@ -385,6 +385,10 @@ func TestIsTokenFile(t *testing.T) {
 
 			s.rootPath = tt.rootPath
 			s.config.TokensFiles = tt.configFiles
+			// Set auto-discovery mode for empty config
+			if len(tt.configFiles) == 0 {
+				s.autoDiscoveryMode = true
+			}
 
 			result := s.IsTokenFile(tt.path)
 			if result != tt.expectedResult {

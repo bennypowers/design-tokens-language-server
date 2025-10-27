@@ -26,7 +26,7 @@ func TestCustomHandler_DiagnosticMethod(t *testing.T) {
 
 	// Create custom handler
 	handler := &CustomHandler{
-		Handler: protocol.Handler{},
+		Handler: &protocol.Handler{},
 		server:  server,
 	}
 
