@@ -92,10 +92,10 @@ func TestLoadTokensFromConfig(t *testing.T) {
 		assert.Equal(t, 1, server.TokenCount())
 	})
 
-	t.Run("auto-discovery when tokensFiles is empty", func(t *testing.T) {
+	t.Run("empty tokensFiles loads nothing", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create a discoverable token file
+		// Create a token file (that won't be loaded)
 		tokensFile := filepath.Join(tmpDir, "tokens.json")
 		require.NoError(t, os.WriteFile(tokensFile, []byte(`{
 			"color": {
@@ -112,21 +112,20 @@ func TestLoadTokensFromConfig(t *testing.T) {
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
-			TokensFiles: []any{}, // Empty triggers auto-discovery
+			TokensFiles: []any{}, // Empty does NOT trigger auto-discovery
 		})
 
 		err = server.LoadTokensFromConfig()
 		require.NoError(t, err)
 
-		// Should find and load tokens.json via auto-discovery
-		assert.Greater(t, server.TokenCount(), 0)
-		assert.NotNil(t, server.Token("color-primary"))
+		// Should NOT load any tokens (matches TypeScript behavior)
+		assert.Equal(t, 0, server.TokenCount())
 	})
 
-	t.Run("auto-discovery with yaml files", func(t *testing.T) {
+	t.Run("nil tokensFiles loads nothing", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
-		// Create a YAML token file
+		// Create a token file (that won't be loaded)
 		tokensFile := filepath.Join(tmpDir, "tokens.yaml")
 		require.NoError(t, os.WriteFile(tokensFile, []byte(`
 color:
@@ -141,14 +140,14 @@ color:
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
-			TokensFiles: nil, // nil also triggers auto-discovery
+			TokensFiles: nil, // nil does NOT trigger auto-discovery
 		})
 
 		err = server.LoadTokensFromConfig()
 		require.NoError(t, err)
 
-		assert.Greater(t, server.TokenCount(), 0)
-		assert.NotNil(t, server.Token("color-primary"))
+		// Should NOT load any tokens (matches TypeScript behavior)
+		assert.Equal(t, 0, server.TokenCount())
 	})
 
 	t.Run("npm: protocol support", func(t *testing.T) {
@@ -319,37 +318,3 @@ func TestSetRootPath(t *testing.T) {
 	assert.Equal(t, "/test/path", server.RootPath())
 }
 
-func TestAutoDiscoveryState(t *testing.T) {
-	// Test that auto-discovery mode is set correctly through config loading
-	tmpDir := t.TempDir()
-
-	// Create a discoverable token file
-	tokensFile := filepath.Join(tmpDir, "tokens.json")
-	require.NoError(t, os.WriteFile(tokensFile, []byte(`{
-		"color": {
-			"primary": {
-				"$value": "#ff0000",
-				"$type": "color"
-			}
-		}
-	}`), 0644))
-
-	server, err := NewServer()
-	require.NoError(t, err)
-	defer server.Close()
-
-	server.SetRootPath(tmpDir)
-
-	// Initially false
-	assert.False(t, server.GetState().AutoDiscoveryMode)
-
-	// Load with empty tokensFiles - should enable auto-discovery
-	server.SetConfig(types.ServerConfig{
-		TokensFiles: []any{},
-	})
-	err = server.LoadTokensFromConfig()
-	require.NoError(t, err)
-
-	// Should have enabled auto-discovery
-	assert.True(t, server.GetState().AutoDiscoveryMode)
-}

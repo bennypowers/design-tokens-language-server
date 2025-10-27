@@ -333,36 +333,15 @@ func TestIsTokenFile(t *testing.T) {
 			expectedResult: false,
 		},
 		{
-			name:           "Auto-discover - tokens.json",
+			name:           "Empty config - tokens.json not tracked",
 			path:           "/workspace/tokens.json",
 			rootPath:       "/workspace",
-			configFiles:    []any{}, // Empty = auto-discover
-			expectedResult: true,
+			configFiles:    []any{}, // Empty = no auto-discover
+			expectedResult: false,
 		},
 		{
-			name:           "Auto-discover - design-tokens.json",
+			name:           "Empty config - design-tokens.json not tracked",
 			path:           "/workspace/design-tokens.json",
-			rootPath:       "/workspace",
-			configFiles:    []any{},
-			expectedResult: true,
-		},
-		{
-			name:           "Auto-discover - custom.tokens.json",
-			path:           "/workspace/custom.tokens.json",
-			rootPath:       "/workspace",
-			configFiles:    []any{},
-			expectedResult: true,
-		},
-		{
-			name:           "Auto-discover - YAML",
-			path:           "/workspace/tokens.yaml",
-			rootPath:       "/workspace",
-			configFiles:    []any{},
-			expectedResult: true,
-		},
-		{
-			name:           "Auto-discover - non-token file",
-			path:           "/workspace/package.json",
 			rootPath:       "/workspace",
 			configFiles:    []any{},
 			expectedResult: false,
@@ -385,10 +364,6 @@ func TestIsTokenFile(t *testing.T) {
 
 			s.rootPath = tt.rootPath
 			s.config.TokensFiles = tt.configFiles
-			// Set auto-discovery mode for empty config
-			if len(tt.configFiles) == 0 {
-				s.autoDiscoveryMode = true
-			}
 
 			result := s.IsTokenFile(tt.path)
 			if result != tt.expectedResult {

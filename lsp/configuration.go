@@ -23,8 +23,7 @@ func (s *Server) GetState() types.ServerState {
 	s.configMu.RLock()
 	defer s.configMu.RUnlock()
 	return types.ServerState{
-		AutoDiscoveryMode: s.autoDiscoveryMode,
-		RootPath:          s.rootPath,
+		RootPath: s.rootPath,
 	}
 }
 
@@ -35,66 +34,30 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 	s.config = config
 }
 
-// setAutoDiscoveryMode updates the auto-discovery mode
-func (s *Server) setAutoDiscoveryMode(mode bool) {
-	s.configMu.Lock()
-	defer s.configMu.Unlock()
-	s.autoDiscoveryMode = mode
-}
-
 // loadTokensFromConfig loads tokens based on current configuration
+// Matches TypeScript behavior: explicit configuration only, no auto-discovery
 func (s *Server) LoadTokensFromConfig() error {
-	// Snapshot config and state separately for semantic clarity
 	cfg := s.GetConfig()
-	state := s.GetState()
 
-	// If tokensFiles is explicitly provided (nil vs empty are distinct):
-	//  - empty slice => switch to auto-discovery or reload previously loaded files
-	//  - non-empty   => load explicit files
-	if cfg.TokensFiles != nil {
+	// If tokensFiles is explicitly provided and non-empty, load those files
+	if cfg.TokensFiles != nil && len(cfg.TokensFiles) > 0 {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
-		s.setAutoDiscoveryMode(false)
-		if len(cfg.TokensFiles) == 0 {
-			// Empty TokensFiles: try auto-discovery if we have a workspace root
-			if state.RootPath != "" {
-				s.setAutoDiscoveryMode(true)
-				return s.loadTokenFilesAutoDiscover()
-			}
-			// No workspace root: check if we have programmatically loaded files to reload
-			s.loadedFilesMu.RLock()
-			hasLoadedFiles := len(s.loadedFiles) > 0
-			s.loadedFilesMu.RUnlock()
-			if hasLoadedFiles {
-				return s.reloadPreviouslyLoadedFiles()
-			}
-			return nil
-		}
 		return s.loadExplicitTokenFiles()
 	}
 
-	// If we're in auto-discovery mode, always re-discover to pick up new files
-	if state.AutoDiscoveryMode && state.RootPath != "" {
-		// Clear existing tokens before auto-discover
-		s.tokens.Clear()
-		return s.loadTokenFilesAutoDiscover()
-	}
-
-	// If we have previously loaded files (from tests or programmatic loading),
-	// reload them
+	// If tokensFiles is empty or nil, check if we have programmatically loaded files to reload
+	// (This supports test scenarios where files are loaded via LoadTokenFile)
 	s.loadedFilesMu.RLock()
 	hasLoadedFiles := len(s.loadedFiles) > 0
 	s.loadedFilesMu.RUnlock()
-	// Prefer discovery when we have a workspace root but no active discovery and no files yet.
-	if state.RootPath != "" && !hasLoadedFiles {
-		s.tokens.Clear()
-		s.setAutoDiscoveryMode(true)
-		return s.loadTokenFilesAutoDiscover()
-	}
+
 	if hasLoadedFiles {
 		return s.reloadPreviouslyLoadedFiles()
 	}
 
+	// No configuration and no previously loaded files: do nothing
+	// Users must explicitly configure tokensFiles
 	return nil
 }
 
@@ -179,25 +142,8 @@ func (s *Server) loadExplicitTokenFiles() error {
 	return nil
 }
 
-// loadTokenFilesAutoDiscover auto-discovers and loads token files
-func (s *Server) loadTokenFilesAutoDiscover() error {
-	// Snapshot config and state separately for semantic clarity
-	cfg := s.GetConfig()
-	state := s.GetState()
-
-	tokenConfig := TokenFileConfig{
-		RootDir:      state.RootPath,
-		Patterns:     types.AutoDiscoverPatterns,
-		Prefix:       cfg.Prefix,
-		GroupMarkers: cfg.GroupMarkers,
-	}
-
-	return s.LoadTokenFiles(tokenConfig)
-}
-
 // reloadPreviouslyLoadedFiles reloads all files that were previously loaded
 // This is used for programmatic loading (e.g., tests using LoadTokenFile)
-// For auto-discovery mode, LoadTokensFromConfig handles re-discovery directly
 func (s *Server) reloadPreviouslyLoadedFiles() error {
 	// Clear existing tokens
 	s.tokens.Clear()

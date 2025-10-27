@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"bennypowers.dev/dtls/internal/documents"
@@ -42,7 +41,6 @@ type Server struct {
 	configMu          sync.RWMutex                 // Protects config from concurrent access
 	loadedFiles       map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
 	loadedFilesMu     sync.RWMutex                 // Protects loadedFiles from concurrent access
-	autoDiscoveryMode bool                         // True if using auto-discovery instead of explicit files
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -251,22 +249,7 @@ func (s *Server) IsTokenFile(path string) bool {
 		}
 	}
 
-	// If we're in auto-discover mode, check common patterns
-	if state.AutoDiscoveryMode {
-		filename := filepath.Base(cleanPath)
-		if filename == "tokens.json" ||
-			strings.HasSuffix(filename, ".tokens.json") ||
-			filename == "design-tokens.json" ||
-			filename == "tokens.yaml" ||
-			strings.HasSuffix(filename, ".tokens.yaml") ||
-			filename == "design-tokens.yaml" ||
-			filename == "tokens.yml" ||
-			strings.HasSuffix(filename, ".tokens.yml") ||
-			filename == "design-tokens.yml" {
-			return true
-		}
-	}
-
+	// Not in loadedFiles: this is not a tracked token file
 	return false
 }
 
@@ -293,10 +276,10 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	cfg := s.GetConfig()
 	state := s.GetState()
 
-	// Build list of watchers based on configuration
+	// Build list of watchers based on explicitly configured files
 	watchers := []protocol.FileSystemWatcher{}
 
-	if !state.AutoDiscoveryMode && len(cfg.TokensFiles) > 0 {
+	if len(cfg.TokensFiles) > 0 {
 		// Watch explicitly configured files
 		for _, item := range cfg.TokensFiles {
 			var tokenPath string
@@ -330,15 +313,6 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 
 			watchers = append(watchers, protocol.FileSystemWatcher{
 				GlobPattern: pattern,
-			})
-		}
-	} else if state.AutoDiscoveryMode && state.RootPath != "" {
-		// Auto-discover mode: watch common patterns
-		// Convert root path to forward-slash separated filesystem path
-		rootPattern := filepath.ToSlash(filepath.Clean(state.RootPath))
-		for _, pattern := range types.AutoDiscoverPatterns {
-			watchers = append(watchers, protocol.FileSystemWatcher{
-				GlobPattern: rootPattern + "/" + pattern,
 			})
 		}
 	}

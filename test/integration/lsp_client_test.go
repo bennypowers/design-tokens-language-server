@@ -497,6 +497,16 @@ func TestRealLSPConnection(t *testing.T) {
 		err = client.Initialize(rootURI)
 		require.NoError(t, err, "Initialize should succeed")
 
+		// Configure token files explicitly (no auto-discovery)
+		client.DidChangeConfiguration(map[string]interface{}{
+			"designTokensLanguageServer": map[string]interface{}{
+				"tokensFiles": []string{tokensPath},
+			},
+		})
+
+		// Wait for configuration to be processed
+		time.Sleep(300 * time.Millisecond)
+
 		// Open CSS document
 		cssURI := "file://" + cssPath
 		client.DidOpenTextDocument(cssURI, "css", cssContent)
@@ -506,7 +516,7 @@ func TestRealLSPConnection(t *testing.T) {
 
 		// The test has successfully validated:
 		// 1. Server initialization ✓
-		// 2. Token loading from workspace ✓ (server logged "Loaded 1 tokens")
+		// 2. Token loading from explicit configuration ✓
 		// 3. File watcher registration ✓ (client/registerCapability sent)
 		// 4. Document opening ✓
 		t.Log("SUCCESS: Server initialization, token loading, and file watcher registration completed")
@@ -566,6 +576,16 @@ func TestRealLSPConnection(t *testing.T) {
 		rootURI := "file://" + tmpDir
 		err = client.Initialize(rootURI)
 		require.NoError(t, err)
+
+		// Configure token files explicitly BEFORE opening CSS
+		client.DidChangeConfiguration(map[string]interface{}{
+			"designTokensLanguageServer": map[string]interface{}{
+				"tokensFiles": []string{tokensPath},
+			},
+		})
+
+		// Wait for configuration
+		time.Sleep(200 * time.Millisecond)
 
 		// Open CSS document
 		cssURI := "file://" + cssPath
@@ -710,6 +730,16 @@ func TestRealLSPConnection(t *testing.T) {
 		rootURI := "file://" + tmpDir
 		err = client.Initialize(rootURI)
 		require.NoError(t, err)
+
+		// Configure token files explicitly
+		client.DidChangeConfiguration(map[string]interface{}{
+			"designTokensLanguageServer": map[string]interface{}{
+				"tokensFiles": []string{tokensPath},
+			},
+		})
+
+		// Wait for configuration
+		time.Sleep(200 * time.Millisecond)
 
 		// Open token document
 		tokensURI := "file://" + tokensPath

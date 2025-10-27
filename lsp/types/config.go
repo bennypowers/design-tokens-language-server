@@ -35,10 +35,6 @@ type ServerConfig struct {
 // This is returned by GetState() for thread-safe access to runtime state.
 // For configuration, use GetConfig() separately.
 type ServerState struct {
-	// AutoDiscoveryMode indicates whether the server is in auto-discovery mode
-	// True when TokensFiles is empty and we're discovering token files automatically
-	AutoDiscoveryMode bool
-
 	// RootPath is the workspace root path (file system)
 	RootPath string
 }
@@ -46,7 +42,7 @@ type ServerState struct {
 // DefaultConfig returns the default server configuration
 func DefaultConfig() ServerConfig {
 	return ServerConfig{
-		TokensFiles: []any{}, // Empty = auto-discover
+		TokensFiles: nil, // No default tokens - must be explicitly configured
 		Prefix:      "",
 		GroupMarkers: []string{
 			"_",
@@ -54,24 +50,4 @@ func DefaultConfig() ServerConfig {
 			"DEFAULT",
 		},
 	}
-}
-
-// AutoDiscoverPatterns are the glob patterns used to auto-discover token files
-// when TokensFiles is not explicitly configured.
-// These patterns match common token file naming conventions:
-//   - tokens.{ext}           (e.g., tokens.json, tokens.yaml)
-//   - *.tokens.{ext}         (e.g., colors.tokens.json, spacing.tokens.yaml)
-//   - design-tokens.{ext}    (e.g., design-tokens.json, design-tokens.yaml)
-//
-// Supported extensions: json, yaml, yml
-var AutoDiscoverPatterns = []string{
-	"**/tokens.json",
-	"**/*.tokens.json",
-	"**/design-tokens.json",
-	"**/tokens.yaml",
-	"**/*.tokens.yaml",
-	"**/design-tokens.yaml",
-	"**/tokens.yml",
-	"**/*.tokens.yml",
-	"**/design-tokens.yml",
 }
