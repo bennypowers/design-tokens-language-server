@@ -36,12 +36,13 @@ type Server struct {
 	tokens            *tokens.Manager
 	glspServer        *server.Server
 	context           *glsp.Context
-	rootURI           string                      // Workspace root URI
-	rootPath          string                      // Workspace root path (file system)
-	config            types.ServerConfig          // Server configuration
+	rootURI           string                       // Workspace root URI
+	rootPath          string                       // Workspace root path (file system)
+	config            types.ServerConfig           // Server configuration
+	configMu          sync.RWMutex                 // Protects config from concurrent access
 	loadedFiles       map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
-	loadedFilesMu     sync.RWMutex                // Protects loadedFiles from concurrent access
-	autoDiscoveryMode bool                        // True if using auto-discovery instead of explicit files
+	loadedFilesMu     sync.RWMutex                 // Protects loadedFiles from concurrent access
+	autoDiscoveryMode bool                         // True if using auto-discovery instead of explicit files
 }
 
 // NewServer creates a new Design Tokens LSP server

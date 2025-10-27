@@ -12,11 +12,15 @@ import (
 
 // GetConfig returns the current server configuration
 func (s *Server) GetConfig() types.ServerConfig {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return s.config
 }
 
 // SetConfig updates the server configuration
 func (s *Server) SetConfig(config types.ServerConfig) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
 	s.config = config
 }
 
