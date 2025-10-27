@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 
+	"bennypowers.dev/dtls/internal/version"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -15,7 +16,7 @@ type Server struct {
 // New creates a new Design Tokens Language Server instance
 func New() *Server {
 	return &Server{
-		version: "1.0.0-go", // TODO: Get from build info
+		version: version.GetVersion(),
 	}
 }
 

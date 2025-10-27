@@ -6,8 +6,8 @@ WINDOWS_CC_IMAGE := dtls-windows-cc-image
 BINARY_NAME := design-tokens-language-server
 DIST_DIR := dist/bin
 
-# Go build flags
-GO_BUILD_FLAGS := -ldflags="-s -w"
+# Go build flags with version injection
+GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
 .PHONY: all build build-all test test-coverage install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image
 
