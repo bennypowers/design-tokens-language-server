@@ -1,6 +1,7 @@
 package documentcolor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -39,6 +40,7 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 	}
 
 	var colors []protocol.ColorInformation
+	var parseErrors []error
 
 	// Find all var() calls that reference color tokens
 	for _, varCall := range result.VarCalls {
@@ -57,6 +59,7 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 		color, err := parseColor(token.Value)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse color %s: %v\n", token.Value, err)
+			parseErrors = append(parseErrors, fmt.Errorf("failed to parse color token %s (value: %s): %w", varCall.TokenName, token.Value, err))
 			continue
 		}
 
@@ -91,6 +94,8 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 		// Parse the color value
 		color, err := parseColor(token.Value)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse color %s: %v\n", token.Value, err)
+			parseErrors = append(parseErrors, fmt.Errorf("failed to parse color token %s (value: %s): %w", variable.Name, token.Value, err))
 			continue
 		}
 
@@ -110,6 +115,12 @@ func DocumentColor(ctx types.ServerContext, context *glsp.Context, params *proto
 	}
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d colors\n", len(colors))
+
+	// If there were parse errors, return them as a single aggregated error
+	// The middleware will log this error to the LSP client via window/logMessage
+	if len(parseErrors) > 0 {
+		return colors, errors.Join(parseErrors...)
+	}
 
 	return colors, nil
 }
@@ -132,6 +143,7 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 	requestedHex := requestedColor.HexString() // Includes alpha if < 1.0
 
 	var presentations []protocol.ColorPresentation
+	var parseErrors []error
 
 	// Find all tokens with matching color values
 	for _, token := range ctx.TokenManager().GetAll() {
@@ -143,7 +155,8 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 		// Parse the token's color value
 		tokenColor, err := parseColor(token.Value)
 		if err != nil {
-			// Skip tokens with invalid color values
+			fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse color token %s (value: %s): %v\n", token.Name, token.Value, err)
+			parseErrors = append(parseErrors, fmt.Errorf("failed to parse color token %s (value: %s): %w", token.Name, token.Value, err))
 			continue
 		}
 
@@ -164,6 +177,12 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 	}
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d matching color tokens\n", len(presentations))
+
+	// If there were parse errors, return them as a single aggregated error
+	// The middleware will log this error to the LSP client via window/logMessage
+	if len(parseErrors) > 0 {
+		return presentations, errors.Join(parseErrors...)
+	}
 
 	return presentations, nil
 }
