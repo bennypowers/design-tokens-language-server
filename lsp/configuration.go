@@ -10,11 +10,23 @@ import (
 	"bennypowers.dev/dtls/lsp/types"
 )
 
-// GetConfig returns the current server configuration
+// GetConfig returns the current server configuration (user settings only)
 func (s *Server) GetConfig() types.ServerConfig {
 	s.configMu.RLock()
 	defer s.configMu.RUnlock()
 	return s.config
+}
+
+// GetState returns a snapshot of runtime state (NOT configuration)
+// For configuration, use GetConfig() separately.
+// This separation allows clear distinction between user configuration and runtime state.
+func (s *Server) GetState() types.ServerState {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+	return types.ServerState{
+		AutoDiscoveryMode: s.autoDiscoveryMode,
+		RootPath:          s.rootPath,
+	}
 }
 
 // SetConfig updates the server configuration
@@ -24,10 +36,25 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 	s.config = config
 }
 
+// setAutoDiscoveryMode updates the auto-discovery mode (must hold configMu.Lock)
+func (s *Server) setAutoDiscoveryMode(mode bool) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	s.autoDiscoveryMode = mode
+}
+
+// setRootPath updates the root path (must hold configMu.Lock)
+func (s *Server) setRootPath(path string) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	s.rootPath = path
+}
+
 // loadTokensFromConfig loads tokens based on current configuration
 func (s *Server) LoadTokensFromConfig() error {
-	// Snapshot config to ensure consistency throughout this function
+	// Snapshot config and state separately for semantic clarity
 	cfg := s.GetConfig()
+	state := s.GetState()
 
 	// If tokensFiles is explicitly provided (nil vs empty are distinct):
 	//  - empty slice => switch to auto-discovery or reload previously loaded files
@@ -35,11 +62,11 @@ func (s *Server) LoadTokensFromConfig() error {
 	if cfg.TokensFiles != nil {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
-		s.autoDiscoveryMode = false
+		s.setAutoDiscoveryMode(false)
 		if len(cfg.TokensFiles) == 0 {
 			// Empty TokensFiles: try auto-discovery if we have a workspace root
-			if s.rootPath != "" {
-				s.autoDiscoveryMode = true
+			if state.RootPath != "" {
+				s.setAutoDiscoveryMode(true)
 				return s.loadTokenFilesAutoDiscover()
 			}
 			// No workspace root: check if we have programmatically loaded files to reload
@@ -55,7 +82,7 @@ func (s *Server) LoadTokensFromConfig() error {
 	}
 
 	// If we're in auto-discovery mode, always re-discover to pick up new files
-	if s.autoDiscoveryMode && s.rootPath != "" {
+	if state.AutoDiscoveryMode && state.RootPath != "" {
 		// Clear existing tokens before auto-discover
 		s.tokens.Clear()
 		return s.loadTokenFilesAutoDiscover()
@@ -67,9 +94,9 @@ func (s *Server) LoadTokensFromConfig() error {
 	hasLoadedFiles := len(s.loadedFiles) > 0
 	s.loadedFilesMu.RUnlock()
 	// Prefer discovery when we have a workspace root but no active discovery and no files yet.
-	if s.rootPath != "" && !hasLoadedFiles {
+	if state.RootPath != "" && !hasLoadedFiles {
 		s.tokens.Clear()
-		s.autoDiscoveryMode = true
+		s.setAutoDiscoveryMode(true)
 		return s.loadTokenFilesAutoDiscover()
 	}
 	if hasLoadedFiles {
@@ -77,10 +104,10 @@ func (s *Server) LoadTokensFromConfig() error {
 	}
 
 	// Otherwise, auto-discover token files
-	if s.rootPath != "" {
+	if state.RootPath != "" {
 		// Clear existing tokens before auto-discover
 		s.tokens.Clear()
-		s.autoDiscoveryMode = true
+		s.setAutoDiscoveryMode(true)
 		return s.loadTokenFilesAutoDiscover()
 	}
 
@@ -89,8 +116,9 @@ func (s *Server) LoadTokensFromConfig() error {
 
 // loadExplicitTokenFiles loads tokens from explicitly configured files
 func (s *Server) loadExplicitTokenFiles() error {
-	// Snapshot config to ensure consistency throughout this function
+	// Snapshot config and state separately for semantic clarity
 	cfg := s.GetConfig()
+	state := s.GetState()
 
 	var errs []error
 
@@ -137,8 +165,8 @@ func (s *Server) loadExplicitTokenFiles() error {
 		}
 
 		// Resolve path relative to workspace
-		if s.rootPath != "" && !filepath.IsAbs(path) {
-			path = filepath.Join(s.rootPath, path)
+		if state.RootPath != "" && !filepath.IsAbs(path) {
+			path = filepath.Join(state.RootPath, path)
 		}
 
 		// TODO: Handle npm: protocol
@@ -168,11 +196,12 @@ func (s *Server) loadExplicitTokenFiles() error {
 
 // loadTokenFilesAutoDiscover auto-discovers and loads token files
 func (s *Server) loadTokenFilesAutoDiscover() error {
-	// Snapshot config to ensure consistency throughout this function
+	// Snapshot config and state separately for semantic clarity
 	cfg := s.GetConfig()
+	state := s.GetState()
 
 	tokenConfig := TokenFileConfig{
-		RootDir:      s.rootPath,
+		RootDir:      state.RootPath,
 		Patterns:     types.AutoDiscoverPatterns,
 		Prefix:       cfg.Prefix,
 		GroupMarkers: cfg.GroupMarkers,

@@ -13,7 +13,7 @@ type TokenFileSpec struct {
 	GroupMarkers []string `json:"groupMarkers,omitempty"`
 }
 
-// ServerConfig represents the server configuration
+// ServerConfig represents the server configuration (user-provided settings)
 type ServerConfig struct {
 	// TokensFiles specifies token files to load
 	// Can be:
@@ -29,6 +29,18 @@ type ServerConfig struct {
 	// GroupMarkers are token names which will be treated as group names as well
 	// Default: ["_", "@", "DEFAULT"]
 	GroupMarkers []string `json:"groupMarkers"`
+}
+
+// ServerState represents a snapshot of runtime state (NOT configuration)
+// This is returned by GetState() for thread-safe access to runtime state.
+// For configuration, use GetConfig() separately.
+type ServerState struct {
+	// AutoDiscoveryMode indicates whether the server is in auto-discovery mode
+	// True when TokensFiles is empty and we're discovering token files automatically
+	AutoDiscoveryMode bool
+
+	// RootPath is the workspace root path (file system)
+	RootPath string
 }
 
 // DefaultConfig returns the default server configuration

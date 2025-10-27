@@ -217,8 +217,9 @@ func (s *Server) IsTokenFile(path string) bool {
 		return true
 	}
 
-	// Get config snapshot for thread-safe access
+	// Get config and state snapshots for thread-safe access
 	cfg := s.GetConfig()
+	state := s.GetState()
 
 	// Check if it matches any of our configured token files
 	for _, item := range cfg.TokensFiles {
@@ -237,8 +238,8 @@ func (s *Server) IsTokenFile(path string) bool {
 		}
 
 		// Resolve relative paths
-		if s.rootPath != "" && !filepath.IsAbs(tokenPath) {
-			tokenPath = filepath.Join(s.rootPath, tokenPath)
+		if state.RootPath != "" && !filepath.IsAbs(tokenPath) {
+			tokenPath = filepath.Join(state.RootPath, tokenPath)
 		}
 
 		// Normalize token path before comparison
@@ -251,7 +252,7 @@ func (s *Server) IsTokenFile(path string) bool {
 	}
 
 	// If we're in auto-discover mode, check common patterns
-	if s.autoDiscoveryMode {
+	if state.AutoDiscoveryMode {
 		filename := filepath.Base(cleanPath)
 		if filename == "tokens.json" ||
 			strings.HasSuffix(filename, ".tokens.json") ||
@@ -272,8 +273,11 @@ func (s *Server) IsTokenFile(path string) bool {
 // RemoveLoadedFile removes a file from the loaded files tracking map
 // This should be called when a token file is deleted to prevent stale entries
 func (s *Server) RemoveLoadedFile(path string) {
+	// Normalize path to match keys used during insertion
+	cleanPath := filepath.Clean(path)
+
 	s.loadedFilesMu.Lock()
-	delete(s.loadedFiles, path)
+	delete(s.loadedFiles, cleanPath)
 	s.loadedFilesMu.Unlock()
 }
 
@@ -285,13 +289,14 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 		return nil
 	}
 
-	// Get config snapshot for thread-safe access
+	// Get config and state snapshots for thread-safe access
 	cfg := s.GetConfig()
+	state := s.GetState()
 
 	// Build list of watchers based on configuration
 	watchers := []protocol.FileSystemWatcher{}
 
-	if !s.autoDiscoveryMode && len(cfg.TokensFiles) > 0 {
+	if !state.AutoDiscoveryMode && len(cfg.TokensFiles) > 0 {
 		// Watch explicitly configured files
 		for _, item := range cfg.TokensFiles {
 			var tokenPath string
@@ -314,9 +319,9 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 			if filepath.IsAbs(tokenPath) {
 				// Absolute path: convert to forward slashes
 				pattern = filepath.ToSlash(filepath.Clean(tokenPath))
-			} else if s.rootPath != "" {
+			} else if state.RootPath != "" {
 				// Relative path: join with root and convert to forward slashes
-				absPath := filepath.Join(s.rootPath, tokenPath)
+				absPath := filepath.Join(state.RootPath, tokenPath)
 				pattern = filepath.ToSlash(filepath.Clean(absPath))
 			} else {
 				// No root path: keep relative, convert to forward slashes
@@ -327,10 +332,10 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 				GlobPattern: pattern,
 			})
 		}
-	} else if s.autoDiscoveryMode && s.rootPath != "" {
+	} else if state.AutoDiscoveryMode && state.RootPath != "" {
 		// Auto-discover mode: watch common patterns
 		// Convert root path to forward-slash separated filesystem path
-		rootPattern := filepath.ToSlash(filepath.Clean(s.rootPath))
+		rootPattern := filepath.ToSlash(filepath.Clean(state.RootPath))
 		for _, pattern := range types.AutoDiscoverPatterns {
 			watchers = append(watchers, protocol.FileSystemWatcher{
 				GlobPattern: rootPattern + "/" + pattern,
