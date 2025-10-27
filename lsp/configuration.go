@@ -43,13 +43,6 @@ func (s *Server) setAutoDiscoveryMode(mode bool) {
 	s.autoDiscoveryMode = mode
 }
 
-// setRootPath updates the root path (must hold configMu.Lock)
-func (s *Server) setRootPath(path string) {
-	s.configMu.Lock()
-	defer s.configMu.Unlock()
-	s.rootPath = path
-}
-
 // loadTokensFromConfig loads tokens based on current configuration
 func (s *Server) LoadTokensFromConfig() error {
 	// Snapshot config and state separately for semantic clarity
