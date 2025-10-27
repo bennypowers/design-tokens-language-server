@@ -108,6 +108,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 			}
 
 			// Build hover content for declaration
+			// TODO: use go templating instead of string.Builder
 			var content strings.Builder
 			content.WriteString(fmt.Sprintf("# %s\n\n", token.CSSVariableName()))
 

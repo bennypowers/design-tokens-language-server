@@ -205,6 +205,9 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 
 	var actions []protocol.CodeAction
 
+	// Collect var calls in range for toggle actions
+	var varCallsInRange []css.VarCall
+
 	// Check each var() call in the requested range
 	for _, varCall := range result.VarCalls {
 		// Check if var call intersects with the requested range
@@ -220,6 +223,8 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 		}) {
 			continue
 		}
+
+		varCallsInRange = append(varCallsInRange, *varCall)
 
 		// Look up the token
 		token := ctx.Token(varCall.TokenName)
@@ -250,6 +255,38 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 		}
 	}
 
+	// Add toggle fallback actions
+	// Check if range is single-char (cursor position) or multi-char (selection)
+	isSingleChar := params.Range.Start.Line == params.Range.End.Line &&
+		params.Range.End.Character-params.Range.Start.Character == 1
+
+	if isSingleChar && len(varCallsInRange) > 0 {
+		// Single var() - create toggleFallback action
+		if action := CreateToggleFallbackAction(ctx, uri, varCallsInRange[0]); action != nil {
+			actions = append(actions, *action)
+		}
+	} else if !isSingleChar && len(varCallsInRange) > 0 {
+		// Multiple var() calls - create toggleRangeFallbacks action
+		if action := CreateToggleRangeFallbacksAction(ctx, uri, varCallsInRange); action != nil {
+			actions = append(actions, *action)
+		}
+	}
+
+	// Add fixAll action if there are multiple incorrect-fallback diagnostics
+	if len(params.Context.Diagnostics) >= 2 {
+		hasMultipleIncorrectFallbacks := 0
+		for _, diag := range params.Context.Diagnostics {
+			if diag.Code != nil && diag.Code.Value == "incorrect-fallback" {
+				hasMultipleIncorrectFallbacks++
+			}
+		}
+		if hasMultipleIncorrectFallbacks >= 2 {
+			if action := CreateFixAllFallbacksAction(uri, result.VarCalls); action != nil {
+				actions = append(actions, *action)
+			}
+		}
+	}
+
 	fmt.Fprintf(os.Stderr, "[DTLS] Returning %d code actions\n", len(actions))
 
 	return actions, nil
@@ -261,8 +298,90 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 func CodeActionResolve(ctx types.ServerContext, context *glsp.Context, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	fmt.Fprintf(os.Stderr, "[DTLS] CodeActionResolve requested: %s\n", action.Title)
 
-	// For now, we compute the edit immediately in CodeAction
-	// This is here for future optimization where we could defer computing edits
+	// Handle fixAll action
+	if action.Title == "Fix all token fallback values" {
+		return resolveFixAllFallbacks(ctx, action)
+	}
+
+	// For other actions, we compute the edit immediately in CodeAction
+	return action, nil
+}
+
+// resolveFixAllFallbacks resolves the fixAll action by computing edits for all incorrect fallbacks
+func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction) (*protocol.CodeAction, error) {
+	// Get the URI from the data field
+	data, ok := action.Data.(map[string]interface{})
+	if !ok {
+		return action, nil
+	}
+
+	uriVal, ok := data["uri"]
+	if !ok {
+		return action, nil
+	}
+	uri := uriVal.(string)
+
+	// Get document
+	doc := ctx.Document(uri)
+	if doc == nil {
+		return action, nil
+	}
+
+	// Parse CSS to find all var() calls
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
+	result, err := parser.Parse(doc.Content())
+	if err != nil {
+		return action, nil
+	}
+
+	var edits []protocol.TextEdit
+
+	// Fix all var() calls with incorrect fallbacks
+	for _, varCall := range result.VarCalls {
+		token := ctx.Token(varCall.TokenName)
+		if token == nil {
+			continue
+		}
+
+		// Only fix if there's a fallback that's incorrect
+		if varCall.Fallback != nil {
+			fallbackValue := *varCall.Fallback
+			tokenValue := token.Value
+
+			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
+				// Format the token value
+				formattedValue, safe := FormatTokenValueForCSS(token)
+				if !safe {
+					continue
+				}
+
+				// Create edit to fix this fallback
+				newText := fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
+				edits = append(edits, protocol.TextEdit{
+					Range: protocol.Range{
+						Start: protocol.Position{
+							Line:      varCall.Range.Start.Line,
+							Character: varCall.Range.Start.Character,
+						},
+						End: protocol.Position{
+							Line:      varCall.Range.End.Line,
+							Character: varCall.Range.End.Character,
+						},
+					},
+					NewText: newText,
+				})
+			}
+		}
+	}
+
+	// Add edits to the action
+	action.Edit = &protocol.WorkspaceEdit{
+		Changes: map[string][]protocol.TextEdit{
+			uri: edits,
+		},
+	}
+
 	return action, nil
 }
 
@@ -524,4 +643,123 @@ func isCSSValueSemanticallyEquivalent(a, b string) bool {
 	}
 
 	return normalize(a) == normalize(b)
+}
+
+// CreateToggleFallbackAction creates a code action to toggle the fallback value for a single var() call.
+// If the var() has a fallback, it removes it. If it doesn't, it adds one.
+func CreateToggleFallbackAction(ctx types.ServerContext, uri string, varCall css.VarCall) *protocol.CodeAction {
+	token := ctx.Token(varCall.TokenName)
+	if token == nil {
+		return nil
+	}
+
+	var newText string
+	if varCall.Fallback != nil {
+		// Has fallback - remove it
+		newText = fmt.Sprintf("var(%s)", varCall.TokenName)
+	} else {
+		// No fallback - add it
+		formattedValue, safe := FormatTokenValueForCSS(token)
+		if !safe {
+			return nil
+		}
+		newText = fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
+	}
+
+	kind := protocol.CodeActionKindRefactorRewrite
+	action := protocol.CodeAction{
+		Title: "Toggle design token fallback value",
+		Kind:  &kind,
+		Edit: &protocol.WorkspaceEdit{
+			Changes: map[string][]protocol.TextEdit{
+				uri: {
+					{
+						Range: protocol.Range{
+							Start: protocol.Position{
+								Line:      varCall.Range.Start.Line,
+								Character: varCall.Range.Start.Character,
+							},
+							End: protocol.Position{
+								Line:      varCall.Range.End.Line,
+								Character: varCall.Range.End.Character,
+							},
+						},
+						NewText: newText,
+					},
+				},
+			},
+		},
+	}
+	return &action
+}
+
+// CreateToggleRangeFallbacksAction creates a code action to toggle fallback values for multiple var() calls in a range.
+func CreateToggleRangeFallbacksAction(ctx types.ServerContext, uri string, varCalls []css.VarCall) *protocol.CodeAction {
+	var edits []protocol.TextEdit
+
+	for _, varCall := range varCalls {
+		token := ctx.Token(varCall.TokenName)
+		if token == nil {
+			continue
+		}
+
+		var newText string
+		if varCall.Fallback != nil {
+			// Has fallback - remove it
+			newText = fmt.Sprintf("var(%s)", varCall.TokenName)
+		} else {
+			// No fallback - add it
+			formattedValue, safe := FormatTokenValueForCSS(token)
+			if !safe {
+				continue
+			}
+			newText = fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
+		}
+
+		edits = append(edits, protocol.TextEdit{
+			Range: protocol.Range{
+				Start: protocol.Position{
+					Line:      varCall.Range.Start.Line,
+					Character: varCall.Range.Start.Character,
+				},
+				End: protocol.Position{
+					Line:      varCall.Range.End.Line,
+					Character: varCall.Range.End.Character,
+				},
+			},
+			NewText: newText,
+		})
+	}
+
+	if len(edits) == 0 {
+		return nil
+	}
+
+	kind := protocol.CodeActionKindRefactorRewrite
+	action := protocol.CodeAction{
+		Title: "Toggle design token fallback values (in range)",
+		Kind:  &kind,
+		Edit: &protocol.WorkspaceEdit{
+			Changes: map[string][]protocol.TextEdit{
+				uri: edits,
+			},
+		},
+	}
+	return &action
+}
+
+// CreateFixAllFallbacksAction creates a source fixAll action to fix all incorrect fallback values.
+// The actual edits are computed in the resolve step.
+func CreateFixAllFallbacksAction(uri string, varCalls []*css.VarCall) *protocol.CodeAction {
+	kind := protocol.CodeActionKind("source.fixAll")
+	action := protocol.CodeAction{
+		Title: "Fix all token fallback values",
+		Kind:  &kind,
+		// Data field is used to pass var calls to resolve step
+		Data: map[string]interface{}{
+			"uri":      uri,
+			"varCalls": varCalls,
+		},
+	}
+	return &action
 }

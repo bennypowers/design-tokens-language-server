@@ -12,9 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	// CodeActionKindSourceFixAll is not defined in glsp v0.2.2
+	codeActionKindSourceFixAll protocol.CodeActionKind = "source.fixAll"
+)
+
 // ptrString returns a pointer to the given string
 func ptrString(s string) *string {
 	return &s
+}
+
+// ptrIntegerOrString returns a pointer to IntegerOrString from a string
+func ptrIntegerOrString(s string) *protocol.IntegerOrString {
+	return &protocol.IntegerOrString{Value: s}
 }
 
 // TestRangesIntersect tests the rangesIntersect function with half-open range semantics [start, end)
@@ -680,4 +690,294 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestToggleFallback tests the toggle fallback action (RefactorRewrite)
+func TestToggleFallback(t *testing.T) {
+	s, err := lsp.NewServer()
+	require.NoError(t, err)
+
+	// Add test token
+	token := &tokens.Token{
+		Name:  "color-primary",
+		Value: "#ff0000",
+		Type:  "color",
+	}
+	s.TokenManager().Add(token)
+
+	tests := []struct {
+		name           string
+		cssContent     string
+		cursorLine     uint32
+		cursorChar     uint32
+		expectedAction string // empty if no action expected
+		expectedEdit   string // the new text after toggle
+	}{
+		{
+			name:           "toggle off - remove existing fallback",
+			cssContent:     `.button { color: var(--color-primary, #ff0000); }`,
+			cursorLine:     0,
+			cursorChar:     21, // cursor on var(
+			expectedAction: "Toggle design token fallback value",
+			expectedEdit:   "var(--color-primary)",
+		},
+		{
+			name:           "toggle on - add fallback when missing",
+			cssContent:     `.button { color: var(--color-primary); }`,
+			cursorLine:     0,
+			cursorChar:     21,
+			expectedAction: "Toggle design token fallback value",
+			expectedEdit:   "var(--color-primary, #ff0000)",
+		},
+		{
+			name:           "toggle off - cursor in middle of var call",
+			cssContent:     `.button { color: var(--color-primary, blue); }`,
+			cursorLine:     0,
+			cursorChar:     30, // cursor in token name
+			expectedAction: "Toggle design token fallback value",
+			expectedEdit:   "var(--color-primary)",
+		},
+		{
+			name:           "no action - cursor outside var call",
+			cssContent:     `.button { color: var(--color-primary); padding: 10px; }`,
+			cursorLine:     0,
+			cursorChar:     50, // cursor on padding
+			expectedAction: "", // no action
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Open document
+			uri := "file:///test.css"
+			s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
+
+			// Request code actions at cursor position (single-char range)
+			params := &protocol.CodeActionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Range: protocol.Range{
+					Start: protocol.Position{Line: tt.cursorLine, Character: tt.cursorChar},
+					End:   protocol.Position{Line: tt.cursorLine, Character: tt.cursorChar + 1},
+				},
+				Context: protocol.CodeActionContext{},
+			}
+
+			result, err := codeaction.CodeAction(s, nil, params)
+			require.NoError(t, err)
+
+			if tt.expectedAction == "" {
+				// Should not have toggle action
+				if result != nil {
+					actions := result.([]protocol.CodeAction)
+					for _, action := range actions {
+						assert.NotEqual(t, tt.expectedAction, action.Title)
+					}
+				}
+				return
+			}
+
+			// Should have the toggle action
+			require.NotNil(t, result)
+			actions := result.([]protocol.CodeAction)
+
+			var toggleAction *protocol.CodeAction
+			for i := range actions {
+				if actions[i].Title == tt.expectedAction {
+					toggleAction = &actions[i]
+					break
+				}
+			}
+
+			require.NotNil(t, toggleAction, "Should have toggle action")
+
+			// Check action kind
+			require.NotNil(t, toggleAction.Kind)
+			assert.Equal(t, protocol.CodeActionKindRefactorRewrite, *toggleAction.Kind)
+
+			// Check edit
+			require.NotNil(t, toggleAction.Edit)
+			require.NotNil(t, toggleAction.Edit.Changes)
+			edits, ok := toggleAction.Edit.Changes[uri]
+			require.True(t, ok)
+			require.Len(t, edits, 1)
+			assert.Equal(t, tt.expectedEdit, edits[0].NewText)
+		})
+	}
+}
+
+// TestToggleRangeFallbacks tests toggle fallbacks for range selection
+func TestToggleRangeFallbacks(t *testing.T) {
+	s, err := lsp.NewServer()
+	require.NoError(t, err)
+
+	// Add test tokens
+	s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
+	s.TokenManager().Add(&tokens.Token{Name: "color-secondary", Value: "#00ff00", Type: "color"})
+
+	tests := []struct {
+		name           string
+		cssContent     string
+		rangeStart     protocol.Position
+		rangeEnd       protocol.Position
+		expectedAction string
+		numEdits       int
+	}{
+		{
+			name: "toggle off - multiple var calls",
+			cssContent: `.button {
+  color: var(--color-primary, #ff0000);
+  background: var(--color-secondary, #00ff00);
+}`,
+			rangeStart:     protocol.Position{Line: 1, Character: 0},
+			rangeEnd:       protocol.Position{Line: 2, Character: 50},
+			expectedAction: "Toggle design token fallback values (in range)",
+			numEdits:       2, // two var() calls
+		},
+		{
+			name:           "toggle on - multiple var calls without fallbacks",
+			cssContent:     `.button { color: var(--color-primary); background: var(--color-secondary); }`,
+			rangeStart:     protocol.Position{Line: 0, Character: 10},
+			rangeEnd:       protocol.Position{Line: 0, Character: 75},
+			expectedAction: "Toggle design token fallback values (in range)",
+			numEdits:       2,
+		},
+		{
+			name:           "single char range - should not show range action",
+			cssContent:     `.button { color: var(--color-primary, #ff0000); }`,
+			rangeStart:     protocol.Position{Line: 0, Character: 21},
+			rangeEnd:       protocol.Position{Line: 0, Character: 22},
+			expectedAction: "", // single-char should show toggleFallback, not toggleRangeFallbacks
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri := "file:///test.css"
+			s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
+
+			params := &protocol.CodeActionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Range: protocol.Range{
+					Start: tt.rangeStart,
+					End:   tt.rangeEnd,
+				},
+				Context: protocol.CodeActionContext{},
+			}
+
+			result, err := codeaction.CodeAction(s, nil, params)
+			require.NoError(t, err)
+
+			if tt.expectedAction == "" {
+				if result != nil {
+					actions := result.([]protocol.CodeAction)
+					for _, action := range actions {
+						assert.NotEqual(t, "Toggle design token fallback values (in range)", action.Title)
+					}
+				}
+				return
+			}
+
+			require.NotNil(t, result)
+			actions := result.([]protocol.CodeAction)
+
+			var rangeAction *protocol.CodeAction
+			for i := range actions {
+				if actions[i].Title == tt.expectedAction {
+					rangeAction = &actions[i]
+					break
+				}
+			}
+
+			require.NotNil(t, rangeAction, "Should have range toggle action")
+			require.NotNil(t, rangeAction.Kind)
+			assert.Equal(t, protocol.CodeActionKindRefactorRewrite, *rangeAction.Kind)
+
+			require.NotNil(t, rangeAction.Edit)
+			require.NotNil(t, rangeAction.Edit.Changes)
+			edits, ok := rangeAction.Edit.Changes[uri]
+			require.True(t, ok)
+			assert.Len(t, edits, tt.numEdits)
+		})
+	}
+}
+
+// TestFixAllFallbacks tests the SourceFixAll action
+func TestFixAllFallbacks(t *testing.T) {
+	s, err := lsp.NewServer()
+	require.NoError(t, err)
+
+	// Add test tokens
+	s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
+	s.TokenManager().Add(&tokens.Token{Name: "color-secondary", Value: "#00ff00", Type: "color"})
+
+	cssContent := `.button {
+  color: var(--color-primary, blue);
+  background: var(--color-secondary, red);
+  border-color: var(--color-primary, #0000ff);
+}`
+
+	uri := "file:///test.css"
+	s.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	// Create diagnostics for incorrect fallbacks
+	diagnostics := []protocol.Diagnostic{
+		{
+			Range: protocol.Range{
+				Start: protocol.Position{Line: 1, Character: 9},
+				End:   protocol.Position{Line: 1, Character: 40},
+			},
+			Code:    ptrIntegerOrString("incorrect-fallback"),
+			Message: "Incorrect fallback",
+		},
+		{
+			Range: protocol.Range{
+				Start: protocol.Position{Line: 2, Character: 14},
+				End:   protocol.Position{Line: 2, Character: 48},
+			},
+			Code:    ptrIntegerOrString("incorrect-fallback"),
+			Message: "Incorrect fallback",
+		},
+	}
+
+	params := &protocol.CodeActionParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+		Range: protocol.Range{
+			Start: protocol.Position{Line: 0, Character: 0},
+			End:   protocol.Position{Line: 4, Character: 0},
+		},
+		Context: protocol.CodeActionContext{
+			Diagnostics: diagnostics,
+		},
+	}
+
+	result, err := codeaction.CodeAction(s, nil, params)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	actions := result.([]protocol.CodeAction)
+
+	// Find the fixAll action
+	var fixAllAction *protocol.CodeAction
+	for i := range actions {
+		if actions[i].Title == "Fix all token fallback values" {
+			fixAllAction = &actions[i]
+			break
+		}
+	}
+
+	require.NotNil(t, fixAllAction, "Should have fixAll action")
+	require.NotNil(t, fixAllAction.Kind)
+	assert.Equal(t, codeActionKindSourceFixAll, *fixAllAction.Kind)
+
+	// Resolve the action to get edits
+	resolved, err := codeaction.CodeActionResolve(s, nil, fixAllAction)
+	require.NoError(t, err)
+	require.NotNil(t, resolved.Edit)
+	require.NotNil(t, resolved.Edit.Changes)
+
+	edits, ok := resolved.Edit.Changes[uri]
+	require.True(t, ok)
+
+	// Should fix all incorrect fallbacks (3 total: blue, red, #0000ff)
+	assert.GreaterOrEqual(t, len(edits), 2)
 }

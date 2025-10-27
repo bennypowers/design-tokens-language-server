@@ -71,7 +71,7 @@ func Completion(ctx types.ServerContext, context *glsp.Context, params *protocol
 				Kind:             &kind,
 				InsertTextFormat: &insertTextFormat,
 				InsertText:       &insertText,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"tokenName": cssVar,
 				},
 			}
@@ -95,7 +95,7 @@ func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *pro
 	// Get token name from data
 	var tokenName string
 	if item.Data != nil {
-		if data, ok := item.Data.(map[string]interface{}); ok {
+		if data, ok := item.Data.(map[string]any); ok {
 			if name, ok := data["tokenName"].(string); ok {
 				tokenName = name
 			}
@@ -113,6 +113,7 @@ func CompletionResolve(ctx types.ServerContext, context *glsp.Context, item *pro
 	}
 
 	// Build documentation
+	// TODO: use go templating instead of string.Builder
 	var doc strings.Builder
 	doc.WriteString(fmt.Sprintf("# %s\n\n", token.CSSVariableName()))
 
@@ -195,6 +196,7 @@ func isWordChar(c byte) bool {
 
 // isInCompletionContext checks if the position is in a valid completion context
 func isInCompletionContext(result *css.ParseResult, pos protocol.Position) bool {
+	// TODO: this is a stub implementation that must be implemented for real before merging
 	// For now, we'll accept completions anywhere in CSS
 	// In the future, we can be more specific about only completing inside blocks
 	return true
