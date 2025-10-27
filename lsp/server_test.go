@@ -135,7 +135,8 @@ func TestHandlers_WrappersSmokeTest(t *testing.T) {
 		}
 		result, err := documentcolor.ColorPresentation(server, ctx, params)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, result) // Returns format options even without document
+		// Returns empty array when no tokens match (new behavior matches TypeScript)
+		assert.Empty(t, result)
 	})
 
 	t.Run("DocumentDiagnostic", func(t *testing.T) {
