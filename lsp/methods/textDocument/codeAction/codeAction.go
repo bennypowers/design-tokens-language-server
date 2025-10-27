@@ -199,8 +199,7 @@ func CodeAction(ctx types.ServerContext, context *glsp.Context, params *protocol
 	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse CSS: %v\n", err)
-		return nil, nil
+		return nil, fmt.Errorf("failed to parse CSS: %w", err)
 	}
 
 	var actions []protocol.CodeAction

@@ -52,7 +52,7 @@ func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic,
 	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("failed to parse CSS: %w", err)
 	}
 
 	var diagnostics []protocol.Diagnostic

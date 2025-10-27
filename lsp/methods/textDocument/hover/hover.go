@@ -72,8 +72,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse CSS: %v\n", err)
-		return nil, nil
+		return nil, fmt.Errorf("failed to parse CSS: %w", err)
 	}
 
 	// Find var() call at the cursor position
@@ -85,8 +84,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 				// Token not found - render unknown token message
 				content, err := renderUnknownToken(varCall.TokenName)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "[DTLS] Failed to render unknown token message: %v\n", err)
-					return nil, nil
+					return nil, fmt.Errorf("failed to render unknown token message: %w", err)
 				}
 				return &protocol.Hover{
 					Contents: protocol.MarkupContent{
@@ -99,8 +97,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 			// Render token hover content using template
 			content, err := renderTokenHover(token)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "[DTLS] Failed to render token hover: %v\n", err)
-				return nil, nil
+				return nil, fmt.Errorf("failed to render token hover: %w", err)
 			}
 
 			return &protocol.Hover{
@@ -134,8 +131,7 @@ func Hover(ctx types.ServerContext, context *glsp.Context, params *protocol.Hove
 			// Render token hover content using template
 			content, err := renderTokenHover(token)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "[DTLS] Failed to render token hover for declaration: %v\n", err)
-				return nil, nil
+				return nil, fmt.Errorf("failed to render token hover for declaration: %w", err)
 			}
 
 			return &protocol.Hover{

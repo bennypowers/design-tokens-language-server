@@ -35,7 +35,7 @@ func Definition(ctx types.ServerContext, context *glsp.Context, params *protocol
 	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(doc.Content())
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("failed to parse CSS: %w", err)
 	}
 
 	// Find var() call at the cursor position
