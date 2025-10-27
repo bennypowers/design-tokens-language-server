@@ -149,7 +149,7 @@ func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	ctx.SetRootPath("/workspace")
 
-	// Empty TokensFiles means auto-discovery mode
+	// Empty TokensFiles means no tokens are loaded initially
 	config := ctx.GetConfig()
 	config.TokensFiles = []any{}
 	ctx.SetConfig(config)
@@ -163,8 +163,8 @@ func TestHandleDidChangeWatchedFiles_NewlyCreatedFile(t *testing.T) {
 		},
 	}
 
-	// When a new token file is created in auto-discovery mode,
-	// the reload should discover it
+	// When a new token file is created and explicitly configured,
+	// the reload should load it
 	err := DidChangeWatchedFiles(ctx, nil, params)
 	if err != nil {
 		t.Errorf("DidChangeWatchedFiles failed: %v", err)
