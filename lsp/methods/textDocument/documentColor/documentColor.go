@@ -3,11 +3,11 @@ package documentcolor
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
+	"github.com/mazznoer/csscolorparser"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -144,60 +144,25 @@ func ColorPresentation(ctx types.ServerContext, context *glsp.Context, params *p
 	return presentations, nil
 }
 
-// parseColor parses a color string (hex, rgb, etc.) and returns a protocol.Color
+// parseColor parses a color string (hex, rgb, rgba, hsl, hsla, etc.) and returns a protocol.Color
 func parseColor(value string) (*protocol.Color, error) {
 	value = strings.TrimSpace(value)
 
-	// Parse hex colors (#RGB, #RGBA, #RRGGBB, #RRGGBBAA)
-	if strings.HasPrefix(value, "#") {
-		hex := strings.TrimPrefix(value, "#")
-
-		// Expand 3-digit hex to 6-digit (#RGB -> #RRGGBB)
-		if len(hex) == 3 {
-			hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
-		}
-
-		// Expand 4-digit hex to 8-digit (#RGBA -> #RRGGBBAA)
-		if len(hex) == 4 {
-			hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2], hex[3], hex[3]})
-		}
-
-		// Parse 6 or 8 digit hex
-		if len(hex) == 6 || len(hex) == 8 {
-			r, err := strconv.ParseUint(hex[0:2], 16, 8)
-			if err != nil {
-				return nil, err
-			}
-			g, err := strconv.ParseUint(hex[2:4], 16, 8)
-			if err != nil {
-				return nil, err
-			}
-			b, err := strconv.ParseUint(hex[4:6], 16, 8)
-			if err != nil {
-				return nil, err
-			}
-
-			alpha := 1.0
-			if len(hex) == 8 {
-				a, err := strconv.ParseUint(hex[6:8], 16, 8)
-				if err != nil {
-					return nil, err
-				}
-				alpha = float64(a) / 255.0
-			}
-
-			return &protocol.Color{
-				Red:   protocol.Decimal(float64(r) / 255.0),
-				Green: protocol.Decimal(float64(g) / 255.0),
-				Blue:  protocol.Decimal(float64(b) / 255.0),
-				Alpha: protocol.Decimal(alpha),
-			}, nil
-		}
+	// Use csscolorparser for all color formats (hex, rgb, rgba, hsl, hsla, named colors, etc.)
+	// This is a battle-tested library that handles all CSS color formats correctly
+	parsed, err := csscolorparser.Parse(value)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported color format: %s", value)
 	}
 
-	// TODO: Parse rgb(), rgba(), hsl(), hsla() formats
-
-	return nil, fmt.Errorf("unsupported color format: %s", value)
+	// Convert csscolorparser.Color to protocol.Color
+	// csscolorparser.Color has R, G, B, A fields as float64 values (0-1)
+	return &protocol.Color{
+		Red:   protocol.Decimal(parsed.R),
+		Green: protocol.Decimal(parsed.G),
+		Blue:  protocol.Decimal(parsed.B),
+		Alpha: protocol.Decimal(parsed.A),
+	}, nil
 }
 
 // formatColorHex formats a color as hex
