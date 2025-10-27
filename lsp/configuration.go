@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"path/filepath"
 
 	"bennypowers.dev/dtls/lsp/types"
 )
@@ -149,12 +148,13 @@ func (s *Server) loadExplicitTokenFiles() error {
 			continue
 		}
 
-		// Resolve path relative to workspace
-		if state.RootPath != "" && !filepath.IsAbs(path) {
-			path = filepath.Join(state.RootPath, path)
+		// Normalize path (handles relative, ~/, npm:, and absolute paths)
+		normalizedPath, err := normalizePath(path, state.RootPath)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to resolve path %s: %w", path, err))
+			continue
 		}
-
-		// TODO: Handle npm: protocol
+		path = normalizedPath
 
 		// Load the file with per-file options
 		opts := &TokenFileOptions{
