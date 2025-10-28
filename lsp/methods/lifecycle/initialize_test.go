@@ -86,6 +86,10 @@ func TestInitialize(t *testing.T) {
 		glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
+		// Simulate LSP 3.17 client with diagnostic capability
+		// (In practice, CustomHandler detects this from raw JSON during initialize)
+		ctx.SetClientDiagnosticCapability(true)
+
 		// Provide client capabilities to enable pull diagnostics (LSP 3.17)
 		params := &protocol.InitializeParams{
 			Capabilities: protocol.ClientCapabilities{

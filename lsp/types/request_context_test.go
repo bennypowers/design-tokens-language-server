@@ -80,6 +80,8 @@ func (m *mockServerContextMinimal) RegisterFileWatchers(ctx *glsp.Context) error
 func (m *mockServerContextMinimal) RemoveLoadedFile(path string)                 {}
 func (m *mockServerContextMinimal) GLSPContext() *glsp.Context                   { return nil }
 func (m *mockServerContextMinimal) SetGLSPContext(ctx *glsp.Context)             {}
+func (m *mockServerContextMinimal) ClientDiagnosticCapability() *bool            { return nil }
+func (m *mockServerContextMinimal) SetClientDiagnosticCapability(hasCapability bool) {}
 func (m *mockServerContextMinimal) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }

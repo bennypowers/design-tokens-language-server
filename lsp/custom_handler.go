@@ -24,6 +24,21 @@ type CustomHandler struct {
 
 // Handle implements glsp.Handler interface
 func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod bool, validParams bool, err error) {
+	// WORKAROUND: Intercept initialize to detect diagnostic capability from raw params
+	// Since glsp v0.2.2 only supports LSP 3.16, the parsed InitializeParams struct doesn't
+	// include the LSP 3.17 "diagnostic" field. We parse the raw JSON here to detect it,
+	// then let the normal initialize handler continue.
+	if context.Method == "initialize" {
+		// Detect pull diagnostics support from raw capabilities JSON
+		supportsPullDiagnostics := DetectPullDiagnosticsSupport(context.Params)
+
+		// Store the detected capability in the server for use during initialization
+		h.server.SetClientDiagnosticCapability(supportsPullDiagnostics)
+
+		// Fall through to let the normal initialize handler process the request
+		// (don't return here - we want the standard initialization to proceed)
+	}
+
 	// WORKAROUND: Intercept textDocument/diagnostic for LSP 3.17 pull diagnostics
 	// This method doesn't exist in protocol.Handler (LSP 3.16), so we handle it manually
 	if context.Method == "textDocument/diagnostic" {

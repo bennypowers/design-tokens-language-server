@@ -35,13 +35,14 @@ type Server struct {
 	tokens             *tokens.Manager
 	glspServer         *server.Server
 	context            *glsp.Context
-	rootURI            string                       // Workspace root URI
-	rootPath           string                       // Workspace root path (file system)
-	config             types.ServerConfig           // Server configuration
-	configMu           sync.RWMutex                 // Protects config, context, and usePullDiagnostics from concurrent access
-	loadedFiles        map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
-	loadedFilesMu      sync.RWMutex                 // Protects loadedFiles from concurrent access
-	usePullDiagnostics bool                         // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
+	rootURI                     string                       // Workspace root URI
+	rootPath                    string                       // Workspace root path (file system)
+	config                      types.ServerConfig           // Server configuration
+	configMu                    sync.RWMutex                 // Protects config, context, clientDiagnosticCapability, and usePullDiagnostics from concurrent access
+	loadedFiles                 map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
+	loadedFilesMu               sync.RWMutex                 // Protects loadedFiles from concurrent access
+	clientDiagnosticCapability  *bool                        // Client's diagnostic capability detected from raw initialize params (nil = not detected yet)
+	usePullDiagnostics          bool                         // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -180,6 +181,25 @@ func (s *Server) SetGLSPContext(ctx *glsp.Context) {
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
 	s.context = ctx
+}
+
+// ClientDiagnosticCapability returns the detected client diagnostic capability.
+// Returns nil if capability detection has not yet occurred (e.g., before initialize).
+// Access is protected by configMu to prevent concurrent races.
+func (s *Server) ClientDiagnosticCapability() *bool {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+	return s.clientDiagnosticCapability
+}
+
+// SetClientDiagnosticCapability sets the client's diagnostic capability based on
+// detection from raw initialize params. This should be called by the CustomHandler
+// when it intercepts the initialize request and parses client capabilities.
+// Access is protected by configMu to prevent concurrent races.
+func (s *Server) SetClientDiagnosticCapability(hasCapability bool) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	s.clientDiagnosticCapability = &hasCapability
 }
 
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)

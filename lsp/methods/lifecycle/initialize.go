@@ -21,18 +21,19 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 	fmt.Fprintf(os.Stderr, "[DTLS] Initializing for client: %s\n", clientName)
 
 	// Detect if client supports pull diagnostics (LSP 3.17)
-	// WORKAROUND: glsp v0.2.2 only supports LSP 3.16, so TextDocumentClientCapabilities
-	// doesn't have a Diagnostic field. We check the raw capabilities by looking for
-	// the diagnostic field in the JSON. Modern clients (LSP 3.17+) will include this.
+	// The CustomHandler intercepts the initialize request and parses the raw capabilities JSON
+	// to detect the presence of the textDocument.diagnostic field (LSP 3.17 feature).
+	// Since glsp v0.2.2 only supports LSP 3.16, we must parse raw JSON to detect this capability.
+	//
+	// Conservative approach: Default to push diagnostics (false) unless we can confirm the client
+	// explicitly declares diagnostic capability. This prevents breaking LSP 3.16 clients.
 	supportsPullDiagnostics := false
-	if params.Capabilities.TextDocument != nil {
-		// Try to detect pull diagnostics support from client capabilities
-		// Since glsp v0.2.2 doesn't have the Diagnostic field in the struct,
-		// we check if the client info indicates a modern LSP version
-		// For now, we assume all clients support pull diagnostics to avoid duplication
-		// TODO: When glsp is upgraded to LSP 3.17, check params.Capabilities.TextDocument.Diagnostic
-		supportsPullDiagnostics = true
+	if detectedCapability := req.Server.ClientDiagnosticCapability(); detectedCapability != nil {
+		// Use the detected capability from raw JSON parsing
+		supportsPullDiagnostics = *detectedCapability
 	}
+	// else: capability not detected (nil) - default to push diagnostics (false)
+
 	req.Server.SetUsePullDiagnostics(supportsPullDiagnostics)
 
 	if supportsPullDiagnostics {

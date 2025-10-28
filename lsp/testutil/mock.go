@@ -14,10 +14,11 @@ type MockServerContext struct {
 	tokens      *tokens.Manager
 	rootURI     string
 	rootPath    string
-	config             types.ServerConfig
-	loadedFiles        map[string]string
-	glspContext        *glsp.Context
-	usePullDiagnostics bool
+	config                     types.ServerConfig
+	loadedFiles                map[string]string
+	glspContext                *glsp.Context
+	clientDiagnosticCapability *bool
+	usePullDiagnostics         bool
 
 	// Optional callbacks for custom behavior in tests
 	LoadTokensFunc         func() error
@@ -170,6 +171,16 @@ func (m *MockServerContext) GLSPContext() *glsp.Context {
 // SetGLSPContext sets the GLSP context
 func (m *MockServerContext) SetGLSPContext(ctx *glsp.Context) {
 	m.glspContext = ctx
+}
+
+// ClientDiagnosticCapability returns the detected client diagnostic capability
+func (m *MockServerContext) ClientDiagnosticCapability() *bool {
+	return m.clientDiagnosticCapability
+}
+
+// SetClientDiagnosticCapability sets the client's diagnostic capability
+func (m *MockServerContext) SetClientDiagnosticCapability(hasCapability bool) {
+	m.clientDiagnosticCapability = &hasCapability
 }
 
 // PublishDiagnostics publishes diagnostics for a document

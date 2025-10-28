@@ -43,6 +43,10 @@ type ServerContext interface {
 	GLSPContext() *glsp.Context
 	SetGLSPContext(ctx *glsp.Context)
 
+	// Client capability detection (for LSP 3.17 features)
+	ClientDiagnosticCapability() *bool
+	SetClientDiagnosticCapability(hasCapability bool)
+
 	// Diagnostics mode (pull vs push)
 	UsePullDiagnostics() bool
 	SetUsePullDiagnostics(use bool)
