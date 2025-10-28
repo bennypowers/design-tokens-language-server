@@ -25,27 +25,29 @@ type TokenFileOptions struct {
 
 // LoadTokenFile loads a token file (JSON or YAML) and adds tokens to the manager
 // This is a convenience wrapper around LoadTokenFileWithOptions for backward compatibility
-func (s *Server) LoadTokenFile(filepath, prefix string) error {
-	return s.LoadTokenFileWithOptions(filepath, &TokenFileOptions{
+func (s *Server) LoadTokenFile(filePath, prefix string) error {
+	return s.LoadTokenFileWithOptions(filePath, &TokenFileOptions{
 		Prefix:       prefix,
 		GroupMarkers: nil, // Use global defaults
 	})
 }
 
 // LoadTokenFileWithOptions loads a token file with per-file configuration options
-func (s *Server) LoadTokenFileWithOptions(filepath string, opts *TokenFileOptions) error {
+func (s *Server) LoadTokenFileWithOptions(filePath string, opts *TokenFileOptions) error {
 	if opts == nil {
 		opts = &TokenFileOptions{}
 	}
 
-	err := s.loadTokenFileInternal(filepath, opts)
+	err := s.loadTokenFileInternal(filePath, opts)
 	if err != nil {
 		return err
 	}
 
 	// Track this file for reload on change (only on successful load)
+	// Normalize the path to match IsTokenFile's lookup behavior
+	cleanPath := filepath.Clean(filePath)
 	s.loadedFilesMu.Lock()
-	s.loadedFiles[filepath] = opts
+	s.loadedFiles[cleanPath] = opts
 	s.loadedFilesMu.Unlock()
 
 	return nil

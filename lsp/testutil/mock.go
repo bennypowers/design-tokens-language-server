@@ -1,6 +1,8 @@
 package testutil
 
 import (
+	"path/filepath"
+
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
@@ -110,7 +112,9 @@ func (m *MockServerContext) IsTokenFile(path string) bool {
 	}
 
 	// Default implementation: check loadedFiles and config
-	if _, exists := m.loadedFiles[path]; exists {
+	// Normalize path to match production code behavior
+	cleanPath := filepath.Clean(path)
+	if _, exists := m.loadedFiles[cleanPath]; exists {
 		return true
 	}
 
@@ -160,7 +164,9 @@ func (m *MockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
 
 // RemoveLoadedFile removes a file from the loaded files tracking map
 func (m *MockServerContext) RemoveLoadedFile(path string) {
-	delete(m.loadedFiles, path)
+	// Normalize path to match production code behavior
+	cleanPath := filepath.Clean(path)
+	delete(m.loadedFiles, cleanPath)
 }
 
 // GLSPContext returns the GLSP context
