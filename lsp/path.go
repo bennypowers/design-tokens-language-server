@@ -22,9 +22,9 @@ func normalizePath(path, workspaceRoot string) (string, error) {
 
 	// Home directory expansion
 	if strings.HasPrefix(path, "~/") {
-		home := os.Getenv("HOME")
-		if home == "" {
-			return "", fmt.Errorf("HOME environment variable not set")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get user home directory: %w", err)
 		}
 		return filepath.Join(home, path[2:]), nil
 	}
