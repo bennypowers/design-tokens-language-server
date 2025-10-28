@@ -75,82 +75,108 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
 	}
 
-	// Find var() call at the cursor position
+	// Find the innermost var() call at the cursor position
+	// When var() calls are nested (e.g., var(--outer, var(--inner, fallback))),
+	// we want to find the smallest (innermost) range that contains the cursor
+	var bestVarCall *css.VarCall
+	var smallestRangeSize int = -1
+
 	for _, varCall := range result.VarCalls {
 		if isPositionInRange(position, varCall.Range) {
-			// Look up the token
-			token := req.Server.Token(varCall.TokenName)
-			if token == nil {
-				// Token not found - render unknown token message
-				content, err := renderUnknownToken(varCall.TokenName)
-				if err != nil {
-					return nil, fmt.Errorf("failed to render unknown token message: %w", err)
-				}
-				return &protocol.Hover{
-					Contents: protocol.MarkupContent{
-						Kind:  protocol.MarkupKindMarkdown,
-						Value: content,
-					},
-				}, nil
+			rangeSize := calculateRangeSize(varCall.Range)
+			if smallestRangeSize == -1 || rangeSize < smallestRangeSize {
+				smallestRangeSize = rangeSize
+				bestVarCall = varCall
 			}
-
-			// Render token hover content using template
-			content, err := renderTokenHover(token)
-			if err != nil {
-				return nil, fmt.Errorf("failed to render token hover: %w", err)
-			}
-
-			return &protocol.Hover{
-				Contents: protocol.MarkupContent{
-					Kind:  protocol.MarkupKindMarkdown,
-					Value: content,
-				},
-				Range: &protocol.Range{
-					Start: protocol.Position{
-						Line:      varCall.Range.Start.Line,
-						Character: varCall.Range.Start.Character,
-					},
-					End: protocol.Position{
-						Line:      varCall.Range.End.Line,
-						Character: varCall.Range.End.Character,
-					},
-				},
-			}, nil
 		}
 	}
 
-	// Also check variable declarations
-	for _, variable := range result.Variables {
-		if isPositionInRange(position, variable.Range) {
-			// Look up the token by the variable name
-			token := req.Server.Token(variable.Name)
-			if token == nil {
-				return nil, nil
-			}
-
-			// Render token hover content using template
-			content, err := renderTokenHover(token)
+	// Process the innermost var() call if found
+	if bestVarCall != nil {
+		// Look up the token
+		token := req.Server.Token(bestVarCall.TokenName)
+		if token == nil {
+			// Token not found - render unknown token message
+			content, err := renderUnknownToken(bestVarCall.TokenName)
 			if err != nil {
-				return nil, fmt.Errorf("failed to render token hover for declaration: %w", err)
+				return nil, fmt.Errorf("failed to render unknown token message: %w", err)
 			}
-
 			return &protocol.Hover{
 				Contents: protocol.MarkupContent{
 					Kind:  protocol.MarkupKindMarkdown,
 					Value: content,
 				},
-				Range: &protocol.Range{
-					Start: protocol.Position{
-						Line:      variable.Range.Start.Line,
-						Character: variable.Range.Start.Character,
-					},
-					End: protocol.Position{
-						Line:      variable.Range.End.Line,
-						Character: variable.Range.End.Character,
-					},
-				},
 			}, nil
 		}
+
+		// Render token hover content using template
+		content, err := renderTokenHover(token)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render token hover: %w", err)
+		}
+
+		return &protocol.Hover{
+			Contents: protocol.MarkupContent{
+				Kind:  protocol.MarkupKindMarkdown,
+				Value: content,
+			},
+			Range: &protocol.Range{
+				Start: protocol.Position{
+					Line:      bestVarCall.Range.Start.Line,
+					Character: bestVarCall.Range.Start.Character,
+				},
+				End: protocol.Position{
+					Line:      bestVarCall.Range.End.Line,
+					Character: bestVarCall.Range.End.Character,
+				},
+			},
+		}, nil
+	}
+
+	// Also check variable declarations (using same innermost-match logic)
+	var bestVariable *css.Variable
+	smallestRangeSize = -1
+
+	for _, variable := range result.Variables {
+		if isPositionInRange(position, variable.Range) {
+			rangeSize := calculateRangeSize(variable.Range)
+			if smallestRangeSize == -1 || rangeSize < smallestRangeSize {
+				smallestRangeSize = rangeSize
+				bestVariable = variable
+			}
+		}
+	}
+
+	// Process the innermost variable declaration if found
+	if bestVariable != nil {
+		// Look up the token by the variable name
+		token := req.Server.Token(bestVariable.Name)
+		if token == nil {
+			return nil, nil
+		}
+
+		// Render token hover content using template
+		content, err := renderTokenHover(token)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render token hover for declaration: %w", err)
+		}
+
+		return &protocol.Hover{
+			Contents: protocol.MarkupContent{
+				Kind:  protocol.MarkupKindMarkdown,
+				Value: content,
+			},
+			Range: &protocol.Range{
+				Start: protocol.Position{
+					Line:      bestVariable.Range.Start.Line,
+					Character: bestVariable.Range.Start.Character,
+				},
+				End: protocol.Position{
+					Line:      bestVariable.Range.End.Line,
+					Character: bestVariable.Range.End.Character,
+				},
+			},
+		}, nil
 	}
 
 	return nil, nil
@@ -176,4 +202,22 @@ func isPositionInRange(pos protocol.Position, r css.Range) bool {
 	}
 
 	return true
+}
+
+// calculateRangeSize computes a metric for range size to find the smallest (innermost) range
+// For nested ranges, we want to select the innermost one containing the cursor position
+func calculateRangeSize(r css.Range) int {
+	// Calculate total character span across all lines
+	// Simple metric: (line difference * 10000) + character difference
+	// This ensures multi-line ranges are always larger than single-line ranges
+	lineDiff := r.End.Line - r.Start.Line
+	charDiff := r.End.Character - r.Start.Character
+
+	if lineDiff == 0 {
+		// Single line: just use character difference
+		return int(charDiff)
+	}
+
+	// Multi-line: weight lines heavily to ensure they're always larger
+	return int(lineDiff)*10000 + int(charDiff)
 }

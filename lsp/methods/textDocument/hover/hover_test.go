@@ -538,3 +538,104 @@ func TestHover_DocumentNotFound(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, hover)
 }
+
+// TestHover_NestedVarInFallback tests hovering over nested var() calls in fallback position
+// This is the RHDS pattern: var(--local, var(--design-token, fallback))
+func TestHover_NestedVarInFallback(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add design tokens (not the local variables)
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:        "color-text-primary",
+		Value:       "#000000",
+		Type:        "color",
+		Description: "Primary text color",
+	})
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:        "color-surface-lightest",
+		Value:       "#ffffff",
+		Type:        "color",
+		Description: "Lightest surface color",
+	})
+
+	uri := "file:///test.css"
+	// RHDS pattern: local variable with design token fallback
+	// The outer var(--_local, ...) has a nested var(--design-token, fallback)
+	cssContent := `.card {
+  color: var(--_local-color, var(--color-text-primary, #000000));
+  background: var(--_card-background, var(--color-surface-lightest, #ffffff));
+}`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	t.Run("hover over inner token in nested fallback", func(t *testing.T) {
+		// Hover over --color-text-primary (the inner/nested var)
+		// Line 1, character 40 is approximately over --color-text-primary
+		hover, err := Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 1, Character: 40},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, hover, "Should find hover for inner token")
+
+		content, ok := hover.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+
+		// Should show info for the INNER token, not the outer --_local-color
+		assert.Contains(t, content.Value, "--color-text-primary", "Should show inner token name")
+		assert.Contains(t, content.Value, "#000000", "Should show inner token value")
+		assert.Contains(t, content.Value, "Primary text color", "Should show inner token description")
+		assert.NotContains(t, content.Value, "Unknown token", "Should not report as unknown")
+		assert.NotContains(t, content.Value, "--_local-color", "Should not show outer local variable")
+	})
+
+	t.Run("hover over outer local variable", func(t *testing.T) {
+		// Hover over --_local-color (the outer var, which is a local variable)
+		// Line 1, character 18 is approximately over --_local-color
+		hover, err := Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 1, Character: 18},
+			},
+		})
+
+		require.NoError(t, err)
+		// May be nil or show unknown token (local variables aren't in token manager)
+		// This is acceptable behavior - we're just testing it doesn't crash
+		// and doesn't incorrectly show the inner token
+		if hover != nil {
+			content, ok := hover.Contents.(protocol.MarkupContent)
+			if ok {
+				// If it shows content, it should be about --_local-color, not --color-text-primary
+				assert.NotContains(t, content.Value, "--color-text-primary", "Should not show inner token")
+				assert.NotContains(t, content.Value, "Primary text color", "Should not show inner token description")
+			}
+		}
+	})
+
+	t.Run("hover over second nested var in same document", func(t *testing.T) {
+		// Hover over --color-surface-lightest (line 2)
+		// Line 2, character 50 is approximately over --color-surface-lightest
+		hover, err := Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 2, Character: 50},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, hover, "Should find hover for second inner token")
+
+		content, ok := hover.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+
+		assert.Contains(t, content.Value, "--color-surface-lightest", "Should show correct token name")
+		assert.Contains(t, content.Value, "#ffffff", "Should show correct token value")
+		assert.Contains(t, content.Value, "Lightest surface color", "Should show correct token description")
+		assert.NotContains(t, content.Value, "--_card-background", "Should not show outer local variable")
+	})
+}
