@@ -17,36 +17,15 @@ import (
 func TestReferencesOnVarCall(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
-	// Open CSS file with var() call
+	// Load tokens and open CSS file with var() call
+	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
-	// Load and open token file
-	tokenContent := `{
-  "color": {
-    "primary": {
-      "$type": "color",
-      "$value": "#ff0000"
-    }
-  }
-}`
-	// Load tokens into token manager
-	err := server.LoadTokensFromJSON([]byte(tokenContent), "")
-	require.NoError(t, err)
-
 	// Open the token file as a document
-	req := types.NewRequestContext(server, nil)
-	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
-		TextDocument: protocol.TextDocumentItem{
-			URI:        "file:///tokens.json",
-			LanguageID: "json",
-			Version:    1,
-			Text:       tokenContent,
-		},
-	})
-	require.NoError(t, err)
+	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "basic-colors.json")
 
 	// Request references from the token file (cursor on "primary")
-	req = types.NewRequestContext(server, nil)
+	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
@@ -82,37 +61,16 @@ func TestReferencesOnVarCall(t *testing.T) {
 func TestReferencesMultipleFiles(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
-	// Open two CSS files with var() calls
+	// Load tokens and open two CSS files with var() calls
+	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test1.css", "references-multi-file-1.css")
 	testutil.OpenCSSFixture(t, server, "file:///test2.css", "references-multi-file-2.css")
 
-	// Load and open token file
-	tokenContent := `{
-  "color": {
-    "primary": {
-      "$type": "color",
-      "$value": "#ff0000"
-    }
-  }
-}`
-	// Load tokens into token manager
-	err := server.LoadTokensFromJSON([]byte(tokenContent), "")
-	require.NoError(t, err)
-
 	// Open the token file as a document
-	req := types.NewRequestContext(server, nil)
-	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
-		TextDocument: protocol.TextDocumentItem{
-			URI:        "file:///tokens.json",
-			LanguageID: "json",
-			Version:    1,
-			Text:       tokenContent,
-		},
-	})
-	require.NoError(t, err)
+	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "basic-colors.json")
 
 	// Request references from token file (cursor on "primary")
-	req = types.NewRequestContext(server, nil)
+	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
@@ -176,21 +134,9 @@ func TestReferencesOutsideVarCall(t *testing.T) {
 func TestReferencesWithDeclaration(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
-	// Open CSS file with var() call
+	// Load tokens and open CSS file with var() call
+	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
-
-	// Load and open token file
-	tokenContent := `{
-  "color": {
-    "primary": {
-      "$type": "color",
-      "$value": "#ff0000"
-    }
-  }
-}`
-	// Load tokens into token manager
-	err := server.LoadTokensFromJSON([]byte(tokenContent), "")
-	require.NoError(t, err)
 
 	// Set the DefinitionURI for the token so declaration can be included
 	token := server.Token("color-primary")
@@ -198,19 +144,10 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	token.DefinitionURI = "file:///tokens.json"
 
 	// Open the token file as a document
-	req := types.NewRequestContext(server, nil)
-	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
-		TextDocument: protocol.TextDocumentItem{
-			URI:        "file:///tokens.json",
-			LanguageID: "json",
-			Version:    1,
-			Text:       tokenContent,
-		},
-	})
-	require.NoError(t, err)
+	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "basic-colors.json")
 
 	// Request references from token file with IncludeDeclaration
-	req = types.NewRequestContext(server, nil)
+	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
@@ -283,23 +220,10 @@ func TestReferencesUnknownToken(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
 	// Open CSS file with reference to unknown token
-	content := `/* Test file */
-.button {
-    color: var(--unknown-token);
-}`
-	req := types.NewRequestContext(server, nil)
-	err := textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
-		TextDocument: protocol.TextDocumentItem{
-			URI:        "file:///test.css",
-			LanguageID: "css",
-			Version:    1,
-			Text:       content,
-		},
-	})
-	require.NoError(t, err)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "unknown-token-reference.css")
 
 	// Request references on CSS file - always returns nil
-	req = types.NewRequestContext(server, nil)
+	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{

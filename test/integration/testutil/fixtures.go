@@ -96,3 +96,30 @@ func OpenCSSFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {
 	err := textDocument.DidOpen(req, params)
 	require.NoError(t, err, "Failed to open CSS fixture: %s", fixtureName)
 }
+
+// OpenTokenFixture opens a token fixture file as a document in the server
+// This is useful for testing references/definition from token files
+func OpenTokenFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {
+	t.Helper()
+	content := LoadTokenFixture(t, fixtureName)
+
+	// Determine language ID from URI extension
+	languageID := "json"
+	if len(uri) > 5 && uri[len(uri)-5:] == ".yaml" {
+		languageID = "yaml"
+	} else if len(uri) > 4 && uri[len(uri)-4:] == ".yml" {
+		languageID = "yaml"
+	}
+
+	params := &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        uri,
+			LanguageID: languageID,
+			Version:    1,
+			Text:       string(content),
+		},
+	}
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, params)
+	require.NoError(t, err, "Failed to open token fixture: %s", fixtureName)
+}
