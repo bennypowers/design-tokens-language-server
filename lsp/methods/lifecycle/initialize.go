@@ -42,7 +42,7 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 			OpenClose: boolPtr(true),
 			Change:    &syncKind,
 		},
-		"hoverProvider":      true,
+		"hoverProvider": true,
 		"completionProvider": protocol.CompletionOptions{
 			ResolveProvider: boolPtr(true),
 		},
@@ -72,7 +72,7 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 	// protocol.InitializeResult expects ServerCapabilities (LSP 3.16), but we need to
 	// include LSP 3.17 fields. When glsp is updated, we can use protocol_3_17.InitializeResult.
 	return struct {
-		Capabilities any                                      `json:"capabilities"`
+		Capabilities any                                  `json:"capabilities"`
 		ServerInfo   *protocol.InitializeResultServerInfo `json:"serverInfo,omitempty"`
 	}{
 		Capabilities: capabilities,

@@ -218,7 +218,6 @@ func TestDocumentColorNonCSSFile(t *testing.T) {
 	assert.Nil(t, colors)
 }
 
-
 // TestDocumentColorVariables tests colors from CSS variable declarations
 func TestDocumentColorVariables(t *testing.T) {
 	server := testutil.NewTestServer(t)

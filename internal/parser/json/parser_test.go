@@ -373,7 +373,7 @@ func TestParseWithGroupMarkers(t *testing.T) {
 
 		parser := json.NewParser()
 		tokens, err := parser.Parse([]byte(jsonData), "")
-		
+
 		// Without groupMarkers, this structure should still parse but only extract the parent token
 		// (ignoring the children since the parent has $value)
 		require.NoError(t, err)

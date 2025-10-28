@@ -26,7 +26,7 @@ func TestCompletionBasic(t *testing.T) {
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      2, // Adjusted for comment line
+				Line:      2,  // Adjusted for comment line
 				Character: 15, // After "--color"
 			},
 		},
@@ -164,7 +164,7 @@ func TestCompletionFiltering(t *testing.T) {
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      2, // Adjusted for comment line
+				Line:      2,  // Adjusted for comment line
 				Character: 14, // After "--col"
 			},
 		},

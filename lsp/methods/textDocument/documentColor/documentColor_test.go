@@ -15,7 +15,7 @@ import (
 func TestDocumentColor_ColorTokenInVar(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -46,7 +46,7 @@ func TestDocumentColor_ColorTokenInVar(t *testing.T) {
 func TestDocumentColor_ColorTokenInDeclaration(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -81,7 +81,7 @@ func TestDocumentColor_ColorTokenInDeclaration(t *testing.T) {
 func TestDocumentColor_NonColorToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a non-color token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -105,7 +105,7 @@ func TestDocumentColor_NonColorToken(t *testing.T) {
 func TestDocumentColor_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
@@ -122,7 +122,7 @@ func TestDocumentColor_NonCSSDocument(t *testing.T) {
 func TestDocumentColor_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	result, err := DocumentColor(req, &protocol.DocumentColorParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
@@ -135,7 +135,7 @@ func TestDocumentColor_DocumentNotFound(t *testing.T) {
 func TestColorPresentation_MatchingTokens(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add multiple tokens with red color
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -182,7 +182,7 @@ func TestColorPresentation_MatchingTokens(t *testing.T) {
 func TestColorPresentation_WithAlpha(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add tokens with alpha channel (using same hex value to ensure exact match)
 	_ = ctx.TokenManager().Add(&tokens.Token{

@@ -116,7 +116,7 @@ func TestReferencesOutsideVarCall(t *testing.T) {
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      2, // Adjusted for comment line
+				Line:      2,  // Adjusted for comment line
 				Character: 10, // On "red"
 			},
 		},
@@ -242,4 +242,3 @@ func TestReferencesUnknownToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, locations) // CSS files always return nil
 }
-

@@ -61,26 +61,26 @@ func NewMockServerContextForTest() *mockServerContextMinimal {
 // Minimal mock just for request context tests
 type mockServerContextMinimal struct{}
 
-func (m *mockServerContextMinimal) Document(uri string) *documents.Document                 { return nil }
-func (m *mockServerContextMinimal) DocumentManager() *documents.Manager                     { return nil }
-func (m *mockServerContextMinimal) AllDocuments() []*documents.Document                     { return nil }
-func (m *mockServerContextMinimal) Token(name string) *tokens.Token                         { return nil }
-func (m *mockServerContextMinimal) TokenManager() *tokens.Manager                           { return nil }
-func (m *mockServerContextMinimal) TokenCount() int                                         { return 0 }
-func (m *mockServerContextMinimal) RootURI() string                                         { return "" }
-func (m *mockServerContextMinimal) RootPath() string                                        { return "" }
-func (m *mockServerContextMinimal) SetRootURI(uri string)                                   {}
-func (m *mockServerContextMinimal) SetRootPath(path string)                                 {}
-func (m *mockServerContextMinimal) GetConfig() ServerConfig                                 { return ServerConfig{} }
-func (m *mockServerContextMinimal) SetConfig(config ServerConfig)                           {}
-func (m *mockServerContextMinimal) IsTokenFile(path string) bool                            { return false }
-func (m *mockServerContextMinimal) LoadTokensFromConfig() error                             { return nil }
-func (m *mockServerContextMinimal) RegisterFileWatchers(ctx *glsp.Context) error            { return nil }
-func (m *mockServerContextMinimal) RemoveLoadedFile(path string)                            {}
-func (m *mockServerContextMinimal) GLSPContext() *glsp.Context                              { return nil }
-func (m *mockServerContextMinimal) SetGLSPContext(ctx *glsp.Context)                        {}
+func (m *mockServerContextMinimal) Document(uri string) *documents.Document      { return nil }
+func (m *mockServerContextMinimal) DocumentManager() *documents.Manager          { return nil }
+func (m *mockServerContextMinimal) AllDocuments() []*documents.Document          { return nil }
+func (m *mockServerContextMinimal) Token(name string) *tokens.Token              { return nil }
+func (m *mockServerContextMinimal) TokenManager() *tokens.Manager                { return nil }
+func (m *mockServerContextMinimal) TokenCount() int                              { return 0 }
+func (m *mockServerContextMinimal) RootURI() string                              { return "" }
+func (m *mockServerContextMinimal) RootPath() string                             { return "" }
+func (m *mockServerContextMinimal) SetRootURI(uri string)                        {}
+func (m *mockServerContextMinimal) SetRootPath(path string)                      {}
+func (m *mockServerContextMinimal) GetConfig() ServerConfig                      { return ServerConfig{} }
+func (m *mockServerContextMinimal) SetConfig(config ServerConfig)                {}
+func (m *mockServerContextMinimal) IsTokenFile(path string) bool                 { return false }
+func (m *mockServerContextMinimal) LoadTokensFromConfig() error                  { return nil }
+func (m *mockServerContextMinimal) RegisterFileWatchers(ctx *glsp.Context) error { return nil }
+func (m *mockServerContextMinimal) RemoveLoadedFile(path string)                 {}
+func (m *mockServerContextMinimal) GLSPContext() *glsp.Context                   { return nil }
+func (m *mockServerContextMinimal) SetGLSPContext(ctx *glsp.Context)             {}
 func (m *mockServerContextMinimal) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }
-func (m *mockServerContextMinimal) AddWarning(err error)     {}
-func (m *mockServerContextMinimal) TakeWarnings() []error    { return nil }
+func (m *mockServerContextMinimal) AddWarning(err error)  {}
+func (m *mockServerContextMinimal) TakeWarnings() []error { return nil }

@@ -61,7 +61,7 @@ func TestIsPositionInRange(t *testing.T) {
 func TestHover_CSSVariableReference(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -104,7 +104,7 @@ func TestHover_CSSVariableReference(t *testing.T) {
 func TestHover_DeprecatedToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add deprecated token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -139,7 +139,7 @@ func TestHover_DeprecatedToken(t *testing.T) {
 func TestHover_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--unknown-token); }`
@@ -165,7 +165,7 @@ func TestHover_UnknownToken(t *testing.T) {
 func TestHover_VarCallWithFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "spacing.large",
@@ -197,7 +197,7 @@ func TestHover_VarCallWithFallback(t *testing.T) {
 func TestHover_NestedVarCalls(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -228,7 +228,7 @@ func TestHover_NestedVarCalls(t *testing.T) {
 func TestHover_VarCallOutsideCursorRange(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -254,7 +254,7 @@ func TestHover_VarCallOutsideCursorRange(t *testing.T) {
 func TestHover_VariableDeclaration(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -297,7 +297,7 @@ func TestHover_VariableDeclaration(t *testing.T) {
 func TestHover_VariableDeclaration_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	// --local-var is not a known design token, just a local CSS custom property
@@ -319,7 +319,7 @@ func TestHover_VariableDeclaration_UnknownToken(t *testing.T) {
 func TestHover_VariableDeclaration_OnValue(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -348,7 +348,7 @@ func TestHover_VariableDeclaration_OnValue(t *testing.T) {
 func TestHover_VariableDeclaration_Boundaries(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -394,7 +394,7 @@ func TestHover_VariableDeclaration_Boundaries(t *testing.T) {
 func TestHover_VariableDeclaration_WithPrefix(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with prefix
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -430,7 +430,7 @@ func TestHover_VariableDeclaration_WithPrefix(t *testing.T) {
 func TestHover_VariableDeclaration_MultipleInSameBlock(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -480,7 +480,7 @@ func TestHover_VariableDeclaration_MultipleInSameBlock(t *testing.T) {
 func TestHover_InvalidPosition(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -506,7 +506,7 @@ func TestHover_InvalidPosition(t *testing.T) {
 func TestHover_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
@@ -526,7 +526,7 @@ func TestHover_NonCSSDocument(t *testing.T) {
 func TestHover_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{

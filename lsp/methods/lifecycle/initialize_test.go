@@ -64,7 +64,7 @@ func TestInitialize(t *testing.T) {
 
 		// Result should have Capabilities and ServerInfo fields
 		initResult := result.(struct {
-			Capabilities interface{}                           `json:"capabilities"`
+			Capabilities interface{}                          `json:"capabilities"`
 			ServerInfo   *protocol.InitializeResultServerInfo `json:"serverInfo,omitempty"`
 		})
 
@@ -84,7 +84,7 @@ func TestInitialize(t *testing.T) {
 		require.NoError(t, err)
 
 		initResult := result.(struct {
-			Capabilities interface{}                           `json:"capabilities"`
+			Capabilities interface{}                          `json:"capabilities"`
 			ServerInfo   *protocol.InitializeResultServerInfo `json:"serverInfo,omitempty"`
 		})
 

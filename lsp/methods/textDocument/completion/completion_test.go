@@ -12,11 +12,10 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-
 func TestCompletion_CSSVariableCompletion(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add some tokens
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -70,7 +69,7 @@ func TestCompletion_CSSVariableCompletion(t *testing.T) {
 func TestCompletion_AllTokens(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -105,7 +104,7 @@ func TestCompletion_AllTokens(t *testing.T) {
 func TestCompletion_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
@@ -125,7 +124,7 @@ func TestCompletion_NonCSSDocument(t *testing.T) {
 func TestCompletion_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	result, err := Completion(req, &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -141,7 +140,7 @@ func TestCompletion_DocumentNotFound(t *testing.T) {
 func TestCompletion_NoWordAtPosition(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -166,7 +165,7 @@ func TestCompletion_NoWordAtPosition(t *testing.T) {
 func TestCompletionResolve_AddsDocumentation(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:        "color.primary",
@@ -206,7 +205,7 @@ func TestCompletionResolve_AddsDocumentation(t *testing.T) {
 func TestCompletionResolve_DeprecatedToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:               "color.old-primary",
@@ -237,7 +236,7 @@ func TestCompletionResolve_DeprecatedToken(t *testing.T) {
 func TestCompletionResolve_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	item := &protocol.CompletionItem{
 		Label: "--unknown-token",
@@ -255,7 +254,7 @@ func TestCompletionResolve_UnknownToken(t *testing.T) {
 func TestCompletionResolve_NoData(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",
@@ -280,7 +279,7 @@ func TestCompletionResolve_NoData(t *testing.T) {
 
 // TestGetWordAtPosition tests the getWordAtPosition helper function
 func TestGetWordAtPosition(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		name     string
 		content  string
 		position protocol.Position
@@ -444,7 +443,7 @@ func TestIsInCompletionContext(t *testing.T) {
 			expected: true, // Now inside the block
 		},
 		{
-			name: "empty file",
+			name:     "empty file",
 			content:  "",
 			position: protocol.Position{Line: 0, Character: 0},
 			expected: false,

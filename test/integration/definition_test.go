@@ -26,7 +26,7 @@ func TestDefinitionOnVarCall(t *testing.T) {
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      2, // Adjusted for comment line
+				Line:      2,  // Adjusted for comment line
 				Character: 18, // Inside --color-primary
 			},
 		},
@@ -51,7 +51,7 @@ func TestDefinitionOutsideVarCall(t *testing.T) {
 				URI: "file:///test.css",
 			},
 			Position: protocol.Position{
-				Line:      2, // Adjusted for comment line
+				Line:      2,  // Adjusted for comment line
 				Character: 10, // On "red"
 			},
 		},
@@ -131,4 +131,3 @@ func TestDefinitionUnknownToken(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
-

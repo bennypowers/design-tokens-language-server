@@ -212,9 +212,9 @@ func TestFullMessageParsing(t *testing.T) {
 // TestJSONRPCIDSerialization tests that ID field is always serialized (not omitted)
 func TestJSONRPCIDSerialization(t *testing.T) {
 	tests := []struct {
-		name      string
-		id        int
-		expectID  string // Expected ID in JSON
+		name     string
+		id       int
+		expectID string // Expected ID in JSON
 	}{
 		{
 			name:     "ID is 0",

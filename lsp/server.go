@@ -31,16 +31,16 @@ var _ types.ServerContext = (*Server)(nil)
 
 // Server represents the Design Tokens Language Server
 type Server struct {
-	documents         *documents.Manager
-	tokens            *tokens.Manager
-	glspServer        *server.Server
-	context           *glsp.Context
-	rootURI           string                       // Workspace root URI
-	rootPath          string                       // Workspace root path (file system)
-	config            types.ServerConfig           // Server configuration
-	configMu          sync.RWMutex                 // Protects config from concurrent access
-	loadedFiles       map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
-	loadedFilesMu     sync.RWMutex                 // Protects loadedFiles from concurrent access
+	documents     *documents.Manager
+	tokens        *tokens.Manager
+	glspServer    *server.Server
+	context       *glsp.Context
+	rootURI       string                       // Workspace root URI
+	rootPath      string                       // Workspace root path (file system)
+	config        types.ServerConfig           // Server configuration
+	configMu      sync.RWMutex                 // Protects config from concurrent access
+	loadedFiles   map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
+	loadedFilesMu sync.RWMutex                 // Protects loadedFiles from concurrent access
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -367,4 +367,3 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Sent file watcher registration request (%d watchers)\n", len(watchers))
 	return nil
 }
-

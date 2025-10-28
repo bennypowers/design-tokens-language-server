@@ -317,4 +317,3 @@ func TestSetRootPath(t *testing.T) {
 	assert.Equal(t, "/test/path", server.GetState().RootPath)
 	assert.Equal(t, "/test/path", server.RootPath())
 }
-

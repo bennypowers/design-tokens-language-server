@@ -21,10 +21,10 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 
 	// Safe types that can use raw values (no quoting needed)
 	safeTypes := map[string]bool{
-		"color":      true,
-		"dimension":  true,
-		"number":     true,
-		"duration":   true,
+		"color":       true,
+		"dimension":   true,
+		"number":      true,
+		"duration":    true,
 		"cubicbezier": true,
 	}
 
@@ -71,7 +71,7 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 		// Check if it looks like a safe CSS value (color, dimension, number)
 		// Colors: hex, rgb(), hsl(), named colors
 		if strings.HasPrefix(value, "#") || strings.HasPrefix(value, "rgb") ||
-		   strings.HasPrefix(value, "hsl") || isNamedColor(value) {
+			strings.HasPrefix(value, "hsl") || isNamedColor(value) {
 			return value, true
 		}
 
@@ -114,7 +114,7 @@ func FormatFontFamilyValue(value string) (string, bool) {
 
 	// If it's already quoted, use as-is (assume it's properly formatted)
 	if (strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"")) ||
-	   (strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) {
+		(strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) {
 		return value, true
 	}
 

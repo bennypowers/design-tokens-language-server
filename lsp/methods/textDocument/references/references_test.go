@@ -16,7 +16,7 @@ import (
 func TestReferences_CSSFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
@@ -41,7 +41,7 @@ func TestReferences_CSSFile(t *testing.T) {
 func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with extension data
 	token := &tokens.Token{
@@ -110,7 +110,7 @@ func TestReferences_JSONFile_FindsReferencesInCSS(t *testing.T) {
 func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add tokens
 	primaryToken := &tokens.Token{
@@ -167,7 +167,7 @@ func TestReferences_JSONFile_FindsReferencesInJSON(t *testing.T) {
 func TestReferences_WithIncludeDeclaration(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	token := &tokens.Token{
 		Name:          "color-primary",
@@ -221,7 +221,7 @@ func TestReferences_WithIncludeDeclaration(t *testing.T) {
 func TestReferences_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	jsonURI := "file:///tokens.json"
 	jsonContent := `{
@@ -253,7 +253,7 @@ func TestReferences_UnknownToken(t *testing.T) {
 func TestReferences_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -273,7 +273,7 @@ func TestReferences_DocumentNotFound(t *testing.T) {
 func TestReferences_YAMLFile(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	token := &tokens.Token{
 		Name:          "color-primary",

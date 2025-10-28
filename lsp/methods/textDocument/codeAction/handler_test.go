@@ -15,7 +15,7 @@ import (
 func TestCodeAction_IncorrectFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -70,7 +70,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 func TestCodeAction_AddFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a color token
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -121,7 +121,7 @@ func TestCodeAction_AddFallback(t *testing.T) {
 func TestCodeAction_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
@@ -145,7 +145,7 @@ func TestCodeAction_NonCSSDocument(t *testing.T) {
 func TestCodeAction_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	result, err := CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: "file:///nonexistent.css"},
@@ -165,7 +165,7 @@ func TestCodeAction_DocumentNotFound(t *testing.T) {
 func TestCodeAction_OutsideRange(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:  "color.primary",

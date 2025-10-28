@@ -47,7 +47,7 @@ func TestServerInitialization(t *testing.T) {
 
 		// Verify capabilities are returned
 		resultMap, ok := result.(struct {
-			Capabilities any                                      `json:"capabilities"`
+			Capabilities any                                  `json:"capabilities"`
 			ServerInfo   *protocol.InitializeResultServerInfo `json:"serverInfo,omitempty"`
 		})
 		require.True(t, ok, "Result should be InitializeResult struct")

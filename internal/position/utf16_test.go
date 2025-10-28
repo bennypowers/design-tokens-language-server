@@ -40,7 +40,7 @@ func TestUTF16ToByteOffset(t *testing.T) {
 		{
 			name:       "emoji in middle",
 			s:          "hello 👍 world",
-			utf16Col:   8, // 6 (hello ) + 2 (👍)
+			utf16Col:   8,  // 6 (hello ) + 2 (👍)
 			expectByte: 10, // 6 bytes + 4 bytes
 		},
 		{
@@ -52,7 +52,7 @@ func TestUTF16ToByteOffset(t *testing.T) {
 		{
 			name:       "mixed emoji and CJK",
 			s:          "👍颜色🎨",
-			utf16Col:   6, // 2 (👍) + 2 (颜色) + 2 (🎨)
+			utf16Col:   6,  // 2 (👍) + 2 (颜色) + 2 (🎨)
 			expectByte: 14, // 4 (👍) + 6 (颜色) + 4 (🎨)
 		},
 		{
@@ -180,9 +180,9 @@ func TestByteOffsetToUTF16(t *testing.T) {
 
 func TestStringLengthUTF16(t *testing.T) {
 	tests := []struct {
-		name        string
-		s           string
-		expectLen   int
+		name      string
+		s         string
+		expectLen int
 	}{
 		{
 			name:      "empty string",

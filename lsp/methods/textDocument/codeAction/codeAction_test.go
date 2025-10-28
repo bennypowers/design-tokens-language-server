@@ -8,9 +8,9 @@ import (
 	"bennypowers.dev/dtls/lsp"
 	codeaction "bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
 	"bennypowers.dev/dtls/lsp/types"
-	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 const (
@@ -157,10 +157,10 @@ func TestRangesIntersect(t *testing.T) {
 // TestFormatTokenValueForCSS tests the formatTokenValueForCSS function
 func TestFormatTokenValueForCSS(t *testing.T) {
 	tests := []struct {
-		name           string
-		token          *tokens.Token
-		expectedValue  string
-		expectedSafe   bool
+		name          string
+		token         *tokens.Token
+		expectedValue string
+		expectedSafe  bool
 	}{
 		// Safe types - colors
 		{
@@ -718,7 +718,7 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 				DeprecationMessage: "Replaced by spacing-base",
 				Deprecated:         true,
 			},
-			diagnostics: []protocol.Diagnostic{},
+			diagnostics:        []protocol.Diagnostic{},
 			expectedNumActions: 2, // Both actions even without matching diagnostic
 		},
 		{

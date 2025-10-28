@@ -56,9 +56,9 @@ func TestGetSemanticTokensForDocument(t *testing.T) {
 				},
 			},
 			expected: []semantictokens.SemanticTokenIntermediate{
-				{Line: 2, StartChar: 16, Length: 5, TokenType: 0, TokenModifiers: 0},  // "color"
-				{Line: 2, StartChar: 22, Length: 5, TokenType: 1, TokenModifiers: 0},  // "brand"
-				{Line: 2, StartChar: 28, Length: 7, TokenType: 1, TokenModifiers: 0},  // "primary"
+				{Line: 2, StartChar: 16, Length: 5, TokenType: 0, TokenModifiers: 0}, // "color"
+				{Line: 2, StartChar: 22, Length: 5, TokenType: 1, TokenModifiers: 0}, // "brand"
+				{Line: 2, StartChar: 28, Length: 7, TokenType: 1, TokenModifiers: 0}, // "primary"
 			},
 		},
 		{

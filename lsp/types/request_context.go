@@ -8,9 +8,9 @@ import (
 // It wraps both the server-wide context and the GLSP protocol context,
 // and provides storage for request-scoped warnings.
 type RequestContext struct {
-	Server   ServerContext   // Server-wide context (documents, tokens, config)
-	GLSP     *glsp.Context   // GLSP protocol context (Notify, Call methods)
-	warnings []error         // Request-scoped warnings (collected during handler execution)
+	Server   ServerContext // Server-wide context (documents, tokens, config)
+	GLSP     *glsp.Context // GLSP protocol context (Notify, Call methods)
+	warnings []error       // Request-scoped warnings (collected during handler execution)
 }
 
 // NewRequestContext creates a new request context

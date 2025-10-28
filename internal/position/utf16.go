@@ -29,7 +29,7 @@ func UTF16ToByteOffset(s string, utf16Col int) int {
 		runeUTF16Len := utf16.RuneLen(r)
 
 		// If target falls within a surrogate pair, clamp to the start of the rune
-		if runeUTF16Len == 2 && units + 1 == utf16Col {
+		if runeUTF16Len == 2 && units+1 == utf16Col {
 			// Stop here (clamp to code-point boundary)
 			break
 		}

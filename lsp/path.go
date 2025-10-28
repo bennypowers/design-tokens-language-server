@@ -105,8 +105,8 @@ func resolveNpmPath(npmPath, workspaceRoot string) (string, error) {
 
 // PackageJSON represents relevant fields from package.json
 type PackageJSON struct {
-	Main    string                 `json:"main,omitempty"`
-	Exports any                    `json:"exports,omitempty"` // Can be string, map[string]any, or map[string]string
+	Main    string `json:"main,omitempty"`
+	Exports any    `json:"exports,omitempty"` // Can be string, map[string]any, or map[string]string
 }
 
 // resolvePackageEntry resolves a package entry point (e.g., "." for the main entry)

@@ -159,7 +159,7 @@ func TestGetDiagnostics_MultipleIssues(t *testing.T) {
 func TestDocumentDiagnostic(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a deprecated token
 	_ = ctx.TokenManager().Add(&tokens.Token{

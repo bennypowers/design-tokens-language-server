@@ -331,10 +331,10 @@ func TestUriFallback(t *testing.T) {
 // TestURIToPath_InvalidURIs tests URIToPath with invalid URIs that trigger fallback
 func TestURIToPath_InvalidURIs(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		posix    bool
-		windows  bool
+		name    string
+		input   string
+		posix   bool
+		windows bool
 	}{
 		{
 			name:  "Invalid URI scheme",

@@ -42,7 +42,7 @@ func TestDidChangeConfiguration_WithValidConfig(t *testing.T) {
 func TestDidChangeConfiguration_WithNilSettings(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	params := &protocol.DidChangeConfigurationParams{
 		Settings: nil,
@@ -59,7 +59,7 @@ func TestDidChangeConfiguration_WithNilSettings(t *testing.T) {
 func TestDidChangeConfiguration_WithInvalidSettings(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Settings that's not a map
 	params := &protocol.DidChangeConfigurationParams{
@@ -74,7 +74,7 @@ func TestDidChangeConfiguration_WithInvalidSettings(t *testing.T) {
 func TestDidChangeConfiguration_WithAlternateKey(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Using hyphenated key instead of camelCase
 	settings := map[string]any{

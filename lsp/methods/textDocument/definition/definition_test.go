@@ -16,7 +16,7 @@ import (
 func TestDefinition_CSSVariableReference(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add a token with definition URI
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -51,7 +51,7 @@ func TestDefinition_CSSVariableReference(t *testing.T) {
 func TestDefinition_UnknownToken(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--unknown-token); }`
@@ -71,7 +71,7 @@ func TestDefinition_UnknownToken(t *testing.T) {
 func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	// Add token without DefinitionURI
 	_ = ctx.TokenManager().Add(&tokens.Token{
@@ -97,7 +97,7 @@ func TestDefinition_TokenWithoutDefinitionURI(t *testing.T) {
 func TestDefinition_OutsideVarCall(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	_ = ctx.TokenManager().Add(&tokens.Token{
 		Name:          "color.primary",
@@ -125,7 +125,7 @@ func TestDefinition_OutsideVarCall(t *testing.T) {
 func TestDefinition_NonCSSDocument(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	uri := "file:///test.json"
 	jsonContent := `{"color": {"$value": "#ff0000"}}`
@@ -145,7 +145,7 @@ func TestDefinition_NonCSSDocument(t *testing.T) {
 func TestDefinition_DocumentNotFound(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
-		req := types.NewRequestContext(ctx, glspCtx)
+	req := types.NewRequestContext(ctx, glspCtx)
 
 	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
