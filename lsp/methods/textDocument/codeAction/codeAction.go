@@ -127,8 +127,20 @@ func FormatFontFamilyValue(value string) (string, bool) {
 		return value, true
 	}
 
-	// If it contains spaces, commas, or special characters, it needs quoting
-	needsQuoting := strings.ContainsAny(value, " \t\n,\"'")
+	// If it contains a comma, it's likely a font-family list (e.g., "Arial, sans-serif")
+	// These are typically already properly formatted, so return as-is
+	if strings.Contains(value, ",") {
+		// Check if it looks like a valid font-family list with quoted names
+		// If it contains quotes, assume it's already properly formatted
+		if strings.Contains(value, "\"") || strings.Contains(value, "'") {
+			return value, true
+		}
+		// Otherwise, it's a simple comma-separated list, also safe to use
+		return value, true
+	}
+
+	// If it contains spaces or special characters (but no comma), it needs quoting
+	needsQuoting := strings.ContainsAny(value, " \t\n\"'")
 
 	if needsQuoting {
 		// Escape any internal quotes
@@ -542,7 +554,13 @@ func CreateDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall c
 			// Create replacement action
 			newText := fmt.Sprintf("var(%s)", cssVarName)
 			if varCall.Fallback != nil {
-				newText = fmt.Sprintf("var(%s, %s)", cssVarName, replacementToken.Value)
+				// Format the replacement token value for CSS (handles quoting for font-family, etc.)
+				formattedFallback, safe := FormatTokenValueForCSS(replacementToken)
+				if !safe {
+					// If we can't safely format the fallback, skip the replacement action
+					goto createLiteralAction
+				}
+				newText = fmt.Sprintf("var(%s, %s)", cssVarName, formattedFallback)
 			}
 
 			kind := protocol.CodeActionKindQuickFix
@@ -580,6 +598,7 @@ func CreateDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall c
 		}
 	}
 
+createLiteralAction:
 	// Add a generic "Remove deprecated token" action (shows the value inline)
 	// Only offer this if the value can be safely formatted for CSS
 	formattedValue, safe := FormatTokenValueForCSS(token)

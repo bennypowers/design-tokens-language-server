@@ -742,6 +742,28 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 			diagnostics:        []protocol.Diagnostic{},
 			expectedNumActions: 2, // Both actions
 		},
+		{
+			name: "deprecated font-family token with fallback requiring quoting",
+			uri:  "file:///test.css",
+			varCall: css.VarCall{
+				TokenName: "--font-legacy",
+				Fallback:  ptrString("Arial"),
+				Range: css.Range{
+					Start: css.Position{Line: 16, Character: 5},
+					End:   css.Position{Line: 16, Character: 35},
+				},
+			},
+			token: &tokens.Token{
+				Name:               "font-legacy",
+				Value:              "Helvetica",
+				Type:               "fontFamily",
+				DeprecationMessage: "Use font-modern instead",
+				Deprecated:         true,
+			},
+			diagnostics:        []protocol.Diagnostic{},
+			expectedNumActions: 2, // Both replacement and literal actions
+			checkActionTitle:   "Replace with '--font-modern'",
+		},
 	}
 
 	// Add the recommended replacement tokens for the tests
@@ -752,6 +774,14 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 	}
 	_ = s.TokenManager().Add(spacingBase)
 
+	// Add font-family tokens for testing quoting in fallbacks
+	fontModern := &tokens.Token{
+		Name:  "font-modern",
+		Value: "\"Comic Sans MS\", cursive",
+		Type:  "fontFamily",
+	}
+	_ = s.TokenManager().Add(fontModern)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actions := codeaction.CreateDeprecatedTokenActions(s, tt.uri, tt.varCall, tt.token, tt.diagnostics)
@@ -760,6 +790,18 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 			// Check action title if specified
 			if tt.checkActionTitle != "" && len(actions) > 0 {
 				assert.Equal(t, tt.checkActionTitle, actions[0].Title)
+			}
+
+			// For the font-family fallback quoting test, verify the edit contains properly quoted fallback
+			if tt.name == "deprecated font-family token with fallback requiring quoting" && len(actions) > 0 {
+				// The first action should be the replacement action
+				edit := actions[0].Edit
+				assert.NotNil(t, edit)
+				assert.NotNil(t, edit.Changes)
+				changes := edit.Changes[tt.uri]
+				assert.Len(t, changes, 1)
+				// Should contain var(--font-modern, "Comic Sans MS", cursive) with quoted font name
+				assert.Contains(t, changes[0].NewText, `var(--font-modern, "Comic Sans MS", cursive)`)
 			}
 		})
 	}
