@@ -302,6 +302,41 @@ color:
 		// Should have both color-primary (group) and color-primary-DEFAULT (value)
 		assert.Greater(t, server.TokenCount(), 0)
 	})
+
+	t.Run("error on empty string path", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetConfig(types.ServerConfig{
+			TokensFiles: []any{
+				"", // Empty string path
+			},
+		})
+
+		err = server.LoadTokensFromConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must not be empty")
+	})
+
+	t.Run("error on empty path in object", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetConfig(types.ServerConfig{
+			TokensFiles: []any{
+				map[string]any{
+					"path":   "", // Empty path in object
+					"prefix": "custom",
+				},
+			},
+		})
+
+		err = server.LoadTokensFromConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must not be empty")
+	})
 }
 
 func TestSetRootPath(t *testing.T) {

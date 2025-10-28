@@ -134,6 +134,10 @@ func (s *Server) loadExplicitTokenFiles() error {
 		switch v := item.(type) {
 		case string:
 			path = v
+			if path == "" {
+				errs = append(errs, fmt.Errorf("token file path must not be empty"))
+				continue
+			}
 			prefix = cfg.Prefix
 			groupMarkers = cfg.GroupMarkers
 		case map[string]any:
@@ -144,6 +148,10 @@ func (s *Server) loadExplicitTokenFiles() error {
 				continue
 			}
 			path, _ = pathVal.(string)
+			if path == "" {
+				errs = append(errs, fmt.Errorf("token file entry 'path' must not be empty: %v", v))
+				continue
+			}
 			if prefixVal, ok := v["prefix"]; ok {
 				prefix, _ = prefixVal.(string)
 			} else {
