@@ -263,17 +263,16 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 	}
 
 	// Add toggle fallback actions
-	// Check if range is single-char (cursor position) or multi-char (selection)
-	isSingleChar := params.Range.Start.Line == params.Range.End.Line &&
-		params.Range.End.Character-params.Range.Start.Character == 1
+	// Check if range is collapsed (cursor position) or expanded (selection)
+	isCollapsed := params.Range.Start == params.Range.End
 
-	if isSingleChar && len(varCallsInRange) > 0 {
-		// Single var() - create toggleFallback action
+	if isCollapsed && len(varCallsInRange) > 0 {
+		// Collapsed cursor - create toggleFallback action for the var() at cursor
 		if action := CreateToggleFallbackAction(req.Server, uri, varCallsInRange[0]); action != nil {
 			actions = append(actions, *action)
 		}
-	} else if !isSingleChar && len(varCallsInRange) > 0 {
-		// Multiple var() calls - create toggleRangeFallbacks action
+	} else if !isCollapsed && len(varCallsInRange) > 0 {
+		// Expanded selection - create toggleRangeFallbacks action for all var() calls in range
 		if action := CreateToggleRangeFallbacksAction(req.Server, uri, varCallsInRange); action != nil {
 			actions = append(actions, *action)
 		}

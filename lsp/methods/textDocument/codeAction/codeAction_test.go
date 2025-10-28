@@ -825,12 +825,12 @@ func TestToggleFallback(t *testing.T) {
 			uri := "file:///test.css"
 			_ = s.DocumentManager().DidOpen(uri, "css", 1, tt.cssContent)
 
-			// Request code actions at cursor position (single-char range)
+			// Request code actions at cursor position (collapsed range)
 			params := &protocol.CodeActionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 				Range: protocol.Range{
 					Start: protocol.Position{Line: tt.cursorLine, Character: tt.cursorChar},
-					End:   protocol.Position{Line: tt.cursorLine, Character: tt.cursorChar + 1},
+					End:   protocol.Position{Line: tt.cursorLine, Character: tt.cursorChar},
 				},
 				Context: protocol.CodeActionContext{},
 			}
@@ -916,11 +916,19 @@ func TestToggleRangeFallbacks(t *testing.T) {
 			numEdits:       2,
 		},
 		{
-			name:           "single char range - should not show range action",
+			name:           "single char range - should show range action",
 			cssContent:     `.button { color: var(--color-primary, #ff0000); }`,
 			rangeStart:     protocol.Position{Line: 0, Character: 21},
 			rangeEnd:       protocol.Position{Line: 0, Character: 22},
-			expectedAction: "", // single-char should show toggleFallback, not toggleRangeFallbacks
+			expectedAction: "Toggle design token fallback values (in range)", // 1-char selection shows range toggle
+			numEdits:       1,
+		},
+		{
+			name:           "collapsed cursor - should not show range action",
+			cssContent:     `.button { color: var(--color-primary, #ff0000); }`,
+			rangeStart:     protocol.Position{Line: 0, Character: 21},
+			rangeEnd:       protocol.Position{Line: 0, Character: 21},
+			expectedAction: "", // collapsed cursor shows single toggle, not range toggle
 		},
 	}
 
