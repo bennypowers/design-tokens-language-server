@@ -121,7 +121,7 @@ func TestURIToPath(t *testing.T) {
 		},
 		{
 			name:     "Windows file URI with backslashes in input",
-			input:    "file:///C:/project/file.txt",
+			input:    `file:///C:\project\file.txt`,
 			expected: "C:" + string(filepath.Separator) + "project" + string(filepath.Separator) + "file.txt",
 			windows:  true,
 		},
@@ -394,7 +394,7 @@ func TestPathToURI_EmptyPath(t *testing.T) {
 func TestURIToPath_EmptyURI(t *testing.T) {
 	path := URIToPath("")
 	// Should not panic
-	assert.NotNil(t, path)
+	assert.Equal(t, path, "")
 }
 
 // TestPathToURI_SpecialCharacters tests various special characters
