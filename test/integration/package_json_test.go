@@ -83,7 +83,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		require.Greater(t, server.TokenCount(), 0, "Should load tokens from package.json config")
 
 		// The token was loaded - let's verify it exists
-		// Note: Without a "name" field in the JSON, the token uses the DTCG path
+		// Note: Tokens can be accessed by DTCG path (dots) or hyphenated name
 		token := server.Token("color.primary")
 		require.NotNil(t, token, "Should load color.primary token")
 		assert.Equal(t, "#ff0000", token.Value)

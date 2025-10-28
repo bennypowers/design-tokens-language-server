@@ -38,12 +38,16 @@ func (s *Server) LoadPackageJsonConfig() error {
 	defer s.configMu.Unlock()
 
 	// Only set fields if not already configured by client
+	// For fields with defaults, we check if they're still at default values
+	defaults := types.DefaultConfig()
+
 	if s.config.Prefix == "" && pkgConfig.Prefix != "" {
 		s.config.Prefix = pkgConfig.Prefix
 		fmt.Fprintf(os.Stderr, "[DTLS] Loaded prefix from package.json: %s\n", pkgConfig.Prefix)
 	}
 
-	if len(s.config.GroupMarkers) == 0 && len(pkgConfig.GroupMarkers) > 0 {
+	// Allow package.json to override if groupMarkers are still at defaults
+	if isGroupMarkersDefault(s.config.GroupMarkers, defaults.GroupMarkers) && len(pkgConfig.GroupMarkers) > 0 {
 		s.config.GroupMarkers = pkgConfig.GroupMarkers
 		fmt.Fprintf(os.Stderr, "[DTLS] Loaded groupMarkers from package.json: %v\n", pkgConfig.GroupMarkers)
 	}
@@ -54,6 +58,19 @@ func (s *Server) LoadPackageJsonConfig() error {
 	}
 
 	return nil
+}
+
+// isGroupMarkersDefault checks if group markers are equal to the default values
+func isGroupMarkersDefault(current, defaults []string) bool {
+	if len(current) != len(defaults) {
+		return false
+	}
+	for i := range current {
+		if current[i] != defaults[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // GetState returns a snapshot of runtime state (NOT configuration)

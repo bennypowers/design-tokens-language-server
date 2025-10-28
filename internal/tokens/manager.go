@@ -34,7 +34,8 @@ func (m *Manager) Add(token *Token) error {
 
 // Get retrieves a token by name or CSS variable name
 // Supports:
-// - "color-primary" (token name)
+// - "color-primary" (token name with hyphens)
+// - "color.primary" (DTCG path with dots)
 // - "--color-primary" (CSS variable without prefix)
 // - "--prefix-color-primary" (CSS variable with prefix)
 func (m *Manager) Get(nameOrVar string) *Token {
@@ -44,6 +45,14 @@ func (m *Manager) Get(nameOrVar string) *Token {
 	// Try direct lookup first
 	if token, exists := m.tokens[nameOrVar]; exists {
 		return token
+	}
+
+	// Try converting dots to hyphens (DTCG path format -> hyphenated name)
+	if strings.Contains(nameOrVar, ".") {
+		hyphenated := strings.ReplaceAll(nameOrVar, ".", "-")
+		if token, exists := m.tokens[hyphenated]; exists {
+			return token
+		}
 	}
 
 	// If it starts with --, try removing it
