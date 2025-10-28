@@ -139,21 +139,29 @@ func (s *Server) TokenCount() int {
 
 // RootURI returns the workspace root URI
 func (s *Server) RootURI() string {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return s.rootURI
 }
 
 // RootPath returns the workspace root path
 func (s *Server) RootPath() string {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return s.rootPath
 }
 
 // SetRootURI sets the workspace root URI
 func (s *Server) SetRootURI(uri string) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
 	s.rootURI = uri
 }
 
 // SetRootPath sets the workspace root path
 func (s *Server) SetRootPath(path string) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
 	s.rootPath = path
 }
 
