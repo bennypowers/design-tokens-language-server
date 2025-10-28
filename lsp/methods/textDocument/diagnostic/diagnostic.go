@@ -10,8 +10,6 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// handleDocumentDiagnostic handles the textDocument/diagnostic request (pull diagnostics)
-//
 // This is an LSP 3.17 feature. Since glsp v0.2.2 only supports LSP 3.16, this handler
 // is called via CustomHandler which intercepts the method before it reaches protocol.Handler.
 
