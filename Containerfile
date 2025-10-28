@@ -20,6 +20,7 @@ RUN dnf install -y \
 
 # Use Go toolchain to automatically download required Go version from go.mod
 ENV GOTOOLCHAIN=auto
+ENV GOSUMDB=sum.golang.org
 
 # Default environment for Windows cross-compilation
 ENV CGO_ENABLED=1
