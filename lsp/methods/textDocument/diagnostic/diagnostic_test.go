@@ -1,6 +1,7 @@
 package diagnostic
 
 import (
+	"encoding/json"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/tokens"
@@ -104,7 +105,9 @@ func TestGetDiagnostics_NonCSSDocument(t *testing.T) {
 
 	diagnostics, err := GetDiagnostics(ctx, uri)
 	require.NoError(t, err)
-	assert.Nil(t, diagnostics, "Non-CSS documents should return nil diagnostics")
+	// LSP protocol requires array, not nil - nil serializes to JSON null which crashes clients
+	require.NotNil(t, diagnostics, "Should return empty array, not nil")
+	assert.Empty(t, diagnostics, "Non-CSS documents should return empty diagnostics")
 }
 
 func TestGetDiagnostics_DocumentNotFound(t *testing.T) {
@@ -112,7 +115,9 @@ func TestGetDiagnostics_DocumentNotFound(t *testing.T) {
 
 	diagnostics, err := GetDiagnostics(ctx, "file:///nonexistent.css")
 	require.NoError(t, err)
-	assert.Nil(t, diagnostics)
+	// LSP protocol requires array, not nil - nil serializes to JSON null which crashes clients
+	require.NotNil(t, diagnostics, "Should return empty array, not nil")
+	assert.Empty(t, diagnostics)
 }
 
 func TestGetDiagnostics_InvalidCSS(t *testing.T) {
@@ -298,4 +303,22 @@ func TestGetDiagnostics_DeprecatedWithoutMessage(t *testing.T) {
 	assert.Contains(t, diagnostics[0].Message, "--color-legacy is deprecated")
 	// Make sure there's no colon followed by extra message
 	assert.Equal(t, "--color-legacy is deprecated", diagnostics[0].Message)
+}
+
+func TestGetDiagnostics_EmptyArrayJSON(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+
+	uri := "file:///empty.css"
+	cssContent := `.button { color: blue; }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	diagnostics, err := GetDiagnostics(ctx, uri)
+	require.NoError(t, err)
+	require.NotNil(t, diagnostics, "Must return non-nil slice")
+	require.Empty(t, diagnostics)
+
+	// Verify JSON serialization produces [] not null
+	jsonBytes, err := json.Marshal(diagnostics)
+	require.NoError(t, err)
+	assert.Equal(t, "[]", string(jsonBytes), "Empty diagnostics must serialize to JSON [] not null")
 }

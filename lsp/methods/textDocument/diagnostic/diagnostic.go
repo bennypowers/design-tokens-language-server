@@ -32,16 +32,18 @@ func DocumentDiagnostic(req *types.RequestContext, params *DocumentDiagnosticPar
 }
 
 // GetDiagnostics returns diagnostics for a document
+// Always returns a non-nil array (empty if no diagnostics) to conform to LSP protocol.
+// Returning nil would serialize to JSON null which crashes some LSP clients like Neovim.
 func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic, error) {
 	// Get document
 	doc := ctx.Document(uri)
 	if doc == nil {
-		return nil, nil
+		return []protocol.Diagnostic{}, nil
 	}
 
 	// Only process CSS files
 	if doc.LanguageID() != "css" {
-		return nil, nil
+		return []protocol.Diagnostic{}, nil
 	}
 
 	// Parse CSS to find var() calls
@@ -52,7 +54,8 @@ func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic,
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
 	}
 
-	var diagnostics []protocol.Diagnostic
+	// Initialize as empty slice, not nil, to ensure proper JSON serialization
+	diagnostics := []protocol.Diagnostic{}
 
 	// Check each var() call
 	for _, varCall := range result.VarCalls {
