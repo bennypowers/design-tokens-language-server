@@ -225,12 +225,17 @@ func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	// Select a working context: use passed-in context if non-nil, otherwise fall back to server's context
 	workingContext := context
 	if workingContext == nil {
-		workingContext = s.context
+		workingContext = s.GLSPContext()
 	}
 
 	// If we still don't have a context, fail fast
 	if workingContext == nil {
 		return fmt.Errorf("cannot publish diagnostics: no client context available")
+	}
+
+	// If server is configured to use pull diagnostics, don't publish (client will request)
+	if s.UsePullDiagnostics() {
+		return nil
 	}
 
 	diagnostics, err := diagnostic.GetDiagnostics(s, uri)
