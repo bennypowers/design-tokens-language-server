@@ -149,7 +149,7 @@ func TestParseDeprecatedTokens(t *testing.T) {
 
 // TestParseInvalidJSON tests error handling for invalid JSON
 func TestParseInvalidJSON(t *testing.T) {
-	jsonData := `{ invalid json }`
+	jsonData := `{ "color": { "primary": { "$value": #invalid } } }`
 
 	parser := json.NewParser()
 	_, err := parser.Parse([]byte(jsonData), "")
@@ -250,7 +250,7 @@ func TestParseFileInvalidJSON(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = os.Remove(tmpfile.Name()) }()
 
-	_, err = tmpfile.Write([]byte("{ invalid json }"))
+	_, err = tmpfile.Write([]byte(`{ "color": { "primary": { "$value": #invalid } } }`))
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close())
 
@@ -379,6 +379,212 @@ func TestParseWithGroupMarkers(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, tokens, 1, "Should only extract parent token when not using groupMarkers")
 		assert.Equal(t, "color", tokens[0].Name)
+	})
+}
+
+func TestParseTracksPositions(t *testing.T) {
+	jsonData := []byte(`{
+  "color": {
+    "primary": {
+      "$value": "#ff0000",
+      "$type": "color"
+    },
+    "secondary": {
+      "$value": "#00ff00"
+    }
+  }
+}`)
+
+	parser := json.NewParser()
+	tokens, err := parser.Parse(jsonData, "")
+	require.NoError(t, err)
+	require.Len(t, tokens, 2)
+
+	// Find the primary token
+	primaryToken := findTokenByName(tokens, "color-primary")
+	require.NotNil(t, primaryToken, "should find primary token")
+	// Line 2 is where "primary" key is
+	assert.Equal(t, uint32(2), primaryToken.Line, "primary token should be on line 2")
+	assert.Greater(t, primaryToken.Character, uint32(0), "primary token should have non-zero character position")
+
+	// Find the secondary token
+	secondaryToken := findTokenByName(tokens, "color-secondary")
+	require.NotNil(t, secondaryToken, "should find secondary token")
+	// Line 6 is where "secondary" key is
+	assert.Equal(t, uint32(6), secondaryToken.Line, "secondary token should be on line 6")
+	assert.Greater(t, secondaryToken.Character, uint32(0), "secondary token should have non-zero character position")
+}
+
+// TestParseJSONWithExtensions tests parsing tokens with $extensions
+func TestParseJSONWithExtensions(t *testing.T) {
+	t.Run("simple extensions", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$type": "color",
+      "$extensions": {
+        "com.figma": {
+          "nodeId": "123:456"
+        },
+        "custom": {
+          "category": "brand"
+        }
+      }
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+		require.Len(t, tokens, 1)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Contains(t, token.Extensions, "com.figma")
+		assert.Contains(t, token.Extensions, "custom")
+
+		figma := token.Extensions["com.figma"].(map[string]interface{})
+		assert.Equal(t, "123:456", figma["nodeId"])
+
+		custom := token.Extensions["custom"].(map[string]interface{})
+		assert.Equal(t, "brand", custom["category"])
+	})
+
+	t.Run("nested extensions", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$extensions": {
+        "org.example": {
+          "metadata": {
+            "version": "1.0",
+            "deprecated": false
+          }
+        }
+      }
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+
+		org := token.Extensions["org.example"].(map[string]interface{})
+		metadata := org["metadata"].(map[string]interface{})
+		assert.Equal(t, "1.0", metadata["version"])
+		assert.Equal(t, false, metadata["deprecated"])
+	})
+
+	t.Run("extensions with arrays", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$extensions": {
+        "tags": ["brand", "primary", "blue"]
+      }
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+
+		tags := token.Extensions["tags"].([]interface{})
+		require.Len(t, tags, 3)
+		assert.Equal(t, "brand", tags[0])
+		assert.Equal(t, "primary", tags[1])
+		assert.Equal(t, "blue", tags[2])
+	})
+
+	t.Run("empty extensions", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$extensions": {}
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Empty(t, token.Extensions)
+	})
+
+	t.Run("no extensions", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$type": "color"
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		assert.Nil(t, token.Extensions)
+	})
+
+	t.Run("extensions with multiple data types", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      "$extensions": {
+        "stringValue": "test",
+        "numberValue": 42,
+        "boolValue": true,
+        "nullValue": null
+      }
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Equal(t, "test", token.Extensions["stringValue"])
+		assert.Equal(t, 42, token.Extensions["numberValue"]) // yaml.v3 decodes as int when possible
+		assert.Equal(t, true, token.Extensions["boolValue"])
+		assert.Nil(t, token.Extensions["nullValue"])
+	})
+
+	t.Run("extensions with JSONC comments", func(t *testing.T) {
+		jsonData := `{
+  "color": {
+    "primary": {
+      "$value": "#0000ff",
+      // Comment in extensions
+      "$extensions": {
+        "custom": "value"
+      }
+    }
+  }
+}`
+		parser := json.NewParser()
+		tokens, err := parser.Parse([]byte(jsonData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Equal(t, "value", token.Extensions["custom"])
 	})
 }
 

@@ -49,18 +49,16 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 
 			// Return the definition location in the token file
 			if token.DefinitionURI != "" && len(token.Path) > 0 {
-				// Calculate the range in the token file
-				// For now, we return line 0 since we don't have precise line tracking
-				// In a full implementation, we'd parse the token file to find the exact line
 				location := protocol.Location{
 					URI: token.DefinitionURI,
 					Range: protocol.Range{
-						Start: protocol.Position{Line: 0, Character: 0},
-						End:   protocol.Position{Line: 0, Character: 0},
+						Start: protocol.Position{Line: token.Line, Character: token.Character},
+						End:   protocol.Position{Line: token.Line, Character: token.Character},
 					},
 				}
 
-				fmt.Fprintf(os.Stderr, "[DTLS] Found definition for %s in %s\n", varCall.TokenName, token.DefinitionURI)
+				fmt.Fprintf(os.Stderr, "[DTLS] Found definition for %s in %s at line %d, char %d\n",
+					varCall.TokenName, token.DefinitionURI, token.Line, token.Character)
 				return []protocol.Location{location}, nil
 			}
 

@@ -26,32 +26,64 @@ func (p *Parser) Parse(data []byte, prefix string) ([]*tokens.Token, error) {
 // ParseWithGroupMarkers parses YAML token data with support for group markers
 // Group markers are token names that can be both a token (with $value) and a group (with children)
 func (p *Parser) ParseWithGroupMarkers(data []byte, prefix string, groupMarkers []string) ([]*tokens.Token, error) {
-	// Parse YAML
-	var rawData map[string]interface{}
-	if err := yaml.Unmarshal(data, &rawData); err != nil {
+	// Parse YAML with yaml.v3 to get AST with position data
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
-	// Extract tokens
+	// Extract tokens from AST
 	result := []*tokens.Token{}
-	p.extractTokensWithPathAndGroupMarkers(rawData, []string{}, "", prefix, groupMarkers, &result)
+	if len(root.Content) > 0 {
+		p.extractTokensWithPathAndGroupMarkers(root.Content[0], []string{}, "", prefix, groupMarkers, &result)
+	}
 
 	return result, nil
 }
 
-// extractTokensWithPathAndGroupMarkers recursively extracts tokens with group marker support
-func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]interface{}, jsonPath []string, path, prefix string, groupMarkers []string, result *[]*tokens.Token) {
-	// Sort keys to ensure deterministic order
-	keys := make([]string, 0, len(data))
-	for key := range data {
-		keys = append(keys, key)
+// getNodeValue finds a child node by key name in a mapping node
+func getNodeValue(node *yaml.Node, key string) *yaml.Node {
+	if node.Kind != yaml.MappingNode {
+		return nil
 	}
-	sort.Strings(keys)
+	for i := 0; i < len(node.Content); i += 2 {
+		keyNode := node.Content[i]
+		if keyNode.Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
+}
 
-	for _, key := range keys {
-		value := data[key]
-		valueMap, isMap := value.(map[string]interface{})
-		if !isMap {
+// extractTokensWithPathAndGroupMarkers recursively extracts tokens with group marker support from AST
+func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath []string, path, prefix string, groupMarkers []string, result *[]*tokens.Token) {
+	if node.Kind != yaml.MappingNode {
+		return
+	}
+
+	// Collect key-value pairs and sort by key for deterministic order
+	type kvPair struct {
+		keyNode   *yaml.Node
+		valueNode *yaml.Node
+	}
+	pairs := make([]kvPair, 0)
+	for i := 0; i < len(node.Content); i += 2 {
+		pairs = append(pairs, kvPair{
+			keyNode:   node.Content[i],
+			valueNode: node.Content[i+1],
+		})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].keyNode.Value < pairs[j].keyNode.Value
+	})
+
+	for _, pair := range pairs {
+		keyNode := pair.keyNode
+		valueNode := pair.valueNode
+		key := keyNode.Value
+
+		// Skip non-mapping values
+		if valueNode.Kind != yaml.MappingNode {
 			continue
 		}
 
@@ -64,7 +96,8 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]interface{
 		}
 
 		// Check if this is a token (has $value)
-		dollarValue, hasValue := valueMap["$value"]
+		dollarValueNode := getNodeValue(valueNode, "$value")
+		hasValue := dollarValueNode != nil
 
 		// Check if this key is in groupMarkers
 		isGroupMarker := false
@@ -77,7 +110,7 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]interface{
 
 		// If has $value, extract the token
 		if hasValue {
-			token := p.createToken(key, path, dollarValue, valueMap, prefix, currentPath)
+			token := p.createToken(keyNode, path, valueNode, prefix, currentPath)
 			*result = append(*result, token)
 		}
 
@@ -93,23 +126,33 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]interface{
 
 		// Recurse into children if needed
 		if shouldRecurse {
-			// Filter out DTCG metadata keys (starting with $) when recursing
-			childData := make(map[string]interface{})
-			for k, v := range valueMap {
+			// Create child node with filtered content (skip $ keys)
+			childNode := &yaml.Node{
+				Kind:    yaml.MappingNode,
+				Content: make([]*yaml.Node, 0),
+			}
+
+			for i := 0; i < len(valueNode.Content); i += 2 {
+				k := valueNode.Content[i].Value
+				v := valueNode.Content[i+1]
+
+				// Skip DTCG metadata keys
 				if !strings.HasPrefix(k, "$") {
-					childData[k] = v
+					childNode.Content = append(childNode.Content, valueNode.Content[i], v)
 				}
 			}
 
-			if len(childData) > 0 {
-				p.extractTokensWithPathAndGroupMarkers(childData, currentPath, newPath, prefix, groupMarkers, result)
+			if len(childNode.Content) > 0 {
+				p.extractTokensWithPathAndGroupMarkers(childNode, currentPath, newPath, prefix, groupMarkers, result)
 			}
 		}
 	}
 }
 
-// createToken creates a Token from the parsed data
-func (p *Parser) createToken(key, path string, value interface{}, data map[string]interface{}, prefix string, jsonPath []string) *tokens.Token {
+// createToken creates a Token from AST nodes with accurate position data
+func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, jsonPath []string) *tokens.Token {
+	key := keyNode.Value
+
 	// Build token name from path
 	name := path
 	if name == "" {
@@ -121,35 +164,63 @@ func (p *Parser) createToken(key, path string, value interface{}, data map[strin
 	// Build reference format (e.g., "{color.primary}")
 	reference := "{" + strings.Join(jsonPath, ".") + "}"
 
+	// Extract position from AST node (yaml.v3 uses 1-based, convert to 0-based for LSP)
+	line := uint32(0)
+	character := uint32(0)
+	if keyNode.Line > 0 {
+		line = uint32(keyNode.Line - 1)
+	}
+	if keyNode.Column > 0 {
+		character = uint32(keyNode.Column - 1)
+	}
+
+	// Extract $value from value node
+	dollarValueNode := getNodeValue(valueNode, "$value")
+	value := ""
+	if dollarValueNode != nil {
+		value = dollarValueNode.Value
+	}
+
 	token := &tokens.Token{
 		Name:      name,
-		Value:     fmt.Sprintf("%v", value),
+		Value:     value,
 		Prefix:    prefix,
 		Path:      jsonPath,
 		Reference: reference,
+		Line:      line,
+		Character: character,
 	}
 
 	// Extract $type
-	if tokenType, ok := data["$type"].(string); ok {
-		token.Type = tokenType
+	if typeNode := getNodeValue(valueNode, "$type"); typeNode != nil {
+		token.Type = typeNode.Value
 	}
 
 	// Extract $description
-	if desc, ok := data["$description"].(string); ok {
-		token.Description = desc
+	if descNode := getNodeValue(valueNode, "$description"); descNode != nil {
+		token.Description = descNode.Value
 	}
 
 	// Extract $deprecated flag (can be bool or string with message)
-	if deprecated, ok := data["$deprecated"].(bool); ok {
-		token.Deprecated = deprecated
-	} else if depMsg, ok := data["$deprecated"].(string); ok {
-		token.Deprecated = true
-		token.DeprecationMessage = depMsg
+	if deprecatedNode := getNodeValue(valueNode, "$deprecated"); deprecatedNode != nil {
+		if deprecatedNode.Kind == yaml.ScalarNode {
+			if deprecatedNode.Tag == "!!bool" {
+				token.Deprecated = deprecatedNode.Value == "true"
+			} else {
+				// String deprecation message
+				token.Deprecated = true
+				token.DeprecationMessage = deprecatedNode.Value
+			}
+		}
 	}
 
 	// Extract $extensions
-	if extensions, ok := data["$extensions"].(map[string]interface{}); ok {
-		token.Extensions = extensions
+	if extensionsNode := getNodeValue(valueNode, "$extensions"); extensionsNode != nil {
+		var extensions map[string]interface{}
+		if err := extensionsNode.Decode(&extensions); err == nil {
+			token.Extensions = extensions
+		}
+		// Note: Decode errors are silently ignored - malformed extensions shouldn't break token parsing
 	}
 
 	return token

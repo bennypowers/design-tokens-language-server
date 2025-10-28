@@ -259,6 +259,141 @@ size:
 	})
 }
 
+// TestParseYAMLWithExtensions tests parsing tokens with $extensions
+func TestParseYAMLWithExtensions(t *testing.T) {
+	t.Run("simple extensions", func(t *testing.T) {
+		yamlData := `
+color:
+  primary:
+    $value: "#0000ff"
+    $type: color
+    $extensions:
+      com.figma:
+        nodeId: "123:456"
+      custom:
+        category: brand
+`
+		parser := yaml.NewParser()
+		tokens, err := parser.Parse([]byte(yamlData), "")
+		require.NoError(t, err)
+		require.Len(t, tokens, 1)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Contains(t, token.Extensions, "com.figma")
+		assert.Contains(t, token.Extensions, "custom")
+
+		figma := token.Extensions["com.figma"].(map[string]interface{})
+		assert.Equal(t, "123:456", figma["nodeId"])
+
+		custom := token.Extensions["custom"].(map[string]interface{})
+		assert.Equal(t, "brand", custom["category"])
+	})
+
+	t.Run("nested extensions", func(t *testing.T) {
+		yamlData := `
+color:
+  primary:
+    $value: "#0000ff"
+    $extensions:
+      org.example:
+        metadata:
+          version: "1.0"
+          deprecated: false
+`
+		parser := yaml.NewParser()
+		tokens, err := parser.Parse([]byte(yamlData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+
+		org := token.Extensions["org.example"].(map[string]interface{})
+		metadata := org["metadata"].(map[string]interface{})
+		assert.Equal(t, "1.0", metadata["version"])
+		assert.Equal(t, false, metadata["deprecated"])
+	})
+
+	t.Run("extensions with arrays", func(t *testing.T) {
+		yamlData := `
+color:
+  primary:
+    $value: "#0000ff"
+    $extensions:
+      tags:
+        - brand
+        - primary
+        - blue
+`
+		parser := yaml.NewParser()
+		tokens, err := parser.Parse([]byte(yamlData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+
+		tags := token.Extensions["tags"].([]interface{})
+		require.Len(t, tags, 3)
+		assert.Equal(t, "brand", tags[0])
+		assert.Equal(t, "primary", tags[1])
+		assert.Equal(t, "blue", tags[2])
+	})
+
+	t.Run("empty extensions", func(t *testing.T) {
+		yamlData := `
+color:
+  primary:
+    $value: "#0000ff"
+    $extensions: {}
+`
+		parser := yaml.NewParser()
+		tokens, err := parser.Parse([]byte(yamlData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Empty(t, token.Extensions)
+	})
+
+	t.Run("no extensions", func(t *testing.T) {
+		yamlData := `
+color:
+  primary:
+    $value: "#0000ff"
+    $type: color
+`
+		parser := yaml.NewParser()
+		tokens, err := parser.Parse([]byte(yamlData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		assert.Nil(t, token.Extensions)
+	})
+
+	t.Run("extensions with multiple data types", func(t *testing.T) {
+		yamlData := `
+color:
+  primary:
+    $value: "#0000ff"
+    $extensions:
+      stringValue: test
+      numberValue: 42
+      boolValue: true
+      nullValue: null
+`
+		parser := yaml.NewParser()
+		tokens, err := parser.Parse([]byte(yamlData), "")
+		require.NoError(t, err)
+
+		token := tokens[0]
+		require.NotNil(t, token.Extensions)
+		assert.Equal(t, "test", token.Extensions["stringValue"])
+		assert.Equal(t, 42, token.Extensions["numberValue"])
+		assert.Equal(t, true, token.Extensions["boolValue"])
+		assert.Nil(t, token.Extensions["nullValue"])
+	})
+}
+
 // Helper function to find a token by name in a slice
 func findTokenByName(tokens []*tokens.Token, name string) *tokens.Token {
 	for _, token := range tokens {

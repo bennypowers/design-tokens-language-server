@@ -38,6 +38,12 @@ type Token struct {
 	// DefinitionURI is the file URI where this token is defined
 	DefinitionURI string `json:"-"`
 
+	// Line is the 0-based line number where this token is defined in the source file
+	Line uint32 `json:"-"`
+
+	// Character is the 0-based character offset where this token is defined
+	Character uint32 `json:"-"`
+
 	// Reference is the original reference format (e.g., "{color.primary}")
 	Reference string `json:"-"`
 }

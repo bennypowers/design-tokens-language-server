@@ -158,6 +158,47 @@ func TestDefinition_DocumentNotFound(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func TestDefinition_PreciseTokenPosition(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add a token with definition URI and precise position
+	// Simulates a token at line 2, character 4 in the source file
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:          "color.primary",
+		Value:         "#ff0000",
+		Type:          "color",
+		DefinitionURI: "file:///workspace/tokens.json",
+		Path:          []string{"color", "primary"},
+		Line:          2,      // Token is on line 2
+		Character:     4,      // Token starts at character 4
+	})
+
+	uri := "file:///test.css"
+	cssContent := `.button { color: var(--color-primary); }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	result, err := Definition(req, &protocol.DefinitionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 24},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	locations, ok := result.([]protocol.Location)
+	require.True(t, ok)
+	require.Len(t, locations, 1)
+
+	// Verify the location points to the precise position
+	assert.Equal(t, "file:///workspace/tokens.json", locations[0].URI)
+	assert.Equal(t, uint32(2), locations[0].Range.Start.Line, "Should jump to line 2")
+	assert.Equal(t, uint32(4), locations[0].Range.Start.Character, "Should jump to character 4")
+}
+
 // TestIsPositionInVarCall tests the isPositionInVarCall function with half-open range semantics [start, end)
 func TestIsPositionInVarCall(t *testing.T) {
 	tests := []struct {
