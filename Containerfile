@@ -18,6 +18,9 @@ RUN dnf install -y \
     git \
     && dnf clean all
 
+# Use Go toolchain to automatically download required Go version from go.mod
+ENV GOTOOLCHAIN=auto
+
 # Default environment for Windows cross-compilation
 ENV CGO_ENABLED=1
 ENV GOOS=windows
