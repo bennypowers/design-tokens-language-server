@@ -1,0 +1,43 @@
+codecov:
+  require_ci_to_pass: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%  # Allow up to 5% coverage decrease
+        base: auto
+        if_ci_failed: error
+    patch:
+      default:
+        target: 80%  # Require 80% coverage on new code
+        threshold: 0%
+        base: auto
+        if_ci_failed: error
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
+
+# Coverage Approach:
+# - Unit tests: Run with -coverprofile (traditional approach) - 52.1%
+# - Integration tests: Run with Go 1.20+ cross-process coverage - 36.4%
+# - Merged: Combined using gocovmerge - 64.5% total
+#
+# The integration tests spawn the LSP server as a subprocess (built with -cover),
+# which writes coverage data to GOCOVERDIR. This is then converted and merged
+# with unit test coverage for a complete picture.
+
+# Ignore test files and non-library code from coverage
+ignore:
+  - "test/**/*"
+  - "**/*_test.go"
+  - "cmd/**/*"
+  - "tools/**/*"
+  - "**/*.pb.go"

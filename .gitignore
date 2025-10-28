@@ -2,7 +2,8 @@ node_modules
 bin
 extensions/**/*.wasm
 extensions/vscode/README.md
-coverage
+coverage/**/*
+*.out
 **/*.db
 **/cargo-target
 **/target
@@ -14,3 +15,6 @@ main.js
 vendor/**/*.h
 vendor/**/*.c
 report.xml
+tools/lsp-bench/lsp-bench
+*.test
+/design-tokens-language-server

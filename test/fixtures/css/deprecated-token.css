@@ -1,0 +1,4 @@
+.button {
+  /* Using deprecated token - should show information diagnostic */
+  color: var(--color-old-primary);
+}

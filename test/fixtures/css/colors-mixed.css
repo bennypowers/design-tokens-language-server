@@ -1,0 +1,6 @@
+.widget {
+  /* Only color tokens should show decorators, not dimensions */
+  color: var(--color-primary);
+  padding: var(--spacing-small);
+  background: var(--color-secondary);
+}

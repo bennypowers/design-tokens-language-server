@@ -1,0 +1,4 @@
+.button {
+  /*           ↓ hover on unknown token */
+  color: var(--unknown-token);
+}

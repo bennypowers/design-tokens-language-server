@@ -1,0 +1,19 @@
+/* Test fixture for nested var() calls - RHDS pattern */
+
+.card {
+  /* Simple nested var() in fallback */
+  color: var(--_local-color, var(--rh-color-text-primary, #000000));
+
+  /* Complex: light-dark() with nested var() calls (RHDS pattern) */
+  background-color:
+    light-dark(var(--_card-background, var(--rh-color-surface-lightest, #ffffff)),
+      var(--_card-background, var(--rh-color-surface-darkest, #151515)));
+
+  /* Triple nesting */
+  border-color: var(--_border, var(--_fallback-border, var(--rh-color-border-subtle, #cccccc)));
+
+  /* Local variable defined (should not be in token manager) */
+  --_local-color: var(--rh-color-interactive-primary-default, #0066cc);
+  --_card-background: var(--rh-color-surface-lighter, #f5f5f5);
+  --_border: var(--rh-color-border-strong, #333333);
+}

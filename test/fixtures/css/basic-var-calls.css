@@ -1,0 +1,5 @@
+.button {
+  /*               ↓ hover/definition/references */
+  color: var(--color-primary);
+  background: var(--color-secondary);
+}

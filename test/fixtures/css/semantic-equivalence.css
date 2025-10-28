@@ -1,0 +1,4 @@
+.button {
+  /* Fallback is semantically equivalent to token value (different case) */
+  color: var(--color-primary, #0000ff);
+}

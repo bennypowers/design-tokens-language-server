@@ -1,0 +1,13 @@
+.button {
+  color: var(--test-color-interactive-primary-default);
+  background: var(--test-color-interactive-primary-default-on-dark);
+}
+
+.button:hover {
+  color: var(--test-color-interactive-primary-hover);
+}
+
+.container {
+  padding: var(--test-spacing-small);
+  margin: var(--test-spacing-small-mobile);
+}

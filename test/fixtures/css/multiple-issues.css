@@ -1,0 +1,6 @@
+.button {
+  /* Incorrect fallback - should be #0000ff */
+  color: var(--color-primary, #ff0000);
+  /* Deprecated token */
+  background: var(--color-old-primary);
+}

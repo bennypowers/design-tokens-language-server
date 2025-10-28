@@ -90,8 +90,8 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "node build.js",
-    "build": "npx @vscode/vsce package",
+    "vscode:prepublish": "node build.js --production",
+    "build": "node build.js && npx @vscode/vsce package",
     "publish": "npx @vscode/vsce publish",
     "postinstall": "cd client && npm install && cd .."
   },

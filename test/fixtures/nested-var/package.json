@@ -1,0 +1,10 @@
+{
+  "name": "nested-var-test-fixture",
+  "version": "1.0.0",
+  "designTokensLanguageServer": {
+    "prefix": "rh",
+    "tokensFiles": [
+      "tokens.json"
+    ]
+  }
+}
