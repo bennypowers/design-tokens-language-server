@@ -14,9 +14,10 @@ type MockServerContext struct {
 	tokens      *tokens.Manager
 	rootURI     string
 	rootPath    string
-	config      types.ServerConfig
-	loadedFiles map[string]string
-	glspContext *glsp.Context
+	config             types.ServerConfig
+	loadedFiles        map[string]string
+	glspContext        *glsp.Context
+	usePullDiagnostics bool
 
 	// Optional callbacks for custom behavior in tests
 	LoadTokensFunc         func() error
@@ -177,4 +178,14 @@ func (m *MockServerContext) PublishDiagnostics(context *glsp.Context, uri string
 		return m.PublishDiagnosticsFunc(context, uri)
 	}
 	return nil
+}
+
+// UsePullDiagnostics returns whether to use pull diagnostics (LSP 3.17)
+func (m *MockServerContext) UsePullDiagnostics() bool {
+	return m.usePullDiagnostics
+}
+
+// SetUsePullDiagnostics sets whether to use pull diagnostics
+func (m *MockServerContext) SetUsePullDiagnostics(use bool) {
+	m.usePullDiagnostics = use
 }

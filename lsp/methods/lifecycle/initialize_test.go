@@ -78,7 +78,12 @@ func TestInitialize(t *testing.T) {
 		glspCtx := &glsp.Context{}
 		req := types.NewRequestContext(ctx, glspCtx)
 
-		params := &protocol.InitializeParams{}
+		// Provide client capabilities to enable pull diagnostics (LSP 3.17)
+		params := &protocol.InitializeParams{
+			Capabilities: protocol.ClientCapabilities{
+				TextDocument: &protocol.TextDocumentClientCapabilities{},
+			},
+		}
 
 		result, err := Initialize(req, params)
 		require.NoError(t, err)

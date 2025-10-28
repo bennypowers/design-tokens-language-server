@@ -83,5 +83,7 @@ func (m *mockServerContextMinimal) SetGLSPContext(ctx *glsp.Context)            
 func (m *mockServerContextMinimal) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }
-func (m *mockServerContextMinimal) AddWarning(err error)  {}
-func (m *mockServerContextMinimal) TakeWarnings() []error { return nil }
+func (m *mockServerContextMinimal) UsePullDiagnostics() bool         { return false }
+func (m *mockServerContextMinimal) SetUsePullDiagnostics(use bool)   {}
+func (m *mockServerContextMinimal) AddWarning(err error)             {}
+func (m *mockServerContextMinimal) TakeWarnings() []error            { return nil }

@@ -38,11 +38,10 @@ type Server struct {
 	rootURI            string                       // Workspace root URI
 	rootPath           string                       // Workspace root path (file system)
 	config             types.ServerConfig           // Server configuration
-	configMu           sync.RWMutex                 // Protects config from concurrent access
+	configMu           sync.RWMutex                 // Protects config and usePullDiagnostics from concurrent access
 	loadedFiles        map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
 	loadedFilesMu      sync.RWMutex                 // Protects loadedFiles from concurrent access
 	usePullDiagnostics bool                         // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
-	diagnosticsMu      sync.RWMutex                 // Protects usePullDiagnostics from concurrent access
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -181,15 +180,15 @@ func (s *Server) SetGLSPContext(ctx *glsp.Context) {
 // If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
 // and instead wait for the client to request diagnostics via textDocument/diagnostic
 func (s *Server) UsePullDiagnostics() bool {
-	s.diagnosticsMu.RLock()
-	defer s.diagnosticsMu.RUnlock()
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return s.usePullDiagnostics
 }
 
 // SetUsePullDiagnostics sets whether to use pull diagnostics based on client capabilities
 func (s *Server) SetUsePullDiagnostics(use bool) {
-	s.diagnosticsMu.Lock()
-	defer s.diagnosticsMu.Unlock()
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
 	s.usePullDiagnostics = use
 }
 
@@ -292,8 +291,9 @@ func (s *Server) RemoveLoadedFile(path string) {
 
 // RegisterFileWatchers registers file watchers with the client
 func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
-	// Guard against nil context (can happen in tests without real LSP connection)
-	if context == nil {
+	// Guard against nil or empty context (can happen in tests without real LSP connection)
+	// An empty context (created with &glsp.Context{}) won't have Call initialized
+	if context == nil || context.Call == nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Skipping file watcher registration (no client context)\n")
 		return nil
 	}
@@ -376,11 +376,11 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	// to stderr by the glsp library. Since client capability registration failures
 	// are not fatal (the client continues working, just without file watching),
 	// this fire-and-forget approach with logging is acceptable.
-	go func() {
+	go func(ctx *glsp.Context) {
 		var result any
-		context.Call("client/registerCapability", params, &result)
+		ctx.Call("client/registerCapability", params, &result)
 		fmt.Fprintf(os.Stderr, "[DTLS] File watcher registration completed\n")
-	}()
+	}(context)
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Sent file watcher registration request (%d watchers)\n", len(watchers))
 	return nil
