@@ -28,21 +28,30 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 		"cubicbezier": true,
 	}
 
-	// Font weight can be numeric (safe) or string (needs validation)
+	// Font weight can be numeric (1-1000) or keyword (needs validation)
 	if tokenType == "fontweight" {
-		// Check if it's numeric (safe to use raw)
-		matched, _ := regexp.MatchString(`^\d+$`, value)
-		if matched {
-			return value, true
-		}
-		// Predefined keywords like "bold", "normal" are safe
+		// Valid keywords according to CSS spec
 		keywords := map[string]bool{
 			"normal": true, "bold": true, "bolder": true, "lighter": true,
-			"100": true, "200": true, "300": true, "400": true, "500": true,
-			"600": true, "700": true, "800": true, "900": true,
+			"inherit": true, "initial": true, "unset": true,
 		}
 		if keywords[strings.ToLower(value)] {
 			return value, true
+		}
+
+		// Check if it's numeric (must be 1-1000 inclusive, reject 0)
+		matched, _ := regexp.MatchString(`^[0-9]+$`, value)
+		if matched {
+			// Parse to integer to validate range
+			var numValue int
+			fmt.Sscanf(value, "%d", &numValue)
+			// Valid range is 1-1000 inclusive (CSS Fonts Level 4)
+			// Explicitly reject 0 and out-of-range values
+			if numValue >= 1 && numValue <= 1000 {
+				return value, true
+			}
+			// Invalid numeric value (0 or out of range)
+			return "", false
 		}
 		return "", false // Unsafe font weight value
 	}
