@@ -1,0 +1,11 @@
+{
+  "name": "group-markers-test-fixture",
+  "version": "1.0.0",
+  "designTokensLanguageServer": {
+    "prefix": "test",
+    "groupMarkers": ["_"],
+    "tokensFiles": [
+      "tokens.json"
+    ]
+  }
+}

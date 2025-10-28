@@ -60,14 +60,6 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]any, jsonP
 			continue
 		}
 
-		currentPath := append(jsonPath, key)
-		var newPath string
-		if path == "" {
-			newPath = key
-		} else {
-			newPath = path + "-" + key
-		}
-
 		// Check if this is a token (has $value)
 		dollarValue, hasValue := valueMap["$value"]
 
@@ -80,7 +72,29 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]any, jsonP
 			}
 		}
 
+		// Determine if this marker should be transparent (not added to path)
+		// A group marker without $value should be transparent
+		isTransparentMarker := isGroupMarker && !hasValue
+
+		// Build paths - skip adding key if it's a transparent group marker
+		var currentPath []string
+		var newPath string
+		if isTransparentMarker {
+			// Don't add marker to path - use parent's path
+			currentPath = jsonPath
+			newPath = path
+		} else {
+			// Normal path building
+			currentPath = append(jsonPath, key)
+			if path == "" {
+				newPath = key
+			} else {
+				newPath = path + "-" + key
+			}
+		}
+
 		// If has $value, extract the token
+		// This handles Pattern 1: where the key itself is a group marker with $value and children
 		if hasValue {
 			token := p.createToken(key, path, dollarValue, valueMap, prefix, currentPath)
 			*result = append(*result, token)
@@ -88,9 +102,41 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]any, jsonP
 
 		// Check if we should recurse into children
 		shouldRecurse := false
+		promotedMarkers := make(map[string]bool) // Track which group markers were promoted to parent
+
 		if !hasValue {
-			// No $value means it's definitely a group
+			// No $value means it's a group - check for group marker children first
 			shouldRecurse = true
+
+			// Pattern 2 (RHDS style): Check if this group has a child that's a group marker with $value
+			// Only promote to parent if the group marker has siblings (indicating it's providing the default value)
+			// If the group marker is the only child, it should create its own token (Pattern 1)
+			for _, marker := range groupMarkers {
+				if markerChild, exists := valueMap[marker]; exists {
+					if markerMap, ok := markerChild.(map[string]any); ok {
+						if markerValue, hasMarkerValue := markerMap["$value"]; hasMarkerValue {
+							// Count non-$ children to check for siblings
+							nonMetaChildren := 0
+							for k := range valueMap {
+								if !strings.HasPrefix(k, "$") {
+									nonMetaChildren++
+								}
+							}
+
+							// Only promote if there are siblings (Pattern 2: RHDS style)
+							// If group marker is the only child, let it create its own token (Pattern 1)
+							if nonMetaChildren > 1 {
+								// Create a token for the PARENT using the group marker child's data
+								// Use the PARENT's path, not the group marker's path
+								token := p.createToken(key, path, markerValue, markerMap, prefix, currentPath)
+								*result = append(*result, token)
+								promotedMarkers[marker] = true // Mark this marker as promoted
+								// Don't break - there might be multiple group markers (though that would be unusual)
+							}
+						}
+					}
+				}
+			}
 		} else if isGroupMarker {
 			// Has $value but is a group marker - recurse into children too
 			shouldRecurse = true
@@ -98,12 +144,20 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(data map[string]any, jsonP
 
 		// Recurse into children if needed
 		if shouldRecurse {
-			// Filter out DTCG metadata keys (starting with $) when recursing
+			// Filter out DTCG metadata keys (starting with $) AND promoted group markers
 			childData := make(map[string]any)
 			for k, v := range valueMap {
-				if !strings.HasPrefix(k, "$") {
-					childData[k] = v
+				// Skip DTCG metadata keys
+				if strings.HasPrefix(k, "$") {
+					continue
 				}
+
+				// Skip group marker keys that were promoted to parent tokens
+				if promotedMarkers[k] {
+					continue
+				}
+
+				childData[k] = v
 			}
 
 			if len(childData) > 0 {
