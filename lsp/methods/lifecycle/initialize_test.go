@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/internal/uriutil"
+	"bennypowers.dev/dtls/internal/version"
 	"bennypowers.dev/dtls/lsp/testutil"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
@@ -71,6 +72,13 @@ func TestInitialize(t *testing.T) {
 		assert.NotNil(t, initResult.Capabilities)
 		assert.NotNil(t, initResult.ServerInfo)
 		assert.Equal(t, "design-tokens-language-server", initResult.ServerInfo.Name)
+		assert.NotNil(t, initResult.ServerInfo.Version)
+		assert.NotEqual(t, "", *initResult.ServerInfo.Version, "Version should not be empty")
+
+		// Verify version matches the version package
+		expectedVersion := version.GetVersion()
+		assert.Equal(t, expectedVersion, *initResult.ServerInfo.Version,
+			"ServerInfo version should match version.GetVersion()")
 	})
 
 	t.Run("capabilities include all LSP features", func(t *testing.T) {

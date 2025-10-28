@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"bennypowers.dev/dtls/internal/uriutil"
+	"bennypowers.dev/dtls/internal/version"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/diagnostic"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -103,7 +104,7 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 		Capabilities: capabilities,
 		ServerInfo: &protocol.InitializeResultServerInfo{
 			Name:    "design-tokens-language-server",
-			Version: strPtr("1.0.0-alpha"),
+			Version: strPtr(version.GetVersion()),
 		},
 	}, nil
 }
