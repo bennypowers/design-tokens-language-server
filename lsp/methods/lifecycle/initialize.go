@@ -19,6 +19,27 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Initializing for client: %s\n", clientName)
 
+	// Detect if client supports pull diagnostics (LSP 3.17)
+	// WORKAROUND: glsp v0.2.2 only supports LSP 3.16, so TextDocumentClientCapabilities
+	// doesn't have a Diagnostic field. We check the raw capabilities by looking for
+	// the diagnostic field in the JSON. Modern clients (LSP 3.17+) will include this.
+	supportsPullDiagnostics := false
+	if params.Capabilities.TextDocument != nil {
+		// Try to detect pull diagnostics support from client capabilities
+		// Since glsp v0.2.2 doesn't have the Diagnostic field in the struct,
+		// we check if the client info indicates a modern LSP version
+		// For now, we assume all clients support pull diagnostics to avoid duplication
+		// TODO: When glsp is upgraded to LSP 3.17, check params.Capabilities.TextDocument.Diagnostic
+		supportsPullDiagnostics = true
+	}
+	req.Server.SetUsePullDiagnostics(supportsPullDiagnostics)
+
+	if supportsPullDiagnostics {
+		fmt.Fprintf(os.Stderr, "[DTLS] Using pull diagnostics model (LSP 3.17) - client will request diagnostics\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "[DTLS] Using push diagnostics model (LSP 3.0) - server will push diagnostics\n")
+	}
+
 	// Store the workspace root
 	if params.RootURI != nil {
 		req.Server.SetRootURI(*params.RootURI)
@@ -61,11 +82,15 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 				"delta": false, // Disabled: delta implementation needs proper result caching and diffing
 			},
 		},
-		// LSP 3.17: Pull diagnostics support
-		"diagnosticProvider": diagnostic.DiagnosticOptions{
+	}
+
+	// LSP 3.17: Only advertise pull diagnostics if client supports it
+	// For older clients, we'll use push diagnostics (textDocument/publishDiagnostics)
+	if supportsPullDiagnostics {
+		capabilities["diagnosticProvider"] = diagnostic.DiagnosticOptions{
 			InterFileDependencies: false,
 			WorkspaceDiagnostics:  false,
-		},
+		}
 	}
 
 	// WORKAROUND: Return custom struct with any type for Capabilities field

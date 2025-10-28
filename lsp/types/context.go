@@ -43,6 +43,10 @@ type ServerContext interface {
 	GLSPContext() *glsp.Context
 	SetGLSPContext(ctx *glsp.Context)
 
+	// Diagnostics mode (pull vs push)
+	UsePullDiagnostics() bool
+	SetUsePullDiagnostics(use bool)
+
 	// Diagnostics publishing
 	PublishDiagnostics(context *glsp.Context, uri string) error
 }

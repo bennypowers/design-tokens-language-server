@@ -31,16 +31,18 @@ var _ types.ServerContext = (*Server)(nil)
 
 // Server represents the Design Tokens Language Server
 type Server struct {
-	documents     *documents.Manager
-	tokens        *tokens.Manager
-	glspServer    *server.Server
-	context       *glsp.Context
-	rootURI       string                       // Workspace root URI
-	rootPath      string                       // Workspace root path (file system)
-	config        types.ServerConfig           // Server configuration
-	configMu      sync.RWMutex                 // Protects config from concurrent access
-	loadedFiles   map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
-	loadedFilesMu sync.RWMutex                 // Protects loadedFiles from concurrent access
+	documents          *documents.Manager
+	tokens             *tokens.Manager
+	glspServer         *server.Server
+	context            *glsp.Context
+	rootURI            string                       // Workspace root URI
+	rootPath           string                       // Workspace root path (file system)
+	config             types.ServerConfig           // Server configuration
+	configMu           sync.RWMutex                 // Protects config from concurrent access
+	loadedFiles        map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
+	loadedFilesMu      sync.RWMutex                 // Protects loadedFiles from concurrent access
+	usePullDiagnostics bool                         // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
+	diagnosticsMu      sync.RWMutex                 // Protects usePullDiagnostics from concurrent access
 }
 
 // NewServer creates a new Design Tokens LSP server
@@ -173,6 +175,22 @@ func (s *Server) GLSPContext() *glsp.Context {
 // SetGLSPContext sets the GLSP context
 func (s *Server) SetGLSPContext(ctx *glsp.Context) {
 	s.context = ctx
+}
+
+// UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
+// If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
+// and instead wait for the client to request diagnostics via textDocument/diagnostic
+func (s *Server) UsePullDiagnostics() bool {
+	s.diagnosticsMu.RLock()
+	defer s.diagnosticsMu.RUnlock()
+	return s.usePullDiagnostics
+}
+
+// SetUsePullDiagnostics sets whether to use pull diagnostics based on client capabilities
+func (s *Server) SetUsePullDiagnostics(use bool) {
+	s.diagnosticsMu.Lock()
+	defer s.diagnosticsMu.Unlock()
+	s.usePullDiagnostics = use
 }
 
 // PublishDiagnostics publishes diagnostics for a document
