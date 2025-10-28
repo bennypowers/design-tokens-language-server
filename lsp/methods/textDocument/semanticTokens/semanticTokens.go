@@ -141,48 +141,6 @@ func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Docume
 	return tokens
 }
 
-// handleSemanticTokensDelta handles the textDocument/semanticTokens/full/delta request
-
-// SemanticTokensDelta handles the textDocument/semanticTokens/delta request
-func SemanticTokensDelta(req *types.RequestContext, params *protocol.SemanticTokensDeltaParams) (*protocol.SemanticTokensDelta, error) {
-	// Get the current document
-	doc := req.Server.Document(params.TextDocument.URI)
-	if doc == nil {
-		return nil, fmt.Errorf("document not found: %s", params.TextDocument.URI)
-	}
-
-	// Get current semantic tokens
-	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
-	newData := encodeSemanticTokens(intermediateTokens)
-
-	// For a full implementation, we would:
-	// 1. Store previous results by resultID
-	// 2. Compare old and new token arrays
-	// 3. Generate minimal edits (SemanticTokensEdit with start, deleteCount, data)
-	//
-	// For now, we'll implement a simplified version that returns edits
-	// showing that new tokens were added at the end.
-	//
-	// In a real implementation, you would compare params.PreviousResultID's data
-	// with newData and generate minimal edits.
-
-	// Simplified implementation: return an edit that appends new tokens
-	// This assumes tokens were added at the end (which is common when adding new lines)
-	edits := []protocol.SemanticTokensEdit{
-		{
-			// Start at the beginning and replace all
-			// A better implementation would do proper diffing
-			Start:       0,
-			DeleteCount: 0, // Don't delete anything
-			Data:        newData,
-		},
-	}
-
-	return &protocol.SemanticTokensDelta{
-		Edits: edits,
-	}, nil
-}
-
 // handleSemanticTokensRange handles the textDocument/semanticTokens/range request
 
 // SemanticTokensRange handles the textDocument/semanticTokens/range request
