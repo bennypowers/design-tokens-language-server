@@ -141,6 +141,12 @@ func (m *MockServerContext) LoadTokensFromConfig() error {
 	return nil
 }
 
+// LoadPackageJsonConfig loads configuration from package.json (mock stub)
+func (m *MockServerContext) LoadPackageJsonConfig() error {
+	// Mock implementation - does nothing by default
+	return nil
+}
+
 // RegisterFileWatchers registers file watchers with the client
 func (m *MockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
 	m.RegisterWatchersCalled = true

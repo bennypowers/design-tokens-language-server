@@ -29,6 +29,7 @@ type ServerContext interface {
 	// Configuration
 	GetConfig() ServerConfig
 	SetConfig(config ServerConfig)
+	LoadPackageJsonConfig() error
 	IsTokenFile(path string) bool
 
 	// Workspace initialization (called by Initialize handler)

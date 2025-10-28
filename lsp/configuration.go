@@ -16,6 +16,46 @@ func (s *Server) GetConfig() types.ServerConfig {
 	return s.config
 }
 
+// LoadPackageJsonConfig reads and merges configuration from package.json
+// Client-sent configuration takes precedence over package.json
+func (s *Server) LoadPackageJsonConfig() error {
+	state := s.GetState()
+	if state.RootPath == "" {
+		return nil // No workspace, nothing to load
+	}
+
+	pkgConfig, err := ReadPackageJsonConfig(state.RootPath)
+	if err != nil {
+		return err
+	}
+
+	if pkgConfig == nil {
+		return nil // No package.json config, not an error
+	}
+
+	// Merge with existing config (client config takes precedence)
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+
+	// Only set fields if not already configured by client
+	if s.config.Prefix == "" && pkgConfig.Prefix != "" {
+		s.config.Prefix = pkgConfig.Prefix
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded prefix from package.json: %s\n", pkgConfig.Prefix)
+	}
+
+	if len(s.config.GroupMarkers) == 0 && len(pkgConfig.GroupMarkers) > 0 {
+		s.config.GroupMarkers = pkgConfig.GroupMarkers
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded groupMarkers from package.json: %v\n", pkgConfig.GroupMarkers)
+	}
+
+	if len(s.config.TokensFiles) == 0 && len(pkgConfig.TokensFiles) > 0 {
+		s.config.TokensFiles = pkgConfig.TokensFiles
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded tokensFiles from package.json: %v\n", pkgConfig.TokensFiles)
+	}
+
+	return nil
+}
+
 // GetState returns a snapshot of runtime state (NOT configuration)
 // For configuration, use GetConfig() separately.
 // This separation allows clear distinction between user configuration and runtime state.

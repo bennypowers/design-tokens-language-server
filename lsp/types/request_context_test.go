@@ -73,6 +73,7 @@ func (m *mockServerContextMinimal) SetRootURI(uri string)                       
 func (m *mockServerContextMinimal) SetRootPath(path string)                      {}
 func (m *mockServerContextMinimal) GetConfig() ServerConfig                      { return ServerConfig{} }
 func (m *mockServerContextMinimal) SetConfig(config ServerConfig)                {}
+func (m *mockServerContextMinimal) LoadPackageJsonConfig() error                 { return nil }
 func (m *mockServerContextMinimal) IsTokenFile(path string) bool                 { return false }
 func (m *mockServerContextMinimal) LoadTokensFromConfig() error                  { return nil }
 func (m *mockServerContextMinimal) RegisterFileWatchers(ctx *glsp.Context) error { return nil }

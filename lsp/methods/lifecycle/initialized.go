@@ -15,6 +15,13 @@ func Initialized(req *types.RequestContext, params *protocol.InitializedParams) 
 	// Store context for later use (diagnostics)
 	req.Server.SetGLSPContext(req.GLSP)
 
+	// Read configuration from package.json if it exists
+	// This provides the "zero-config" experience for projects with package.json config
+	if err := req.Server.LoadPackageJsonConfig(); err != nil {
+		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load package.json config: %v\n", err)
+		// Don't fail initialization, just log the error
+	}
+
 	// Load token files from workspace using configuration
 	if err := req.Server.LoadTokensFromConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to load token files: %v\n", err)
