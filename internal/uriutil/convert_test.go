@@ -394,7 +394,7 @@ func TestPathToURI_EmptyPath(t *testing.T) {
 func TestURIToPath_EmptyURI(t *testing.T) {
 	path := URIToPath("")
 	// Should not panic
-	assert.Equal(t, path, "")
+	assert.Equal(t, "", path)
 }
 
 // TestPathToURI_SpecialCharacters tests various special characters
