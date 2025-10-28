@@ -38,7 +38,7 @@ type Server struct {
 	rootURI            string                       // Workspace root URI
 	rootPath           string                       // Workspace root path (file system)
 	config             types.ServerConfig           // Server configuration
-	configMu           sync.RWMutex                 // Protects config and usePullDiagnostics from concurrent access
+	configMu           sync.RWMutex                 // Protects config, context, and usePullDiagnostics from concurrent access
 	loadedFiles        map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
 	loadedFilesMu      sync.RWMutex                 // Protects loadedFiles from concurrent access
 	usePullDiagnostics bool                         // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
@@ -166,13 +166,19 @@ func (s *Server) SetRootPath(path string) {
 	s.rootPath = path
 }
 
-// GLSPContext returns the GLSP context
+// GLSPContext returns the GLSP context.
+// Access is protected by configMu to prevent concurrent races.
 func (s *Server) GLSPContext() *glsp.Context {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return s.context
 }
 
-// SetGLSPContext sets the GLSP context
+// SetGLSPContext sets the GLSP context.
+// Access is protected by configMu to prevent concurrent races.
 func (s *Server) SetGLSPContext(ctx *glsp.Context) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
 	s.context = ctx
 }
 
@@ -302,11 +308,10 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	cfg := s.GetConfig()
 	state := s.GetState()
 
-	// Build list of watchers based on explicitly configured files
+	// Build file watchers for configured token files
 	watchers := []protocol.FileSystemWatcher{}
 
 	if len(cfg.TokensFiles) > 0 {
-		// Watch explicitly configured files
 		for _, item := range cfg.TokensFiles {
 			var tokenPath string
 			switch v := item.(type) {
