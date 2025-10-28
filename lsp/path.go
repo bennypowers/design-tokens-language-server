@@ -88,8 +88,7 @@ func resolveNpmPath(npmPath, workspaceRoot string) (string, error) {
 	if subpath == "" {
 		resolved, err := resolvePackageEntry(packageDir, ".")
 		if err != nil {
-			// Fallback to package directory if no entry point found
-			return packageDir, nil
+			return "", fmt.Errorf("cannot resolve package main entry for %s: %w", packageDir, err)
 		}
 		return resolved, nil
 	}
