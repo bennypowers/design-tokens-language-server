@@ -106,6 +106,16 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 					Kind:  protocol.MarkupKindMarkdown,
 					Value: content,
 				},
+				Range: &protocol.Range{
+					Start: protocol.Position{
+						Line:      bestVarCall.Range.Start.Line,
+						Character: bestVarCall.Range.Start.Character,
+					},
+					End: protocol.Position{
+						Line:      bestVarCall.Range.End.Line,
+						Character: bestVarCall.Range.End.Character,
+					},
+				},
 			}, nil
 		}
 

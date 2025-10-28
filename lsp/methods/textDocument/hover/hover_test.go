@@ -160,6 +160,9 @@ func TestHover_UnknownToken(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, content.Value, "Unknown token")
 	assert.Contains(t, content.Value, "--unknown-token")
+
+	// Assert Range is present for unknown token (consistency with known tokens)
+	require.NotNil(t, hover.Range, "Range should be present for unknown token var() call")
 }
 
 func TestHover_VarCallWithFallback(t *testing.T) {
