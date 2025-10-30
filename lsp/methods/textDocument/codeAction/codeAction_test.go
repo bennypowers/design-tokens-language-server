@@ -17,11 +17,6 @@ const (
 	codeActionKindSourceFixAll protocol.CodeActionKind = "source.fixAll"
 )
 
-// ptrString returns a pointer to the given string
-func ptrString(s string) *string {
-	return &s
-}
-
 // ptrIntegerOrString returns a pointer to IntegerOrString from a string
 func ptrIntegerOrString(s string) *protocol.IntegerOrString {
 	return &protocol.IntegerOrString{Value: s}

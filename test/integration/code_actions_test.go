@@ -376,7 +376,7 @@ func TestCodeAction_FontFamilyFallback(t *testing.T) {
 	}
 
 	// Test already quoted font (line 24)
-	result, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
+	_, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -389,7 +389,7 @@ func TestCodeAction_FontFamilyFallback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test comma-separated font list (line 29)
-	result, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
+	_, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
@@ -402,7 +402,7 @@ func TestCodeAction_FontFamilyFallback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test quoted list (line 34)
-	result, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
+	_, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{
 			URI: "file:///test.css",
 		},
