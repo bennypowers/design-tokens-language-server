@@ -21,7 +21,7 @@ func FixtureRoot() string {
 func LoadTokenFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	path := filepath.Join(FixtureRoot(), "tokens", name)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Test fixture path - test code only
 	require.NoError(t, err, "Failed to load token fixture: %s", name)
 	return data
 }
@@ -30,7 +30,7 @@ func LoadTokenFixture(t *testing.T, name string) []byte {
 func LoadCSSFixture(t *testing.T, name string) string {
 	t.Helper()
 	path := filepath.Join(FixtureRoot(), "css", name)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Test fixture path - test code only
 	require.NoError(t, err, "Failed to load CSS fixture: %s", name)
 	return string(data)
 }
@@ -39,21 +39,9 @@ func LoadCSSFixture(t *testing.T, name string) string {
 func LoadGoldenFile(t *testing.T, name string) string {
 	t.Helper()
 	path := filepath.Join(FixtureRoot(), "golden", name)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Test fixture path - test code only
 	require.NoError(t, err, "Failed to load golden file: %s", name)
 	return string(data)
-}
-
-// UpdateGoldenFile updates a golden file with new content
-// Set UPDATE_GOLDEN=1 environment variable to update golden files
-func UpdateGoldenFile(t *testing.T, name, content string) {
-	t.Helper()
-	if os.Getenv("UPDATE_GOLDEN") != "1" {
-		return
-	}
-	path := filepath.Join(FixtureRoot(), "golden", name)
-	err := os.WriteFile(path, []byte(content), 0644)
-	require.NoError(t, err, "Failed to update golden file: %s", name)
 }
 
 // NewTestServer creates a new LSP server for testing

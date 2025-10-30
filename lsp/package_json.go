@@ -21,7 +21,7 @@ func readPackageJsonFile(rootPath string) (map[string]any, error) {
 	}
 
 	// Read package.json
-	data, err := os.ReadFile(packageJSONPath)
+	data, err := os.ReadFile(packageJSONPath) //nolint:gosec // G304: Reading workspace package.json - local trusted environment
 	if err != nil {
 		return nil, fmt.Errorf("failed to read package.json: %w", err)
 	}

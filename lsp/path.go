@@ -287,7 +287,7 @@ func expandPattern(pattern any, substitution string) any {
 // readPackageJSON reads and parses package.json from a directory
 func readPackageJSON(packageDir string) (*PackageJSON, error) {
 	pkgPath := filepath.Join(packageDir, "package.json")
-	data, err := os.ReadFile(pkgPath)
+	data, err := os.ReadFile(pkgPath) //nolint:gosec // G304: Reading workspace package.json - local trusted environment
 	if err != nil {
 		return nil, err
 	}

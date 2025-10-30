@@ -370,7 +370,7 @@ func (p *Parser) ParseFile(filename, prefix string) ([]*tokens.Token, error) {
 
 // ParseFileWithGroupMarkers parses a JSON file with group marker support
 func (p *Parser) ParseFileWithGroupMarkers(filename, prefix string, groupMarkers []string) ([]*tokens.Token, error) {
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filename) //nolint:gosec // G304: File path from LSP configuration - local trusted environment
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
 	}
