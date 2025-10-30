@@ -217,6 +217,124 @@ func isNamedColor(value string) bool {
 	return cssNamedColors.Has(strings.ToLower(value))
 }
 
+// extractRecommendedToken attempts to extract a recommended token name from a deprecation message.
+// Recognizes patterns like "Use X instead", "Use X.Y instead", or "Replaced by X".
+// Returns the extracted token name, or empty string if no pattern matches.
+func extractRecommendedToken(deprecationMessage string) string {
+	if deprecationMessage == "" {
+		return ""
+	}
+
+	// Pattern: "Use X instead" or "Use X.Y instead"
+	if idx := strings.Index(deprecationMessage, "Use "); idx != -1 {
+		rest := deprecationMessage[idx+4:]
+		if endIdx := strings.Index(rest, " instead"); endIdx != -1 {
+			return strings.TrimSpace(rest[:endIdx])
+		}
+	}
+
+	// Pattern: "Replaced by X"
+	if idx := strings.Index(deprecationMessage, "Replaced by "); idx != -1 {
+		rest := deprecationMessage[idx+12:]
+		// Take until space or end of string
+		if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
+			return rest[:spaceIdx]
+		}
+		return rest
+	}
+
+	return ""
+}
+
+// createReplacementAction creates a code action to replace a deprecated token with a recommended token.
+// Returns nil if the replacement token cannot be formatted for CSS.
+func createReplacementAction(req *types.RequestContext, uri string, varCall css.VarCall, cssVarName string, replacementToken *tokens.Token, matchingDiag *protocol.Diagnostic) *protocol.CodeAction {
+	// Build replacement text
+	newText := fmt.Sprintf("var(%s)", cssVarName)
+	if varCall.Fallback != nil {
+		// Format the replacement token value for CSS
+		formattedFallback, err := FormatTokenValueForCSS(replacementToken)
+		if err != nil {
+			req.AddWarning(fmt.Errorf("cannot format replacement token %q: %w", replacementToken.Name, err))
+			return nil
+		}
+		newText = fmt.Sprintf("var(%s, %s)", cssVarName, formattedFallback)
+	}
+
+	kind := protocol.CodeActionKindQuickFix
+	action := protocol.CodeAction{
+		Title: fmt.Sprintf("Replace with '%s'", cssVarName),
+		Kind:  &kind,
+		Edit: &protocol.WorkspaceEdit{
+			Changes: map[string][]protocol.TextEdit{
+				uri: {
+					{
+						Range: protocol.Range{
+							Start: protocol.Position{
+								Line:      varCall.Range.Start.Line,
+								Character: varCall.Range.Start.Character,
+							},
+							End: protocol.Position{
+								Line:      varCall.Range.End.Line,
+								Character: varCall.Range.End.Character,
+							},
+						},
+						NewText: newText,
+					},
+				},
+			},
+		},
+	}
+
+	if matchingDiag != nil {
+		action.Diagnostics = []protocol.Diagnostic{*matchingDiag}
+		preferred := true
+		action.IsPreferred = &preferred
+	}
+
+	return &action
+}
+
+// createLiteralValueAction creates a code action to replace a var() call with a literal value.
+// Returns nil if the token value cannot be formatted for CSS.
+func createLiteralValueAction(uri string, varCall css.VarCall, token *tokens.Token, matchingDiag *protocol.Diagnostic) *protocol.CodeAction {
+	formattedValue, err := FormatTokenValueForCSS(token)
+	if err != nil {
+		return nil
+	}
+
+	kind := protocol.CodeActionKindQuickFix
+	action := protocol.CodeAction{
+		Title: fmt.Sprintf("Replace with literal value '%s'", formattedValue),
+		Kind:  &kind,
+		Edit: &protocol.WorkspaceEdit{
+			Changes: map[string][]protocol.TextEdit{
+				uri: {
+					{
+						Range: protocol.Range{
+							Start: protocol.Position{
+								Line:      varCall.Range.Start.Line,
+								Character: varCall.Range.Start.Character,
+							},
+							End: protocol.Position{
+								Line:      varCall.Range.End.Line,
+								Character: varCall.Range.End.Character,
+							},
+						},
+						NewText: formattedValue,
+					},
+				},
+			},
+		},
+	}
+
+	if matchingDiag != nil {
+		action.Diagnostics = []protocol.Diagnostic{*matchingDiag}
+	}
+
+	return &action
+}
+
 // handleCodeAction handles the textDocument/codeAction request
 
 // CodeAction handles the textDocument/codeAction request
@@ -542,122 +660,22 @@ func CreateDeprecatedTokenActions(req *types.RequestContext, uri string, varCall
 	}
 
 	// Try to extract recommended replacement from deprecation message
-	// Common patterns: "Use X instead", "Use X.Y instead", "Replaced by X"
-	var recommendedToken string
-	if token.DeprecationMessage != "" {
-		msg := token.DeprecationMessage
+	recommendedToken := extractRecommendedToken(token.DeprecationMessage)
 
-		// Pattern: "Use X instead" or "Use X.Y instead"
-		if idx := strings.Index(msg, "Use "); idx != -1 {
-			rest := msg[idx+4:]
-			if endIdx := strings.Index(rest, " instead"); endIdx != -1 {
-				recommendedToken = strings.TrimSpace(rest[:endIdx])
-			}
-		}
-
-		// Pattern: "Replaced by X"
-		if recommendedToken == "" {
-			if idx := strings.Index(msg, "Replaced by "); idx != -1 {
-				rest := msg[idx+12:]
-				// Take until space or end of string
-				if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
-					recommendedToken = rest[:spaceIdx]
-				} else {
-					recommendedToken = rest
-				}
-			}
-		}
-	}
-
-	// If we found a recommended token, try to look it up
+	// If we found a recommended token, try to create a replacement action
 	if recommendedToken != "" {
-		// Convert dot notation to CSS variable name
 		cssVarName := "--" + strings.ReplaceAll(recommendedToken, ".", "-")
-
 		replacementToken := req.Server.Token(cssVarName)
 		if replacementToken != nil {
-			// Create replacement action
-			newText := fmt.Sprintf("var(%s)", cssVarName)
-			if varCall.Fallback != nil {
-				// Format the replacement token value for CSS (handles quoting for font-family, etc.)
-				formattedFallback, err := FormatTokenValueForCSS(replacementToken)
-				if err != nil {
-					req.AddWarning(fmt.Errorf("cannot format replacement token %q: %w", replacementToken.Name, err))
-					goto createLiteralAction
-				}
-				newText = fmt.Sprintf("var(%s, %s)", cssVarName, formattedFallback)
+			if action := createReplacementAction(req, uri, varCall, cssVarName, replacementToken, matchingDiag); action != nil {
+				actions = append(actions, *action)
 			}
-
-			kind := protocol.CodeActionKindQuickFix
-			action := protocol.CodeAction{
-				Title: fmt.Sprintf("Replace with '%s'", cssVarName),
-				Kind:  &kind,
-				Edit: &protocol.WorkspaceEdit{
-					Changes: map[string][]protocol.TextEdit{
-						uri: {
-							{
-								Range: protocol.Range{
-									Start: protocol.Position{
-										Line:      varCall.Range.Start.Line,
-										Character: varCall.Range.Start.Character,
-									},
-									End: protocol.Position{
-										Line:      varCall.Range.End.Line,
-										Character: varCall.Range.End.Character,
-									},
-								},
-								NewText: newText,
-							},
-						},
-					},
-				},
-			}
-
-			if matchingDiag != nil {
-				action.Diagnostics = []protocol.Diagnostic{*matchingDiag}
-				preferred := true
-				action.IsPreferred = &preferred
-			}
-
-			actions = append(actions, action)
 		}
 	}
 
-createLiteralAction:
-	// Add a generic "Remove deprecated token" action (shows the value inline)
-	// Only offer this if the value can be safely formatted for CSS
-	formattedValue, err := FormatTokenValueForCSS(token)
-	if err == nil {
-		kind := protocol.CodeActionKindQuickFix
-		removeAction := protocol.CodeAction{
-			Title: fmt.Sprintf("Replace with literal value '%s'", formattedValue),
-			Kind:  &kind,
-			Edit: &protocol.WorkspaceEdit{
-				Changes: map[string][]protocol.TextEdit{
-					uri: {
-						{
-							Range: protocol.Range{
-								Start: protocol.Position{
-									Line:      varCall.Range.Start.Line,
-									Character: varCall.Range.Start.Character,
-								},
-								End: protocol.Position{
-									Line:      varCall.Range.End.Line,
-									Character: varCall.Range.End.Character,
-								},
-							},
-							NewText: formattedValue,
-						},
-					},
-				},
-			},
-		}
-
-		if matchingDiag != nil {
-			removeAction.Diagnostics = []protocol.Diagnostic{*matchingDiag}
-		}
-
-		actions = append(actions, removeAction)
+	// Always try to add a literal value action as an alternative
+	if action := createLiteralValueAction(uri, varCall, token, matchingDiag); action != nil {
+		actions = append(actions, *action)
 	}
 
 	return actions
