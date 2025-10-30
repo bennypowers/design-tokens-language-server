@@ -23,7 +23,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          go-version: '1.25.3'
+          install-mode: goinstall
 
   test:
     name: Test
