@@ -92,38 +92,23 @@ jobs:
           cd zed-extensions
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Update submodule and version
-        run: |
-          cd zed-extensions
-
-          # Sync with upstream
-          git remote add upstream https://github.com/zed-industries/extensions.git || true
-          git fetch upstream
-          git merge upstream/main --no-edit
-
           # Update submodule to latest commit
-          cd extensions/design-tokens
+          cd zed-extensions/extensions/design-tokens
           git fetch origin
           git checkout ${{ github.sha }}
           cd ../..
-
           # Update version in extensions.toml
           sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" extensions.toml
-
           git add extensions/design-tokens extensions.toml
 
       - name: Create PR
-        env:
-          GH_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
         run: |
           cd zed-extensions
 
           BRANCH="update-design-tokens-${{ steps.version.outputs.version }}"
           git checkout -b "$BRANCH"
           git commit -m "Update design-tokens to v${{ steps.version.outputs.version }}"
-          git push https://x-access-token:${{ secrets.ZED_COMMITTER_TOKEN }}@github.com/bennypowers/zed-extensions.git "$BRANCH"
-
+          git push -u origin "$BRANCH"
           gh pr create \
             --repo zed-industries/extensions \
             --title "Update design-tokens to v${{ steps.version.outputs.version }}" \
