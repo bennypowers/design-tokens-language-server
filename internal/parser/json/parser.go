@@ -62,6 +62,108 @@ func getNodeValue(node *yaml.Node, key string) *yaml.Node {
 	return nil
 }
 
+// isGroupMarker checks if a key is in the group markers list
+func isGroupMarker(key string, groupMarkers []string) bool {
+	for _, marker := range groupMarkers {
+		if key == marker {
+			return true
+		}
+	}
+	return false
+}
+
+// determineTransparency determines if a group marker should be transparent (not added to path)
+func determineTransparency(key string, valueNode *yaml.Node, groupMarkers []string) bool {
+	if !isGroupMarker(key, groupMarkers) {
+		return false
+	}
+	// A group marker without $value should be transparent
+	dollarValueNode := getNodeValue(valueNode, "$value")
+	return dollarValueNode == nil
+}
+
+// buildTokenPaths builds the JSON path and string path, handling transparent markers
+func buildTokenPaths(jsonPath []string, path, key string, isTransparent bool) ([]string, string) {
+	if isTransparent {
+		// Don't add marker to path - use parent's path
+		return jsonPath, path
+	}
+	// Normal path building
+	currentPath := append([]string{}, jsonPath...)
+	currentPath = append(currentPath, key)
+	newPath := key
+	if path != "" {
+		newPath = path + "-" + key
+	}
+	return currentPath, newPath
+}
+
+// tryPromoteGroupMarkerChild attempts to promote a group marker child to parent token (Pattern 2: RHDS style)
+// Returns a set of promoted marker names
+func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, currentPath, groupMarkers []string, result *[]*tokens.Token) collections.Set[string] {
+	promotedMarkers := collections.NewSet[string]()
+
+	// Pattern 2 (RHDS style): Check if this group has a child that's a group marker with $value
+	// Only promote to parent if the group marker has siblings (indicating it's providing the default value)
+	// If the group marker is the only child, it should create its own token (Pattern 1)
+	for _, marker := range groupMarkers {
+		markerNode := getNodeValue(valueNode, marker)
+		if markerNode != nil && markerNode.Kind == yaml.MappingNode {
+			markerValueNode := getNodeValue(markerNode, "$value")
+			if markerValueNode != nil {
+				// Count non-$ children to check for siblings
+				nonMetaChildren := 0
+				for i := 0; i < len(valueNode.Content); i += 2 {
+					k := valueNode.Content[i].Value
+					if !strings.HasPrefix(k, "$") {
+						nonMetaChildren++
+					}
+				}
+
+				// Only promote if there are siblings (Pattern 2: RHDS style)
+				// If group marker is the only child, let it create its own token (Pattern 1)
+				if nonMetaChildren > 1 {
+					// Create a token for the PARENT using the group marker child's data
+					// Use the PARENT's path, not the group marker's path
+					token := p.createToken(keyNode, path, markerNode, prefix, currentPath)
+					*result = append(*result, token)
+					promotedMarkers.Add(marker) // Mark this marker as promoted
+					// Don't break - there might be multiple group markers (though that would be unusual)
+				}
+			}
+		}
+	}
+
+	return promotedMarkers
+}
+
+// createFilteredChildNode creates a child node with $ keys and promoted markers filtered out
+func createFilteredChildNode(valueNode *yaml.Node, promotedMarkers collections.Set[string]) *yaml.Node {
+	childNode := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Content: make([]*yaml.Node, 0),
+	}
+
+	for i := 0; i < len(valueNode.Content); i += 2 {
+		k := valueNode.Content[i].Value
+		v := valueNode.Content[i+1]
+
+		// Skip DTCG metadata keys
+		if strings.HasPrefix(k, "$") {
+			continue
+		}
+
+		// Skip group marker keys that were promoted to parent tokens
+		if promotedMarkers.Has(k) {
+			continue
+		}
+
+		childNode.Content = append(childNode.Content, valueNode.Content[i], v)
+	}
+
+	return childNode
+}
+
 // extractTokensWithPathAndGroupMarkers recursively extracts tokens with group marker support from AST
 func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath []string, path, prefix string, groupMarkers []string, result *[]*tokens.Token) {
 	if node.Kind != yaml.MappingNode {
@@ -100,36 +202,12 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 		dollarValueNode := getNodeValue(valueNode, "$value")
 		hasValue := dollarValueNode != nil
 
-		// Check if this key is in groupMarkers
-		isGroupMarker := false
-		for _, marker := range groupMarkers {
-			if key == marker {
-				isGroupMarker = true
-				break
-			}
-		}
-
 		// Determine if this marker should be transparent (not added to path)
-		// A group marker without $value should be transparent
-		isTransparentMarker := isGroupMarker && !hasValue
+		isTransparentMarker := determineTransparency(key, valueNode, groupMarkers)
+		isMarker := isGroupMarker(key, groupMarkers)
 
 		// Build paths - skip adding key if it's a transparent group marker
-		var currentPath []string
-		var newPath string
-		if isTransparentMarker {
-			// Don't add marker to path - use parent's path
-			currentPath = jsonPath
-			newPath = path
-		} else {
-			// Normal path building
-			currentPath = append([]string{}, jsonPath...)
-			currentPath = append(currentPath, key)
-			if path == "" {
-				newPath = key
-			} else {
-				newPath = path + "-" + key
-			}
-		}
+		currentPath, newPath := buildTokenPaths(jsonPath, path, key, isTransparentMarker)
 
 		// If has $value, extract the token
 		// This handles Pattern 1: where the key itself is a group marker with $value and children
@@ -140,72 +218,22 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 
 		// Check if we should recurse into children
 		shouldRecurse := false
-		promotedMarkers := collections.NewSet[string]() // Track which group markers were promoted to parent
+		var promotedMarkers collections.Set[string]
 
 		if !hasValue {
 			// No $value means it's a group - check for group marker children first
 			shouldRecurse = true
-
-			// Pattern 2 (RHDS style): Check if this group has a child that's a group marker with $value
-			// Only promote to parent if the group marker has siblings (indicating it's providing the default value)
-			// If the group marker is the only child, it should create its own token (Pattern 1)
-			for _, marker := range groupMarkers {
-				markerNode := getNodeValue(valueNode, marker)
-				if markerNode != nil && markerNode.Kind == yaml.MappingNode {
-					markerValueNode := getNodeValue(markerNode, "$value")
-					if markerValueNode != nil {
-						// Count non-$ children to check for siblings
-						nonMetaChildren := 0
-						for i := 0; i < len(valueNode.Content); i += 2 {
-							k := valueNode.Content[i].Value
-							if !strings.HasPrefix(k, "$") {
-								nonMetaChildren++
-							}
-						}
-
-						// Only promote if there are siblings (Pattern 2: RHDS style)
-						// If group marker is the only child, let it create its own token (Pattern 1)
-						if nonMetaChildren > 1 {
-							// Create a token for the PARENT using the group marker child's data
-							// Use the PARENT's path, not the group marker's path
-							token := p.createToken(keyNode, path, markerNode, prefix, currentPath)
-							*result = append(*result, token)
-							promotedMarkers.Add(marker) // Mark this marker as promoted
-							// Don't break - there might be multiple group markers (though that would be unusual)
-						}
-					}
-				}
-			}
-		} else if isGroupMarker {
+			// Try to promote group marker children (Pattern 2: RHDS style)
+			promotedMarkers = p.tryPromoteGroupMarkerChild(keyNode, path, valueNode, prefix, currentPath, groupMarkers, result)
+		} else if isMarker {
 			// Has $value but is a group marker - recurse into children too
 			shouldRecurse = true
+			promotedMarkers = collections.NewSet[string]()
 		}
 
 		// Recurse into children if needed
 		if shouldRecurse {
-			// Create child node with filtered content
-			childNode := &yaml.Node{
-				Kind:    yaml.MappingNode,
-				Content: make([]*yaml.Node, 0),
-			}
-
-			for i := 0; i < len(valueNode.Content); i += 2 {
-				k := valueNode.Content[i].Value
-				v := valueNode.Content[i+1]
-
-				// Skip DTCG metadata keys
-				if strings.HasPrefix(k, "$") {
-					continue
-				}
-
-				// Skip group marker keys that were promoted to parent tokens
-				if promotedMarkers.Has(k) {
-					continue
-				}
-
-				childNode.Content = append(childNode.Content, valueNode.Content[i], v)
-			}
-
+			childNode := createFilteredChildNode(valueNode, promotedMarkers)
 			if len(childNode.Content) > 0 {
 				p.extractTokensWithPathAndGroupMarkers(childNode, currentPath, newPath, prefix, groupMarkers, result)
 			}
