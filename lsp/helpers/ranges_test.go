@@ -1,10 +1,13 @@
 package helpers_test
 
 import (
+	"math"
 	"testing"
 
 	"bennypowers.dev/dtls/lsp/helpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	sitter "github.com/tree-sitter/go-tree-sitter"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -313,4 +316,129 @@ func TestRangesIntersect(t *testing.T) {
 			assert.Equal(t, result, resultReversed, "RangesIntersect should be symmetric")
 		})
 	}
+}
+
+// TestPositionToUTF16 tests the PositionToUTF16 function for correct UTF-16 conversion and overflow handling
+func TestPositionToUTF16(t *testing.T) {
+	t.Run("overflow detection - row exceeds uint32", func(t *testing.T) {
+		source := "test"
+		point := sitter.Point{
+			Row:    math.MaxUint32 + 1,
+			Column: 0,
+		}
+
+		_, err := helpers.PositionToUTF16(source, point)
+		require.Error(t, err, "Should return error when row exceeds uint32")
+		assert.Contains(t, err.Error(), "position overflow", "Error should mention overflow")
+	})
+
+	t.Run("overflow detection - column exceeds uint32", func(t *testing.T) {
+		source := "test"
+		point := sitter.Point{
+			Row:    0,
+			Column: math.MaxUint32 + 1,
+		}
+
+		_, err := helpers.PositionToUTF16(source, point)
+		require.Error(t, err, "Should return error when column exceeds uint32")
+		assert.Contains(t, err.Error(), "position overflow", "Error should mention overflow")
+	})
+
+	t.Run("normal ASCII text", func(t *testing.T) {
+		source := "hello world\nfoo bar"
+		point := sitter.Point{
+			Row:    1,
+			Column: 4,
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(1), pos.Line, "Line should match row")
+		assert.Equal(t, uint32(4), pos.Character, "Character should match column for ASCII")
+	})
+
+	t.Run("UTF-8 text with multibyte characters", func(t *testing.T) {
+		source := "hello 世界\nfoo"
+		// "世" is 3 bytes in UTF-8 (U+4E16), "界" is 3 bytes (U+754C)
+		// Position at byte 10 = "hello " (6 bytes) + "世" (3 bytes) + 1 byte into "界"
+		point := sitter.Point{
+			Row:    0,
+			Column: 10, // Byte offset
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(0), pos.Line)
+		// "hello " = 6 UTF-16 units, "世" = 1 UTF-16 unit, partial "界" = 1 UTF-16 unit → total 8
+		assert.Equal(t, uint32(8), pos.Character, "Should convert to UTF-16 units")
+	})
+
+	t.Run("emoji (surrogate pairs)", func(t *testing.T) {
+		source := "hello 😀 world"
+		// 😀 is U+1F600, requires surrogate pair in UTF-16 (2 units), 4 bytes in UTF-8
+		// Position at byte 10 = "hello " (6 bytes) + "😀" (4 bytes) = just after emoji
+		point := sitter.Point{
+			Row:    0,
+			Column: 10, // Byte offset right after emoji
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(0), pos.Line)
+		// "hello " = 6 UTF-16 units, "😀" = 2 UTF-16 units → total 8
+		assert.Equal(t, uint32(8), pos.Character, "Emoji should count as 2 UTF-16 units (surrogate pair)")
+	})
+
+	t.Run("position beyond line length", func(t *testing.T) {
+		source := "short"
+		point := sitter.Point{
+			Row:    0,
+			Column: 100, // Beyond line length
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err)
+		// Should clamp to line length
+		assert.Equal(t, uint32(0), pos.Line)
+		assert.Equal(t, uint32(5), pos.Character, "Should clamp to line length")
+	})
+
+	t.Run("row beyond source lines", func(t *testing.T) {
+		source := "line1\nline2"
+		point := sitter.Point{
+			Row:    10, // Beyond available lines
+			Column: 5,
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err)
+		// Should return position as-is when row is out of bounds
+		assert.Equal(t, uint32(10), pos.Line)
+		assert.Equal(t, uint32(5), pos.Character)
+	})
+
+	t.Run("zero position", func(t *testing.T) {
+		source := "test"
+		point := sitter.Point{
+			Row:    0,
+			Column: 0,
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err)
+		assert.Equal(t, uint32(0), pos.Line)
+		assert.Equal(t, uint32(0), pos.Character)
+	})
+
+	t.Run("max valid uint32 position", func(t *testing.T) {
+		source := "test"
+		point := sitter.Point{
+			Row:    math.MaxUint32,
+			Column: math.MaxUint32,
+		}
+
+		pos, err := helpers.PositionToUTF16(source, point)
+		require.NoError(t, err, "Max uint32 values should be valid")
+		assert.Equal(t, uint32(math.MaxUint32), pos.Line)
+	})
 }
