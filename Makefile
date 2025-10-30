@@ -12,7 +12,7 @@ VERSION ?= $(filter v%,$(MAKECMDGOALS))
 # Go build flags with version injection
 GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
-.PHONY: all build build-all test test-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
+.PHONY: all build build-all test test-coverage patch-coverage show-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
 
 all: build
 
@@ -71,6 +71,10 @@ test-coverage:
 	@go tool cover -func=coverage.out | tail -1
 	@echo ""
 	@echo "Merged coverage saved to coverage.out for codecov upload"
+
+## Show patch coverage (lines added in this branch vs main)
+patch-coverage: coverage.out
+	@./scripts/patch-coverage.sh
 
 ## Show coverage in browser
 show-coverage: test-coverage
