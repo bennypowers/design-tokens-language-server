@@ -92,6 +92,7 @@ jobs:
           repository: bennypowers/zed-extensions
           path: zed-extensions
           token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: true
 
       - name: Update Zed Extension
         working-directory: zed-extensions
