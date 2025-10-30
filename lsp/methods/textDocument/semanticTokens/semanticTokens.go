@@ -56,6 +56,17 @@ func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticToke
 	}, nil
 }
 
+// appendValidatedInt validates that value fits in uint32 range and appends it to data
+func appendValidatedInt(data []uint32, value int, fieldName string, tokenIndex int) ([]uint32, error) {
+	if value < 0 {
+		return nil, fmt.Errorf("token %d: %s %d is negative", tokenIndex, fieldName, value)
+	}
+	if value > math.MaxUint32 {
+		return nil, fmt.Errorf("token %d: %s %d exceeds uint32 limit", tokenIndex, fieldName, value)
+	}
+	return append(data, uint32(value)), nil //nolint:gosec // validated above
+}
+
 // encodeSemanticTokens converts intermediate tokens to delta-encoded format (LSP spec).
 // Tokens must be sorted by line and character position for delta encoding to work correctly.
 // Returns error if tokens are unsorted or values exceed uint32 limits.
@@ -71,38 +82,36 @@ func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) ([]uin
 			deltaStart = token.StartChar - prevStartChar
 		}
 
-		// Validate delta values (must be non-negative for sorted tokens)
-		if deltaLine < 0 {
-			return nil, fmt.Errorf("token %d: negative deltaLine %d (tokens must be sorted by position)", i, deltaLine)
-		}
-		if deltaStart < 0 {
-			return nil, fmt.Errorf("token %d: negative deltaStart %d (tokens must be sorted by position)", i, deltaStart)
-		}
-
-		// Validate overflow (LSP protocol uses uint32)
-		if deltaLine > math.MaxUint32 {
-			return nil, fmt.Errorf("token %d: deltaLine %d exceeds uint32 limit", i, deltaLine)
-		}
-		if deltaStart > math.MaxUint32 {
-			return nil, fmt.Errorf("token %d: deltaStart %d exceeds uint32 limit", i, deltaStart)
-		}
-		if token.Length > math.MaxUint32 || token.Length < 0 {
-			return nil, fmt.Errorf("token %d: length %d invalid or exceeds uint32 limit", i, token.Length)
-		}
-		if token.TokenType > math.MaxUint32 || token.TokenType < 0 {
-			return nil, fmt.Errorf("token %d: tokenType %d invalid or exceeds uint32 limit", i, token.TokenType)
-		}
-		if token.TokenModifiers > math.MaxUint32 || token.TokenModifiers < 0 {
-			return nil, fmt.Errorf("token %d: tokenModifiers %d invalid or exceeds uint32 limit", i, token.TokenModifiers)
+		var err error
+		// Append deltaLine
+		data, err = appendValidatedInt(data, deltaLine, "deltaLine", i)
+		if err != nil {
+			return nil, err
 		}
 
-		data = append(data,
-			uint32(deltaLine), //nolint:gosec // it's validated earlier on
-			uint32(deltaStart),
-			uint32(token.Length),    //nolint:gosec // it's validated earlier on
-			uint32(token.TokenType), //nolint:gosec // it's validated earlier on
-			uint32(token.TokenModifiers),
-		)
+		// Append deltaStart
+		data, err = appendValidatedInt(data, deltaStart, "deltaStart", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append length
+		data, err = appendValidatedInt(data, token.Length, "length", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append tokenType
+		data, err = appendValidatedInt(data, token.TokenType, "tokenType", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append tokenModifiers
+		data, err = appendValidatedInt(data, token.TokenModifiers, "tokenModifiers", i)
+		if err != nil {
+			return nil, err
+		}
 
 		prevLine = token.Line
 		prevStartChar = token.StartChar
