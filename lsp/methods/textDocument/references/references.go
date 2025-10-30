@@ -2,6 +2,7 @@ package references
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -48,7 +49,15 @@ func validateTokenContext(req *types.RequestContext, uri protocol.DocumentUri, p
 // the character after the match is either ',' or ')'.
 // This excludes things like --token-color-red: and --token-color-reddish)
 func isValidCSSReference(content string, endPos protocol.Position) bool {
-	if endPos.Character < uint32(len(getLine(content, int(endPos.Line)))) {
+	line := getLine(content, int(endPos.Line))
+	lineLen := len(line)
+
+	// Check for overflow - if line length exceeds uint32, position is considered out of bounds
+	if lineLen > math.MaxUint32 {
+		return false
+	}
+
+	if endPos.Character < uint32(lineLen) {
 		charAfter := getCharAt(content, endPos)
 		return charAfter == ',' || charAfter == ')'
 	}
@@ -253,17 +262,31 @@ func findSubstringRanges(content, substring string) []protocol.Range {
 				break
 			}
 			actualIdx := offset + idx
+			endIdx := actualIdx + len(substring)
+
+			// Check for overflow - skip positions that exceed uint32 limits
+			if lineNum > math.MaxUint32 || actualIdx > math.MaxUint32 || endIdx > math.MaxUint32 {
+				fmt.Fprintf(os.Stderr, "[DTLS] Warning: Skipping reference at line %d, char %d (exceeds uint32 limit)\n", lineNum, actualIdx)
+				offset = endIdx
+				continue
+			}
+
+			// Convert to uint32 after validation (gosec doesn't recognize validation above)
+			lineU32 := uint32(lineNum)           //nolint:gosec // G115: validated above
+			actualIdxU32 := uint32(actualIdx)    //nolint:gosec // G115: validated above
+			endIdxU32 := uint32(endIdx)          //nolint:gosec // G115: validated above
+
 			ranges = append(ranges, protocol.Range{
 				Start: protocol.Position{
-					Line:      uint32(lineNum),
-					Character: uint32(actualIdx),
+					Line:      lineU32,
+					Character: actualIdxU32,
 				},
 				End: protocol.Position{
-					Line:      uint32(lineNum),
-					Character: uint32(actualIdx + len(substring)),
+					Line:      lineU32,
+					Character: endIdxU32,
 				},
 			})
-			offset = actualIdx + len(substring)
+			offset = endIdx
 		}
 	}
 
@@ -288,14 +311,27 @@ func findTokenDefinitionRange(content string, path []string, languageID string) 
 			// Find the position of the key
 			idx := strings.Index(line, lastKey)
 			if idx != -1 {
+				endIdx := idx + len(lastKey)
+
+				// Check for overflow - skip if exceeds uint32 limits
+				if lineNum > math.MaxUint32 || idx > math.MaxUint32 || endIdx > math.MaxUint32 {
+					fmt.Fprintf(os.Stderr, "[DTLS] Warning: Token definition position exceeds uint32 limit at line %d\n", lineNum)
+					continue
+				}
+
+				// Convert to uint32 after validation (gosec doesn't recognize validation above)
+				lineU32 := uint32(lineNum)    //nolint:gosec // G115: validated above
+				idxU32 := uint32(idx)          //nolint:gosec // G115: validated above
+				endIdxU32 := uint32(endIdx)    //nolint:gosec // G115: validated above
+
 				return protocol.Range{
 					Start: protocol.Position{
-						Line:      uint32(lineNum),
-						Character: uint32(idx),
+						Line:      lineU32,
+						Character: idxU32,
 					},
 					End: protocol.Position{
-						Line:      uint32(lineNum),
-						Character: uint32(idx + len(lastKey)),
+						Line:      lineU32,
+						Character: endIdxU32,
 					},
 				}
 			}

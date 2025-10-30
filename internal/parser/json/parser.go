@@ -2,6 +2,7 @@ package json
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -42,7 +43,9 @@ func (p *Parser) ParseWithGroupMarkers(data []byte, prefix string, groupMarkers 
 	// Extract tokens from AST
 	result := []*tokens.Token{}
 	if len(root.Content) > 0 {
-		p.extractTokensWithPathAndGroupMarkers(root.Content[0], []string{}, "", prefix, groupMarkers, &result)
+		if err := p.extractTokensWithPathAndGroupMarkers(root.Content[0], []string{}, "", prefix, groupMarkers, &result); err != nil {
+			return nil, err
+		}
 	}
 
 	return result, nil
@@ -60,6 +63,66 @@ func getNodeValue(node *yaml.Node, key string) *yaml.Node {
 		}
 	}
 	return nil
+}
+
+// extractTokenPosition extracts line and character position from AST node with overflow validation
+// yaml.v3 uses 1-based positions, converts to 0-based for LSP
+func extractTokenPosition(keyNode *yaml.Node, tokenName string) (line, character uint32, err error) {
+	line = uint32(0)
+	character = uint32(0)
+
+	if keyNode.Line > 0 {
+		lineVal := keyNode.Line - 1
+		if lineVal < 0 || lineVal > math.MaxUint32 {
+			return 0, 0, fmt.Errorf("token %s position line %d exceeds uint32 limit", tokenName, lineVal)
+		}
+		line = uint32(lineVal)
+	}
+
+	if keyNode.Column > 0 {
+		colVal := keyNode.Column - 1
+		if colVal < 0 || colVal > math.MaxUint32 {
+			return 0, 0, fmt.Errorf("token %s position column %d exceeds uint32 limit", tokenName, colVal)
+		}
+		character = uint32(colVal)
+	}
+
+	return line, character, nil
+}
+
+// extractTokenMetadata extracts DTCG metadata fields from value node and populates token
+func extractTokenMetadata(valueNode *yaml.Node, token *tokens.Token) {
+	// Extract $type
+	if typeNode := getNodeValue(valueNode, "$type"); typeNode != nil {
+		token.Type = typeNode.Value
+	}
+
+	// Extract $description
+	if descNode := getNodeValue(valueNode, "$description"); descNode != nil {
+		token.Description = descNode.Value
+	}
+
+	// Extract $deprecated flag (can be bool or string with message)
+	if deprecatedNode := getNodeValue(valueNode, "$deprecated"); deprecatedNode != nil {
+		if deprecatedNode.Kind == yaml.ScalarNode {
+			if deprecatedNode.Tag == "!!bool" {
+				token.Deprecated = deprecatedNode.Value == "true"
+			} else {
+				// String deprecation message
+				token.Deprecated = true
+				token.DeprecationMessage = deprecatedNode.Value
+			}
+		}
+	}
+
+	// Extract $extensions
+	if extensionsNode := getNodeValue(valueNode, "$extensions"); extensionsNode != nil {
+		var extensions map[string]interface{}
+		if err := extensionsNode.Decode(&extensions); err == nil {
+			token.Extensions = extensions
+		}
+		// Note: Decode errors are silently ignored - malformed extensions shouldn't break token parsing
+	}
 }
 
 // isGroupMarker checks if a key is in the group markers list
@@ -99,8 +162,8 @@ func buildTokenPaths(jsonPath []string, path, key string, isTransparent bool) ([
 }
 
 // tryPromoteGroupMarkerChild attempts to promote a group marker child to parent token (Pattern 2: RHDS style)
-// Returns a set of promoted marker names
-func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, currentPath, groupMarkers []string, result *[]*tokens.Token) collections.Set[string] {
+// Returns a set of promoted marker names and an error if token creation fails
+func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, currentPath, groupMarkers []string, result *[]*tokens.Token) (collections.Set[string], error) {
 	promotedMarkers := collections.NewSet[string]()
 
 	// Pattern 2 (RHDS style): Check if this group has a child that's a group marker with $value
@@ -125,7 +188,10 @@ func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, val
 				if nonMetaChildren > 1 {
 					// Create a token for the PARENT using the group marker child's data
 					// Use the PARENT's path, not the group marker's path
-					token := p.createToken(keyNode, path, markerNode, prefix, currentPath)
+					token, err := p.createToken(keyNode, path, markerNode, prefix, currentPath)
+					if err != nil {
+						return promotedMarkers, err
+					}
 					*result = append(*result, token)
 					promotedMarkers.Add(marker) // Mark this marker as promoted
 					// Don't break - there might be multiple group markers (though that would be unusual)
@@ -134,7 +200,7 @@ func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, val
 		}
 	}
 
-	return promotedMarkers
+	return promotedMarkers, nil
 }
 
 // createFilteredChildNode creates a child node with $ keys and promoted markers filtered out
@@ -165,9 +231,9 @@ func createFilteredChildNode(valueNode *yaml.Node, promotedMarkers collections.S
 }
 
 // extractTokensWithPathAndGroupMarkers recursively extracts tokens with group marker support from AST
-func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath []string, path, prefix string, groupMarkers []string, result *[]*tokens.Token) {
+func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath []string, path, prefix string, groupMarkers []string, result *[]*tokens.Token) error {
 	if node.Kind != yaml.MappingNode {
-		return
+		return nil
 	}
 
 	// Collect key-value pairs and sort by key for deterministic order
@@ -212,7 +278,10 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 		// If has $value, extract the token
 		// This handles Pattern 1: where the key itself is a group marker with $value and children
 		if hasValue {
-			token := p.createToken(keyNode, path, valueNode, prefix, currentPath)
+			token, err := p.createToken(keyNode, path, valueNode, prefix, currentPath)
+			if err != nil {
+				return err
+			}
 			*result = append(*result, token)
 		}
 
@@ -224,7 +293,11 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 			// No $value means it's a group - check for group marker children first
 			shouldRecurse = true
 			// Try to promote group marker children (Pattern 2: RHDS style)
-			promotedMarkers = p.tryPromoteGroupMarkerChild(keyNode, path, valueNode, prefix, currentPath, groupMarkers, result)
+			var err error
+			promotedMarkers, err = p.tryPromoteGroupMarkerChild(keyNode, path, valueNode, prefix, currentPath, groupMarkers, result)
+			if err != nil {
+				return err
+			}
 		} else if isMarker {
 			// Has $value but is a group marker - recurse into children too
 			shouldRecurse = true
@@ -235,14 +308,18 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 		if shouldRecurse {
 			childNode := createFilteredChildNode(valueNode, promotedMarkers)
 			if len(childNode.Content) > 0 {
-				p.extractTokensWithPathAndGroupMarkers(childNode, currentPath, newPath, prefix, groupMarkers, result)
+				if err := p.extractTokensWithPathAndGroupMarkers(childNode, currentPath, newPath, prefix, groupMarkers, result); err != nil {
+					return err
+				}
 			}
 		}
 	}
+
+	return nil
 }
 
 // createToken creates a Token from AST nodes with accurate position data
-func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, jsonPath []string) *tokens.Token {
+func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, jsonPath []string) (*tokens.Token, error) {
 	key := keyNode.Value
 
 	// Build token name from path
@@ -256,14 +333,10 @@ func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.No
 	// Build reference format (e.g., "{color.primary}")
 	reference := "{" + strings.Join(jsonPath, ".") + "}"
 
-	// Extract position from AST node (yaml.v3 uses 1-based, convert to 0-based for LSP)
-	line := uint32(0)
-	character := uint32(0)
-	if keyNode.Line > 0 {
-		line = uint32(keyNode.Line - 1)
-	}
-	if keyNode.Column > 0 {
-		character = uint32(keyNode.Column - 1)
+	// Extract position with overflow validation
+	line, character, err := extractTokenPosition(keyNode, name)
+	if err != nil {
+		return nil, err
 	}
 
 	// Extract $value from value node
@@ -273,6 +346,7 @@ func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.No
 		value = dollarValueNode.Value
 	}
 
+	// Create token
 	token := &tokens.Token{
 		Name:      name,
 		Value:     value,
@@ -283,39 +357,10 @@ func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.No
 		Character: character,
 	}
 
-	// Extract $type
-	if typeNode := getNodeValue(valueNode, "$type"); typeNode != nil {
-		token.Type = typeNode.Value
-	}
+	// Extract metadata fields
+	extractTokenMetadata(valueNode, token)
 
-	// Extract $description
-	if descNode := getNodeValue(valueNode, "$description"); descNode != nil {
-		token.Description = descNode.Value
-	}
-
-	// Extract $deprecated flag (can be bool or string with message)
-	if deprecatedNode := getNodeValue(valueNode, "$deprecated"); deprecatedNode != nil {
-		if deprecatedNode.Kind == yaml.ScalarNode {
-			if deprecatedNode.Tag == "!!bool" {
-				token.Deprecated = deprecatedNode.Value == "true"
-			} else {
-				// String deprecation message
-				token.Deprecated = true
-				token.DeprecationMessage = deprecatedNode.Value
-			}
-		}
-	}
-
-	// Extract $extensions
-	if extensionsNode := getNodeValue(valueNode, "$extensions"); extensionsNode != nil {
-		var extensions map[string]interface{}
-		if err := extensionsNode.Decode(&extensions); err == nil {
-			token.Extensions = extensions
-		}
-		// Note: Decode errors are silently ignored - malformed extensions shouldn't break token parsing
-	}
-
-	return token
+	return token, nil
 }
 
 // ParseFile parses a JSON file and returns tokens

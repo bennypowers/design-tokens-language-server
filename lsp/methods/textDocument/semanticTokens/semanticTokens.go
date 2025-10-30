@@ -2,6 +2,7 @@ package semantictokens
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -45,31 +46,61 @@ func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticToke
 	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
 
 	// Encode tokens using delta encoding
-	data := encodeSemanticTokens(intermediateTokens)
+	data, err := encodeSemanticTokens(intermediateTokens)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode semantic tokens: %w", err)
+	}
 
 	return &protocol.SemanticTokens{
 		Data: data,
 	}, nil
 }
 
-// encodeSemanticTokens converts intermediate tokens to delta-encoded format (LSP spec)
-func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) []uint32 {
+// encodeSemanticTokens converts intermediate tokens to delta-encoded format (LSP spec).
+// Tokens must be sorted by line and character position for delta encoding to work correctly.
+// Returns error if tokens are unsorted or values exceed uint32 limits.
+func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) ([]uint32, error) {
 	data := make([]uint32, 0, len(intermediateTokens)*5)
 	prevLine := 0
 	prevStartChar := 0
 
-	for _, token := range intermediateTokens {
+	for i, token := range intermediateTokens {
 		deltaLine := token.Line - prevLine
 		deltaStart := token.StartChar
 		if deltaLine == 0 {
 			deltaStart = token.StartChar - prevStartChar
 		}
 
+		// Validate delta values (must be non-negative for sorted tokens)
+		if deltaLine < 0 {
+			return nil, fmt.Errorf("token %d: negative deltaLine %d (tokens must be sorted by position)", i, deltaLine)
+		}
+		if deltaStart < 0 {
+			return nil, fmt.Errorf("token %d: negative deltaStart %d (tokens must be sorted by position)", i, deltaStart)
+		}
+
+		// Validate overflow (LSP protocol uses uint32)
+		if deltaLine > math.MaxUint32 {
+			return nil, fmt.Errorf("token %d: deltaLine %d exceeds uint32 limit", i, deltaLine)
+		}
+		if deltaStart > math.MaxUint32 {
+			return nil, fmt.Errorf("token %d: deltaStart %d exceeds uint32 limit", i, deltaStart)
+		}
+		if token.Length > math.MaxUint32 || token.Length < 0 {
+			return nil, fmt.Errorf("token %d: length %d invalid or exceeds uint32 limit", i, token.Length)
+		}
+		if token.TokenType > math.MaxUint32 || token.TokenType < 0 {
+			return nil, fmt.Errorf("token %d: tokenType %d invalid or exceeds uint32 limit", i, token.TokenType)
+		}
+		if token.TokenModifiers > math.MaxUint32 || token.TokenModifiers < 0 {
+			return nil, fmt.Errorf("token %d: tokenModifiers %d invalid or exceeds uint32 limit", i, token.TokenModifiers)
+		}
+
 		data = append(data,
-			uint32(deltaLine),
+			uint32(deltaLine), //nolint:gosec // it's validated earlier on
 			uint32(deltaStart),
-			uint32(token.Length),
-			uint32(token.TokenType),
+			uint32(token.Length),    //nolint:gosec // it's validated earlier on
+			uint32(token.TokenType), //nolint:gosec // it's validated earlier on
 			uint32(token.TokenModifiers),
 		)
 
@@ -77,7 +108,7 @@ func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) []uint
 		prevStartChar = token.StartChar
 	}
 
-	return data
+	return data, nil
 }
 
 // GetSemanticTokensForDocument extracts semantic tokens from a document
@@ -178,7 +209,10 @@ func SemanticTokensRange(req *types.RequestContext, params *protocol.SemanticTok
 	}
 
 	// Encode filtered tokens
-	encodedData := encodeSemanticTokens(filteredTokens)
+	encodedData, err := encodeSemanticTokens(filteredTokens)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode semantic tokens: %w", err)
+	}
 
 	return &protocol.SemanticTokens{
 		Data: encodedData,
