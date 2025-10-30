@@ -86,13 +86,22 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extension version: $VERSION"
 
+      - name: Checkout zed-extensions fork
+        uses: actions/checkout@v4
+        with:
+          repository: bennypowers/zed-extensions
+          path: zed-extensions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Update Zed Extension
+        working-directory: zed-extensions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone https://github.com/bennypowers/zed-extensions.git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Update submodule to latest commit
-          cd zed-extensions/extensions/design-tokens
+          cd extensions/design-tokens
           git fetch origin
           git checkout ${{ github.sha }}
           cd ../..
