@@ -110,18 +110,14 @@ func (m *Manager) applyChanges(content string, changes []protocol.TextDocumentCo
 
 // normalizeEOFPosition normalizes an EOF position to a valid line/character position.
 // LSP allows position {line: len(lines), character: 0} as a valid EOF marker.
-// Returns normalized (line, charUTF16) and whether the position was at EOF in an empty document.
-func normalizeEOFPosition(line, charUTF16 int, lines []string) (int, int, bool) {
+// Returns normalized (line, charUTF16).
+func normalizeEOFPosition(line, charUTF16 int, lines []string) (int, int) {
 	if line == len(lines) && charUTF16 == 0 {
-		if len(lines) == 0 {
-			// Empty document at EOF
-			return 0, 0, true
-		}
-		// Non-empty document: normalize to end of last line
+		// Normalize EOF to end of last line
 		lastLine := len(lines) - 1
-		return lastLine, position.StringLengthUTF16(lines[lastLine]), false
+		return lastLine, position.StringLengthUTF16(lines[lastLine])
 	}
-	return line, charUTF16, false
+	return line, charUTF16
 }
 
 // validateNormalizedBounds validates that normalized line indices are within document bounds.
@@ -197,16 +193,8 @@ func applyIncrementalChange(content string, changeRange protocol.Range, text str
 	endCharUTF16 := int(changeRange.End.Character)
 
 	// Normalize EOF positions
-	var emptyDocAtEOF bool
-	endLine, endCharUTF16, emptyDocAtEOF = normalizeEOFPosition(endLine, endCharUTF16, lines)
-	if emptyDocAtEOF && startLine == 0 && startCharUTF16 == 0 {
-		return text, nil
-	}
-
-	startLine, startCharUTF16, emptyDocAtEOF = normalizeEOFPosition(startLine, startCharUTF16, lines)
-	if emptyDocAtEOF {
-		return text, nil
-	}
+	endLine, endCharUTF16 = normalizeEOFPosition(endLine, endCharUTF16, lines)
+	startLine, startCharUTF16 = normalizeEOFPosition(startLine, startCharUTF16, lines)
 
 	// Validate line indices are within bounds after normalization
 	if err := validateNormalizedBounds(startLine, endLine, len(lines)); err != nil {
