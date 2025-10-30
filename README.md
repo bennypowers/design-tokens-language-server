@@ -309,8 +309,9 @@ This single command handles everything:
 2. Commits the changes with message: `chore: prepare version 0.1.1`
 3. Creates git tag `v0.1.1`
 4. Pushes commit and tag to GitHub
-5. Creates GitHub release with auto-generated notes
-6. Triggers CI to build binaries and publish extensions
+5. Opens `gh` interactive wizard where you can edit release notes in your editor
+6. Creates the GitHub release
+7. Triggers CI to build binaries and publish extensions
 
 **Dry run:** To preview changes without pushing:
 ```bash

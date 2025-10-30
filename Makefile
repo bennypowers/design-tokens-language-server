@@ -224,7 +224,7 @@ release:
 		echo "  git tag -a '$(VERSION)' -m 'Release $(VERSION)'"; \
 		echo "  git push origin main"; \
 		echo "  git push origin '$(VERSION)'"; \
-		echo "  gh release create '$(VERSION)' --generate-notes"; \
+		echo "  gh release create '$(VERSION)' (interactive wizard for release notes)"; \
 		echo ""; \
 		echo "✓ Dry run complete. Files modified but not committed."; \
 		echo "  To undo: git checkout extensions/vscode/package.json extensions/zed/extension.toml"; \
@@ -238,11 +238,9 @@ release:
 		echo "Pushing to origin..."; \
 		git push origin main; \
 		git push origin "$(VERSION)"; \
-		echo "Creating GitHub release..."; \
-		gh release create "$(VERSION)" --generate-notes; \
 		echo ""; \
-		echo "✓ Release $(VERSION) created successfully!"; \
-		echo "  View at: https://github.com/bennypowers/design-tokens-language-server/releases/tag/$(VERSION)"; \
+		echo "Creating GitHub release..."; \
+		gh release create "$(VERSION)"; \
 	fi
 
 ## Help
