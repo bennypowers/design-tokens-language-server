@@ -108,73 +108,48 @@ func (m *Manager) applyChanges(content string, changes []protocol.TextDocumentCo
 	return result, nil
 }
 
-// applyIncrementalChange applies a single incremental change to the content.
-// LSP positions use UTF-16 code units, so this function converts them to byte offsets.
-func applyIncrementalChange(content string, changeRange protocol.Range, text string) (string, error) {
-	lines := strings.Split(content, "\n")
-
-	// Validate line range - allow EOF insertion (line == len(lines))
-	if int(changeRange.Start.Line) > len(lines) {
-		return "", fmt.Errorf("start line %d out of bounds (total lines: %d)", changeRange.Start.Line, len(lines))
-	}
-	if int(changeRange.End.Line) > len(lines) {
-		return "", fmt.Errorf("end line %d out of bounds (total lines: %d)", changeRange.End.Line, len(lines))
-	}
-
-	startLine := int(changeRange.Start.Line)
-	startCharUTF16 := int(changeRange.Start.Character)
-	endLine := int(changeRange.End.Line)
-	endCharUTF16 := int(changeRange.End.Character)
-
-	// Handle EOF position: LSP allows position {line: len(lines), character: 0} as a valid EOF marker
-	// Normalize end position if it's at EOF
-	if endLine == len(lines) && endCharUTF16 == 0 {
+// normalizeEOFPosition normalizes an EOF position to a valid line/character position.
+// LSP allows position {line: len(lines), character: 0} as a valid EOF marker.
+// Returns normalized (line, charUTF16) and whether the position was at EOF in an empty document.
+func normalizeEOFPosition(line, charUTF16 int, lines []string) (int, int, bool) {
+	if line == len(lines) && charUTF16 == 0 {
 		if len(lines) == 0 {
-			// Empty document: if start is also at EOF, just return the new text
-			if startLine == 0 && startCharUTF16 == 0 {
-				return text, nil
-			}
-		} else {
-			// Non-empty document: normalize end to point to end of last line
-			endLine = len(lines) - 1
-			endCharUTF16 = position.StringLengthUTF16(lines[endLine])
+			// Empty document at EOF
+			return 0, 0, true
 		}
+		// Non-empty document: normalize to end of last line
+		lastLine := len(lines) - 1
+		return lastLine, position.StringLengthUTF16(lines[lastLine]), false
 	}
+	return line, charUTF16, false
+}
 
-	// Handle start position at EOF (append to end of document)
-	if startLine == len(lines) && startCharUTF16 == 0 {
-		if len(lines) == 0 {
-			// Empty document
-			return text, nil
-		}
-		startLine = len(lines) - 1
-		startCharUTF16 = position.StringLengthUTF16(lines[startLine])
+// validateNormalizedBounds validates that normalized line indices are within document bounds.
+func validateNormalizedBounds(startLine, endLine, numLines int) error {
+	if startLine >= numLines {
+		return fmt.Errorf("start line %d out of bounds after normalization (total lines: %d)", startLine, numLines)
 	}
-
-	// Final validation: ensure line indices are within bounds after normalization
-	// This must happen before we access lines[startLine] or lines[endLine]
-	if startLine >= len(lines) {
-		return "", fmt.Errorf("start line %d out of bounds after normalization (total lines: %d)", startLine, len(lines))
+	if endLine >= numLines {
+		return fmt.Errorf("end line %d out of bounds after normalization (total lines: %d)", endLine, numLines)
 	}
-	if endLine >= len(lines) {
-		return "", fmt.Errorf("end line %d out of bounds after normalization (total lines: %d)", endLine, len(lines))
-	}
+	return nil
+}
 
-	// Convert UTF-16 positions to byte offsets (safe now that we've validated bounds)
-	startCharByte := position.UTF16ToByteOffset(lines[startLine], startCharUTF16)
-	endCharByte := position.UTF16ToByteOffset(lines[endLine], endCharUTF16)
-
-	// Validate character bounds
+// validateCharBounds validates that character byte offsets are within line bounds.
+func validateCharBounds(startCharByte, startCharUTF16, startLine, endCharByte, endCharUTF16, endLine int, lines []string) error {
 	if startCharByte < 0 || startCharByte > len(lines[startLine]) {
-		return "", fmt.Errorf("start char %d (UTF-16: %d) out of bounds for line %d (length: %d)",
+		return fmt.Errorf("start char %d (UTF-16: %d) out of bounds for line %d (length: %d)",
 			startCharByte, startCharUTF16, startLine, len(lines[startLine]))
 	}
 	if endCharByte < 0 || endCharByte > len(lines[endLine]) {
-		return "", fmt.Errorf("end char %d (UTF-16: %d) out of bounds for line %d (length: %d)",
+		return fmt.Errorf("end char %d (UTF-16: %d) out of bounds for line %d (length: %d)",
 			endCharByte, endCharUTF16, endLine, len(lines[endLine]))
 	}
+	return nil
+}
 
-	// Build the new content
+// buildChangedContent builds the new content string after applying the change.
+func buildChangedContent(lines []string, startLine, startCharByte, endLine, endCharByte int, text string) string {
 	var result strings.Builder
 
 	// Lines before the change
@@ -200,5 +175,53 @@ func applyIncrementalChange(content string, changeRange protocol.Range, text str
 		result.WriteString(lines[i])
 	}
 
-	return result.String(), nil
+	return result.String()
+}
+
+// applyIncrementalChange applies a single incremental change to the content.
+// LSP positions use UTF-16 code units, so this function converts them to byte offsets.
+func applyIncrementalChange(content string, changeRange protocol.Range, text string) (string, error) {
+	lines := strings.Split(content, "\n")
+
+	// Validate line range - allow EOF insertion (line == len(lines))
+	if int(changeRange.Start.Line) > len(lines) {
+		return "", fmt.Errorf("start line %d out of bounds (total lines: %d)", changeRange.Start.Line, len(lines))
+	}
+	if int(changeRange.End.Line) > len(lines) {
+		return "", fmt.Errorf("end line %d out of bounds (total lines: %d)", changeRange.End.Line, len(lines))
+	}
+
+	startLine := int(changeRange.Start.Line)
+	startCharUTF16 := int(changeRange.Start.Character)
+	endLine := int(changeRange.End.Line)
+	endCharUTF16 := int(changeRange.End.Character)
+
+	// Normalize EOF positions
+	var emptyDocAtEOF bool
+	endLine, endCharUTF16, emptyDocAtEOF = normalizeEOFPosition(endLine, endCharUTF16, lines)
+	if emptyDocAtEOF && startLine == 0 && startCharUTF16 == 0 {
+		return text, nil
+	}
+
+	startLine, startCharUTF16, emptyDocAtEOF = normalizeEOFPosition(startLine, startCharUTF16, lines)
+	if emptyDocAtEOF {
+		return text, nil
+	}
+
+	// Validate line indices are within bounds after normalization
+	if err := validateNormalizedBounds(startLine, endLine, len(lines)); err != nil {
+		return "", err
+	}
+
+	// Convert UTF-16 positions to byte offsets
+	startCharByte := position.UTF16ToByteOffset(lines[startLine], startCharUTF16)
+	endCharByte := position.UTF16ToByteOffset(lines[endLine], endCharUTF16)
+
+	// Validate character bounds
+	if err := validateCharBounds(startCharByte, startCharUTF16, startLine, endCharByte, endCharUTF16, endLine, lines); err != nil {
+		return "", err
+	}
+
+	// Build and return the new content
+	return buildChangedContent(lines, startLine, startCharByte, endLine, endCharByte, text), nil
 }
