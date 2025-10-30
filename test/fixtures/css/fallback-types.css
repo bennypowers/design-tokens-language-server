@@ -1,0 +1,23 @@
+/* Test add/fix fallback actions for different token types */
+
+.element {
+  /* Color without fallback - should suggest adding */
+  color: var(--color-primary);
+
+  /* Dimension without fallback - should suggest adding */
+  margin: var(--spacing-small);
+
+  /* Font-weight - should handle properly */
+  font-weight: var(--fontWeight-bold);
+
+  /* Font-family - fallback should be quoted if needed */
+  font-family: var(--fontFamily-body);
+}
+
+.incorrect {
+  /* Color with incorrect fallback - should suggest fixing */
+  color: var(--color-primary, #ff0000);
+
+  /* Dimension with incorrect fallback - should suggest fixing */
+  padding: var(--spacing-small, 16px);
+}

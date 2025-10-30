@@ -19,6 +19,124 @@
     "small": {
       "$value": "8px",
       "$type": "dimension"
+    },
+    "old-spacing": {
+      "$value": "12px",
+      "$type": "dimension",
+      "$deprecated": "Replaced by spacing.small for better consistency"
+    }
+  },
+  "border": {
+    "default": {
+      "$value": "1px solid #000000",
+      "$type": "border",
+      "$description": "Default border style"
+    }
+  },
+  "shadow": {
+    "card": {
+      "$value": "0 2px 4px rgba(0,0,0,0.1)",
+      "$type": "shadow",
+      "$description": "Card shadow"
+    }
+  },
+  "fontFamily": {
+    "body": {
+      "$value": "Helvetica Neue",
+      "$type": "fontFamily",
+      "$description": "Body font with spaces (needs quoting)"
+    },
+    "heading": {
+      "$value": "Georgia",
+      "$type": "fontFamily"
+    },
+    "generic": {
+      "$value": "sans-serif",
+      "$type": "fontFamily",
+      "$description": "Generic font family (no quoting needed)"
+    },
+    "old-font": {
+      "$value": "Arial",
+      "$type": "fontFamily",
+      "$deprecated": "Use fontFamily.body instead"
+    },
+    "quoted": {
+      "$value": "\"Times New Roman\"",
+      "$type": "fontFamily",
+      "$description": "Already quoted font family"
+    },
+    "fallback-list": {
+      "$value": "Arial, Helvetica, sans-serif",
+      "$type": "fontFamily",
+      "$description": "Comma-separated font list"
+    },
+    "quoted-list": {
+      "$value": "\"Segoe UI\", Arial, sans-serif",
+      "$type": "fontFamily",
+      "$description": "Font list with quoted name"
+    }
+  },
+  "fontWeight": {
+    "normal": {
+      "$value": "400",
+      "$type": "fontWeight"
+    },
+    "bold": {
+      "$value": "700",
+      "$type": "fontWeight"
+    },
+    "keyword-bold": {
+      "$value": "bold",
+      "$type": "fontWeight"
+    },
+    "keyword-lighter": {
+      "$value": "lighter",
+      "$type": "fontWeight"
+    }
+  },
+  "color-variations": {
+    "rgb": {
+      "$value": "rgb(255, 0, 0)",
+      "$type": "color"
+    },
+    "rgba": {
+      "$value": "rgba(0, 255, 0, 0.5)",
+      "$type": "color"
+    },
+    "named": {
+      "$value": "rebeccapurple",
+      "$type": "color"
+    }
+  },
+  "dimension-variations": {
+    "rem": {
+      "$value": "1.5rem",
+      "$type": "dimension"
+    },
+    "percent": {
+      "$value": "50%",
+      "$type": "dimension"
+    },
+    "em": {
+      "$value": "2em",
+      "$type": "dimension"
+    }
+  },
+  "number": {
+    "opacity": {
+      "$value": "0.75",
+      "$type": "number"
+    },
+    "line-height": {
+      "$value": "1.6",
+      "$type": "number"
+    }
+  },
+  "size": {
+    "old-deprecated": {
+      "$value": "24px",
+      "$type": "dimension",
+      "$deprecated": "This token is deprecated and will be removed"
     }
   }
 }

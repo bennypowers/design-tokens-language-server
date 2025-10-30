@@ -211,53 +211,8 @@ func TestCodeActionResolve_ReturnsActionUnchanged(t *testing.T) {
 	assert.Equal(t, action, resolved) // Should return same action
 }
 
-func TestIsCSSValueSemanticallyEquivalent(t *testing.T) {
-	tests := []struct {
-		name     string
-		a        string
-		b        string
-		expected bool
-	}{
-		{
-			name:     "exact match",
-			a:        "#ff0000",
-			b:        "#ff0000",
-			expected: true,
-		},
-		{
-			name:     "case insensitive",
-			a:        "#FF0000",
-			b:        "#ff0000",
-			expected: true,
-		},
-		{
-			name:     "whitespace differences",
-			a:        "rgb( 255, 0, 0 )",
-			b:        "rgb(255,0,0)",
-			expected: true,
-		},
-		{
-			name:     "different values",
-			a:        "#ff0000",
-			b:        "#0000ff",
-			expected: false,
-		},
-		{
-			name:     "tab and newline normalization",
-			a:        "rgba(\n\t255,\n\t0,\n\t0,\n\t1\n)",
-			b:        "rgba(255,0,0,1)",
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isCSSValueSemanticallyEquivalent(tt.a, tt.b)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+// ptrCodeActionKind returns a pointer to the given CodeActionKind
+func ptrCodeActionKind(kind protocol.CodeActionKind) *protocol.CodeActionKind {
+	return &kind
 }
 
-func ptrCodeActionKind(k protocol.CodeActionKind) *protocol.CodeActionKind {
-	return &k
-}

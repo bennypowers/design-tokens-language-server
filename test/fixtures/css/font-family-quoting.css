@@ -1,0 +1,36 @@
+/* Test that font-family fallbacks are properly quoted */
+
+.body {
+  /* Font with spaces should have quoted fallback */
+  font-family: var(--fontFamily-body);
+}
+
+.heading {
+  /* Simple font name */
+  font-family: var(--fontFamily-heading);
+}
+
+.generic {
+  /* Generic family should not be quoted */
+  font-family: var(--fontFamily-generic);
+}
+
+.deprecated {
+  /* Deprecated font - tests replacement with quoting */
+  font-family: var(--fontFamily-old-font);
+}
+
+.quoted-font {
+  /* Already quoted font name - should preserve quotes */
+  font-family: var(--fontFamily-quoted);
+}
+
+.fallback-list {
+  /* Comma-separated font list */
+  font-family: var(--fontFamily-fallback-list);
+}
+
+.quoted-list {
+  /* Font list with quoted name */
+  font-family: var(--fontFamily-quoted-list);
+}

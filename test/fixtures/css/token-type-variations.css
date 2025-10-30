@@ -1,0 +1,30 @@
+/* Test various token types to cover formatTokenValueForCSS */
+
+.color-variations {
+  /* Different color formats */
+  color: var(--color-variations-rgb);
+  background: var(--color-variations-rgba);
+  border-color: var(--color-variations-named);
+}
+
+.dimension-variations {
+  /* Different dimension units */
+  font-size: var(--dimension-variations-rem);
+  width: var(--dimension-variations-percent);
+  margin: var(--dimension-variations-em);
+}
+
+.number-variations {
+  /* Number type tokens */
+  opacity: var(--number-opacity);
+  line-height: var(--number-line-height);
+}
+
+.fontweight-variations {
+  /* Font weight keywords and numbers */
+  font-weight: var(--fontWeight-keyword-bold);
+}
+
+.fontweight-keyword {
+  font-weight: var(--fontWeight-keyword-lighter);
+}
