@@ -21,6 +21,37 @@ func isWindowsDriveLetter(segment string, index int) bool {
 	return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
 }
 
+// handleExtendedLengthPrefix processes Win32 extended-length prefixes (\\?\ or //?/)
+// Returns the normalized path and whether it should be handled as a UNC path or bail out
+func handleExtendedLengthPrefix(absPath string) (string, bool, bool) {
+	// Check for extended-length prefix
+	if !strings.HasPrefix(absPath, `\\?\`) && !strings.HasPrefix(absPath, `//?/`) {
+		return absPath, true, false // Not an extended path, continue processing
+	}
+
+	// Extract remainder after the prefix (both prefixes are 4 characters)
+	remainder := absPath[4:]
+
+	// Check if it's an extended UNC path (\\?\UNC\ or //?/UNC/)
+	remainderUpper := strings.ToUpper(remainder)
+	if strings.HasPrefix(remainderUpper, `UNC\`) || strings.HasPrefix(remainderUpper, `UNC/`) {
+		// Strip the UNC\ or UNC/ part (4 characters) and treat as normal UNC path
+		return `\\` + remainder[4:], true, true
+	}
+
+	// Check if it's a device drive path (e.g., \\?\C:\ or //?/C:/)
+	if len(remainder) >= 2 && remainder[1] == ':' {
+		ch := remainder[0]
+		if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') {
+			// It's a drive letter - bail out and let caller's drive-letter logic handle it
+			return "", false, false
+		}
+	}
+
+	// If it's some other extended path we don't recognize, bail out
+	return "", false, false
+}
+
 // handleWindowsUNCPath handles Windows UNC path conversion (\\server\share -> file://server/share)
 // Returns the URI string and whether the path was a UNC path
 func handleWindowsUNCPath(absPath string) (string, bool) {
@@ -28,6 +59,15 @@ func handleWindowsUNCPath(absPath string) (string, bool) {
 	if runtime.GOOS != "windows" {
 		return "", false
 	}
+
+	// Handle Win32 extended-length prefixes (\\?\ or //?/)
+	var shouldContinue, wasExtended bool
+	absPath, shouldContinue, wasExtended = handleExtendedLengthPrefix(absPath)
+	if !shouldContinue {
+		return "", false
+	}
+	_ = wasExtended // wasExtended available for future use if needed
+
 	if !strings.HasPrefix(absPath, `\\`) && !strings.HasPrefix(absPath, `//`) {
 		return "", false
 	}

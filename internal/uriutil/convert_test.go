@@ -67,6 +67,37 @@ func TestPathToURI(t *testing.T) {
 			expected: "file:///home/user/%E6%96%87%E4%BB%B6",
 			posix:    true,
 		},
+		// Win32 extended-length prefix tests
+		{
+			name:     "Windows extended UNC path (backslash)",
+			input:    `\\?\UNC\server\share\file.txt`,
+			expected: "file://server/share/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended UNC path (forward slash)",
+			input:    `//?/UNC/server/share/file.txt`,
+			expected: "file://server/share/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended UNC path (mixed case)",
+			input:    `\\?\unc\server\share\file.txt`,
+			expected: "file://server/share/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended device drive path (backslash)",
+			input:    `\\?\C:\project\file.txt`,
+			expected: "file:///C:/project/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended device drive path (forward slash)",
+			input:    `//?/C:/project/file.txt`,
+			expected: "file:///C:/project/file.txt",
+			windows:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -212,6 +243,16 @@ func TestRoundTrip(t *testing.T) {
 		{
 			name:    "Windows UNC path",
 			path:    "\\\\server\\share\\file.txt",
+			windows: true,
+		},
+		{
+			name:    "Windows extended UNC path",
+			path:    `\\?\UNC\server\share\file.txt`,
+			windows: true,
+		},
+		{
+			name:    "Windows extended device drive path",
+			path:    `\\?\C:\project\file.txt`,
 			windows: true,
 		},
 	}
