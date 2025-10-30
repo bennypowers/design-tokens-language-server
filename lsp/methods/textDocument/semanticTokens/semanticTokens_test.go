@@ -1,8 +1,6 @@
 package semantictokens_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/documents"
@@ -13,23 +11,6 @@ import (
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
-
-// loadFixture loads a test fixture file from test/fixtures/
-func loadFixture(t *testing.T, path string) string {
-	t.Helper()
-	// Get the project root (go up from lsp/methods/textDocument/semanticTokens/)
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	projectRoot := filepath.Join(wd, "..", "..", "..", "..")
-	fixturePath := filepath.Join(projectRoot, "test", "fixtures", path)
-	content, err := os.ReadFile(fixturePath)
-	if err != nil {
-		t.Fatalf("Failed to load fixture %s: %v", path, err)
-	}
-	return string(content)
-}
 
 func TestGetSemanticTokensForDocument(t *testing.T) {
 	tests := []struct {
@@ -247,56 +228,4 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	}
 }
 
-func TestSemanticTokensRange(t *testing.T) {
-	s := testutil.NewMockServerContext()
-
-	// Add test tokens
-	token1 := &tokens.Token{
-		Name:  "color-brand-primary",
-		Value: "#FF6B35",
-		Type:  "color",
-	}
-	token2 := &tokens.Token{
-		Name:  "color-ui-background",
-		Value: "#F7F7F7",
-		Type:  "color",
-	}
-	_ = s.TokenManager().Add(token1)
-	_ = s.TokenManager().Add(token2)
-
-	// Load fixture document
-	content := loadFixture(t, "semantic-tokens/range-test.json")
-	doc := documents.NewDocument("file:///test.json", "json", 1, content)
-	req := types.NewRequestContext(s, nil)
-	_ = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{URI: doc.URI(), LanguageID: doc.LanguageID(), Version: protocol.Integer(doc.Version()), Text: doc.Content()}})
-
-	// Request semantic tokens for range (lines 1-2 only)
-	params := &protocol.SemanticTokensRangeParams{
-		TextDocument: protocol.TextDocumentIdentifier{
-			URI: doc.URI(),
-		},
-		Range: protocol.Range{
-			Start: protocol.Position{Line: 1, Character: 0},
-			End:   protocol.Position{Line: 2, Character: 100},
-		},
-	}
-
-	req = types.NewRequestContext(s, nil)
-	result, err := semantictokens.SemanticTokensRange(req, params)
-	if err != nil {
-		t.Fatalf("handleSemanticTokensRange failed: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Expected non-nil result")
-	}
-
-	// Should only include tokens from lines 1-2 (6 tokens total: 3 per reference)
-	// Line 1: color, brand, primary
-	// Line 2: color, ui, background
-	expectedDataLength := 6 * 5 // 6 tokens × 5 values each
-	if len(result.Data) != expectedDataLength {
-		t.Errorf("Expected %d data values for range, got %d", expectedDataLength, len(result.Data))
-	}
-}
 

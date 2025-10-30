@@ -8,6 +8,23 @@ on:
       - main
 
 jobs:
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - uses: actions/setup-go@v5
+  #       with:
+  #         go-version-file: 'go.mod'
+  #         cache: true
+  #
+  #     - name: golangci-lint
+  #       uses: golangci/golangci-lint-action@v6
+  #       with:
+  #         version: latest
+  #         install-mode: goinstall
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -28,3 +45,8 @@ jobs:
           token: ${{ secrets.CODECOV_PAT }}
           fail_ci_if_error: true
           verbose: true
+
+  build:
+    name: Validate Builds
+    uses: ./.github/workflows/build-binaries.yaml
+    # No release-tag means just build for validation, don't upload

@@ -93,7 +93,7 @@ func TestServerInitialization(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensPath, []byte(tokens), 0644)
+		err = os.WriteFile(tokensPath, []byte(tokens), 0o644)
 		require.NoError(t, err)
 
 		// Load token file directly (simulating what Initialized would do)

@@ -1,0 +1,14 @@
+color:
+  primary:
+    $value: "#0000ff"
+    $type: "color"
+  secondary:
+    $value: "{color.primary}"
+    $type: "color"
+spacing:
+  small:
+    $value: "8px"
+    $type: "dimension"
+  medium:
+    $value: "{spacing.small}"
+    $type: "dimension"

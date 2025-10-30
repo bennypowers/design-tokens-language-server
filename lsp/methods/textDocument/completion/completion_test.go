@@ -282,8 +282,8 @@ func TestGetWordAtPosition(t *testing.T) {
 	tests := []struct {
 		name     string
 		content  string
-		position protocol.Position
 		expected string
+		position protocol.Position
 	}{
 		{
 			name:     "word at start of line",

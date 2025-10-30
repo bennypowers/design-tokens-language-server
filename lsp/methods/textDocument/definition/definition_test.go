@@ -171,8 +171,8 @@ func TestDefinition_PreciseTokenPosition(t *testing.T) {
 		Type:          "color",
 		DefinitionURI: "file:///workspace/tokens.json",
 		Path:          []string{"color", "primary"},
-		Line:          2,      // Token is on line 2
-		Character:     4,      // Token starts at character 4
+		Line:          2, // Token is on line 2
+		Character:     4, // Token starts at character 4
 	})
 
 	uri := "file:///test.css"
@@ -202,9 +202,9 @@ func TestDefinition_PreciseTokenPosition(t *testing.T) {
 // TestIsPositionInVarCall tests the isPositionInVarCall function with half-open range semantics [start, end)
 func TestIsPositionInVarCall(t *testing.T) {
 	tests := []struct {
+		varCall  *css.VarCall
 		name     string
 		pos      protocol.Position
-		varCall  *css.VarCall
 		expected bool
 	}{
 		{

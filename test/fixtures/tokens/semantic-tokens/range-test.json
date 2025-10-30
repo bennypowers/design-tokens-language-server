@@ -1,0 +1,4 @@
+{
+  "test1": { "$value": "{color.primary}", "$type": "color" },
+  "test2": { "$value": "{spacing.small}", "$type": "color" }
+}

@@ -1,0 +1,11 @@
+/* Test that composite types (border, shadow) don't offer toggle fallback action */
+
+.card {
+  border: var(--border-default);
+  box-shadow: var(--shadow-card);
+}
+
+.button {
+  /* Composite types should not allow adding fallback values */
+  border: var(--border-default);
+}

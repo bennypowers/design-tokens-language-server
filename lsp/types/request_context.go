@@ -14,10 +14,10 @@ type RequestContext struct {
 }
 
 // NewRequestContext creates a new request context
-func NewRequestContext(server ServerContext, glsp *glsp.Context) *RequestContext {
+func NewRequestContext(server ServerContext, glspContext *glsp.Context) *RequestContext {
 	return &RequestContext{
 		Server: server,
-		GLSP:   glsp,
+		GLSP:   glspContext,
 	}
 }
 

@@ -1,0 +1,31 @@
+/* Test different deprecation message patterns */
+
+.use-instead {
+  /* Pattern: "Use X instead" - should offer replacement */
+  color: var(--color-old-primary);
+}
+
+.replaced-by-with-text {
+  /* Pattern: "Replaced by X for better consistency" - should extract token name */
+  margin: var(--spacing-old-spacing);
+}
+
+.no-suggestion {
+  /* No suggested replacement - should only offer literal value */
+  font-size: var(--size-old-deprecated);
+}
+
+.deprecated-font {
+  /* Deprecated font - should offer replacement */
+  font-family: var(--fontFamily-old-font);
+}
+
+.deprecated-with-fallback {
+  /* Deprecated token with fallback - replacement should preserve fallback */
+  color: var(--color-old-primary, #ff0000);
+}
+
+.replaced-by-no-suffix {
+  /* Pattern: "Replaced by X" with no text after - tests line 119 coverage */
+  line-height: var(--lineHeight-old);
+}

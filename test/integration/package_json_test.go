@@ -36,12 +36,12 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Create node_modules structure
 		nodeModulesDir := filepath.Join(tmpDir, "node_modules", "@test", "tokens")
-		err = os.MkdirAll(nodeModulesDir, 0755)
+		err = os.MkdirAll(nodeModulesDir, 0o755)
 		require.NoError(t, err)
 
 		// Create tokens file
@@ -54,7 +54,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensFile, []byte(tokensData), 0644)
+		err = os.WriteFile(tokensFile, []byte(tokensData), 0o644)
 		require.NoError(t, err)
 
 		// Initialize server with workspace
@@ -103,12 +103,12 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Create tokens directory and file
 		tokensDir := filepath.Join(tmpDir, "tokens")
-		err = os.MkdirAll(tokensDir, 0755)
+		err = os.MkdirAll(tokensDir, 0o755)
 		require.NoError(t, err)
 
 		tokensFile := filepath.Join(tokensDir, "design-tokens.json")
@@ -120,7 +120,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensFile, []byte(tokensData), 0644)
+		err = os.WriteFile(tokensFile, []byte(tokensData), 0o644)
 		require.NoError(t, err)
 
 		// Initialize server
@@ -196,7 +196,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Initialize server
@@ -247,12 +247,12 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Create @rhds/tokens structure
 		nodeModulesDir := filepath.Join(tmpDir, "node_modules", "@rhds", "tokens", "json")
-		err = os.MkdirAll(nodeModulesDir, 0755)
+		err = os.MkdirAll(nodeModulesDir, 0o755)
 		require.NoError(t, err)
 
 		tokensFile := filepath.Join(nodeModulesDir, "rhds.tokens.json")
@@ -270,7 +270,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensFile, []byte(tokensData), 0644)
+		err = os.WriteFile(tokensFile, []byte(tokensData), 0o644)
 		require.NoError(t, err)
 
 		// Initialize server
@@ -306,5 +306,59 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		config := server.GetConfig()
 		assert.Equal(t, "rh", config.Prefix)
 		assert.Equal(t, []string{"_", "@", "GROUP", "HOOLI"}, config.GroupMarkers)
+	})
+
+	t.Run("blocks path traversal in npm: protocol", func(t *testing.T) {
+		// Use the malicious-repo fixture which has path traversal attempts in package.json
+		fixtureDir := filepath.Join("..", "fixtures", "malicious-repo")
+
+		// Verify the fixture exists
+		require.DirExists(t, fixtureDir, "malicious-repo fixture should exist")
+
+		// Create a temp workspace and copy the malicious package.json
+		tmpDir := t.TempDir()
+
+		// Copy malicious package.json
+		maliciousPackageJSON, err := os.ReadFile(filepath.Join(fixtureDir, "package.json"))
+		require.NoError(t, err)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), maliciousPackageJSON, 0o644)
+		require.NoError(t, err)
+
+		// Create empty node_modules so the boundary validation is tested
+		nodeModulesDir := filepath.Join(tmpDir, "node_modules")
+		err = os.MkdirAll(nodeModulesDir, 0o755)
+		require.NoError(t, err)
+
+		// Initialize server with malicious workspace
+		server, err := lsp.NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		workspaceURI := "file://" + tmpDir
+		workspacePath := tmpDir
+
+		ctx := &glsp.Context{}
+		initParams := &protocol.InitializeParams{
+			RootURI:  &workspaceURI,
+			RootPath: &workspacePath,
+		}
+
+		req := types.NewRequestContext(server, ctx)
+		_, err = lifecycle.Initialize(req, initParams)
+		require.NoError(t, err)
+
+		// This should attempt to load tokens from malicious paths but should fail
+		// Note: Initialized() logs warnings but doesn't return errors (by design)
+		err = lifecycle.Initialized(req, &protocol.InitializedParams{})
+		require.NoError(t, err, "Initialized should not fail even with malicious paths")
+
+		// Verify that no tokens were loaded from malicious paths
+		// The path traversal validation should have blocked all three attempts
+		assert.Equal(t, 0, server.TokenCount(),
+			"No tokens should be loaded from malicious path traversal attempts")
+
+		// The security validation prevents the malicious paths from being accessed,
+		// which is verified by the zero token count above. The actual blocking happens
+		// in resolveNpmPath() which returns an error containing "path traversal not allowed"
 	})
 }

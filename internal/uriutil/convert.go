@@ -7,6 +7,110 @@ import (
 	"strings"
 )
 
+// isWindowsDriveLetter checks if a segment at given index is a Windows drive letter (e.g., "C:")
+func isWindowsDriveLetter(segment string, index int) bool {
+	// Drive letter should be the first non-empty segment (index==1 since segments[0] is empty)
+	if index != 1 {
+		return false
+	}
+	// Check format: exactly 2 chars, second is ':', first is A-Z or a-z
+	if len(segment) != 2 || segment[1] != ':' {
+		return false
+	}
+	ch := segment[0]
+	return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+}
+
+// handleExtendedLengthPrefix processes Win32 extended-length prefixes (\\?\ or //?/)
+// Returns the normalized path and whether it should be handled as a UNC path or bail out
+func handleExtendedLengthPrefix(absPath string) (string, bool, bool) {
+	// Check for extended-length prefix
+	if !strings.HasPrefix(absPath, `\\?\`) && !strings.HasPrefix(absPath, `//?/`) {
+		return absPath, true, false // Not an extended path, continue processing
+	}
+
+	// Extract remainder after the prefix (both prefixes are 4 characters)
+	remainder := absPath[4:]
+
+	// Check if it's an extended UNC path (\\?\UNC\ or //?/UNC/)
+	remainderUpper := strings.ToUpper(remainder)
+	if strings.HasPrefix(remainderUpper, `UNC\`) || strings.HasPrefix(remainderUpper, `UNC/`) {
+		// Strip the UNC\ or UNC/ part (4 characters) and treat as normal UNC path
+		return `\\` + remainder[4:], true, true
+	}
+
+	// Check if it's a device drive path (e.g., \\?\C:\ or //?/C:/)
+	if len(remainder) >= 2 && remainder[1] == ':' {
+		ch := remainder[0]
+		if (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') {
+			// It's a drive letter - bail out and let caller's drive-letter logic handle it
+			return "", false, false
+		}
+	}
+
+	// If it's some other extended path we don't recognize, bail out
+	return "", false, false
+}
+
+// handleWindowsUNCPath handles Windows UNC path conversion (\\server\share -> file://server/share)
+// Returns the URI string and whether the path was a UNC path
+func handleWindowsUNCPath(absPath string) (string, bool) {
+	// Detect Windows UNC path (\\server\share or //server/share)
+	if runtime.GOOS != "windows" {
+		return "", false
+	}
+
+	// Handle Win32 extended-length prefixes (\\?\ or //?/)
+	var shouldContinue, wasExtended bool
+	absPath, shouldContinue, wasExtended = handleExtendedLengthPrefix(absPath)
+	if !shouldContinue {
+		return "", false
+	}
+	_ = wasExtended // wasExtended available for future use if needed
+
+	if !strings.HasPrefix(absPath, `\\`) && !strings.HasPrefix(absPath, `//`) {
+		return "", false
+	}
+
+	// UNC path: \\server\share\path or //server/share/path -> file://server/share/path
+	// Strip the leading \\ or //
+	uncPath := absPath
+	if strings.HasPrefix(uncPath, `\\`) {
+		uncPath = strings.TrimPrefix(uncPath, `\\`)
+	} else {
+		uncPath = strings.TrimPrefix(uncPath, `//`)
+	}
+	// Convert to forward slashes
+	uncPath = filepath.ToSlash(uncPath)
+	// Split into segments and percent-encode each
+	segments := strings.Split(uncPath, "/")
+	for i, seg := range segments {
+		segments[i] = url.PathEscape(seg)
+	}
+	// Reconstruct: file://server/share/path (no extra slashes)
+	return "file://" + strings.Join(segments, "/"), true
+}
+
+// normalizeAndEncodeSegments processes path segments, handling drive letters and encoding
+func normalizeAndEncodeSegments(segments []string) []string {
+	for i, seg := range segments {
+		if seg == "" {
+			// Don't encode empty segments
+			continue
+		}
+
+		// Check for Windows drive letter (e.g., "C:")
+		if isWindowsDriveLetter(seg, i) {
+			// Windows drive letter - keep as-is but uppercase the letter
+			segments[i] = strings.ToUpper(string(seg[0])) + ":"
+		} else {
+			// Regular segment - percent-encode it
+			segments[i] = url.PathEscape(seg)
+		}
+	}
+	return segments
+}
+
 // PathToURI converts a file system path to a file:// URI.
 // Handles both Windows and POSIX paths correctly:
 //   - C:\proj -> file:///C:/proj
@@ -28,25 +132,9 @@ func PathToURI(path string) string {
 		absPath = path
 	}
 
-	// Detect Windows UNC path (\\server\share or //server/share)
-	if runtime.GOOS == "windows" && (strings.HasPrefix(absPath, `\\`) || strings.HasPrefix(absPath, `//`)) {
-		// UNC path: \\server\share\path or //server/share/path -> file://server/share/path
-		// Strip the leading \\ or //
-		uncPath := absPath
-		if strings.HasPrefix(uncPath, `\\`) {
-			uncPath = strings.TrimPrefix(uncPath, `\\`)
-		} else {
-			uncPath = strings.TrimPrefix(uncPath, `//`)
-		}
-		// Convert to forward slashes
-		uncPath = filepath.ToSlash(uncPath)
-		// Split into segments and percent-encode each
-		segments := strings.Split(uncPath, "/")
-		for i, seg := range segments {
-			segments[i] = url.PathEscape(seg)
-		}
-		// Reconstruct: file://server/share/path (no extra slashes)
-		return "file://" + strings.Join(segments, "/")
+	// Handle Windows UNC paths specially
+	if uncURI, isUNC := handleWindowsUNCPath(absPath); isUNC {
+		return uncURI
 	}
 
 	// Convert to forward slashes for URI
@@ -59,24 +147,9 @@ func PathToURI(path string) string {
 		absPath = "/" + absPath
 	}
 
-	// Split into segments and percent-encode each (skip the leading empty segment from /)
+	// Split into segments and process each
 	segments := strings.Split(absPath, "/")
-	for i, seg := range segments {
-		if seg == "" {
-			// Don't encode empty segments
-			continue
-		}
-
-		// Check for Windows drive letter (e.g., "C:")
-		// This should be the first non-empty segment (i==1 since segments[0] is empty)
-		if i == 1 && len(seg) == 2 && seg[1] == ':' && ((seg[0] >= 'A' && seg[0] <= 'Z') || (seg[0] >= 'a' && seg[0] <= 'z')) {
-			// Windows drive letter - keep as-is but uppercase the letter
-			segments[i] = strings.ToUpper(string(seg[0])) + ":"
-		} else {
-			// Regular segment - percent-encode it
-			segments[i] = url.PathEscape(seg)
-		}
-	}
+	segments = normalizeAndEncodeSegments(segments)
 	encodedPath := strings.Join(segments, "/")
 
 	// Return file:// URI with three slashes total

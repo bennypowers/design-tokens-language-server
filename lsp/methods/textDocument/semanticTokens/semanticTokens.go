@@ -2,6 +2,7 @@ package semantictokens
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strings"
@@ -45,39 +46,78 @@ func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticToke
 	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
 
 	// Encode tokens using delta encoding
-	data := encodeSemanticTokens(intermediateTokens)
+	data, err := encodeSemanticTokens(intermediateTokens)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode semantic tokens: %w", err)
+	}
 
 	return &protocol.SemanticTokens{
 		Data: data,
 	}, nil
 }
 
-// encodeSemanticTokens converts intermediate tokens to delta-encoded format (LSP spec)
-func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) []uint32 {
+// appendValidatedInt validates that value fits in uint32 range and appends it to data
+func appendValidatedInt(data []uint32, value int, fieldName string, tokenIndex int) ([]uint32, error) {
+	if value < 0 {
+		return nil, fmt.Errorf("token %d: %s %d is negative", tokenIndex, fieldName, value)
+	}
+	if value > math.MaxUint32 {
+		return nil, fmt.Errorf("token %d: %s %d exceeds uint32 limit", tokenIndex, fieldName, value)
+	}
+	return append(data, uint32(value)), nil //nolint:gosec // validated above
+}
+
+// encodeSemanticTokens converts intermediate tokens to delta-encoded format (LSP spec).
+// Tokens must be sorted by line and character position for delta encoding to work correctly.
+// Returns error if tokens are unsorted or values exceed uint32 limits.
+func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) ([]uint32, error) {
 	data := make([]uint32, 0, len(intermediateTokens)*5)
 	prevLine := 0
 	prevStartChar := 0
 
-	for _, token := range intermediateTokens {
+	for i, token := range intermediateTokens {
 		deltaLine := token.Line - prevLine
 		deltaStart := token.StartChar
 		if deltaLine == 0 {
 			deltaStart = token.StartChar - prevStartChar
 		}
 
-		data = append(data,
-			uint32(deltaLine),
-			uint32(deltaStart),
-			uint32(token.Length),
-			uint32(token.TokenType),
-			uint32(token.TokenModifiers),
-		)
+		var err error
+		// Append deltaLine
+		data, err = appendValidatedInt(data, deltaLine, "deltaLine", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append deltaStart
+		data, err = appendValidatedInt(data, deltaStart, "deltaStart", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append length
+		data, err = appendValidatedInt(data, token.Length, "length", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append tokenType
+		data, err = appendValidatedInt(data, token.TokenType, "tokenType", i)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append tokenModifiers
+		data, err = appendValidatedInt(data, token.TokenModifiers, "tokenModifiers", i)
+		if err != nil {
+			return nil, err
+		}
 
 		prevLine = token.Line
 		prevStartChar = token.StartChar
 	}
 
-	return data
+	return data, nil
 }
 
 // GetSemanticTokensForDocument extracts semantic tokens from a document
@@ -178,7 +218,10 @@ func SemanticTokensRange(req *types.RequestContext, params *protocol.SemanticTok
 	}
 
 	// Encode filtered tokens
-	encodedData := encodeSemanticTokens(filteredTokens)
+	encodedData, err := encodeSemanticTokens(filteredTokens)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode semantic tokens: %w", err)
+	}
 
 	return &protocol.SemanticTokens{
 		Data: encodedData,

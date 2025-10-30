@@ -9,8 +9,8 @@ import (
 
 // Server represents the Design Tokens Language Server
 type Server struct {
-	initialized bool
 	version     string
+	initialized bool
 }
 
 // New creates a new Design Tokens Language Server instance

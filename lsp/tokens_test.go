@@ -16,8 +16,8 @@ func TestLoadTokenFile_ExtensionHandling(t *testing.T) {
 		name        string
 		filename    string
 		content     string
-		shouldError bool
 		errorMsg    string
+		shouldError bool
 	}{
 		{
 			name:     "standard .json",
@@ -89,7 +89,7 @@ func TestLoadTokenFile_ExtensionHandling(t *testing.T) {
 			filePath := filepath.Join(tmpDir, tt.filename)
 
 			// Write test file
-			err := os.WriteFile(filePath, []byte(tt.content), 0644)
+			err := os.WriteFile(filePath, []byte(tt.content), 0o644)
 			require.NoError(t, err)
 
 			// Create server and try to load

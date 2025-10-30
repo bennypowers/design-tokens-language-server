@@ -67,6 +67,37 @@ func TestPathToURI(t *testing.T) {
 			expected: "file:///home/user/%E6%96%87%E4%BB%B6",
 			posix:    true,
 		},
+		// Win32 extended-length prefix tests
+		{
+			name:     "Windows extended UNC path (backslash)",
+			input:    `\\?\UNC\server\share\file.txt`,
+			expected: "file://server/share/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended UNC path (forward slash)",
+			input:    `//?/UNC/server/share/file.txt`,
+			expected: "file://server/share/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended UNC path (mixed case)",
+			input:    `\\?\unc\server\share\file.txt`,
+			expected: "file://server/share/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended device drive path (backslash)",
+			input:    `\\?\C:\project\file.txt`,
+			expected: "file:///C:/project/file.txt",
+			windows:  true,
+		},
+		{
+			name:     "Windows extended device drive path (forward slash)",
+			input:    `//?/C:/project/file.txt`,
+			expected: "file:///C:/project/file.txt",
+			windows:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -212,6 +243,16 @@ func TestRoundTrip(t *testing.T) {
 		{
 			name:    "Windows UNC path",
 			path:    "\\\\server\\share\\file.txt",
+			windows: true,
+		},
+		{
+			name:    "Windows extended UNC path",
+			path:    `\\?\UNC\server\share\file.txt`,
+			windows: true,
+		},
+		{
+			name:    "Windows extended device drive path",
+			path:    `\\?\C:\project\file.txt`,
 			windows: true,
 		},
 	}
@@ -429,6 +470,221 @@ func TestPathToURI_SpecialCharacters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			uri := PathToURI(tt.input)
 			assert.Contains(t, uri, tt.contains, "URI should contain percent-encoded character")
+		})
+	}
+}
+
+// TestIsWindowsDriveLetter tests the drive letter detection function
+func TestIsWindowsDriveLetter(t *testing.T) {
+	tests := []struct {
+		name     string
+		segment  string
+		index    int
+		expected bool
+	}{
+		{
+			name:     "Valid drive letter at index 1",
+			segment:  "C:",
+			index:    1,
+			expected: true,
+		},
+		{
+			name:     "Lowercase drive letter",
+			segment:  "d:",
+			index:    1,
+			expected: true,
+		},
+		{
+			name:     "Drive letter at wrong index",
+			segment:  "C:",
+			index:    0,
+			expected: false,
+		},
+		{
+			name:     "Invalid - too long",
+			segment:  "C::",
+			index:    1,
+			expected: false,
+		},
+		{
+			name:     "Invalid - not a letter",
+			segment:  "1:",
+			index:    1,
+			expected: false,
+		},
+		{
+			name:     "Invalid - no colon",
+			segment:  "CD",
+			index:    1,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isWindowsDriveLetter(tt.segment, tt.index)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+// TestHandleExtendedLengthPrefix tests Windows extended-length prefix handling
+func TestHandleExtendedLengthPrefix(t *testing.T) {
+	tests := []struct {
+		name              string
+		input             string
+		expectedPath      string
+		expectedContinue  bool
+		expectedExtended  bool
+	}{
+		{
+			name:              "Not an extended path",
+			input:             `C:\normal\path`,
+			expectedPath:      `C:\normal\path`,
+			expectedContinue:  true,
+			expectedExtended:  false,
+		},
+		{
+			name:              "Extended UNC path with backslash",
+			input:             `\\?\UNC\server\share\file`,
+			expectedPath:      `\\server\share\file`,
+			expectedContinue:  true,
+			expectedExtended:  true,
+		},
+		{
+			name:              "Extended UNC path with forward slash",
+			input:             `//?/UNC/server/share/file`,
+			expectedPath:      `\\server/share/file`,
+			expectedContinue:  true,
+			expectedExtended:  true,
+		},
+		{
+			name:              "Extended UNC path lowercase",
+			input:             `\\?\unc\server\share`,
+			expectedPath:      `\\server\share`,
+			expectedContinue:  true,
+			expectedExtended:  true,
+		},
+		{
+			name:              "Extended device drive path",
+			input:             `\\?\C:\project\file`,
+			expectedPath:      "",
+			expectedContinue:  false,
+			expectedExtended:  false,
+		},
+		{
+			name:              "Extended device drive path forward slash",
+			input:             `//?/D:/workspace`,
+			expectedPath:      "",
+			expectedContinue:  false,
+			expectedExtended:  false,
+		},
+		{
+			name:              "Unrecognized extended path",
+			input:             `\\?\UNKNOWN\path`,
+			expectedPath:      "",
+			expectedContinue:  false,
+			expectedExtended:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path, shouldContinue, wasExtended := handleExtendedLengthPrefix(tt.input)
+			assert.Equal(t, tt.expectedPath, path)
+			assert.Equal(t, tt.expectedContinue, shouldContinue)
+			assert.Equal(t, tt.expectedExtended, wasExtended)
+		})
+	}
+}
+
+// TestHandleWindowsUNCPath tests UNC path handling
+func TestHandleWindowsUNCPath(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-only test - UNC path handling requires Windows")
+	}
+
+	tests := []struct {
+		name        string
+		input       string
+		expectedURI string
+		expectedOK  bool
+	}{
+		{
+			name:        "Standard UNC path with backslash",
+			input:       `\\server\share\file.txt`,
+			expectedURI: "file://server/share/file.txt",
+			expectedOK:  true,
+		},
+		{
+			name:        "UNC path with forward slash",
+			input:       `//server/share/file.txt`,
+			expectedURI: "file://server/share/file.txt",
+			expectedOK:  true,
+		},
+		{
+			name:        "Not a UNC path",
+			input:       `C:\project\file`,
+			expectedURI: "",
+			expectedOK:  false,
+		},
+		{
+			name:        "UNC path with spaces",
+			input:       `\\server\my share\my file.txt`,
+			expectedURI: "file://server/my%20share/my%20file.txt",
+			expectedOK:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri, ok := handleWindowsUNCPath(tt.input)
+			assert.Equal(t, tt.expectedOK, ok)
+			if ok {
+				assert.Equal(t, tt.expectedURI, uri)
+			}
+		})
+	}
+}
+
+// TestNormalizeAndEncodeSegments tests segment normalization and encoding
+func TestNormalizeAndEncodeSegments(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "Empty segments",
+			input:    []string{"", "home", "", "user"},
+			expected: []string{"", "home", "", "user"},
+		},
+		{
+			name:     "Drive letter at index 1",
+			input:    []string{"", "C:", "project"},
+			expected: []string{"", "C:", "project"},
+		},
+		{
+			name:     "Lowercase drive letter",
+			input:    []string{"", "d:", "workspace"},
+			expected: []string{"", "D:", "workspace"},
+		},
+		{
+			name:     "Segments with spaces",
+			input:    []string{"", "home", "my folder", "file"},
+			expected: []string{"", "home", "my%20folder", "file"},
+		},
+		{
+			name:     "Segments with special chars",
+			input:    []string{"", "path", "file#1", "test?"},
+			expected: []string{"", "path", "file%231", "test%3F"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeAndEncodeSegments(tt.input)
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }

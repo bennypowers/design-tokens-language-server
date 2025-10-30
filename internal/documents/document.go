@@ -6,8 +6,8 @@ import "fmt"
 type Document struct {
 	uri        string
 	languageID string
-	version    int
 	content    string
+	version    int
 }
 
 // NewDocument creates a new document

@@ -5,10 +5,90 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
+
+// shouldSkipDirectory checks if a directory should be skipped during file discovery.
+// Returns true for hidden directories (starting with .) and common build/dependency directories.
+func shouldSkipDirectory(info os.FileInfo) bool {
+	if !info.IsDir() {
+		return false
+	}
+
+	// Skip hidden directories
+	if strings.HasPrefix(info.Name(), ".") {
+		return true
+	}
+
+	// Skip common build/dependency directories
+	skipDirs := []string{"node_modules", "dist", "build"}
+	return slices.Contains(skipDirs, info.Name())
+}
+
+// matchesAnyPattern checks if a file path matches any of the given glob patterns.
+// Returns true if the file matches at least one pattern.
+func matchesAnyPattern(relPath string, patterns []string) bool {
+	for _, pattern := range patterns {
+		matched, err := matchGlobPattern(pattern, relPath)
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
+}
+
+// collectTokenFiles creates a filepath.Walk callback that collects matching token files.
+// Skips directories and hidden files, and matches files against the provided patterns.
+func collectTokenFiles(rootDir string, patterns []string, tokenFiles *[]string) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip errors, continue walking
+		}
+
+		// Skip directories that should be excluded
+		if shouldSkipDirectory(info) {
+			return filepath.SkipDir
+		}
+
+		// Skip if it's a directory (but not excluded)
+		if info.IsDir() {
+			return nil
+		}
+
+		// Check if file matches any pattern
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return nil
+		}
+
+		if matchesAnyPattern(relPath, patterns) {
+			*tokenFiles = append(*tokenFiles, path)
+		}
+
+		return nil
+	}
+}
+
+// loadDiscoveredFiles loads all discovered token files with the given options.
+// Collects and returns any errors that occur during loading.
+func (s *Server) loadDiscoveredFiles(tokenFiles []string, opts *TokenFileOptions) error {
+	var errs []error
+	for _, filePath := range tokenFiles {
+		if err := s.LoadTokenFileWithOptions(filePath, opts); err != nil {
+			errs = append(errs, fmt.Errorf("failed to load %s: %w", filePath, err))
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded: %s\n", filePath)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
 
 // TokenFileConfig represents configuration for loading token files
 type TokenFileConfig struct {
@@ -44,68 +124,25 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 	fmt.Fprintf(os.Stderr, "[DTLS] Loading token files from: %s\n", config.RootDir)
 	fmt.Fprintf(os.Stderr, "[DTLS] Patterns: %v\n", config.Patterns)
 
+	// Collect matching token files
 	var tokenFiles []string
-
-	// Walk the directory tree
-	err := filepath.Walk(config.RootDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // Skip errors, continue walking
-		}
-
-		// Skip directories and hidden files/directories
-		if info.IsDir() {
-			if strings.HasPrefix(info.Name(), ".") {
-				return filepath.SkipDir
-			}
-			// Skip node_modules and other common directories
-			if info.Name() == "node_modules" || info.Name() == "dist" || info.Name() == "build" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		// Check if file matches any pattern
-		relPath, err := filepath.Rel(config.RootDir, path)
-		if err != nil {
-			return nil
-		}
-
-		for _, pattern := range config.Patterns {
-			matched, err := matchGlobPattern(pattern, relPath)
-			if err == nil && matched {
-				tokenFiles = append(tokenFiles, path)
-				break
-			}
-		}
-
-		return nil
-	})
-
+	err := filepath.Walk(config.RootDir, collectTokenFiles(config.RootDir, config.Patterns, &tokenFiles))
 	if err != nil {
 		return fmt.Errorf("failed to walk directory: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d token files\n", len(tokenFiles))
 
-	// Load each token file
-	var errs []error
-	for _, filePath := range tokenFiles {
-		opts := &TokenFileOptions{
-			Prefix:       config.Prefix,
-			GroupMarkers: config.GroupMarkers,
-		}
-		if err := s.LoadTokenFileWithOptions(filePath, opts); err != nil {
-			errs = append(errs, fmt.Errorf("failed to load %s: %w", filePath, err))
-			continue
-		}
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded: %s\n", filePath)
+	// Load discovered files
+	opts := &TokenFileOptions{
+		Prefix:       config.Prefix,
+		GroupMarkers: config.GroupMarkers,
+	}
+	if err := s.loadDiscoveredFiles(tokenFiles, opts); err != nil {
+		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Total tokens loaded: %d\n", s.tokens.Count())
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
 	return nil
 }
 

@@ -2,14 +2,133 @@ package references
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
+	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tidwall/jsonc"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 	"gopkg.in/yaml.v3"
 )
+
+// validateTokenContext validates the basic request context and extracts the token at cursor.
+// Returns the token and tokenName, or (nil, "") if validation fails.
+func validateTokenContext(req *types.RequestContext, uri protocol.DocumentUri, position protocol.Position) (*tokens.Token, string) {
+	// Get document
+	doc := req.Server.Document(uri)
+	if doc == nil {
+		return nil, ""
+	}
+
+	// Return nil for CSS files (let css-ls handle it)
+	if doc.LanguageID() == "css" {
+		return nil, ""
+	}
+
+	// For JSON/YAML files, find the token at cursor position
+	tokenName := findTokenAtPosition(doc.Content(), position, doc.LanguageID())
+	fmt.Fprintf(os.Stderr, "[DTLS] Token name at cursor: '%s'\n", tokenName)
+	if tokenName == "" {
+		return nil, ""
+	}
+
+	// Look up the token
+	token := req.Server.Token(tokenName)
+	fmt.Fprintf(os.Stderr, "[DTLS] Token lookup result: %v\n", token != nil)
+	if token == nil {
+		return nil, ""
+	}
+
+	return token, tokenName
+}
+
+// isValidCSSReference checks if a CSS variable reference is valid by verifying
+// the character after the match is either ',' or ')'.
+// This excludes things like --token-color-red: and --token-color-reddish)
+func isValidCSSReference(content string, endPos protocol.Position) bool {
+	line := getLine(content, int(endPos.Line))
+	lineLen := len(line)
+
+	// Check for overflow - if line length exceeds uint32, position is considered out of bounds
+	if lineLen > math.MaxUint32 {
+		return false
+	}
+
+	if endPos.Character < uint32(lineLen) {
+		charAfter := getCharAt(content, endPos)
+		return charAfter == ',' || charAfter == ')'
+	}
+	return false
+}
+
+// findCSSReferences finds all CSS var() references to a token across documents.
+// Adds valid references to the locationMap for deduplication.
+func findCSSReferences(docs []*documents.Document, cssVarName string, locationMap map[string]protocol.Location) {
+	for _, document := range docs {
+		if document.LanguageID() != "css" {
+			continue
+		}
+
+		docContent := document.Content()
+		docURI := document.URI()
+		ranges := findSubstringRanges(docContent, cssVarName)
+
+		for _, r := range ranges {
+			if isValidCSSReference(docContent, r.End) {
+				loc := protocol.Location{URI: docURI, Range: r}
+				key := fmt.Sprintf("%s:%d:%d", docURI, r.Start.Line, r.Start.Character)
+				locationMap[key] = loc
+			}
+		}
+	}
+}
+
+// findJSONReferences finds all JSON/YAML token references across documents.
+// Adds references to the locationMap for deduplication.
+func findJSONReferences(docs []*documents.Document, tokenReference string, locationMap map[string]protocol.Location) {
+	if tokenReference == "" {
+		return
+	}
+
+	for _, document := range docs {
+		if document.LanguageID() == "css" {
+			continue
+		}
+
+		docContent := document.Content()
+		docURI := document.URI()
+		ranges := findSubstringRanges(docContent, tokenReference)
+
+		for _, r := range ranges {
+			loc := protocol.Location{URI: docURI, Range: r}
+			key := fmt.Sprintf("%s:%d:%d", docURI, r.Start.Line, r.Start.Character)
+			locationMap[key] = loc
+		}
+	}
+}
+
+// addDeclarationIfRequested adds the token declaration location if requested.
+// Modifies the locations slice in place.
+func addDeclarationIfRequested(req *types.RequestContext, params *protocol.ReferenceParams, token *tokens.Token, locations *[]protocol.Location) {
+	if !params.Context.IncludeDeclaration || token.DefinitionURI == "" {
+		return
+	}
+
+	defDoc := req.Server.Document(token.DefinitionURI)
+	if defDoc == nil {
+		return
+	}
+
+	defRange := findTokenDefinitionRange(defDoc.Content(), token.Path, defDoc.LanguageID())
+	location := protocol.Location{
+		URI:   token.DefinitionURI,
+		Range: defRange,
+	}
+	*locations = append(*locations, location)
+}
 
 // References returns all references to a token
 // For CSS files: returns nil (let css-ls handle it)
@@ -20,27 +139,8 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 
 	fmt.Fprintf(os.Stderr, "[DTLS] References requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
 
-	// Get document
-	doc := req.Server.Document(uri)
-	if doc == nil {
-		return nil, nil
-	}
-
-	// Return nil for CSS files (let css-ls handle it)
-	if doc.LanguageID() == "css" {
-		return nil, nil
-	}
-
-	// For JSON/YAML files, find the token at cursor position
-	tokenName := findTokenAtPosition(doc.Content(), position, doc.LanguageID())
-	fmt.Fprintf(os.Stderr, "[DTLS] Token name at cursor: '%s'\n", tokenName)
-	if tokenName == "" {
-		return nil, nil
-	}
-
-	// Look up the token
-	token := req.Server.Token(tokenName)
-	fmt.Fprintf(os.Stderr, "[DTLS] Token lookup result: %v\n", token != nil)
+	// Validate context and get token
+	token, tokenName := validateTokenContext(req, uri, position)
 	if token == nil {
 		return nil, nil
 	}
@@ -56,45 +156,11 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 	// Deduplicate locations using a map (JSON.stringify equivalent)
 	locationMap := make(map[string]protocol.Location)
 
-	for _, document := range req.Server.AllDocuments() {
-		docContent := document.Content()
-		docURI := document.URI()
+	// Find CSS var() references
+	findCSSReferences(req.Server.AllDocuments(), cssVarName, locationMap)
 
-		if document.LanguageID() == "css" {
-			// In CSS files, search for var(--token-name, or var(--token-name)
-			// Find all occurrences of the CSS variable name
-			ranges := findSubstringRanges(docContent, cssVarName)
-			for _, r := range ranges {
-				// Check character after the match - should be , or )
-				// This excludes things like --token-color-red: and --token-color-reddish)
-				endPos := r.End
-				if endPos.Character < uint32(len(getLine(docContent, int(endPos.Line)))) {
-					charAfter := getCharAt(docContent, endPos)
-					if charAfter == ',' || charAfter == ')' {
-						loc := protocol.Location{
-							URI:   docURI,
-							Range: r,
-						}
-						key := fmt.Sprintf("%s:%d:%d", docURI, r.Start.Line, r.Start.Character)
-						locationMap[key] = loc
-					}
-				}
-			}
-		} else {
-			// In JSON/YAML files, search for token references like {color.primary}
-			if tokenReference != "" {
-				ranges := findSubstringRanges(docContent, tokenReference)
-				for _, r := range ranges {
-					loc := protocol.Location{
-						URI:   docURI,
-						Range: r,
-					}
-					key := fmt.Sprintf("%s:%d:%d", docURI, r.Start.Line, r.Start.Character)
-					locationMap[key] = loc
-				}
-			}
-		}
-	}
+	// Find JSON/YAML token references
+	findJSONReferences(req.Server.AllDocuments(), tokenReference, locationMap)
 
 	// Convert map to slice
 	for _, loc := range locationMap {
@@ -102,20 +168,7 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 	}
 
 	// Include declaration if requested
-	if params.Context.IncludeDeclaration && token.DefinitionURI != "" {
-		// Find the range for this token in its definition file
-		defDoc := req.Server.Document(token.DefinitionURI)
-		if defDoc != nil {
-			// Find the token definition in the document
-			// For now, use a simple approach: find the token path
-			defRange := findTokenDefinitionRange(defDoc.Content(), token.Path, defDoc.LanguageID())
-			location := protocol.Location{
-				URI:   token.DefinitionURI,
-				Range: defRange,
-			}
-			locations = append(locations, location)
-		}
-	}
+	addDeclarationIfRequested(req, params, token, &locations)
 
 	fmt.Fprintf(os.Stderr, "[DTLS] Found %d references\n", len(locations))
 	return locations, nil
@@ -197,7 +250,7 @@ func findPathAtPosition(node *yaml.Node, targetLine, targetCol int, currentPath 
 }
 
 // findSubstringRanges finds all occurrences of a substring in content
-func findSubstringRanges(content string, substring string) []protocol.Range {
+func findSubstringRanges(content, substring string) []protocol.Range {
 	var ranges []protocol.Range
 	lines := strings.Split(content, "\n")
 
@@ -209,17 +262,31 @@ func findSubstringRanges(content string, substring string) []protocol.Range {
 				break
 			}
 			actualIdx := offset + idx
+			endIdx := actualIdx + len(substring)
+
+			// Check for overflow - skip positions that exceed uint32 limits
+			if lineNum > math.MaxUint32 || actualIdx > math.MaxUint32 || endIdx > math.MaxUint32 {
+				fmt.Fprintf(os.Stderr, "[DTLS] Warning: Skipping reference at line %d, char %d (exceeds uint32 limit)\n", lineNum, actualIdx)
+				offset = endIdx
+				continue
+			}
+
+			// Convert to uint32 after validation (gosec doesn't recognize validation above)
+			lineU32 := uint32(lineNum)           //nolint:gosec // G115: validated above
+			actualIdxU32 := uint32(actualIdx)    //nolint:gosec // G115: validated above
+			endIdxU32 := uint32(endIdx)          //nolint:gosec // G115: validated above
+
 			ranges = append(ranges, protocol.Range{
 				Start: protocol.Position{
-					Line:      uint32(lineNum),
-					Character: uint32(actualIdx),
+					Line:      lineU32,
+					Character: actualIdxU32,
 				},
 				End: protocol.Position{
-					Line:      uint32(lineNum),
-					Character: uint32(actualIdx + len(substring)),
+					Line:      lineU32,
+					Character: endIdxU32,
 				},
 			})
-			offset = actualIdx + len(substring)
+			offset = endIdx
 		}
 	}
 
@@ -244,14 +311,27 @@ func findTokenDefinitionRange(content string, path []string, languageID string) 
 			// Find the position of the key
 			idx := strings.Index(line, lastKey)
 			if idx != -1 {
+				endIdx := idx + len(lastKey)
+
+				// Check for overflow - skip if exceeds uint32 limits
+				if lineNum > math.MaxUint32 || idx > math.MaxUint32 || endIdx > math.MaxUint32 {
+					fmt.Fprintf(os.Stderr, "[DTLS] Warning: Token definition position exceeds uint32 limit at line %d\n", lineNum)
+					continue
+				}
+
+				// Convert to uint32 after validation (gosec doesn't recognize validation above)
+				lineU32 := uint32(lineNum)    //nolint:gosec // G115: validated above
+				idxU32 := uint32(idx)          //nolint:gosec // G115: validated above
+				endIdxU32 := uint32(endIdx)    //nolint:gosec // G115: validated above
+
 				return protocol.Range{
 					Start: protocol.Position{
-						Line:      uint32(lineNum),
-						Character: uint32(idx),
+						Line:      lineU32,
+						Character: idxU32,
 					},
 					End: protocol.Position{
-						Line:      uint32(lineNum),
-						Character: uint32(idx + len(lastKey)),
+						Line:      lineU32,
+						Character: endIdxU32,
 					},
 				}
 			}

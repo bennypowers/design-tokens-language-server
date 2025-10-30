@@ -118,6 +118,95 @@ func (s *Server) LoadTokensFromConfig() error {
 	return nil
 }
 
+// validateTokenFilePath validates that a token file path is not empty.
+// Returns an error if the path is empty, nil otherwise.
+func validateTokenFilePath(path, context string) error {
+	if path == "" {
+		return fmt.Errorf("%s must not be empty", context)
+	}
+	return nil
+}
+
+// parseGroupMarkersFromItem extracts groupMarkers from a map[string]any item.
+// Handles both []string and []any types, falling back to defaults if not present or empty.
+func parseGroupMarkersFromItem(itemMap map[string]any, defaultGroupMarkers []string) []string {
+	gmVal, ok := itemMap["groupMarkers"]
+	if !ok {
+		return defaultGroupMarkers
+	}
+
+	var groupMarkers []string
+	switch gm := gmVal.(type) {
+	case []string:
+		groupMarkers = append(groupMarkers, gm...)
+	case []any:
+		for _, item := range gm {
+			if gmStr, ok := item.(string); ok {
+				groupMarkers = append(groupMarkers, gmStr)
+			}
+		}
+	}
+
+	if len(groupMarkers) == 0 {
+		return defaultGroupMarkers
+	}
+	return groupMarkers
+}
+
+// parseTokenFileItem parses a token file item (string or map[string]any) into path and options.
+// Returns path, prefix, groupMarkers, and error.
+func parseTokenFileItem(item any, defaultPrefix string, defaultGroupMarkers []string) (path, prefix string, groupMarkers []string, err error) {
+	switch v := item.(type) {
+	case string:
+		if err := validateTokenFilePath(v, "token file path"); err != nil {
+			return "", "", nil, err
+		}
+		return v, defaultPrefix, defaultGroupMarkers, nil
+
+	case map[string]any:
+		// Extract path
+		pathVal, ok := v["path"]
+		if !ok {
+			return "", "", nil, fmt.Errorf("token file entry missing required 'path' field: %v", v)
+		}
+		path, _ = pathVal.(string)
+		if err := validateTokenFilePath(path, "token file entry 'path'"); err != nil {
+			return "", "", nil, fmt.Errorf("%w: %v", err, v)
+		}
+
+		// Extract prefix (optional)
+		if prefixVal, ok := v["prefix"]; ok {
+			prefix, _ = prefixVal.(string)
+		} else {
+			prefix = defaultPrefix
+		}
+
+		// Extract groupMarkers (optional)
+		groupMarkers = parseGroupMarkersFromItem(v, defaultGroupMarkers)
+
+		return path, prefix, groupMarkers, nil
+
+	default:
+		// Silently skip unsupported types (matches current behavior)
+		return "", "", nil, nil
+	}
+}
+
+// loadTokenFileAndLog loads a token file with options and logs the result.
+// Returns an error if loading fails.
+func (s *Server) loadTokenFileAndLog(path string, opts *TokenFileOptions) error {
+	if err := s.LoadTokenFileWithOptions(path, opts); err != nil {
+		return err
+	}
+
+	if len(opts.GroupMarkers) > 0 {
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
+	} else {
+		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s)\n", path, opts.Prefix)
+	}
+	return nil
+}
+
 // loadExplicitTokenFiles loads tokens from explicitly configured files
 func (s *Server) loadExplicitTokenFiles() error {
 	// Snapshot config and state separately for semantic clarity
@@ -127,52 +216,14 @@ func (s *Server) loadExplicitTokenFiles() error {
 	var errs []error
 
 	for _, item := range cfg.TokensFiles {
-		var path, prefix string
-		var groupMarkers []string
-
 		// Parse the item - can be string or object
-		switch v := item.(type) {
-		case string:
-			path = v
-			if path == "" {
-				errs = append(errs, fmt.Errorf("token file path must not be empty"))
-				continue
-			}
-			prefix = cfg.Prefix
-			groupMarkers = cfg.GroupMarkers
-		case map[string]any:
-			// Convert to TokenFileSpec
-			pathVal, ok := v["path"]
-			if !ok {
-				errs = append(errs, fmt.Errorf("token file entry missing required 'path' field: %v", v))
-				continue
-			}
-			path, _ = pathVal.(string)
-			if path == "" {
-				errs = append(errs, fmt.Errorf("token file entry 'path' must not be empty: %v", v))
-				continue
-			}
-			if prefixVal, ok := v["prefix"]; ok {
-				prefix, _ = prefixVal.(string)
-			} else {
-				prefix = cfg.Prefix
-			}
-			if gmVal, ok := v["groupMarkers"]; ok {
-				switch gm := gmVal.(type) {
-				case []string:
-					groupMarkers = append(groupMarkers, gm...)
-				case []any:
-					for _, item := range gm {
-						if gmStr, ok := item.(string); ok {
-							groupMarkers = append(groupMarkers, gmStr)
-						}
-					}
-				}
-			}
-			if len(groupMarkers) == 0 {
-				groupMarkers = cfg.GroupMarkers
-			}
-		default:
+		path, prefix, groupMarkers, err := parseTokenFileItem(item, cfg.Prefix, cfg.GroupMarkers)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if path == "" {
+			// Skip items that returned empty (default case in parseTokenFileItem)
 			continue
 		}
 
@@ -182,22 +233,15 @@ func (s *Server) loadExplicitTokenFiles() error {
 			errs = append(errs, fmt.Errorf("failed to resolve path %s: %w", path, err))
 			continue
 		}
-		path = normalizedPath
 
-		// Load the file with per-file options
+		// Load the file with per-file options and log results
 		opts := &TokenFileOptions{
 			Prefix:       prefix,
 			GroupMarkers: groupMarkers,
 		}
-		if err := s.LoadTokenFileWithOptions(path, opts); err != nil {
-			errs = append(errs, fmt.Errorf("failed to load %s: %w", path, err))
+		if err := s.loadTokenFileAndLog(normalizedPath, opts); err != nil {
+			errs = append(errs, fmt.Errorf("failed to load %s: %w", normalizedPath, err))
 			continue
-		}
-
-		if len(groupMarkers) > 0 {
-			fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s, groupMarkers: %v)\n", path, prefix, groupMarkers)
-		} else {
-			fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s)\n", path, prefix)
 		}
 	}
 

@@ -56,7 +56,8 @@ func TestGroupMarkers(t *testing.T) {
 		}
 
 		for _, token := range tokens {
-			if token.Name == "color-primary" {
+			switch token.Name {
+			case "color-primary":
 				primaryToken = &struct {
 					Name        string
 					Value       string
@@ -68,7 +69,7 @@ func TestGroupMarkers(t *testing.T) {
 					Type:        token.Type,
 					Description: token.Description,
 				}
-			} else if token.Name == "color-primary-hover" {
+			case "color-primary-hover":
 				hoverToken = &struct {
 					Name  string
 					Value string
@@ -178,10 +179,11 @@ func TestGroupMarkers(t *testing.T) {
 
 		var mobileFound, desktopFound bool
 		for _, token := range tokens {
-			if token.Name == "spacing-small-mobile" {
+			switch token.Name {
+			case "spacing-small-mobile":
 				mobileFound = true
 				assert.Equal(t, "4px", token.Value)
-			} else if token.Name == "spacing-small-desktop" {
+			case "spacing-small-desktop":
 				desktopFound = true
 				assert.Equal(t, "8px", token.Value)
 			}

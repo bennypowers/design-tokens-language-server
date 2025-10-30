@@ -23,7 +23,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 					"$type": "color"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		tokens2 := filepath.Join(tmpDir, "tokens2.json")
 		require.NoError(t, os.WriteFile(tokens2, []byte(`{
@@ -33,7 +33,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 					"$type": "dimension"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 					"$type": "color"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -104,7 +104,7 @@ func TestLoadTokensFromConfig(t *testing.T) {
 					"$type": "color"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -132,7 +132,7 @@ color:
   primary:
     $value: "#ff0000"
     $type: "color"
-`), 0644))
+`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -155,7 +155,7 @@ color:
 
 		// Create mock npm package
 		pkgDir := filepath.Join(tmpDir, "node_modules", "@design", "tokens")
-		require.NoError(t, os.MkdirAll(pkgDir, 0755))
+		require.NoError(t, os.MkdirAll(pkgDir, 0o755))
 
 		tokensFile := filepath.Join(pkgDir, "tokens.json")
 		require.NoError(t, os.WriteFile(tokensFile, []byte(`{
@@ -165,7 +165,7 @@ color:
 					"$type": "color"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -189,7 +189,7 @@ color:
 		tmpDir := t.TempDir()
 
 		tokensFile := filepath.Join(tmpDir, "design", "tokens.json")
-		require.NoError(t, os.MkdirAll(filepath.Dir(tokensFile), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Dir(tokensFile), 0o755))
 		require.NoError(t, os.WriteFile(tokensFile, []byte(`{
 			"color": {
 				"accent": {
@@ -197,7 +197,7 @@ color:
 					"$type": "color"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -246,7 +246,7 @@ color:
 					"$type": "color"
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -280,7 +280,7 @@ color:
 					}
 				}
 			}
-		}`), 0644))
+		}`), 0o644))
 
 		server, err := NewServer()
 		require.NoError(t, err)

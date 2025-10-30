@@ -12,7 +12,7 @@ VERSION ?= $(filter v%,$(MAKECMDGOALS))
 # Go build flags with version injection
 GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
-.PHONY: all build build-all test test-coverage install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
+.PHONY: all build build-all test test-coverage patch-coverage show-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
 
 all: build
 
@@ -36,6 +36,15 @@ install: build
 test:
 	go test -v ./...
 
+## Run linter and format check
+lint:
+	@echo "=== Running golangci-lint ==="
+	@if ! command -v golangci-lint &> /dev/null; then \
+		echo "golangci-lint not found. Installing..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	fi
+	@golangci-lint run
+
 ## Run tests with coverage (Go 1.20+ includes cross-process coverage for integration tests)
 test-coverage:
 	@echo "=== Running Unit Tests with Coverage ==="
@@ -45,7 +54,7 @@ test-coverage:
 	@echo ""
 	@echo "=== Running Integration Tests with Subprocess Coverage ==="
 	@mkdir -p coverage/integration
-	@go test -cover ./test/integration -args -test.gocoverdir="$$(pwd)/coverage/integration"
+	@go test -cover -coverpkg=./... ./test/integration -args -test.gocoverdir="$$(pwd)/coverage/integration"
 	@echo ""
 	@echo "=== Merging Coverage Files ==="
 	@go tool covdata textfmt -i=./coverage/unit,./coverage/integration -o=coverage.out
@@ -62,6 +71,10 @@ test-coverage:
 	@go tool cover -func=coverage.out | tail -1
 	@echo ""
 	@echo "Merged coverage saved to coverage.out for codecov upload"
+
+## Show patch coverage (lines added in this branch vs main)
+patch-coverage: coverage.out
+	@./scripts/patch-coverage.sh
 
 ## Show coverage in browser
 show-coverage: test-coverage
@@ -218,6 +231,7 @@ help:
 	@echo "  make build-all          Build all platform binaries (Linux, macOS, Windows)"
 	@echo "  make test               Run tests"
 	@echo "  make test-coverage      Run tests with coverage"
+	@echo "  make lint               Run golangci-lint"
 	@echo "  make install            Install to ~/.local/bin"
 	@echo "  make clean              Clean build artifacts"
 	@echo ""

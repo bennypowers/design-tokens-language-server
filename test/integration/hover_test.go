@@ -20,7 +20,7 @@ func TestHoverOnVarCall(t *testing.T) {
 
 	// Request hover - see fixture for position
 	req := types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -33,10 +33,10 @@ func TestHoverOnVarCall(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, hover, "Hover should return content")
+	require.NotNil(t, result, "Hover should return content")
 
 	// Verify hover content
-	content, ok := hover.Contents.(protocol.MarkupContent)
+	content, ok := result.Contents.(protocol.MarkupContent)
 	require.True(t, ok, "Contents should be MarkupContent")
 
 	assert.Equal(t, protocol.MarkupKindMarkdown, content.Kind)
@@ -54,7 +54,7 @@ func TestHoverOnUnknownToken(t *testing.T) {
 
 	// Request hover - see fixture for position
 	req := types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -67,9 +67,9 @@ func TestHoverOnUnknownToken(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, hover)
+	require.NotNil(t, result)
 
-	content, ok := hover.Contents.(protocol.MarkupContent)
+	content, ok := result.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 
 	assert.Contains(t, content.Value, "Unknown token")
@@ -84,7 +84,7 @@ func TestHoverWithPrefix(t *testing.T) {
 
 	// Request hover - see fixture for position
 	req := types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -97,9 +97,9 @@ func TestHoverWithPrefix(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, hover)
+	require.NotNil(t, result)
 
-	content, ok := hover.Contents.(protocol.MarkupContent)
+	content, ok := result.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 
 	assert.Contains(t, content.Value, "--my-ds-color-primary")
@@ -113,7 +113,7 @@ func TestHoverOutsideVarCall(t *testing.T) {
 
 	// Request hover - see fixture for position
 	req := types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -126,7 +126,7 @@ func TestHoverOutsideVarCall(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, hover, "Should return nil when not hovering over var() call")
+	assert.Nil(t, result, "Should return nil when not hovering over var() call")
 }
 
 // TestHoverNonCSSFile tests that hover returns nil for non-CSS files
@@ -148,7 +148,7 @@ func TestHoverNonCSSFile(t *testing.T) {
 
 	// Request hover
 	req = types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.json",
@@ -158,7 +158,7 @@ func TestHoverNonCSSFile(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, hover)
+	assert.Nil(t, result)
 }
 
 // TestHoverOnVariableDeclaration tests hover on CSS variable declaration
@@ -183,7 +183,7 @@ func TestHoverOnVariableDeclaration(t *testing.T) {
 
 	// Request hover on the variable name
 	req = types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -196,9 +196,9 @@ func TestHoverOnVariableDeclaration(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, hover)
+	require.NotNil(t, result)
 
-	content_hover, ok := hover.Contents.(protocol.MarkupContent)
+	content_hover, ok := result.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 	assert.Contains(t, content_hover.Value, "--color-primary")
 	assert.Contains(t, content_hover.Value, "#0000ff")
@@ -226,7 +226,7 @@ func TestHoverOnVariableDeclarationUnknown(t *testing.T) {
 
 	// Request hover on the unknown variable name
 	req = types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -239,7 +239,7 @@ func TestHoverOnVariableDeclarationUnknown(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Nil(t, hover) // Should return nil for unknown variable declaration
+	assert.Nil(t, result) // Should return nil for unknown variable declaration
 }
 
 // TestHoverWithDeprecated tests hover on deprecated token
@@ -275,7 +275,7 @@ func TestHoverWithDeprecated(t *testing.T) {
 
 	// Request hover
 	req = types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: "file:///test.css",
@@ -288,9 +288,9 @@ func TestHoverWithDeprecated(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotNil(t, hover)
+	require.NotNil(t, result)
 
-	content_hover, ok := hover.Contents.(protocol.MarkupContent)
+	content_hover, ok := result.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 	assert.Contains(t, content_hover.Value, "DEPRECATED")
 }

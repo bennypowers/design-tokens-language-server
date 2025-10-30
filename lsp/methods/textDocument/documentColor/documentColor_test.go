@@ -230,9 +230,9 @@ func TestColorPresentation_WithAlpha(t *testing.T) {
 // TestParseColor tests the parseColor helper function
 func TestParseColor(t *testing.T) {
 	tests := []struct {
+		expected    *protocol.Color
 		name        string
 		input       string
-		expected    *protocol.Color
 		expectError bool
 	}{
 		{

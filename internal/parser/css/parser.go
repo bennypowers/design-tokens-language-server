@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"bennypowers.dev/dtls/lsp/helpers"
 	sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_css "github.com/tree-sitter/tree-sitter-css/bindings/go"
 )
@@ -89,68 +90,48 @@ func (p *Parser) Parse(source string) (*ParseResult, error) {
 
 	// Walk the tree to find declarations and var() calls
 	// Note: tree-sitter positions from Parse() are byte-based, we'll convert them
-	p.walkTree(root, sourceBytes, source, result)
+	if err := p.walkTree(root, sourceBytes, source, result); err != nil {
+		return nil, fmt.Errorf("failed to walk parse tree: %w", err)
+	}
 
 	return result, nil
 }
 
-// positionToUTF16 converts a tree-sitter Point (which uses byte offsets for Column)
-// to LSP Position (which uses UTF-16 code units for Character)
-func positionToUTF16(source string, point sitter.Point) Position {
-	lines := strings.Split(source, "\n")
-	if point.Row >= uint(len(lines)) {
-		return Position{Line: uint32(point.Row), Character: uint32(point.Column)}
-	}
-
-	line := lines[point.Row]
-	// point.Column is a byte offset within the line
-	// Convert it to UTF-16 code units
-	if point.Column > uint(len(line)) {
-		point.Column = uint(len(line))
-	}
-
-	utf16Count := uint32(0)
-	for _, r := range line[:point.Column] {
-		if r <= 0xFFFF {
-			utf16Count++
-		} else {
-			utf16Count += 2 // Surrogate pair
-		}
-	}
-
-	return Position{
-		Line:      uint32(point.Row),
-		Character: utf16Count,
-	}
-}
-
 // walkTree recursively walks the tree to find CSS variables and var() calls
-func (p *Parser) walkTree(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) {
+func (p *Parser) walkTree(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) error {
 	if node == nil {
-		return
+		return nil
 	}
 
 	nodeKind := node.Kind()
 
 	// Check for CSS custom property declaration
 	if nodeKind == "declaration" {
-		p.handleDeclaration(node, sourceBytes, source, result)
+		if err := p.handleDeclaration(node, sourceBytes, source, result); err != nil {
+			return err
+		}
 	}
 
 	// Check for var() function call
 	if nodeKind == "call_expression" {
-		p.handleCallExpression(node, sourceBytes, source, result)
+		if err := p.handleCallExpression(node, sourceBytes, source, result); err != nil {
+			return err
+		}
 	}
 
 	// Recursively walk children
 	for i := uint(0); i < node.ChildCount(); i++ {
 		child := node.Child(i)
-		p.walkTree(child, sourceBytes, source, result)
+		if err := p.walkTree(child, sourceBytes, source, result); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // handleDeclaration processes a CSS declaration node
-func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) {
+func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) error {
 	// Find property name node
 	var propertyNode *sitter.Node
 	var valueNodes []*sitter.Node
@@ -167,14 +148,14 @@ func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source
 	}
 
 	if propertyNode == nil {
-		return
+		return nil
 	}
 
 	propertyName := string(sourceBytes[propertyNode.StartByte():propertyNode.EndByte()])
 
 	// Only process custom properties (starting with --)
 	if !strings.HasPrefix(propertyName, "--") {
-		return
+		return nil
 	}
 
 	// Extract value
@@ -189,6 +170,12 @@ func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source
 		value = strings.Join(parts, " ")
 	}
 
+	// Convert positions with overflow checking
+	posRange, err := createPositionRange(source, propertyNode)
+	if err != nil {
+		return err
+	}
+
 	// Create variable with UTF-16 positions for LSP
 	// Range covers only the property name (LHS), not the entire declaration
 	// This ensures hover only triggers on the property name, not on the value
@@ -196,51 +183,15 @@ func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source
 		Name:  propertyName,
 		Value: value,
 		Type:  VariableDeclaration,
-		Range: Range{
-			Start: positionToUTF16(source, propertyNode.StartPosition()),
-			End:   positionToUTF16(source, propertyNode.EndPosition()),
-		},
+		Range: posRange,
 	}
 
 	result.Variables = append(result.Variables, variable)
+	return nil
 }
 
-// handleCallExpression processes a function call expression (looking for var())
-func (p *Parser) handleCallExpression(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) {
-	// Find function name
-	var functionNameNode *sitter.Node
-	var argumentsNode *sitter.Node
-
-	for i := uint(0); i < node.ChildCount(); i++ {
-		child := node.Child(i)
-		kind := child.Kind()
-		switch kind {
-		case "function_name":
-			functionNameNode = child
-		case "arguments":
-			argumentsNode = child
-		}
-	}
-
-	if functionNameNode == nil {
-		return
-	}
-
-	functionName := string(sourceBytes[functionNameNode.StartByte():functionNameNode.EndByte()])
-
-	// Only process var() calls
-	if functionName != "var" {
-		return
-	}
-
-	if argumentsNode == nil {
-		return
-	}
-
-	// Extract token name and optional fallback
-	var tokenName string
-	var fallback *string
-
+// extractVarArguments extracts token name and optional fallback from var() arguments
+func extractVarArguments(argumentsNode *sitter.Node, sourceBytes []byte) (tokenName string, fallback *string) {
 	argCount := 0
 	for i := uint(0); i < argumentsNode.ChildCount(); i++ {
 		child := argumentsNode.Child(i)
@@ -265,9 +216,62 @@ func (p *Parser) handleCallExpression(node *sitter.Node, sourceBytes []byte, sou
 			argCount++
 		}
 	}
+	return tokenName, fallback
+}
 
+// createPositionRange converts tree-sitter node positions to LSP Range with overflow checking
+func createPositionRange(source string, node *sitter.Node) (Range, error) {
+	startProto, err := helpers.PositionToUTF16(source, node.StartPosition())
+	if err != nil {
+		return Range{}, fmt.Errorf("failed to convert start position: %w", err)
+	}
+	endProto, err := helpers.PositionToUTF16(source, node.EndPosition())
+	if err != nil {
+		return Range{}, fmt.Errorf("failed to convert end position: %w", err)
+	}
+
+	return Range{
+		Start: Position{Line: startProto.Line, Character: startProto.Character},
+		End:   Position{Line: endProto.Line, Character: endProto.Character},
+	}, nil
+}
+
+// handleCallExpression processes a function call expression (looking for var())
+func (p *Parser) handleCallExpression(node *sitter.Node, sourceBytes []byte, source string, result *ParseResult) error {
+	// Find function name and arguments nodes
+	var functionNameNode *sitter.Node
+	var argumentsNode *sitter.Node
+
+	for i := uint(0); i < node.ChildCount(); i++ {
+		child := node.Child(i)
+		kind := child.Kind()
+		switch kind {
+		case "function_name":
+			functionNameNode = child
+		case "arguments":
+			argumentsNode = child
+		}
+	}
+
+	// Validate function name is "var"
+	if functionNameNode == nil {
+		return nil
+	}
+	functionName := string(sourceBytes[functionNameNode.StartByte():functionNameNode.EndByte()])
+	if functionName != "var" || argumentsNode == nil {
+		return nil
+	}
+
+	// Extract arguments
+	tokenName, fallback := extractVarArguments(argumentsNode, sourceBytes)
 	if tokenName == "" {
-		return
+		return nil
+	}
+
+	// Convert positions with overflow checking
+	posRange, err := createPositionRange(source, node)
+	if err != nil {
+		return err
 	}
 
 	// Create var call with UTF-16 positions for LSP
@@ -275,11 +279,9 @@ func (p *Parser) handleCallExpression(node *sitter.Node, sourceBytes []byte, sou
 		TokenName: tokenName,
 		Fallback:  fallback,
 		Type:      VarReference,
-		Range: Range{
-			Start: positionToUTF16(source, node.StartPosition()),
-			End:   positionToUTF16(source, node.EndPosition()),
-		},
+		Range:     posRange,
 	}
 
 	result.VarCalls = append(result.VarCalls, varCall)
+	return nil
 }

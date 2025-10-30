@@ -1,0 +1,7 @@
+/* Test code actions with unknown token references */
+.button {
+  /* Unknown token - should not offer deprecated/fix actions */
+  color: var(--unknown-token);
+  background: var(--another-unknown);
+  border: var(--yet-another-unknown-token);
+}
