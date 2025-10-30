@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"bennypowers.dev/dtls/internal/collections"
 	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/tidwall/jsonc"
 	"gopkg.in/yaml.v3"
@@ -139,7 +140,7 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 
 		// Check if we should recurse into children
 		shouldRecurse := false
-		promotedMarkers := make(map[string]bool) // Track which group markers were promoted to parent
+		promotedMarkers := collections.NewSet[string]() // Track which group markers were promoted to parent
 
 		if !hasValue {
 			// No $value means it's a group - check for group marker children first
@@ -169,7 +170,7 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 							// Use the PARENT's path, not the group marker's path
 							token := p.createToken(keyNode, path, markerNode, prefix, currentPath)
 							*result = append(*result, token)
-							promotedMarkers[marker] = true // Mark this marker as promoted
+							promotedMarkers.Add(marker) // Mark this marker as promoted
 							// Don't break - there might be multiple group markers (though that would be unusual)
 						}
 					}
@@ -198,7 +199,7 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 				}
 
 				// Skip group marker keys that were promoted to parent tokens
-				if promotedMarkers[k] {
+				if promotedMarkers.Has(k) {
 					continue
 				}
 
