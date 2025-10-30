@@ -13,9 +13,10 @@ import (
 )
 
 // formatTokenValueForCSS formats a token value for safe insertion into CSS.
-// Returns the formatted value and a boolean indicating if the value is safe to use.
-// Some token types cannot be safely converted to CSS fallback values and should be skipped.
-func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
+// Returns the formatted value and an error if formatting/validation fails.
+// Returns ("", error) for unsupported token types, invalid values or parse failures (caller should warn).
+// Returns (value, nil) for successfully formatted values.
+func FormatTokenValueForCSS(token *tokens.Token) (string, error) {
 	value := token.Value
 	tokenType := strings.ToLower(token.Type)
 
@@ -36,7 +37,7 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 			"inherit": true, "initial": true, "unset": true,
 		}
 		if keywords[strings.ToLower(value)] {
-			return value, true
+			return value, nil
 		}
 
 		// Check if it's numeric (must be 1-1000 inclusive, reject 0)
@@ -44,16 +45,19 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 		if matched {
 			// Parse to integer to validate range
 			var numValue int
-			fmt.Sscanf(value, "%d", &numValue)
+			n, err := fmt.Sscanf(value, "%d", &numValue)
+			if err != nil || n != 1 {
+				return "", fmt.Errorf("failed to parse font-weight value %q: %w", value, err)
+			}
 			// Valid range is 1-1000 inclusive (CSS Fonts Level 4)
 			// Explicitly reject 0 and out-of-range values
 			if numValue >= 1 && numValue <= 1000 {
-				return value, true
+				return value, nil
 			}
 			// Invalid numeric value (0 or out of range)
-			return "", false
+			return "", fmt.Errorf("font-weight value %q out of range (must be 1-1000)", value)
 		}
-		return "", false // Unsafe font weight value
+		return "", fmt.Errorf("invalid font-weight value %q (must be keyword or number)", value)
 	}
 
 	// Font family needs special handling (quoting for values with spaces/special chars)
@@ -63,7 +67,7 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 
 	// Check if this is a safe type
 	if safeTypes[tokenType] {
-		return value, true
+		return value, nil
 	}
 
 	// If no type specified, inspect the value to determine if it's safe
@@ -72,50 +76,50 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, bool) {
 		// Colors: hex, rgb(), hsl(), named colors
 		if strings.HasPrefix(value, "#") || strings.HasPrefix(value, "rgb") ||
 			strings.HasPrefix(value, "hsl") || isNamedColor(value) {
-			return value, true
+			return value, nil
 		}
 
 		// Dimensions: number followed by unit (px, rem, em, %, etc.)
 		matched, _ := regexp.MatchString(`^-?\d+(\.\d+)?(px|rem|em|%|vh|vw|pt|cm|mm|in|pc|ex|ch|vmin|vmax)$`, value)
 		if matched {
-			return value, true
+			return value, nil
 		}
 
 		// Pure numbers
 		matched, _ = regexp.MatchString(`^-?\d+(\.\d+)?$`, value)
 		if matched {
-			return value, true
+			return value, nil
 		}
 
 		// If it contains spaces or special characters, it might need quoting
 		// but we can't be sure, so skip it for safety
 		if strings.ContainsAny(value, " \t\n\"'()[]{}") {
-			return "", false
+			return "", fmt.Errorf("value %q contains special characters and cannot be safely formatted", value)
 		}
 
 		// Simple identifiers without spaces are probably safe
 		matched, _ = regexp.MatchString(`^[a-zA-Z][a-zA-Z0-9-]*$`, value)
 		if matched {
-			return value, true
+			return value, nil
 		}
 
-		return "", false // Unknown format, unsafe
+		return "", fmt.Errorf("value %q has unknown format", value)
 	}
 
 	// Composite types (stroke, border, transition, shadow, gradient, typography)
 	// cannot be safely inserted as simple CSS values
-	return "", false
+	return "", fmt.Errorf("token type %q cannot be used as CSS fallback value", tokenType)
 }
 
 // formatFontFamilyValue formats a font family value for CSS.
-// Returns the formatted value and whether it's safe to use.
-func FormatFontFamilyValue(value string) (string, bool) {
+// Returns the formatted value or an error if formatting fails.
+func FormatFontFamilyValue(value string) (string, error) {
 	value = strings.TrimSpace(value)
 
 	// If it's already quoted, use as-is (assume it's properly formatted)
 	if (strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"")) ||
 		(strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) {
-		return value, true
+		return value, nil
 	}
 
 	// Generic font families don't need quotes
@@ -124,7 +128,7 @@ func FormatFontFamilyValue(value string) (string, bool) {
 		"cursive": true, "fantasy": true, "system-ui": true,
 	}
 	if genericFamilies[strings.ToLower(value)] {
-		return value, true
+		return value, nil
 	}
 
 	// If it contains a comma, it's likely a font-family list (e.g., "Arial, sans-serif")
@@ -133,10 +137,10 @@ func FormatFontFamilyValue(value string) (string, bool) {
 		// Check if it looks like a valid font-family list with quoted names
 		// If it contains quotes, assume it's already properly formatted
 		if strings.Contains(value, "\"") || strings.Contains(value, "'") {
-			return value, true
+			return value, nil
 		}
 		// Otherwise, it's a simple comma-separated list, also safe to use
-		return value, true
+		return value, nil
 	}
 
 	// If it contains spaces or special characters (but no comma), it needs quoting
@@ -144,11 +148,11 @@ func FormatFontFamilyValue(value string) (string, bool) {
 
 	if needsQuoting {
 		// Use %q to automatically quote and escape the string
-		return fmt.Sprintf("%q", value), true
+		return fmt.Sprintf("%q", value), nil
 	}
 
 	// Single-word font names without special chars don't need quotes
-	return value, true
+	return value, nil
 }
 
 // isNamedColor checks if a value is a named CSS color
@@ -252,7 +256,7 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 
 		// Create code actions for deprecated tokens
 		if token.Deprecated {
-			actions = append(actions, CreateDeprecatedTokenActions(req.Server, uri, *varCall, token, params.Context.Diagnostics)...)
+			actions = append(actions, CreateDeprecatedTokenActions(req, uri, *varCall, token, params.Context.Diagnostics)...)
 		}
 
 		// Create code actions for incorrect fallback
@@ -261,13 +265,13 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 			tokenValue := token.Value
 
 			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
-				if action := CreateFixFallbackAction(uri, *varCall, token, params.Context.Diagnostics); action != nil {
+				if action := CreateFixFallbackAction(req, uri, *varCall, token, params.Context.Diagnostics); action != nil {
 					actions = append(actions, *action)
 				}
 			}
 		} else if token.Type == "color" || token.Type == "dimension" {
 			// Suggest adding fallback for color and dimension tokens
-			if action := CreateAddFallbackAction(uri, *varCall, token); action != nil {
+			if action := CreateAddFallbackAction(req, uri, *varCall, token); action != nil {
 				actions = append(actions, *action)
 			}
 		}
@@ -279,12 +283,12 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 
 	if isCollapsed && len(varCallsInRange) > 0 {
 		// Collapsed cursor - create toggleFallback action for the var() at cursor
-		if action := CreateToggleFallbackAction(req.Server, uri, varCallsInRange[0]); action != nil {
+		if action := CreateToggleFallbackAction(req, uri, varCallsInRange[0]); action != nil {
 			actions = append(actions, *action)
 		}
 	} else if !isCollapsed && len(varCallsInRange) > 0 {
 		// Expanded selection - create toggleRangeFallbacks action for all var() calls in range
-		if action := CreateToggleRangeFallbacksAction(req.Server, uri, varCallsInRange); action != nil {
+		if action := CreateToggleRangeFallbacksAction(req, uri, varCallsInRange); action != nil {
 			actions = append(actions, *action)
 		}
 	}
@@ -318,7 +322,7 @@ func CodeActionResolve(req *types.RequestContext, action *protocol.CodeAction) (
 
 	// Handle fixAllFallbacks which uses lazy resolution
 	if action.Title == "Fix all token fallback values" {
-		return resolveFixAllFallbacks(req.Server, action)
+		return resolveFixAllFallbacks(req, action)
 	}
 
 	// For other actions (fixFallback, toggle, add, deprecated),
@@ -327,7 +331,7 @@ func CodeActionResolve(req *types.RequestContext, action *protocol.CodeAction) (
 }
 
 // resolveFixAllFallbacks resolves the fixAll action by computing edits for all incorrect fallbacks
-func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction) (*protocol.CodeAction, error) {
+func resolveFixAllFallbacks(req *types.RequestContext, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	// Get the URI from the data field
 	data, ok := action.Data.(map[string]any)
 	if !ok {
@@ -341,7 +345,7 @@ func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction
 	uri := uriVal.(string)
 
 	// Get document
-	doc := ctx.Document(uri)
+	doc := req.Server.Document(uri)
 	if doc == nil {
 		return action, nil
 	}
@@ -358,7 +362,7 @@ func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction
 
 	// Fix all var() calls with incorrect fallbacks
 	for _, varCall := range result.VarCalls {
-		token := ctx.Token(varCall.TokenName)
+		token := req.Server.Token(varCall.TokenName)
 		if token == nil {
 			continue
 		}
@@ -370,8 +374,9 @@ func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction
 
 			if !isCSSValueSemanticallyEquivalent(fallbackValue, tokenValue) {
 				// Format the token value
-				formattedValue, safe := FormatTokenValueForCSS(token)
-				if !safe {
+				formattedValue, err := FormatTokenValueForCSS(token)
+				if err != nil {
+					req.AddWarning(fmt.Errorf("cannot format token %q: %w", token.Name, err))
 					continue
 				}
 
@@ -407,7 +412,7 @@ func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction
 // createFixFallbackAction creates a code action to fix an incorrect fallback value.
 // The edit is created immediately for simplicity (Go implementation),
 // but can also be resolved lazily if Edit is nil (TypeScript compat).
-func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
+func CreateFixFallbackAction(req *types.RequestContext, uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) *protocol.CodeAction {
 	// Try to find the matching diagnostic
 	var matchingDiag *protocol.Diagnostic
 	for i := range diagnostics {
@@ -419,8 +424,9 @@ func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 	}
 
 	// Format the token value for CSS
-	formattedValue, safe := FormatTokenValueForCSS(token)
-	if !safe {
+	formattedValue, err := FormatTokenValueForCSS(token)
+	if err != nil {
+		req.AddWarning(fmt.Errorf("cannot format token %q for fallback: %w", token.Name, err))
 		return nil
 	}
 
@@ -464,11 +470,11 @@ func CreateFixFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 
 // createAddFallbackAction creates a code action to add a fallback value.
 // Returns nil if the token value cannot be safely formatted for CSS.
-func CreateAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
+func CreateAddFallbackAction(req *types.RequestContext, uri string, varCall css.VarCall, token *tokens.Token) *protocol.CodeAction {
 	// Format the token value for safe CSS insertion
-	formattedValue, safe := FormatTokenValueForCSS(token)
-	if !safe {
-		// Skip this code action - value cannot be safely inserted
+	formattedValue, err := FormatTokenValueForCSS(token)
+	if err != nil {
+		req.AddWarning(fmt.Errorf("cannot format token %q for fallback: %w", token.Name, err))
 		return nil
 	}
 
@@ -503,7 +509,7 @@ func CreateAddFallbackAction(uri string, varCall css.VarCall, token *tokens.Toke
 }
 
 // createDeprecatedTokenActions creates code actions for deprecated tokens
-func CreateDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) []protocol.CodeAction {
+func CreateDeprecatedTokenActions(req *types.RequestContext, uri string, varCall css.VarCall, token *tokens.Token, diagnostics []protocol.Diagnostic) []protocol.CodeAction {
 	var actions []protocol.CodeAction
 
 	// Find the matching diagnostic
@@ -549,15 +555,15 @@ func CreateDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall c
 		// Convert dot notation to CSS variable name
 		cssVarName := "--" + strings.ReplaceAll(recommendedToken, ".", "-")
 
-		replacementToken := ctx.Token(cssVarName)
+		replacementToken := req.Server.Token(cssVarName)
 		if replacementToken != nil {
 			// Create replacement action
 			newText := fmt.Sprintf("var(%s)", cssVarName)
 			if varCall.Fallback != nil {
 				// Format the replacement token value for CSS (handles quoting for font-family, etc.)
-				formattedFallback, safe := FormatTokenValueForCSS(replacementToken)
-				if !safe {
-					// If we can't safely format the fallback, skip the replacement action
+				formattedFallback, err := FormatTokenValueForCSS(replacementToken)
+				if err != nil {
+					req.AddWarning(fmt.Errorf("cannot format replacement token %q: %w", replacementToken.Name, err))
 					goto createLiteralAction
 				}
 				newText = fmt.Sprintf("var(%s, %s)", cssVarName, formattedFallback)
@@ -601,8 +607,8 @@ func CreateDeprecatedTokenActions(ctx types.ServerContext, uri string, varCall c
 createLiteralAction:
 	// Add a generic "Remove deprecated token" action (shows the value inline)
 	// Only offer this if the value can be safely formatted for CSS
-	formattedValue, safe := FormatTokenValueForCSS(token)
-	if safe {
+	formattedValue, err := FormatTokenValueForCSS(token)
+	if err == nil {
 		kind := protocol.CodeActionKindQuickFix
 		removeAction := protocol.CodeAction{
 			Title: fmt.Sprintf("Replace with literal value '%s'", formattedValue),
@@ -674,8 +680,8 @@ func isCSSValueSemanticallyEquivalent(a, b string) bool {
 
 // CreateToggleFallbackAction creates a code action to toggle the fallback value for a single var() call.
 // If the var() has a fallback, it removes it. If it doesn't, it adds one.
-func CreateToggleFallbackAction(ctx types.ServerContext, uri string, varCall css.VarCall) *protocol.CodeAction {
-	token := ctx.Token(varCall.TokenName)
+func CreateToggleFallbackAction(req *types.RequestContext, uri string, varCall css.VarCall) *protocol.CodeAction {
+	token := req.Server.Token(varCall.TokenName)
 	if token == nil {
 		return nil
 	}
@@ -686,8 +692,9 @@ func CreateToggleFallbackAction(ctx types.ServerContext, uri string, varCall css
 		newText = fmt.Sprintf("var(%s)", varCall.TokenName)
 	} else {
 		// No fallback - add it
-		formattedValue, safe := FormatTokenValueForCSS(token)
-		if !safe {
+		formattedValue, err := FormatTokenValueForCSS(token)
+		if err != nil {
+			req.AddWarning(fmt.Errorf("cannot format token %q for fallback: %w", token.Name, err))
 			return nil
 		}
 		newText = fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)
@@ -721,11 +728,11 @@ func CreateToggleFallbackAction(ctx types.ServerContext, uri string, varCall css
 }
 
 // CreateToggleRangeFallbacksAction creates a code action to toggle fallback values for multiple var() calls in a range.
-func CreateToggleRangeFallbacksAction(ctx types.ServerContext, uri string, varCalls []css.VarCall) *protocol.CodeAction {
+func CreateToggleRangeFallbacksAction(req *types.RequestContext, uri string, varCalls []css.VarCall) *protocol.CodeAction {
 	var edits []protocol.TextEdit
 
 	for _, varCall := range varCalls {
-		token := ctx.Token(varCall.TokenName)
+		token := req.Server.Token(varCall.TokenName)
 		if token == nil {
 			continue
 		}
@@ -736,8 +743,9 @@ func CreateToggleRangeFallbacksAction(ctx types.ServerContext, uri string, varCa
 			newText = fmt.Sprintf("var(%s)", varCall.TokenName)
 		} else {
 			// No fallback - add it
-			formattedValue, safe := FormatTokenValueForCSS(token)
-			if !safe {
+			formattedValue, err := FormatTokenValueForCSS(token)
+			if err != nil {
+				req.AddWarning(fmt.Errorf("cannot format token %q for fallback: %w", token.Name, err))
 				continue
 			}
 			newText = fmt.Sprintf("var(%s, %s)", varCall.TokenName, formattedValue)

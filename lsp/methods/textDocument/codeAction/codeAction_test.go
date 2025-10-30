@@ -160,26 +160,26 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 		name          string
 		token         *tokens.Token
 		expectedValue string
-		expectedSafe  bool
+		expectError   bool
 	}{
 		// Safe types - colors
 		{
 			name:          "hex color",
 			token:         &tokens.Token{Type: "color", Value: "#ff0000"},
 			expectedValue: "#ff0000",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "rgb color",
 			token:         &tokens.Token{Type: "color", Value: "rgb(255, 0, 0)"},
 			expectedValue: "rgb(255, 0, 0)",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "named color",
 			token:         &tokens.Token{Type: "color", Value: "red"},
 			expectedValue: "red",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 
 		// Safe types - dimensions
@@ -187,13 +187,13 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 			name:          "pixel dimension",
 			token:         &tokens.Token{Type: "dimension", Value: "16px"},
 			expectedValue: "16px",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "rem dimension",
 			token:         &tokens.Token{Type: "dimension", Value: "1.5rem"},
 			expectedValue: "1.5rem",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 
 		// Safe types - numbers
@@ -201,13 +201,13 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 			name:          "integer number",
 			token:         &tokens.Token{Type: "number", Value: "42"},
 			expectedValue: "42",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "decimal number",
 			token:         &tokens.Token{Type: "number", Value: "1.5"},
 			expectedValue: "1.5",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 
 		// Font weight - safe cases
@@ -215,91 +215,91 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 			name:          "numeric font weight",
 			token:         &tokens.Token{Type: "fontWeight", Value: "700"},
 			expectedValue: "700",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight bold",
 			token:         &tokens.Token{Type: "fontWeight", Value: "bold"},
 			expectedValue: "bold",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight normal",
 			token:         &tokens.Token{Type: "fontWeight", Value: "normal"},
 			expectedValue: "normal",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight bolder",
 			token:         &tokens.Token{Type: "fontWeight", Value: "bolder"},
 			expectedValue: "bolder",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight lighter",
 			token:         &tokens.Token{Type: "fontWeight", Value: "lighter"},
 			expectedValue: "lighter",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight inherit",
 			token:         &tokens.Token{Type: "fontWeight", Value: "inherit"},
 			expectedValue: "inherit",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight initial",
 			token:         &tokens.Token{Type: "fontWeight", Value: "initial"},
 			expectedValue: "initial",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "keyword font weight unset",
 			token:         &tokens.Token{Type: "fontWeight", Value: "unset"},
 			expectedValue: "unset",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font weight minimum valid (1)",
 			token:         &tokens.Token{Type: "fontWeight", Value: "1"},
 			expectedValue: "1",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font weight maximum valid (1000)",
 			token:         &tokens.Token{Type: "fontWeight", Value: "1000"},
 			expectedValue: "1000",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font weight mid-range (500)",
 			token:         &tokens.Token{Type: "fontWeight", Value: "500"},
 			expectedValue: "500",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font weight zero (invalid)",
 			token:         &tokens.Token{Type: "fontWeight", Value: "0"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 		{
 			name:          "font weight over 1000 (invalid)",
 			token:         &tokens.Token{Type: "fontWeight", Value: "1001"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 		{
 			name:          "font weight way over range (invalid)",
 			token:         &tokens.Token{Type: "fontWeight", Value: "9999"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 		{
 			name:          "invalid font weight keyword",
 			token:         &tokens.Token{Type: "fontWeight", Value: "super-bold"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 
 		// Font family - quoting needed
@@ -307,31 +307,31 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 			name:          "font family with spaces",
 			token:         &tokens.Token{Type: "fontFamily", Value: "Helvetica Neue"},
 			expectedValue: `"Helvetica Neue"`,
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font family with quotes",
 			token:         &tokens.Token{Type: "fontFamily", Value: `"Times New Roman"`},
 			expectedValue: `"Times New Roman"`,
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "generic font family",
 			token:         &tokens.Token{Type: "fontFamily", Value: "sans-serif"},
 			expectedValue: "sans-serif",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "single word font",
 			token:         &tokens.Token{Type: "fontFamily", Value: "Arial"},
 			expectedValue: "Arial",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font family with internal quotes",
 			token:         &tokens.Token{Type: "fontFamily", Value: `Font "Name" Here`},
 			expectedValue: `"Font \"Name\" Here"`,
-			expectedSafe:  true,
+			expectError:   false,
 		},
 
 		// No type specified - heuristic detection
@@ -339,31 +339,31 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 			name:          "untyped hex color",
 			token:         &tokens.Token{Value: "#00ff00"},
 			expectedValue: "#00ff00",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "untyped dimension",
 			token:         &tokens.Token{Value: "20px"},
 			expectedValue: "20px",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "untyped number",
 			token:         &tokens.Token{Value: "3.14"},
 			expectedValue: "3.14",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "untyped simple identifier",
 			token:         &tokens.Token{Value: "auto"},
 			expectedValue: "auto",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "untyped with spaces - unsafe",
 			token:         &tokens.Token{Value: "some value"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 
 		// Unsafe composite types
@@ -371,27 +371,30 @@ func TestFormatTokenValueForCSS(t *testing.T) {
 			name:          "border composite",
 			token:         &tokens.Token{Type: "border", Value: "1px solid #000"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 		{
 			name:          "shadow composite",
 			token:         &tokens.Token{Type: "shadow", Value: "0 2px 4px rgba(0,0,0,0.1)"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 		{
 			name:          "typography composite",
 			token:         &tokens.Token{Type: "typography", Value: "bold 16px/1.5 Arial"},
 			expectedValue: "",
-			expectedSafe:  false,
+			expectError:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			value, safe := codeaction.FormatTokenValueForCSS(tt.token)
-			assert.Equal(t, tt.expectedSafe, safe, "safety check mismatch")
-			if safe {
+			value, err := codeaction.FormatTokenValueForCSS(tt.token)
+			if tt.expectError {
+				assert.Error(t, err, "expected error but got none")
+				assert.Equal(t, "", value, "value should be empty on error")
+			} else {
+				assert.NoError(t, err, "unexpected error")
 				assert.Equal(t, tt.expectedValue, value, "formatted value mismatch")
 			}
 		})
@@ -404,51 +407,55 @@ func TestFormatFontFamilyValue(t *testing.T) {
 		name          string
 		input         string
 		expectedValue string
-		expectedSafe  bool
+		expectError   bool
 	}{
 		{
 			name:          "generic sans-serif",
 			input:         "sans-serif",
 			expectedValue: "sans-serif",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "generic serif",
 			input:         "serif",
 			expectedValue: "serif",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "single word font",
 			input:         "Arial",
 			expectedValue: "Arial",
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font with spaces",
 			input:         "Comic Sans MS",
 			expectedValue: `"Comic Sans MS"`,
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "already quoted",
 			input:         `"Times New Roman"`,
 			expectedValue: `"Times New Roman"`,
-			expectedSafe:  true,
+			expectError:   false,
 		},
 		{
 			name:          "font with internal quotes",
 			input:         `Font "Special" Name`,
 			expectedValue: `"Font \"Special\" Name"`,
-			expectedSafe:  true,
+			expectError:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			value, safe := codeaction.FormatFontFamilyValue(tt.input)
-			require.Equal(t, tt.expectedSafe, safe)
-			assert.Equal(t, tt.expectedValue, value)
+			value, err := codeaction.FormatFontFamilyValue(tt.input)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedValue, value)
+			}
 		})
 	}
 }
@@ -519,7 +526,8 @@ func TestCreateFixFallbackAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := codeaction.CreateFixFallbackAction(tt.uri, tt.varCall, tt.token, tt.diagnostics)
+			req := &types.RequestContext{}
+			action := codeaction.CreateFixFallbackAction(req, tt.uri, tt.varCall, tt.token, tt.diagnostics)
 
 			if tt.expectNil {
 				assert.Nil(t, action)
@@ -592,7 +600,8 @@ func TestCreateAddFallbackAction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			action := codeaction.CreateAddFallbackAction(tt.uri, tt.varCall, tt.token)
+			req := &types.RequestContext{}
+			action := codeaction.CreateAddFallbackAction(req, tt.uri, tt.varCall, tt.token)
 
 			if tt.expectNil {
 				assert.Nil(t, action)
@@ -784,7 +793,8 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actions := codeaction.CreateDeprecatedTokenActions(s, tt.uri, tt.varCall, tt.token, tt.diagnostics)
+			req := &types.RequestContext{Server: s}
+			actions := codeaction.CreateDeprecatedTokenActions(req, tt.uri, tt.varCall, tt.token, tt.diagnostics)
 			assert.Len(t, actions, tt.expectedNumActions)
 
 			// Check action title if specified
