@@ -82,7 +82,7 @@ jobs:
       - name: Release to Zed extensions
         uses: huacnlee/zed-extension-action@v1
         with:
-          extension-name: design-tokens-language-server
+          extension-name: design-tokens
           extension-path: extensions/zed
           push-to: bennypowers/zed-extensions
         env:
