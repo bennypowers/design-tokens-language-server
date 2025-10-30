@@ -100,10 +100,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Update submodule to latest commit
+          # Update submodule to latest release tag
           cd extensions/design-tokens
           git fetch origin
-          git checkout ${{ github.sha }}
+          git checkout ${{ github.event.release.tag_name }}
           cd ../..
           # Update version in extensions.toml
           sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" extensions.toml
