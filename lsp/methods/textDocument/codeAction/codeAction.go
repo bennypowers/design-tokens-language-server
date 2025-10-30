@@ -6,10 +6,71 @@ import (
 	"regexp"
 	"strings"
 
+	"bennypowers.dev/dtls/internal/collections"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
+)
+
+// Package-level Sets for static CSS type and value lookups
+var (
+	// safeCSSTypes are token types that can use raw values without quoting
+	safeCSSTypes = collections.NewSet(
+		"color", "dimension", "number", "duration", "cubicbezier",
+	)
+
+	// fontWeightKeywords are valid CSS font-weight keyword values
+	fontWeightKeywords = collections.NewSet(
+		"normal", "bold", "bolder", "lighter",
+		"inherit", "initial", "unset",
+	)
+
+	// genericFontFamilies are CSS generic font family names that don't need quotes
+	genericFontFamilies = collections.NewSet(
+		"serif", "sans-serif", "monospace",
+		"cursive", "fantasy", "system-ui",
+	)
+
+	// cssNamedColors are all valid CSS named color keywords
+	cssNamedColors = collections.NewSet(
+		"transparent", "black", "white", "red", "green",
+		"blue", "yellow", "cyan", "magenta", "gray",
+		"grey", "maroon", "purple", "fuchsia", "lime",
+		"olive", "navy", "teal", "aqua", "orange",
+		"aliceblue", "antiquewhite", "aquamarine", "azure",
+		"beige", "bisque", "blanchedalmond", "blueviolet",
+		"brown", "burlywood", "cadetblue", "chartreuse",
+		"chocolate", "coral", "cornflowerblue", "cornsilk",
+		"crimson", "darkblue", "darkcyan", "darkgoldenrod",
+		"darkgray", "darkgrey", "darkgreen", "darkkhaki",
+		"darkmagenta", "darkolivegreen", "darkorange", "darkorchid",
+		"darkred", "darksalmon", "darkseagreen", "darkslateblue",
+		"darkslategray", "darkslategrey", "darkturquoise", "darkviolet",
+		"deeppink", "deepskyblue", "dimgray", "dimgrey",
+		"dodgerblue", "firebrick", "floralwhite", "forestgreen",
+		"gainsboro", "ghostwhite", "gold", "goldenrod",
+		"greenyellow", "honeydew", "hotpink", "indianred",
+		"indigo", "ivory", "khaki", "lavender",
+		"lavenderblush", "lawngreen", "lemonchiffon", "lightblue",
+		"lightcoral", "lightcyan", "lightgoldenrodyellow", "lightgray",
+		"lightgrey", "lightgreen", "lightpink", "lightsalmon",
+		"lightseagreen", "lightskyblue", "lightslategray", "lightslategrey",
+		"lightsteelblue", "lightyellow", "limegreen", "linen",
+		"mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple",
+		"mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise",
+		"mediumvioletred", "midnightblue", "mintcream", "mistyrose",
+		"moccasin", "navajowhite", "oldlace", "olivedrab",
+		"orangered", "orchid", "palegoldenrod", "palegreen",
+		"paleturquoise", "palevioletred", "papayawhip", "peachpuff",
+		"peru", "pink", "plum", "powderblue",
+		"rosybrown", "royalblue", "saddlebrown", "salmon",
+		"sandybrown", "seagreen", "seashell", "sienna",
+		"silver", "skyblue", "slateblue", "slategray",
+		"slategrey", "snow", "springgreen", "steelblue",
+		"tan", "thistle", "tomato", "turquoise",
+		"violet", "wheat", "whitesmoke", "yellowgreen",
+	)
 )
 
 // formatTokenValueForCSS formats a token value for safe insertion into CSS.
@@ -20,23 +81,9 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, error) {
 	value := token.Value
 	tokenType := strings.ToLower(token.Type)
 
-	// Safe types that can use raw values (no quoting needed)
-	safeTypes := map[string]bool{
-		"color":       true,
-		"dimension":   true,
-		"number":      true,
-		"duration":    true,
-		"cubicbezier": true,
-	}
-
 	// Font weight can be numeric (1-1000) or keyword (needs validation)
 	if tokenType == "fontweight" {
-		// Valid keywords according to CSS spec
-		keywords := map[string]bool{
-			"normal": true, "bold": true, "bolder": true, "lighter": true,
-			"inherit": true, "initial": true, "unset": true,
-		}
-		if keywords[strings.ToLower(value)] {
+		if fontWeightKeywords.Has(strings.ToLower(value)) {
 			return value, nil
 		}
 
@@ -66,7 +113,7 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, error) {
 	}
 
 	// Check if this is a safe type
-	if safeTypes[tokenType] {
+	if safeCSSTypes.Has(tokenType) {
 		return value, nil
 	}
 
@@ -123,11 +170,7 @@ func FormatFontFamilyValue(value string) (string, error) {
 	}
 
 	// Generic font families don't need quotes
-	genericFamilies := map[string]bool{
-		"serif": true, "sans-serif": true, "monospace": true,
-		"cursive": true, "fantasy": true, "system-ui": true,
-	}
-	if genericFamilies[strings.ToLower(value)] {
+	if genericFontFamilies.Has(strings.ToLower(value)) {
 		return value, nil
 	}
 
@@ -157,45 +200,7 @@ func FormatFontFamilyValue(value string) (string, error) {
 
 // isNamedColor checks if a value is a named CSS color
 func isNamedColor(value string) bool {
-	namedColors := map[string]bool{
-		"transparent": true, "black": true, "white": true, "red": true, "green": true,
-		"blue": true, "yellow": true, "cyan": true, "magenta": true, "gray": true,
-		"grey": true, "maroon": true, "purple": true, "fuchsia": true, "lime": true,
-		"olive": true, "navy": true, "teal": true, "aqua": true, "orange": true,
-		"aliceblue": true, "antiquewhite": true, "aquamarine": true, "azure": true,
-		"beige": true, "bisque": true, "blanchedalmond": true, "blueviolet": true,
-		"brown": true, "burlywood": true, "cadetblue": true, "chartreuse": true,
-		"chocolate": true, "coral": true, "cornflowerblue": true, "cornsilk": true,
-		"crimson": true, "darkblue": true, "darkcyan": true, "darkgoldenrod": true,
-		"darkgray": true, "darkgrey": true, "darkgreen": true, "darkkhaki": true,
-		"darkmagenta": true, "darkolivegreen": true, "darkorange": true, "darkorchid": true,
-		"darkred": true, "darksalmon": true, "darkseagreen": true, "darkslateblue": true,
-		"darkslategray": true, "darkslategrey": true, "darkturquoise": true, "darkviolet": true,
-		"deeppink": true, "deepskyblue": true, "dimgray": true, "dimgrey": true,
-		"dodgerblue": true, "firebrick": true, "floralwhite": true, "forestgreen": true,
-		"gainsboro": true, "ghostwhite": true, "gold": true, "goldenrod": true,
-		"greenyellow": true, "honeydew": true, "hotpink": true, "indianred": true,
-		"indigo": true, "ivory": true, "khaki": true, "lavender": true,
-		"lavenderblush": true, "lawngreen": true, "lemonchiffon": true, "lightblue": true,
-		"lightcoral": true, "lightcyan": true, "lightgoldenrodyellow": true, "lightgray": true,
-		"lightgrey": true, "lightgreen": true, "lightpink": true, "lightsalmon": true,
-		"lightseagreen": true, "lightskyblue": true, "lightslategray": true, "lightslategrey": true,
-		"lightsteelblue": true, "lightyellow": true, "limegreen": true, "linen": true,
-		"mediumaquamarine": true, "mediumblue": true, "mediumorchid": true, "mediumpurple": true,
-		"mediumseagreen": true, "mediumslateblue": true, "mediumspringgreen": true, "mediumturquoise": true,
-		"mediumvioletred": true, "midnightblue": true, "mintcream": true, "mistyrose": true,
-		"moccasin": true, "navajowhite": true, "oldlace": true, "olivedrab": true,
-		"orangered": true, "orchid": true, "palegoldenrod": true, "palegreen": true,
-		"paleturquoise": true, "palevioletred": true, "papayawhip": true, "peachpuff": true,
-		"peru": true, "pink": true, "plum": true, "powderblue": true,
-		"rosybrown": true, "royalblue": true, "saddlebrown": true, "salmon": true,
-		"sandybrown": true, "seagreen": true, "seashell": true, "sienna": true,
-		"silver": true, "skyblue": true, "slateblue": true, "slategray": true,
-		"slategrey": true, "snow": true, "springgreen": true, "steelblue": true,
-		"tan": true, "thistle": true, "tomato": true, "turquoise": true,
-		"violet": true, "wheat": true, "whitesmoke": true, "yellowgreen": true,
-	}
-	return namedColors[strings.ToLower(value)]
+	return cssNamedColors.Has(strings.ToLower(value))
 }
 
 // handleCodeAction handles the textDocument/codeAction request
