@@ -113,19 +113,6 @@ jobs:
 
           git add extensions/design-tokens extensions.toml
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Sort extensions
-        run: |
-          cd zed-extensions
-          corepack enable
-          pnpm install
-          pnpm sort-extensions
-          git add extensions.toml
-
       - name: Create PR
         env:
           GH_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
