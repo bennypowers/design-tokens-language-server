@@ -242,35 +242,44 @@ settings.
 
 ### 🏗️ Building
 
-> [!WARNING]
-> DTLS is developed on Linux, works on macOS, but might not work on Windows. If
-> you need Windows support, please [open an issue](./issues/new).
-
-Install [Deno](https://deno.land) and clone this repo. Run this task to build
-and install the binary to `~/.local/bin/design-tokens-language-server`:
+DTLS is written in Go and uses Make for building. Clone this repo and run:
 
 ```sh
-deno task install
+make build
 ```
+
+To install the binary to `~/.local/bin/design-tokens-language-server`:
+
+```sh
+make install
+```
+
+To build binaries for all platforms (Linux, macOS, Windows):
+
+```sh
+make build-all
+```
+
+See `make help` for all available build targets.
 
 ### 🧪 Testing
 
 Run tests with:
 
 ```sh
-deno task test
-```
-
-Watch tests with:
-
-```sh
-deno task test:watch
+make test
 ```
 
 Generate coverage reports with:
 
 ```sh
-deno task coverage
+make test-coverage
+```
+
+View coverage in browser:
+
+```sh
+make show-coverage
 ```
 
 ### 🪲 Debugging
@@ -288,7 +297,33 @@ If you'd like to trace lsp messages in real time, try
 [dtcg]: https://tr.designtokens.org/format/
 
 ### 🚚 Releasing
-1. Commit all your changes and merge your branch to main
-2. On main, run `deno task version major|minor|patch`
-   this creates a version commit and tags it with the appropriate version number
-3. Push your changes, and the tag, and create a new GitHub release
+
+To create a new release, use the Makefile:
+
+```bash
+make release v0.1.1
+```
+
+This single command handles everything:
+1. Updates version in `extensions/vscode/package.json` and `extensions/zed/extension.toml`
+2. Commits the changes with message: `chore: prepare version 0.1.1`
+3. Creates git tag `v0.1.1`
+4. Pushes commit and tag to GitHub
+5. Creates GitHub release with auto-generated notes
+6. Triggers CI to build binaries and publish extensions
+
+**Dry run:** To preview changes without pushing:
+```bash
+make release v0.1.1 DRY_RUN=1
+```
+
+This will update the version files and show you what would be committed/pushed, but won't actually push anything. You can undo with `git checkout extensions/vscode/package.json extensions/zed/extension.toml`.
+
+**Important:** Always use `make release` instead of `gh release create` directly. The CI includes validation that will fail if extension versions don't match the git tag version.
+
+#### What if I forget and use `gh release create`?
+
+If you accidentally create a release without updating versions:
+1. The CI build will fail immediately with a clear error message
+2. Delete the broken release and tag from GitHub
+3. Run `make release v0.1.1` to create the release properly (this handles version updates automatically)

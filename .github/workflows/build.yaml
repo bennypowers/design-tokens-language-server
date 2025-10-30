@@ -12,6 +12,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          VSCODE_VERSION=$(jq -r .version extensions/vscode/package.json)
+          ZED_VERSION=$(grep '^version = ' extensions/zed/extension.toml | cut -d'"' -f2)
+
+          echo "Checking version consistency:"
+          echo "  Git tag:  v$TAG_VERSION"
+          echo "  VSCode:   $VSCODE_VERSION"
+          echo "  Zed:      $ZED_VERSION"
+          echo ""
+
+          if [ "$TAG_VERSION" != "$VSCODE_VERSION" ] || [ "$TAG_VERSION" != "$ZED_VERSION" ]; then
+            echo "❌ ERROR: Version mismatch detected!"
+            echo ""
+            echo "The git tag version does not match the extension versions."
+            echo "This usually means you forgot to run the version script before creating the release."
+            echo ""
+            echo "To fix this:"
+            echo "  1. Delete this release and tag"
+            echo "  2. Run: ./scripts/version.sh $TAG_VERSION"
+            echo "  3. Commit and push the changes"
+            echo "  4. Re-create the release with: make release v$TAG_VERSION"
+            echo ""
+            echo "Or use the Makefile from the start:"
+            echo "  make release v$TAG_VERSION"
+            exit 1
+          fi
+
+          echo "✓ Version check passed"
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
