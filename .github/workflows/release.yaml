@@ -91,12 +91,12 @@ jobs:
         with:
           repository: bennypowers/zed-extensions
           path: zed-extensions
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ZED_COMMITTER_TOKEN }}
 
       - name: Update Zed Extension
         working-directory: zed-extensions
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
