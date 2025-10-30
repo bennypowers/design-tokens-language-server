@@ -102,7 +102,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Update submodule to latest release tag
           cd extensions/design-tokens
-          git fetch origin
+          git fetch origin --tags
           git checkout ${{ github.event.release.tag_name }}
           cd ../..
           # Update version in extensions.toml
