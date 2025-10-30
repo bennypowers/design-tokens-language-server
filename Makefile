@@ -207,7 +207,7 @@ vscode-package: build-all
 v%:
 	@:
 
-## Release (creates version commit, then uses gh to tag and create release)
+## Release (creates version commit, pushes it, then uses gh to tag and create release)
 release:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Error: VERSION is required"; \
