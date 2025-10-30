@@ -12,7 +12,7 @@ VERSION ?= $(filter v%,$(MAKECMDGOALS))
 # Go build flags with version injection
 GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
-.PHONY: all build build-all test test-coverage install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
+.PHONY: all build build-all test test-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
 
 all: build
 
@@ -35,6 +35,15 @@ install: build
 ## Run tests
 test:
 	go test -v ./...
+
+## Run linter and format check
+lint:
+	@echo "=== Running golangci-lint ==="
+	@if ! command -v golangci-lint &> /dev/null; then \
+		echo "golangci-lint not found. Installing..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	fi
+	@golangci-lint run
 
 ## Run tests with coverage (Go 1.20+ includes cross-process coverage for integration tests)
 test-coverage:
@@ -218,6 +227,7 @@ help:
 	@echo "  make build-all          Build all platform binaries (Linux, macOS, Windows)"
 	@echo "  make test               Run tests"
 	@echo "  make test-coverage      Run tests with coverage"
+	@echo "  make lint               Run golangci-lint"
 	@echo "  make install            Install to ~/.local/bin"
 	@echo "  make clean              Clean build artifacts"
 	@echo ""

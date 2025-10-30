@@ -282,6 +282,16 @@ View coverage in browser:
 make show-coverage
 ```
 
+### 🔍 Linting
+
+Run golangci-lint:
+
+```sh
+make lint
+```
+
+This will automatically install golangci-lint if not already present.
+
 ### 🪲 Debugging
 
 The server logs to `~/.local/state/design-tokens-language-server/dtls.log` by
