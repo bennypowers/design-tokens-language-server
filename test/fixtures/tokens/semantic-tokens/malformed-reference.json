@@ -1,0 +1,14 @@
+{
+  "broken": {
+    "$value": "{incomplete",
+    "$type": "color"
+  },
+  "invalid": {
+    "$value": "{.invalid.}",
+    "$type": "color"
+  },
+  "valid": {
+    "$value": "#ff0000",
+    "$type": "color"
+  }
+}

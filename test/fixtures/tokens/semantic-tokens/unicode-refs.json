@@ -1,0 +1,23 @@
+{
+  "emoji": {
+    "🎨": {
+      "$value": "#ff0000",
+      "$type": "color",
+      "$description": "Art palette color"
+    },
+    "ref": {
+      "$value": "{emoji.🎨}",
+      "$type": "color"
+    }
+  },
+  "unicode": {
+    "café": {
+      "$value": "#8B4513",
+      "$type": "color"
+    },
+    "référence": {
+      "$value": "{unicode.café}",
+      "$type": "color"
+    }
+  }
+}
