@@ -174,3 +174,145 @@ func TestNormalizePathErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestResolveNpmPath_PathTraversal tests security fixes for path traversal vulnerabilities
+func TestResolveNpmPath_PathTraversal(t *testing.T) {
+	tmpDir := t.TempDir()
+	workspaceRoot := tmpDir
+
+	// Create a minimal node_modules structure
+	nodeModulesDir := filepath.Join(tmpDir, "node_modules")
+	require.NoError(t, os.MkdirAll(nodeModulesDir, 0o755))
+
+	// Create a legitimate package for comparison tests
+	legitimatePkgDir := filepath.Join(nodeModulesDir, "legitimate-package")
+	require.NoError(t, os.MkdirAll(legitimatePkgDir, 0o755))
+	legitimateFile := filepath.Join(legitimatePkgDir, "tokens.json")
+	require.NoError(t, os.WriteFile(legitimateFile, []byte(`{}`), 0o644))
+
+	tests := []struct {
+		name        string
+		npmPath     string
+		shouldError bool
+		errContains string
+	}{
+		{
+			name:        "valid unscoped package",
+			npmPath:     "legitimate-package/tokens.json",
+			shouldError: false,
+		},
+		{
+			name:        "path traversal in package name - dotdot",
+			npmPath:     "../../etc/passwd",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "path traversal in package name - single dotdot",
+			npmPath:     "../sensitive-file.txt",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "path traversal with scoped package format",
+			npmPath:     "@../../../etc/passwd",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "path traversal in scope name",
+			npmPath:     "@../../etc/passwd",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "dots in legitimate package name (valid)",
+			npmPath:     "my.package.name/tokens.json",
+			shouldError: true, // Will fail because package doesn't exist, but NOT because of traversal
+			errContains: "not found",
+		},
+		{
+			name:        "dotdot in subpath (not package name)",
+			npmPath:     "legitimate-package/../../../etc/passwd",
+			shouldError: true,
+			errContains: "not found", // This tests that subpath traversal is blocked by file system checks
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveNpmPath(tt.npmPath, workspaceRoot)
+
+			if tt.shouldError {
+				require.Error(t, err, "Expected error for npm path: %s", tt.npmPath)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains,
+						"Error message should contain '%s' for npm path: %s", tt.errContains, tt.npmPath)
+				}
+				assert.Empty(t, got, "Should return empty path on error")
+				return
+			}
+
+			require.NoError(t, err, "Should not error for valid npm path: %s", tt.npmPath)
+			assert.NotEmpty(t, got, "Should return non-empty path for valid npm path")
+		})
+	}
+}
+
+// TestResolveNpmPath_BoundaryValidation tests that npm: paths are restricted to node_modules
+func TestResolveNpmPath_BoundaryValidation(t *testing.T) {
+	tmpDir := t.TempDir()
+	workspaceRoot := tmpDir
+
+	// Create node_modules
+	nodeModulesDir := filepath.Join(tmpDir, "node_modules")
+	require.NoError(t, os.MkdirAll(nodeModulesDir, 0o755))
+
+	tests := []struct {
+		name        string
+		npmPath     string
+		shouldError bool
+		errContains string
+	}{
+		{
+			name:        "absolute path disguised as package name",
+			npmPath:     "../../../../../../../etc/passwd",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "package name with multiple dotdot sequences",
+			npmPath:     "../../../../../../etc/shadow",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "scoped package with dotdot in scope",
+			npmPath:     "@../evil/package/file.json",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+		{
+			name:        "scoped package with dotdot in package name",
+			npmPath:     "@scope/../evil/file.json",
+			shouldError: true,
+			errContains: "path traversal not allowed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveNpmPath(tt.npmPath, workspaceRoot)
+
+			if tt.shouldError {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				assert.Empty(t, got)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

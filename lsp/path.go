@@ -75,8 +75,23 @@ func resolveNpmPath(npmPath, workspaceRoot string) (string, error) {
 		}
 	}
 
+	// Security: Validate package name doesn't contain path traversal sequences
+	if strings.Contains(packageName, "..") {
+		return "", fmt.Errorf("invalid npm package name: %q (path traversal not allowed)", npmPath)
+	}
+
 	// Find the package directory in node_modules
 	packageDir := filepath.Join(workspaceRoot, "node_modules", packageName)
+
+	// Security: Validate the constructed path is within node_modules
+	// This prevents npm:../../etc/passwd attacks while allowing symlinks (for pnpm/yarn)
+	nodeModulesPath := filepath.Join(workspaceRoot, "node_modules")
+	cleanedPackageDir := filepath.Clean(packageDir)
+	cleanedNodeModules := filepath.Clean(nodeModulesPath)
+	if !strings.HasPrefix(cleanedPackageDir, cleanedNodeModules+string(filepath.Separator)) &&
+		cleanedPackageDir != cleanedNodeModules {
+		return "", fmt.Errorf("security: npm package path must be within node_modules: %q", npmPath)
+	}
 	if _, err := os.Stat(packageDir); err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("npm package not found: %s (expected at %s)", packageName, packageDir)
@@ -287,7 +302,7 @@ func expandPattern(pattern any, substitution string) any {
 // readPackageJSON reads and parses package.json from a directory
 func readPackageJSON(packageDir string) (*PackageJSON, error) {
 	pkgPath := filepath.Join(packageDir, "package.json")
-	data, err := os.ReadFile(pkgPath) //nolint:gosec // G304: Reading workspace package.json - local trusted environment
+	data, err := os.ReadFile(pkgPath) //nolint:gosec // G304: package.json path constructed from trusted workspace root
 	if err != nil {
 		return nil, err
 	}

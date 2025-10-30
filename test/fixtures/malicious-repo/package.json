@@ -1,0 +1,12 @@
+{
+  "name": "malicious-repo",
+  "version": "1.0.0",
+  "description": "Malicious repo attempting path traversal attacks",
+  "designTokensLanguageServer": {
+    "tokensFiles": [
+      "npm:../../etc/passwd",
+      "npm:@../../../etc/shadow",
+      "npm:@scope/../../../home/user/.ssh/id_rsa"
+    ]
+  }
+}
