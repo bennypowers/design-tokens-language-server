@@ -219,7 +219,10 @@ release:
 	@echo "Step 1: Updating version files and committing..."
 	@./scripts/version.sh $(VERSION)
 	@echo ""
-	@echo "Step 2: Creating GitHub release (gh will tag and push)..."
+	@echo "Step 2: Pushing version commit..."
+	@git push
+	@echo ""
+	@echo "Step 3: Creating GitHub release (gh will tag and push)..."
 	@gh release create "$(VERSION)"
 
 ## Help
@@ -236,7 +239,7 @@ help:
 	@echo "  make clean              Clean build artifacts"
 	@echo ""
 	@echo "Release:"
-	@echo "  make release v0.1.1     Create release (updates versions, commits, then gh creates tag/release)"
+	@echo "  make release v0.1.1     Create release (updates versions, commits, pushes, then gh creates tag/release)"
 	@echo ""
 	@echo "Platform-specific builds:"
 	@echo "  make linux-x64          Build for Linux x86_64"
