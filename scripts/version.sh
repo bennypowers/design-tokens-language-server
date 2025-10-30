@@ -61,22 +61,17 @@ git diff extensions/vscode/package.json extensions/zed/extension.toml
 # Check if there are changes
 if ! git diff --quiet extensions/vscode/package.json extensions/zed/extension.toml; then
   echo ""
-  read -p "Commit changes and create git tag v$VERSION? (y/n) " -n 1 -r
+  read -p "Commit version changes? (y/n) " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     git add extensions/vscode/package.json extensions/zed/extension.toml
     git commit -m "chore: prepare version $VERSION"
-    git tag -a "v$VERSION" -m "Release v$VERSION"
-    echo "✓ Created git tag: v$VERSION"
+    echo "✓ Version changes committed"
     echo ""
-    echo "To push:"
-    echo "  git push origin main"
-    echo "  git push origin v$VERSION"
-    echo ""
-    echo "Or push both at once:"
-    echo "  git push origin main && git push origin v$VERSION"
+    echo "Next steps:"
+    echo "  make release v$VERSION  (to tag, push, and create GitHub release)"
   else
-    echo "Skipping git tag creation"
+    echo "Skipping commit. Changes are staged but not committed."
   fi
 else
   echo ""

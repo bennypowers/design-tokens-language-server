@@ -306,19 +306,13 @@ make release v0.1.1
 
 This single command handles everything:
 1. Updates version in `extensions/vscode/package.json` and `extensions/zed/extension.toml`
-2. Commits the changes with message: `chore: prepare version 0.1.1`
-3. Creates git tag `v0.1.1`
-4. Pushes commit and tag to GitHub
-5. Opens `gh` interactive wizard where you can edit release notes in your editor
-6. Creates the GitHub release
-7. Triggers CI to build binaries and publish extensions
-
-**Dry run:** To preview changes without pushing:
-```bash
-make release v0.1.1 DRY_RUN=1
-```
-
-This will update the version files and show you what would be committed/pushed, but won't actually push anything. You can undo with `git checkout extensions/vscode/package.json extensions/zed/extension.toml`.
+2. Prompts you to commit the changes
+3. Runs `gh release create` which:
+   - Creates git tag `v0.1.1`
+   - Pushes commit and tag to GitHub
+   - Opens interactive wizard where you can edit release notes
+   - Creates the GitHub release
+4. Triggers CI to build binaries and publish extensions
 
 **Important:** Always use `make release` instead of `gh release create` directly. The CI includes validation that will fail if extension versions don't match the git tag version.
 

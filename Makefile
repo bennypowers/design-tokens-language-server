@@ -194,54 +194,20 @@ vscode-package: build-all
 v%:
 	@:
 
-## Release (creates version commit, tag, and GitHub release)
-## Set DRY_RUN=1 to preview without pushing: make release v0.1.1 DRY_RUN=1
+## Release (creates version commit, then uses gh to tag and create release)
 release:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Error: VERSION is required"; \
 		echo "Usage: make release v0.1.1"; \
-		echo "       make release v0.1.1 DRY_RUN=1  (preview without pushing)"; \
 		exit 1; \
-	fi
-	@if [ "$(DRY_RUN)" = "1" ]; then \
-		echo "🔍 DRY RUN MODE - No changes will be pushed"; \
-		echo ""; \
 	fi
 	@echo "Creating release $(VERSION)..."
+	@echo ""
+	@echo "Step 1: Updating version files and committing..."
 	@./scripts/version.sh $(VERSION)
-	@if git diff --quiet HEAD extensions/vscode/package.json extensions/zed/extension.toml; then \
-		echo "Error: No version changes detected. VERSION might already be $(VERSION)"; \
-		exit 1; \
-	fi
-	@if [ "$(DRY_RUN)" = "1" ]; then \
-		echo ""; \
-		echo "📋 Preview of changes:"; \
-		git diff extensions/vscode/package.json extensions/zed/extension.toml; \
-		echo ""; \
-		echo "Would execute:"; \
-		echo "  git add extensions/vscode/package.json extensions/zed/extension.toml"; \
-		echo "  git commit -m 'chore: prepare version $(VERSION)'"; \
-		echo "  git tag -a '$(VERSION)' -m 'Release $(VERSION)'"; \
-		echo "  git push origin main"; \
-		echo "  git push origin '$(VERSION)'"; \
-		echo "  gh release create '$(VERSION)' (interactive wizard for release notes)"; \
-		echo ""; \
-		echo "✓ Dry run complete. Files modified but not committed."; \
-		echo "  To undo: git checkout extensions/vscode/package.json extensions/zed/extension.toml"; \
-		echo "  To proceed: make release $(VERSION)"; \
-	else \
-		echo "Committing version changes..."; \
-		git add extensions/vscode/package.json extensions/zed/extension.toml; \
-		git commit -m "chore: prepare version $(VERSION)"; \
-		echo "Creating git tag $(VERSION)..."; \
-		git tag -a "$(VERSION)" -m "Release $(VERSION)"; \
-		echo "Pushing to origin..."; \
-		git push origin main; \
-		git push origin "$(VERSION)"; \
-		echo ""; \
-		echo "Creating GitHub release..."; \
-		gh release create "$(VERSION)"; \
-	fi
+	@echo ""
+	@echo "Step 2: Creating GitHub release (gh will tag and push)..."
+	@gh release create "$(VERSION)"
 
 ## Help
 help:
@@ -256,8 +222,7 @@ help:
 	@echo "  make clean              Clean build artifacts"
 	@echo ""
 	@echo "Release:"
-	@echo "  make release v0.1.1             Create release (updates versions, commits, tags, pushes)"
-	@echo "  make release v0.1.1 DRY_RUN=1   Preview release without pushing (dry run)"
+	@echo "  make release v0.1.1     Create release (updates versions, commits, then gh creates tag/release)"
 	@echo ""
 	@echo "Platform-specific builds:"
 	@echo "  make linux-x64          Build for Linux x86_64"
