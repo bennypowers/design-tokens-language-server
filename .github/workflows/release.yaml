@@ -5,9 +5,16 @@ on:
       - published
 
 jobs:
-  publish-vscode:
-    name: Publish to VSCode Marketplace
+  build-binaries:
+    name: Build & Upload Binaries
+    uses: ./.github/workflows/build-binaries.yaml
+    with:
+      release-tag: ${{ github.event.release.tag_name }}
+
+  build-vscode:
+    name: Build VSCode Extension
     runs-on: ubuntu-latest
+    needs: [build-binaries]
     steps:
       - uses: actions/checkout@v4
 
@@ -15,31 +22,56 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Get release tag
-        id: get_tag
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-
       - name: Download binaries from release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p extensions/vscode/dist/bin
-          gh release download ${{ steps.get_tag.outputs.tag }} \
+          gh release download ${{ github.event.release.tag_name }} \
             --pattern "design-tokens-language-server-*" \
             --dir extensions/vscode/dist/bin
 
       - name: List downloaded binaries
         run: ls -lh extensions/vscode/dist/bin/
 
-      - name: Build and publish VSCode extension
+      - name: Build VSCode extension
         working-directory: extensions/vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           npm install
           node build.js
           npm run build
-          npm run publish
+
+      - name: Upload VSCode extension to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} \
+            extensions/vscode/*.vsix
+
+  publish-vscode:
+    name: Publish to VSCode Marketplace
+    runs-on: ubuntu-latest
+    needs: [build-vscode]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download VSCode extension from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download ${{ github.event.release.tag_name }} \
+            --pattern "*.vsix" \
+            --dir .
+
+      - name: Publish to VSCode Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          npx @vscode/vsce publish --packagePath *.vsix
 
   publish-zed:
     name: Publish to Zed Extensions

@@ -28,3 +28,8 @@ jobs:
           token: ${{ secrets.CODECOV_PAT }}
           fail_ci_if_error: true
           verbose: true
+
+  build:
+    name: Validate Builds
+    uses: ./.github/workflows/build-binaries.yaml
+    # No release-tag means just build for validation, don't upload
