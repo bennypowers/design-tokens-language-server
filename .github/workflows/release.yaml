@@ -92,7 +92,6 @@ jobs:
           repository: bennypowers/zed-extensions
           path: zed-extensions
           token: ${{ secrets.GITHUB_TOKEN }}
-          submodules: true
 
       - name: Update Zed Extension
         working-directory: zed-extensions
@@ -101,6 +100,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Initialize only the design-tokens submodule
+          git submodule update --init extensions/design-tokens
           # Update submodule to latest release tag
           cd extensions/design-tokens
           git fetch origin --tags
