@@ -79,11 +79,65 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Release to Zed extensions
-        uses: huacnlee/zed-extension-action@v1
+      - name: Get extension version
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' extensions/zed/extension.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+
+      - name: Clone zed-extensions fork
+        run: |
+          git clone https://github.com/bennypowers/zed-extensions.git
+          cd zed-extensions
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update submodule and version
+        run: |
+          cd zed-extensions
+
+          # Sync with upstream
+          git remote add upstream https://github.com/zed-industries/extensions.git || true
+          git fetch upstream
+          git merge upstream/main --no-edit
+
+          # Update submodule to latest commit
+          cd extensions/design-tokens
+          git fetch origin
+          git checkout ${{ github.sha }}
+          cd ../..
+
+          # Update version in extensions.toml
+          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" extensions.toml
+
+          git add extensions/design-tokens extensions.toml
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          extension-name: design-tokens
-          extension-path: extensions/zed
-          push-to: bennypowers/zed-extensions
+          node-version: '20'
+
+      - name: Sort extensions
+        run: |
+          cd zed-extensions
+          corepack enable
+          pnpm install
+          pnpm sort-extensions
+          git add extensions.toml
+
+      - name: Create PR
         env:
-          COMMITTER_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
+          GH_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
+        run: |
+          cd zed-extensions
+
+          BRANCH="update-design-tokens-${{ steps.version.outputs.version }}"
+          git checkout -b "$BRANCH"
+          git commit -m "Update design-tokens to v${{ steps.version.outputs.version }}"
+          git push https://x-access-token:${{ secrets.ZED_COMMITTER_TOKEN }}@github.com/bennypowers/zed-extensions.git "$BRANCH"
+
+          gh pr create \
+            --repo zed-industries/extensions \
+            --title "Update design-tokens to v${{ steps.version.outputs.version }}" \
+            --body "Updates design-tokens extension to version ${{ steps.version.outputs.version }}.\n\nRelease notes: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}"
