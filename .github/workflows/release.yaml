@@ -86,10 +86,9 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extension version: $VERSION"
 
-      - name: Clone zed-extensions fork
+      - name: Update Zed Extension
         run: |
           git clone https://github.com/bennypowers/zed-extensions.git
-          cd zed-extensions
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Update submodule to latest commit
@@ -100,11 +99,6 @@ jobs:
           # Update version in extensions.toml
           sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" extensions.toml
           git add extensions/design-tokens extensions.toml
-
-      - name: Create PR
-        run: |
-          cd zed-extensions
-
           BRANCH="update-design-tokens-${{ steps.version.outputs.version }}"
           git checkout -b "$BRANCH"
           git commit -m "Update design-tokens to v${{ steps.version.outputs.version }}"
