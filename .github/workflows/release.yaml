@@ -96,8 +96,8 @@ jobs:
       - name: Update Zed Extension
         working-directory: zed-extensions
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "Benny Powers"
+          git config user.email "web@bennypowers.com"
           # Initialize only the design-tokens submodule
           git submodule update --init extensions/design-tokens
           # Update submodule to latest release tag
@@ -105,8 +105,8 @@ jobs:
           git fetch origin --tags
           git checkout ${{ github.event.release.tag_name }}
           cd ../..
-          # Update version in extensions.toml
-          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" extensions.toml
+          # Update version in extensions.toml for design-tokens section only
+          sed -i '/^\[design-tokens\]/,/^\[/ s/^version = .*/version = "${{ steps.version.outputs.version }}"/' extensions.toml
           git add extensions/design-tokens extensions.toml
           BRANCH="update-design-tokens-${{ steps.version.outputs.version }}"
           git checkout -b "$BRANCH"
