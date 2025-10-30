@@ -71,7 +71,78 @@ var (
 		"tan", "thistle", "tomato", "turquoise",
 		"violet", "wheat", "whitesmoke", "yellowgreen",
 	)
+
+	// Regex patterns for CSS value validation
+	cssNumberPattern       = regexp.MustCompile(`^-?\d+(\.\d+)?$`)
+	cssDimensionPattern    = regexp.MustCompile(`^-?\d+(\.\d+)?(px|rem|em|%|vh|vw|pt|cm|mm|in|pc|ex|ch|vmin|vmax)$`)
+	cssIdentifierPattern   = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9-]*$`)
+	fontWeightNumericPattern = regexp.MustCompile(`^\d+$`)
 )
+
+// formatFontWeightForCSS formats a font-weight token value for CSS.
+// Validates keywords (normal, bold, etc.) and numeric values (1-1000 range).
+// Returns the formatted value and an error if validation fails.
+func formatFontWeightForCSS(value string) (string, error) {
+	// Check if it's a valid keyword
+	if fontWeightKeywords.Has(strings.ToLower(value)) {
+		return value, nil
+	}
+
+	// Check if it's numeric (must be 1-1000 inclusive, reject 0)
+	if !fontWeightNumericPattern.MatchString(value) {
+		return "", fmt.Errorf("invalid font-weight value %q (must be keyword or number)", value)
+	}
+
+	// Parse to integer to validate range
+	var numValue int
+	n, err := fmt.Sscanf(value, "%d", &numValue)
+	if err != nil || n != 1 {
+		return "", fmt.Errorf("failed to parse font-weight value %q: %w", value, err)
+	}
+
+	// Valid range is 1-1000 inclusive (CSS Fonts Level 4)
+	// Explicitly reject 0 and out-of-range values
+	if numValue < 1 || numValue > 1000 {
+		return "", fmt.Errorf("font-weight value %q out of range (must be 1-1000)", value)
+	}
+
+	return value, nil
+}
+
+// formatUntypedTokenForCSS formats a token value without an explicit type.
+// Inspects the value to determine if it's a safe CSS value (color, dimension, number, identifier).
+// Returns the formatted value and an error if the value cannot be safely formatted.
+func formatUntypedTokenForCSS(value string) (string, error) {
+	// Check if it looks like a safe CSS value (color, dimension, number)
+	// Colors: hex, rgb(), hsl(), named colors
+	if strings.HasPrefix(value, "#") || strings.HasPrefix(value, "rgb") ||
+		strings.HasPrefix(value, "hsl") || isNamedColor(value) {
+		return value, nil
+	}
+
+	// Dimensions: number followed by unit (px, rem, em, %, etc.)
+	if cssDimensionPattern.MatchString(value) {
+		return value, nil
+	}
+
+	// Pure numbers
+	if cssNumberPattern.MatchString(value) {
+		return value, nil
+	}
+
+	// If it contains spaces or special characters, it might need quoting
+	// but we can't be sure, so skip it for safety
+	if strings.ContainsAny(value, " \t\n\"'()[]{}") {
+		return "", fmt.Errorf("value %q contains special characters and cannot be safely formatted", value)
+	}
+
+	// Simple identifiers without spaces are probably safe
+	if cssIdentifierPattern.MatchString(value) {
+		return value, nil
+	}
+
+	return "", fmt.Errorf("value %q has unknown format", value)
+}
 
 // formatTokenValueForCSS formats a token value for safe insertion into CSS.
 // Returns the formatted value and an error if formatting/validation fails.
@@ -81,81 +152,24 @@ func FormatTokenValueForCSS(token *tokens.Token) (string, error) {
 	value := token.Value
 	tokenType := strings.ToLower(token.Type)
 
-	// Font weight can be numeric (1-1000) or keyword (needs validation)
-	if tokenType == "fontweight" {
-		if fontWeightKeywords.Has(strings.ToLower(value)) {
-			return value, nil
-		}
-
-		// Check if it's numeric (must be 1-1000 inclusive, reject 0)
-		matched, _ := regexp.MatchString(`^[0-9]+$`, value)
-		if matched {
-			// Parse to integer to validate range
-			var numValue int
-			n, err := fmt.Sscanf(value, "%d", &numValue)
-			if err != nil || n != 1 {
-				return "", fmt.Errorf("failed to parse font-weight value %q: %w", value, err)
-			}
-			// Valid range is 1-1000 inclusive (CSS Fonts Level 4)
-			// Explicitly reject 0 and out-of-range values
-			if numValue >= 1 && numValue <= 1000 {
-				return value, nil
-			}
-			// Invalid numeric value (0 or out of range)
-			return "", fmt.Errorf("font-weight value %q out of range (must be 1-1000)", value)
-		}
-		return "", fmt.Errorf("invalid font-weight value %q (must be keyword or number)", value)
-	}
-
-	// Font family needs special handling (quoting for values with spaces/special chars)
-	if tokenType == "fontfamily" {
+	// Dispatch to type-specific handlers
+	switch tokenType {
+	case "fontweight":
+		return formatFontWeightForCSS(value)
+	case "fontfamily":
 		return FormatFontFamilyValue(value)
+	case "":
+		// No type specified, inspect the value to determine if it's safe
+		return formatUntypedTokenForCSS(value)
+	default:
+		// Check if this is a safe type
+		if safeCSSTypes.Has(tokenType) {
+			return value, nil
+		}
+		// Composite types (stroke, border, transition, shadow, gradient, typography)
+		// cannot be safely inserted as simple CSS values
+		return "", fmt.Errorf("token type %q cannot be used as CSS fallback value", tokenType)
 	}
-
-	// Check if this is a safe type
-	if safeCSSTypes.Has(tokenType) {
-		return value, nil
-	}
-
-	// If no type specified, inspect the value to determine if it's safe
-	if tokenType == "" {
-		// Check if it looks like a safe CSS value (color, dimension, number)
-		// Colors: hex, rgb(), hsl(), named colors
-		if strings.HasPrefix(value, "#") || strings.HasPrefix(value, "rgb") ||
-			strings.HasPrefix(value, "hsl") || isNamedColor(value) {
-			return value, nil
-		}
-
-		// Dimensions: number followed by unit (px, rem, em, %, etc.)
-		matched, _ := regexp.MatchString(`^-?\d+(\.\d+)?(px|rem|em|%|vh|vw|pt|cm|mm|in|pc|ex|ch|vmin|vmax)$`, value)
-		if matched {
-			return value, nil
-		}
-
-		// Pure numbers
-		matched, _ = regexp.MatchString(`^-?\d+(\.\d+)?$`, value)
-		if matched {
-			return value, nil
-		}
-
-		// If it contains spaces or special characters, it might need quoting
-		// but we can't be sure, so skip it for safety
-		if strings.ContainsAny(value, " \t\n\"'()[]{}") {
-			return "", fmt.Errorf("value %q contains special characters and cannot be safely formatted", value)
-		}
-
-		// Simple identifiers without spaces are probably safe
-		matched, _ = regexp.MatchString(`^[a-zA-Z][a-zA-Z0-9-]*$`, value)
-		if matched {
-			return value, nil
-		}
-
-		return "", fmt.Errorf("value %q has unknown format", value)
-	}
-
-	// Composite types (stroke, border, transition, shadow, gradient, typography)
-	// cannot be safely inserted as simple CSS values
-	return "", fmt.Errorf("token type %q cannot be used as CSS fallback value", tokenType)
 }
 
 // formatFontFamilyValue formats a font family value for CSS.
