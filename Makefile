@@ -54,7 +54,7 @@ test-coverage:
 	@echo ""
 	@echo "=== Running Integration Tests with Subprocess Coverage ==="
 	@mkdir -p coverage/integration
-	@go test -cover ./test/integration -args -test.gocoverdir="$$(pwd)/coverage/integration"
+	@go test -cover -coverpkg=./... ./test/integration -args -test.gocoverdir="$$(pwd)/coverage/integration"
 	@echo ""
 	@echo "=== Merging Coverage Files ==="
 	@go tool covdata textfmt -i=./coverage/unit,./coverage/integration -o=coverage.out
