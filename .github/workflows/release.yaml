@@ -121,4 +121,4 @@ jobs:
           gh pr create \
             --repo zed-industries/extensions \
             --title "Update design-tokens to v${{ steps.version.outputs.version }}" \
-            --body "Updates design-tokens extension to version ${{ steps.version.outputs.version }}.\n\nRelease notes: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}"
+            --body "Updates design-tokens extension to [version ${{ steps.version.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }})."
