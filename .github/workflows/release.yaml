@@ -116,7 +116,7 @@ jobs:
       - name: Create Pull Request
         working-directory: zed-extensions
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ZED_PR_PAT }}
         run: |
           gh pr create \
             --repo zed-industries/extensions \
