@@ -421,6 +421,10 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "deprecated-patterns.css")
 
+	// Get diagnostics first
+	diagnostics, err := diagnostic.GetDiagnostics(server, "file:///test.css")
+	require.NoError(t, err)
+
 	// Test "Use X instead" pattern (line 4, character 9)
 	req := types.NewRequestContext(server, nil)
 	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
@@ -431,7 +435,9 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 			Start: protocol.Position{Line: 4, Character: 9},
 			End:   protocol.Position{Line: 4, Character: 35},
 		},
-		Context: protocol.CodeActionContext{},
+		Context: protocol.CodeActionContext{
+			Diagnostics: diagnostics,
+		},
 	})
 
 	require.NoError(t, err)
@@ -460,7 +466,9 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 			Start: protocol.Position{Line: 9, Character: 10},
 			End:   protocol.Position{Line: 9, Character: 40},
 		},
-		Context: protocol.CodeActionContext{},
+		Context: protocol.CodeActionContext{
+			Diagnostics: diagnostics,
+		},
 	})
 
 	require.NoError(t, err)
@@ -489,7 +497,9 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 			Start: protocol.Position{Line: 14, Character: 13},
 			End:   protocol.Position{Line: 14, Character: 40},
 		},
-		Context: protocol.CodeActionContext{},
+		Context: protocol.CodeActionContext{
+			Diagnostics: diagnostics,
+		},
 	})
 
 	require.NoError(t, err)
@@ -522,7 +532,9 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 			Start: protocol.Position{Line: 24, Character: 9},
 			End:   protocol.Position{Line: 24, Character: 48},
 		},
-		Context: protocol.CodeActionContext{},
+		Context: protocol.CodeActionContext{
+			Diagnostics: diagnostics,
+		},
 	})
 
 	require.NoError(t, err)
@@ -551,6 +563,37 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 				"Replacement should include fallback value")
 		}
 	}
+
+	// Test "Replaced by X" with no suffix text (line 30, character 17) - tests line 119 coverage
+	result, err = codeaction.CodeAction(req, &protocol.CodeActionParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///test.css",
+		},
+		Range: protocol.Range{
+			Start: protocol.Position{Line: 29, Character: 17},
+			End:   protocol.Position{Line: 29, Character: 40},
+		},
+		Context: protocol.CodeActionContext{
+			Diagnostics: diagnostics,
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	actions, ok = result.([]protocol.CodeAction)
+	require.True(t, ok)
+
+	// Should offer replacement with --lineHeight-normal (extracted from "Replaced by lineHeight.normal")
+	replacementAction = nil
+	for i := range actions {
+		if actions[i].Title == "Replace with '--lineHeight-normal'" {
+			replacementAction = &actions[i]
+			break
+		}
+	}
+
+	require.NotNil(t, replacementAction, "Should extract 'lineHeight.normal' from 'Replaced by lineHeight.normal'")
 }
 
 // TestCodeAction_FallbackTypes tests add/fix fallback actions for various token types
@@ -723,4 +766,64 @@ func TestCodeAction_TokenTypeVariations(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
+}
+
+// TestCodeAction_MalformedCSS tests that code actions handle malformed CSS gracefully
+// Note: The CSS parser is error-tolerant (uses tree-sitter), so it rarely fails.
+// This test verifies it doesn't crash on malformed CSS.
+func TestCodeAction_MalformedCSS(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	testutil.LoadBasicTokens(t, server)
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "parse-error-for-code-actions.css")
+
+	req := types.NewRequestContext(server, nil)
+	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///test.css",
+		},
+		Range: protocol.Range{
+			Start: protocol.Position{Line: 2, Character: 0},
+			End:   protocol.Position{Line: 2, Character: 50},
+		},
+		Context: protocol.CodeActionContext{},
+	})
+
+	// The parser is error-tolerant, so it should not fail
+	// It may parse partially and return some actions or no actions
+	require.NoError(t, err, "Parser should handle malformed CSS gracefully")
+	// Result may be nil or contain partial actions - both are acceptable
+	t.Logf("Parser handled malformed CSS, returned %v", result != nil)
+}
+
+// TestCodeAction_UnknownToken tests that code actions for unknown tokens don't crash
+func TestCodeAction_UnknownToken(t *testing.T) {
+	server := testutil.NewTestServer(t)
+	// Don't load any tokens - they'll all be unknown
+	testutil.OpenCSSFixture(t, server, "file:///test.css", "unknown-token-code-actions.css")
+
+	req := types.NewRequestContext(server, nil)
+	result, err := codeaction.CodeAction(req, &protocol.CodeActionParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///test.css",
+		},
+		Range: protocol.Range{
+			Start: protocol.Position{Line: 3, Character: 9},
+			End:   protocol.Position{Line: 3, Character: 35},
+		},
+		Context: protocol.CodeActionContext{},
+	})
+
+	require.NoError(t, err)
+
+	// Should have no actions or only toggle action (no deprecated/fix actions for unknown tokens)
+	if result != nil {
+		actions, ok := result.([]protocol.CodeAction)
+		require.True(t, ok)
+		// Should not have any fix/deprecated/add fallback actions for unknown tokens
+		for _, action := range actions {
+			assert.NotContains(t, action.Title, "Replace with")
+			assert.NotContains(t, action.Title, "Fix fallback")
+			assert.NotContains(t, action.Title, "Add fallback")
+		}
+	}
 }

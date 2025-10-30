@@ -1,0 +1,9 @@
+/* Invalid CSS that will fail to parse */
+.button {
+  color: var(--color-primary
+  /* Missing closing parenthesis - this will cause a parse error */
+}
+
+.another {
+  background: var(
+  /* Incomplete var call */

@@ -138,5 +138,16 @@
       "$type": "dimension",
       "$deprecated": "This token is deprecated and will be removed"
     }
+  },
+  "lineHeight": {
+    "normal": {
+      "$value": "1.5",
+      "$type": "number"
+    },
+    "old": {
+      "$value": "1.2",
+      "$type": "number",
+      "$deprecated": "Replaced by lineHeight.normal"
+    }
   }
 }

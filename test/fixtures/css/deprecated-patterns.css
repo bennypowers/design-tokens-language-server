@@ -24,3 +24,8 @@
   /* Deprecated token with fallback - replacement should preserve fallback */
   color: var(--color-old-primary, #ff0000);
 }
+
+.replaced-by-no-suffix {
+  /* Pattern: "Replaced by X" with no text after - tests line 119 coverage */
+  line-height: var(--lineHeight-old);
+}
