@@ -32,8 +32,8 @@ type Variable struct {
 
 // VarCall represents a var() function call
 type VarCall struct {
+	Fallback  *string
 	TokenName string
-	Fallback  *string // Optional fallback value
 	Type      VariableType
 	Range     Range
 }

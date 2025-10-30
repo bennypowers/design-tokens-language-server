@@ -79,7 +79,7 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 	// When var() calls are nested (e.g., var(--outer, var(--inner, fallback))),
 	// we want to find the smallest (innermost) range that contains the cursor
 	var bestVarCall *css.VarCall
-	var smallestRangeSize int = -1
+	var smallestRangeSize = -1
 
 	for _, varCall := range result.VarCalls {
 		if isPositionInRange(position, varCall.Range) {

@@ -87,7 +87,8 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 			continue
 		}
 
-		currentPath := append(jsonPath, key)
+		currentPath := append([]string{}, jsonPath...)
+		currentPath = append(currentPath, key)
 		var newPath string
 		if path == "" {
 			newPath = key
@@ -227,21 +228,21 @@ func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.No
 }
 
 // ParseFile parses a YAML file and returns tokens
-func (p *Parser) ParseFile(filename string, prefix string) ([]*tokens.Token, error) {
+func (p *Parser) ParseFile(filename, prefix string) ([]*tokens.Token, error) {
 	return p.ParseFileWithGroupMarkers(filename, prefix, nil)
 }
 
 // ParseFileWithGroupMarkers parses a YAML file with group marker support
-func (p *Parser) ParseFileWithGroupMarkers(filename string, prefix string, groupMarkers []string) ([]*tokens.Token, error) {
+func (p *Parser) ParseFileWithGroupMarkers(filename, prefix string, groupMarkers []string) ([]*tokens.Token, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
 	}
 
-	tokens, err := p.ParseWithGroupMarkers(data, prefix, groupMarkers)
+	parsed, err := p.ParseWithGroupMarkers(data, prefix, groupMarkers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse file %s: %w", filename, err)
 	}
 
-	return tokens, nil
+	return parsed, nil
 }

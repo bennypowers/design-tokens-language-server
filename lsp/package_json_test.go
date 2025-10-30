@@ -30,7 +30,7 @@ func TestReadPackageJsonConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		packageJSONPath := filepath.Join(tmpDir, "package.json")
-		err = os.WriteFile(packageJSONPath, data, 0644)
+		err = os.WriteFile(packageJSONPath, data, 0o644)
 		require.NoError(t, err)
 
 		// Read config
@@ -65,7 +65,7 @@ func TestReadPackageJsonConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		packageJSONPath := filepath.Join(tmpDir, "package.json")
-		err = os.WriteFile(packageJSONPath, data, 0644)
+		err = os.WriteFile(packageJSONPath, data, 0o644)
 		require.NoError(t, err)
 
 		config, err := ReadPackageJsonConfig(tmpDir)
@@ -87,7 +87,7 @@ func TestReadPackageJsonConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		packageJSONPath := filepath.Join(tmpDir, "package.json")
-		err = os.WriteFile(packageJSONPath, data, 0644)
+		err = os.WriteFile(packageJSONPath, data, 0o644)
 		require.NoError(t, err)
 
 		config, err := ReadPackageJsonConfig(tmpDir)
@@ -114,7 +114,7 @@ func TestReadPackageJsonConfig(t *testing.T) {
 		}`
 
 		packageJSONPath := filepath.Join(tmpDir, "package.json")
-		err := os.WriteFile(packageJSONPath, []byte(packageJSONContent), 0644)
+		err := os.WriteFile(packageJSONPath, []byte(packageJSONContent), 0o644)
 		require.NoError(t, err)
 
 		config, err := ReadPackageJsonConfig(tmpDir)

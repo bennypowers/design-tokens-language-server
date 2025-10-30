@@ -31,7 +31,7 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
     }
   }
 }`
-	err := os.WriteFile(tokensPath, []byte(initialTokens), 0644)
+	err := os.WriteFile(tokensPath, []byte(initialTokens), 0o644)
 	require.NoError(t, err)
 
 	// Create CSS file
@@ -39,7 +39,7 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
 	cssContent := `.button {
   color: var(--color-primary);
 }`
-	err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+	err = os.WriteFile(cssPath, []byte(cssContent), 0o644)
 	require.NoError(t, err)
 
 	// Create server and load tokens
@@ -87,7 +87,7 @@ func TestFileWatching_TokenFileChange(t *testing.T) {
     }
   }
 }`
-	err = os.WriteFile(tokensPath, []byte(updatedTokens), 0644)
+	err = os.WriteFile(tokensPath, []byte(updatedTokens), 0o644)
 	require.NoError(t, err)
 
 	// Simulate file change notification
@@ -134,14 +134,14 @@ func TestFileWatching_TokenFileDeleted(t *testing.T) {
     }
   }
 }`
-	err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+	err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 	require.NoError(t, err)
 
 	cssPath := filepath.Join(tmpDir, "test.css")
 	cssContent := `.button {
   color: var(--color-primary);
 }`
-	err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+	err = os.WriteFile(cssPath, []byte(cssContent), 0o644)
 	require.NoError(t, err)
 
 	server := testutil.NewTestServer(t)
@@ -219,7 +219,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
     }
   }
 }`
-	err := os.WriteFile(tokens1Path, []byte(tokens1), 0644)
+	err := os.WriteFile(tokens1Path, []byte(tokens1), 0o644)
 	require.NoError(t, err)
 
 	// Create second token file
@@ -232,7 +232,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
     }
   }
 }`
-	err = os.WriteFile(tokens2Path, []byte(tokens2), 0644)
+	err = os.WriteFile(tokens2Path, []byte(tokens2), 0o644)
 	require.NoError(t, err)
 
 	cssPath := filepath.Join(tmpDir, "test.css")
@@ -240,7 +240,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
   color: var(--color-primary);
   padding: var(--spacing-small);
 }`
-	err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+	err = os.WriteFile(cssPath, []byte(cssContent), 0o644)
 	require.NoError(t, err)
 
 	server := testutil.NewTestServer(t)
@@ -271,7 +271,7 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
     }
   }
 }`
-	err = os.WriteFile(tokens2Path, []byte(tokens2Updated), 0644)
+	err = os.WriteFile(tokens2Path, []byte(tokens2Updated), 0o644)
 	require.NoError(t, err)
 
 	// Simulate file change notification
@@ -289,16 +289,16 @@ func TestFileWatching_MultipleTokenFiles(t *testing.T) {
 
 	// Test that spacing value updated
 	req = types.NewRequestContext(server, nil)
-	hover, err := hover.Hover(req, &protocol.HoverParams{
+	result, err := hover.Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: cssURI},
 			Position:     protocol.Position{Line: 2, Character: 17},
 		},
 	})
 	require.NoError(t, err)
-	require.NotNil(t, hover)
+	require.NotNil(t, result)
 
-	content, ok := hover.Contents.(protocol.MarkupContent)
+	content, ok := result.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 	assert.Contains(t, content.Value, "16px", "Should show updated spacing value")
 	assert.NotContains(t, content.Value, "8px", "Should not show old spacing value")
@@ -317,13 +317,13 @@ func TestFileWatching_NonTokenFileIgnored(t *testing.T) {
     }
   }
 }`
-	err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+	err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 	require.NoError(t, err)
 
 	// Create a non-token file
 	pkgPath := filepath.Join(tmpDir, "package.json")
 	pkg := `{"name": "test"}`
-	err = os.WriteFile(pkgPath, []byte(pkg), 0644)
+	err = os.WriteFile(pkgPath, []byte(pkg), 0o644)
 	require.NoError(t, err)
 
 	server := testutil.NewTestServer(t)
@@ -371,7 +371,7 @@ func TestFileWatching_YmlExtension(t *testing.T) {
     $value: "#0000ff"
     $type: color
 `
-			err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+			err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 			require.NoError(t, err)
 
 			// Create server and load the .yml file

@@ -20,14 +20,14 @@ import (
 
 // LSPClient is a test client that communicates with an LSP server via stdio
 type LSPClient struct {
-	cmd       *exec.Cmd
 	stdin     io.WriteCloser
 	stdout    io.ReadCloser
+	cmd       *exec.Cmd
 	reader    *bufio.Reader
-	msgID     int
 	responses map[int]chan json.RawMessage
-	mu        sync.Mutex
 	t         *testing.T
+	msgID     int
+	mu        sync.Mutex
 }
 
 // NewLSPClient creates a new LSP test client
@@ -48,7 +48,7 @@ func NewLSPClient(t *testing.T) *LSPClient {
 
 	// Start the server process with coverage output
 	coverDir := filepath.Join(projectRoot, "coverage", "integration")
-	_ = os.MkdirAll(coverDir, 0755)
+	_ = os.MkdirAll(coverDir, 0o755)
 
 	serverCmd := exec.Command("/tmp/design-tokens-lsp-test")
 	serverCmd.Env = append(os.Environ(),
@@ -477,7 +477,7 @@ func TestRealLSPConnection(t *testing.T) {
     }
   }
 }`
-		err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+		err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 		require.NoError(t, err)
 
 		// Create CSS file
@@ -485,7 +485,7 @@ func TestRealLSPConnection(t *testing.T) {
 		cssContent := `.button {
   color: var(--color-primary);
 }`
-		err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+		err = os.WriteFile(cssPath, []byte(cssContent), 0o644)
 		require.NoError(t, err)
 
 		// Start LSP client
@@ -556,7 +556,7 @@ func TestRealLSPConnection(t *testing.T) {
     }
   }
 }`
-		err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+		err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 		require.NoError(t, err)
 
 		// Create CSS file with incorrect fallback and unknown reference
@@ -565,7 +565,7 @@ func TestRealLSPConnection(t *testing.T) {
   color: var(--color-primary, #ff0000);  /* incorrect fallback */
   background: var(--color-unknown);      /* unknown reference */
 }`
-		err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+		err = os.WriteFile(cssPath, []byte(cssContent), 0o644)
 		require.NoError(t, err)
 
 		// Start LSP client
@@ -655,7 +655,7 @@ func TestRealLSPConnection(t *testing.T) {
     }
   }
 }`
-		err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+		err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 		require.NoError(t, err)
 
 		// Create CSS file
@@ -663,7 +663,7 @@ func TestRealLSPConnection(t *testing.T) {
 		cssContent := `.button {
   color: var(--color-primary);
 }`
-		err = os.WriteFile(cssPath, []byte(cssContent), 0644)
+		err = os.WriteFile(cssPath, []byte(cssContent), 0o644)
 		require.NoError(t, err)
 
 		// Start LSP client
@@ -719,7 +719,7 @@ func TestRealLSPConnection(t *testing.T) {
     }
   }
 }`
-		err := os.WriteFile(tokensPath, []byte(tokens), 0644)
+		err := os.WriteFile(tokensPath, []byte(tokens), 0o644)
 		require.NoError(t, err)
 
 		// Start LSP client

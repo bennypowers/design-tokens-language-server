@@ -143,9 +143,8 @@ func FormatFontFamilyValue(value string) (string, bool) {
 	needsQuoting := strings.ContainsAny(value, " \t\n\"'")
 
 	if needsQuoting {
-		// Escape any internal quotes
-		escaped := strings.ReplaceAll(value, "\"", "\\\"")
-		return fmt.Sprintf("\"%s\"", escaped), true
+		// Use %q to automatically quote and escape the string
+		return fmt.Sprintf("%q", value), true
 	}
 
 	// Single-word font names without special chars don't need quotes
@@ -293,7 +292,8 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 	// Add fixAll action if there are multiple incorrect-fallback diagnostics
 	if len(params.Context.Diagnostics) >= 2 {
 		hasMultipleIncorrectFallbacks := 0
-		for _, diag := range params.Context.Diagnostics {
+		for i := range params.Context.Diagnostics {
+			diag := &params.Context.Diagnostics[i]
 			if diag.Code != nil && diag.Code.Value == "incorrect-fallback" {
 				hasMultipleIncorrectFallbacks++
 			}
@@ -329,7 +329,7 @@ func CodeActionResolve(req *types.RequestContext, action *protocol.CodeAction) (
 // resolveFixAllFallbacks resolves the fixAll action by computing edits for all incorrect fallbacks
 func resolveFixAllFallbacks(ctx types.ServerContext, action *protocol.CodeAction) (*protocol.CodeAction, error) {
 	// Get the URI from the data field
-	data, ok := action.Data.(map[string]interface{})
+	data, ok := action.Data.(map[string]any)
 	if !ok {
 		return action, nil
 	}
@@ -783,7 +783,7 @@ func CreateFixAllFallbacksAction(uri string, varCalls []*css.VarCall) *protocol.
 		Title: "Fix all token fallback values",
 		Kind:  &kind,
 		// Data field is used to pass var calls to resolve step
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"uri":      uri,
 			"varCalls": varCalls,
 		},

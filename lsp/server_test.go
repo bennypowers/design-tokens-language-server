@@ -314,8 +314,8 @@ func TestIsTokenFile(t *testing.T) {
 	tests := []struct {
 		name           string
 		path           string
-		configFiles    []any
 		rootPath       string
+		configFiles    []any
 		expectedResult bool
 	}{
 		{

@@ -36,12 +36,12 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Create node_modules structure
 		nodeModulesDir := filepath.Join(tmpDir, "node_modules", "@test", "tokens")
-		err = os.MkdirAll(nodeModulesDir, 0755)
+		err = os.MkdirAll(nodeModulesDir, 0o755)
 		require.NoError(t, err)
 
 		// Create tokens file
@@ -54,7 +54,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensFile, []byte(tokensData), 0644)
+		err = os.WriteFile(tokensFile, []byte(tokensData), 0o644)
 		require.NoError(t, err)
 
 		// Initialize server with workspace
@@ -103,12 +103,12 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Create tokens directory and file
 		tokensDir := filepath.Join(tmpDir, "tokens")
-		err = os.MkdirAll(tokensDir, 0755)
+		err = os.MkdirAll(tokensDir, 0o755)
 		require.NoError(t, err)
 
 		tokensFile := filepath.Join(tokensDir, "design-tokens.json")
@@ -120,7 +120,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensFile, []byte(tokensData), 0644)
+		err = os.WriteFile(tokensFile, []byte(tokensData), 0o644)
 		require.NoError(t, err)
 
 		// Initialize server
@@ -196,7 +196,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Initialize server
@@ -247,12 +247,12 @@ func TestPackageJsonConfiguration(t *testing.T) {
 		}
 		packageJSONData, err := json.MarshalIndent(packageJSON, "", "  ")
 		require.NoError(t, err)
-		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0644)
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSONData, 0o644)
 		require.NoError(t, err)
 
 		// Create @rhds/tokens structure
 		nodeModulesDir := filepath.Join(tmpDir, "node_modules", "@rhds", "tokens", "json")
-		err = os.MkdirAll(nodeModulesDir, 0755)
+		err = os.MkdirAll(nodeModulesDir, 0o755)
 		require.NoError(t, err)
 
 		tokensFile := filepath.Join(nodeModulesDir, "rhds.tokens.json")
@@ -270,7 +270,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
     }
   }
 }`
-		err = os.WriteFile(tokensFile, []byte(tokensData), 0644)
+		err = os.WriteFile(tokensFile, []byte(tokensData), 0o644)
 		require.NoError(t, err)
 
 		// Initialize server

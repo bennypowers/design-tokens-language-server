@@ -80,18 +80,16 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 					}
 				}
 			}
-		} else {
+		} else if tokenReference != "" {
 			// In JSON/YAML files, search for token references like {color.primary}
-			if tokenReference != "" {
-				ranges := findSubstringRanges(docContent, tokenReference)
-				for _, r := range ranges {
-					loc := protocol.Location{
-						URI:   docURI,
-						Range: r,
-					}
-					key := fmt.Sprintf("%s:%d:%d", docURI, r.Start.Line, r.Start.Character)
-					locationMap[key] = loc
+			ranges := findSubstringRanges(docContent, tokenReference)
+			for _, r := range ranges {
+				loc := protocol.Location{
+					URI:   docURI,
+					Range: r,
 				}
+				key := fmt.Sprintf("%s:%d:%d", docURI, r.Start.Line, r.Start.Character)
+				locationMap[key] = loc
 			}
 		}
 	}
@@ -197,7 +195,7 @@ func findPathAtPosition(node *yaml.Node, targetLine, targetCol int, currentPath 
 }
 
 // findSubstringRanges finds all occurrences of a substring in content
-func findSubstringRanges(content string, substring string) []protocol.Range {
+func findSubstringRanges(content, substring string) []protocol.Range {
 	var ranges []protocol.Range
 	lines := strings.Split(content, "\n")
 

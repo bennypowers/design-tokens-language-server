@@ -16,13 +16,13 @@ func TestNormalizePath(t *testing.T) {
 
 	// Create a mock node_modules structure
 	nodeModulesDir := filepath.Join(tmpDir, "node_modules")
-	require.NoError(t, os.MkdirAll(nodeModulesDir, 0755))
+	require.NoError(t, os.MkdirAll(nodeModulesDir, 0o755))
 
 	// Create a mock package with tokens and package.json with exports
 	mockPkgDir := filepath.Join(nodeModulesDir, "@design-system", "tokens")
-	require.NoError(t, os.MkdirAll(mockPkgDir, 0755))
+	require.NoError(t, os.MkdirAll(mockPkgDir, 0o755))
 	tokensFile := filepath.Join(mockPkgDir, "tokens.json")
-	require.NoError(t, os.WriteFile(tokensFile, []byte(`{"color": {}}`), 0644))
+	require.NoError(t, os.WriteFile(tokensFile, []byte(`{"color": {}}`), 0o644))
 
 	// Create package.json with exports
 	packageJSON := `{
@@ -34,13 +34,13 @@ func TestNormalizePath(t *testing.T) {
 			"./dist/*": "./dist/*.json"
 		}
 	}`
-	require.NoError(t, os.WriteFile(filepath.Join(mockPkgDir, "package.json"), []byte(packageJSON), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(mockPkgDir, "package.json"), []byte(packageJSON), 0o644))
 
 	// Create dist directory for pattern matching
 	distDir := filepath.Join(mockPkgDir, "dist")
-	require.NoError(t, os.MkdirAll(distDir, 0755))
+	require.NoError(t, os.MkdirAll(distDir, 0o755))
 	colorsFile := filepath.Join(distDir, "colors.json")
-	require.NoError(t, os.WriteFile(colorsFile, []byte(`{"primary": "#ff0000"}`), 0644))
+	require.NoError(t, os.WriteFile(colorsFile, []byte(`{"primary": "#ff0000"}`), 0o644))
 
 	tests := []struct {
 		name          string
@@ -133,8 +133,8 @@ func TestNormalizePathErrors(t *testing.T) {
 		name          string
 		path          string
 		workspaceRoot string
-		wantErr       bool
 		errContains   string
+		wantErr       bool
 	}{
 		{
 			name:          "npm: package not found",

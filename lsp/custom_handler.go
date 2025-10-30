@@ -23,7 +23,7 @@ type CustomHandler struct {
 }
 
 // Handle implements glsp.Handler interface
-func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod bool, validParams bool, err error) {
+func (h *CustomHandler) Handle(context *glsp.Context) (r any, validMethod, validParams bool, err error) {
 	// WORKAROUND: Intercept initialize to detect diagnostic capability from raw params
 	// Since glsp v0.2.2 only supports LSP 3.16, the parsed InitializeParams struct doesn't
 	// include the LSP 3.17 "diagnostic" field. We parse the raw JSON here to detect it,

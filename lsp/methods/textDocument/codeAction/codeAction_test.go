@@ -462,13 +462,13 @@ func TestCreateFixFallbackAction(t *testing.T) {
 		Type:  "color",
 	}
 	tests := []struct {
+		token       *tokens.Token
 		name        string
 		uri         string
-		varCall     css.VarCall
-		token       *tokens.Token
-		diagnostics []protocol.Diagnostic
-		expectNil   bool
 		checkTitle  string
+		diagnostics []protocol.Diagnostic
+		varCall     css.VarCall
+		expectNil   bool
 		checkEdit   bool
 	}{
 		{
@@ -548,12 +548,12 @@ func TestCreateAddFallbackAction(t *testing.T) {
 	}
 
 	tests := []struct {
+		token      *tokens.Token
 		name       string
 		uri        string
-		varCall    css.VarCall
-		token      *tokens.Token
-		expectNil  bool
 		checkTitle string
+		varCall    css.VarCall
+		expectNil  bool
 	}{
 		{
 			name: "add fallback to var without one",
@@ -627,13 +627,13 @@ func TestCreateDeprecatedTokenActions(t *testing.T) {
 	_ = s.TokenManager().Add(newToken)
 
 	tests := []struct {
+		token              *tokens.Token
 		name               string
 		uri                string
-		varCall            css.VarCall
-		token              *tokens.Token
-		diagnostics        []protocol.Diagnostic
-		expectedNumActions int
 		checkActionTitle   string
+		diagnostics        []protocol.Diagnostic
+		varCall            css.VarCall
+		expectedNumActions int
 	}{
 		{
 			name: "deprecated token with diagnostic",
@@ -823,10 +823,10 @@ func TestToggleFallback(t *testing.T) {
 	tests := []struct {
 		name           string
 		cssContent     string
+		expectedAction string
+		expectedEdit   string
 		cursorLine     uint32
 		cursorChar     uint32
-		expectedAction string // empty if no action expected
-		expectedEdit   string // the new text after toggle
 	}{
 		{
 			name:           "toggle off - remove existing fallback",
@@ -933,10 +933,10 @@ func TestToggleRangeFallbacks(t *testing.T) {
 	tests := []struct {
 		name           string
 		cssContent     string
-		rangeStart     protocol.Position
-		rangeEnd       protocol.Position
 		expectedAction string
 		numEdits       int
+		rangeStart     protocol.Position
+		rangeEnd       protocol.Position
 	}{
 		{
 			name: "toggle off - multiple var calls",

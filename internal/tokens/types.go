@@ -20,7 +20,7 @@ type Token struct {
 	// $extensions allows for custom metadata
 	Extensions map[string]interface{} `json:"$extensions,omitempty"`
 
-	// Deprecated indicates if this token should no longer be used
+	// Indicates if this token should no longer be used
 	Deprecated bool `json:"deprecated,omitempty"`
 
 	// DeprecationMessage provides context for deprecated tokens

@@ -41,9 +41,9 @@ func renderTokenDoc(token *tokens.Token) (string, error) {
 // Completion handles the textDocument/completion request
 func Completion(req *types.RequestContext, params *protocol.CompletionParams) (any, error) {
 	uri := params.TextDocument.URI
-	position := params.Position
+	pos := params.Position
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Completion requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
+	fmt.Fprintf(os.Stderr, "[DTLS] Completion requested: %s at line %d, char %d\n", uri, pos.Line, pos.Character)
 
 	// Get document
 	doc := req.Server.Document(uri)
@@ -57,7 +57,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 	}
 
 	// Get the word at the cursor position
-	word := getWordAtPosition(doc.Content(), position)
+	word := getWordAtPosition(doc.Content(), pos)
 	if word == "" {
 		return nil, nil
 	}
@@ -65,7 +65,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 	fmt.Fprintf(os.Stderr, "[DTLS] Completion word: '%s'\n", word)
 
 	// Check if we're in a valid completion context (inside a block or property value)
-	if !isInCompletionContext(doc.Content(), position) {
+	if !isInCompletionContext(doc.Content(), pos) {
 		return nil, nil
 	}
 

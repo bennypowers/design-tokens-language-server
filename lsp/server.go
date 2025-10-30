@@ -355,14 +355,15 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 			// Convert to filesystem path pattern (forward-slash separated)
 			// Glob patterns use filesystem paths, not URIs
 			var pattern string
-			if filepath.IsAbs(tokenPath) {
+			switch {
+			case filepath.IsAbs(tokenPath):
 				// Absolute path: convert to forward slashes
 				pattern = filepath.ToSlash(filepath.Clean(tokenPath))
-			} else if state.RootPath != "" {
+			case state.RootPath != "":
 				// Relative path: join with root and convert to forward slashes
 				absPath := filepath.Join(state.RootPath, tokenPath)
 				pattern = filepath.ToSlash(filepath.Clean(absPath))
-			} else {
+			default:
 				// No root path: keep relative, convert to forward slashes
 				pattern = filepath.ToSlash(tokenPath)
 			}
