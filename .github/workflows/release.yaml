@@ -95,8 +95,6 @@ jobs:
 
       - name: Update Zed Extension
         working-directory: zed-extensions
-        env:
-          GH_TOKEN: ${{ secrets.ZED_COMMITTER_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -114,6 +112,12 @@ jobs:
           git checkout -b "$BRANCH"
           git commit -m "Update design-tokens to v${{ steps.version.outputs.version }}"
           git push -u origin "$BRANCH"
+
+      - name: Create Pull Request
+        working-directory: zed-extensions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           gh pr create \
             --repo zed-industries/extensions \
             --title "Update design-tokens to v${{ steps.version.outputs.version }}" \
