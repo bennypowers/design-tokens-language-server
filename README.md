@@ -81,24 +81,58 @@ Download the latest release for your platform and place the binary in your
 
 #### Neovim
 
+Using native Neovim LSP (see [`:help lsp`](https://neovim.io/doc/user/lsp.html) for more
+info):
+
+Create a file like `~/.config/nvim/lsp/design_tokens_ls.lua`:
+
 ```lua
 ---@type vim.lsp.ClientConfig
 return {
   cmd = { 'design-tokens-language-server' },
   root_markers = { 'package.json', '.git' },
-  filetypes = { 'css', 'json' },
+  filetypes = { 'css', 'json', 'yaml' },
+  settings = {
+    dtls = {
+      -- Optional: configure global token files
+      tokensFiles = {
+        {
+          path = "~/path/to/tokens.json",
+          prefix = "my-ds",
+        },
+      },
+      -- Optional: configure group markers
+      groupMarkers = { '_', '@', 'DEFAULT' },
+    }
+  },
+  -- Optional: enable document color support
+  on_attach = function(client, bufnr)
+    if vim.lsp.document_color then
+      vim.lsp.document_color.enable(true, bufnr, {
+        style = 'virtual'
+      })
+    end
+  end,
 }
 ```
 
-#### VSCode
+Then configure your LSP setup to load configs from `~/.config/nvim/lsp/`. This allows
+you to manage each language server in its own file. See the
+[neovim lsp docs](https://neovim.io/doc/user/lsp.html) for details on setting up native
+LSP clients.
+
+#### VS Code
 
 Install from the
-[vscode marketplace](https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode).
+[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode).
 
-#### Other editors
+The extension includes the language server binary, so no additional installation is
+required.
 
-You can also build development extension for Zed. See
-[`deno.json`](tree/main/deno.json) for more info.
+#### Zed
+
+Install from the [Zed Extensions](https://zed.dev/extensions/design-tokens) page, or
+search for "Design Tokens" in Zed's extension panel.
 
 ## ⚙️ Configuration
 
