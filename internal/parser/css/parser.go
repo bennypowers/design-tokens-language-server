@@ -192,30 +192,57 @@ func (p *Parser) handleDeclaration(node *sitter.Node, sourceBytes []byte, source
 
 // extractVarArguments extracts token name and optional fallback from var() arguments
 func extractVarArguments(argumentsNode *sitter.Node, sourceBytes []byte) (tokenName string, fallback *string) {
-	argCount := 0
+	var firstValueNode *sitter.Node
+	var firstFallbackNode *sitter.Node
+	var lastFallbackNode *sitter.Node
+	foundSeparatorComma := false
+
 	for i := uint(0); i < argumentsNode.ChildCount(); i++ {
 		child := argumentsNode.Child(i)
 		kind := child.Kind()
 
-		// Skip punctuation like '(' ')' ','
-		if kind == "(" || kind == ")" || kind == "," {
+		// Skip opening and closing parentheses
+		if kind == "(" || kind == ")" {
 			continue
 		}
 
-		// First argument is the token name
-		switch argCount {
-		case 0:
-			text := string(sourceBytes[child.StartByte():child.EndByte()])
-			tokenName = strings.TrimSpace(text)
-			argCount++
-		case 1:
-			// Second argument is the fallback
-			text := string(sourceBytes[child.StartByte():child.EndByte()])
-			fb := strings.TrimSpace(text)
-			fallback = &fb
-			argCount++
+		// Track the comma that separates token name from fallback
+		if kind == "," && firstValueNode != nil && !foundSeparatorComma {
+			foundSeparatorComma = true
+			continue
+		}
+
+		// Skip commas within the fallback (they're part of the value)
+		if kind == "," {
+			continue
+		}
+
+		// Track value nodes
+		if firstValueNode == nil {
+			// First value is the token name
+			firstValueNode = child
+		} else if foundSeparatorComma {
+			// After separator comma: this is part of the fallback
+			if firstFallbackNode == nil {
+				firstFallbackNode = child
+			}
+			lastFallbackNode = child
 		}
 	}
+
+	// Extract token name
+	if firstValueNode != nil {
+		text := string(sourceBytes[firstValueNode.StartByte():firstValueNode.EndByte()])
+		tokenName = strings.TrimSpace(text)
+	}
+
+	// Extract fallback (entire range from first to last fallback node)
+	if firstFallbackNode != nil && lastFallbackNode != nil {
+		text := string(sourceBytes[firstFallbackNode.StartByte():lastFallbackNode.EndByte()])
+		fb := strings.TrimSpace(text)
+		fallback = &fb
+	}
+
 	return tokenName, fallback
 }
 
