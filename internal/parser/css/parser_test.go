@@ -196,3 +196,92 @@ func TestParseEmptyCSS(t *testing.T) {
 	assert.Empty(t, result.Variables, "Should find no variables")
 	assert.Empty(t, result.VarCalls, "Should find no var() calls")
 }
+
+// TestParseVarFunctionWithCommaSeparatedFallback tests parsing var() with comma-separated fallback values
+// This covers font-family lists with mixed quoted (with spaces) and unquoted identifiers
+func TestParseVarFunctionWithCommaSeparatedFallback(t *testing.T) {
+	cssCode := `.element {
+  font-family: var(--font-family, FooFont, 'Bar Font', BazFont, QuxFont, sans-serif);
+}`
+
+	parser := css.NewParser()
+	defer parser.Close()
+	result, err := parser.Parse(cssCode)
+	require.NoError(t, err)
+
+	varCalls := result.VarCalls
+	require.Len(t, varCalls, 1, "Should find one var() call")
+
+	varCall := varCalls[0]
+	assert.Equal(t, "--font-family", varCall.TokenName)
+	require.NotNil(t, varCall.Fallback, "Should have fallback")
+	assert.Equal(t, "FooFont, 'Bar Font', BazFont, QuxFont, sans-serif", *varCall.Fallback)
+}
+
+// TestParseVarFunctionWithNestedCommasInFallback tests parsing var() with fallback containing nested commas (rgba, box-shadow)
+func TestParseVarFunctionWithNestedCommasInFallback(t *testing.T) {
+	cssCode := `.element {
+  box-shadow: var(--shadow, 1px 2px rgba(0, 0, 0, 0.5));
+}`
+
+	parser := css.NewParser()
+	defer parser.Close()
+	result, err := parser.Parse(cssCode)
+	require.NoError(t, err)
+
+	varCalls := result.VarCalls
+	require.Len(t, varCalls, 1, "Should find one var() call")
+
+	varCall := varCalls[0]
+	assert.Equal(t, "--shadow", varCall.TokenName)
+	require.NotNil(t, varCall.Fallback, "Should have fallback")
+	assert.Equal(t, "1px 2px rgba(0, 0, 0, 0.5)", *varCall.Fallback)
+}
+
+// TestParseVarFunctionWithComplexFontFallback tests various font-family patterns
+func TestParseVarFunctionWithComplexFontFallback(t *testing.T) {
+	testCases := []struct {
+		name             string
+		css              string
+		expectedToken    string
+		expectedFallback string
+	}{
+		{
+			name:             "Simple font list",
+			css:              `font-family: var(--font, FooFont, sans-serif);`,
+			expectedToken:    "--font",
+			expectedFallback: "FooFont, sans-serif",
+		},
+		{
+			name:             "Quoted font with spaces in list",
+			css:              `font-family: var(--font, 'My Font', BarFont, sans-serif);`,
+			expectedToken:    "--font",
+			expectedFallback: "'My Font', BarFont, sans-serif",
+		},
+		{
+			name:             "Single font fallback",
+			css:              `font-family: var(--font, monospace);`,
+			expectedToken:    "--font",
+			expectedFallback: "monospace",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cssCode := `.element { ` + tc.css + ` }`
+
+			parser := css.NewParser()
+			defer parser.Close()
+			result, err := parser.Parse(cssCode)
+			require.NoError(t, err)
+
+			varCalls := result.VarCalls
+			require.Len(t, varCalls, 1, "Should find one var() call")
+
+			varCall := varCalls[0]
+			assert.Equal(t, tc.expectedToken, varCall.TokenName)
+			require.NotNil(t, varCall.Fallback, "Should have fallback")
+			assert.Equal(t, tc.expectedFallback, *varCall.Fallback)
+		})
+	}
+}
