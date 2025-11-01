@@ -71,7 +71,10 @@ if ! git diff --quiet extensions/vscode/package.json extensions/zed/extension.to
     echo "Next steps:"
     echo "  make release v$VERSION  (to tag, push, and create GitHub release)"
   else
-    echo "Skipping commit. Changes are staged but not committed."
+    echo "Version changes rejected by user."
+    # Discard changes
+    git checkout -- extensions/vscode/package.json extensions/zed/extension.toml
+    exit 1
   fi
 else
   echo ""

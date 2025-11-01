@@ -6,13 +6,13 @@ WINDOWS_CC_IMAGE := dtls-windows-cc-image
 BINARY_NAME := design-tokens-language-server
 DIST_DIR := dist/bin
 
-# Extract version from goals if present (e.g., "make release v0.1.1")
-VERSION ?= $(filter v%,$(MAKECMDGOALS))
+# Extract version from goals if present (e.g., "make release v0.1.1" or "make release patch")
+VERSION ?= $(filter v% patch minor major,$(MAKECMDGOALS))
 
 # Go build flags with version injection
 GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
-.PHONY: all build build-all test test-coverage patch-coverage show-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release
+.PHONY: all build build-all test test-coverage patch-coverage show-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release patch minor major
 
 all: build
 
@@ -203,27 +203,25 @@ vscode-package: build-all
 	@cd extensions/vscode && npm install && npm run build
 	@echo "VSCode extension packaged: extensions/vscode/*.vsix"
 
-## Make version targets (v*) no-ops for "make release v0.1.1" syntax
+## Make version targets (v*) and bump types no-ops for "make release" syntax
 v%:
+	@:
+
+patch minor major:
 	@:
 
 ## Release (creates version commit, pushes it, then uses gh to tag and create release)
 release:
 	@if [ -z "$(VERSION)" ]; then \
-		echo "Error: VERSION is required"; \
-		echo "Usage: make release v0.1.1"; \
+		echo "Error: VERSION or bump type is required"; \
+		echo "Usage: make release <version|patch|minor|major>"; \
+		echo "  make release v0.1.1   - Release explicit version"; \
+		echo "  make release patch    - Bump patch version (0.0.x)"; \
+		echo "  make release minor    - Bump minor version (0.x.0)"; \
+		echo "  make release major    - Bump major version (x.0.0)"; \
 		exit 1; \
 	fi
-	@echo "Creating release $(VERSION)..."
-	@echo ""
-	@echo "Step 1: Updating version files and committing..."
-	@./scripts/version.sh $(VERSION)
-	@echo ""
-	@echo "Step 2: Pushing version commit..."
-	@git push
-	@echo ""
-	@echo "Step 3: Creating GitHub release (gh will tag and push)..."
-	@gh release create "$(VERSION)"
+	@./scripts/release.sh $(VERSION)
 
 ## Help
 help:
@@ -239,7 +237,10 @@ help:
 	@echo "  make clean              Clean build artifacts"
 	@echo ""
 	@echo "Release:"
-	@echo "  make release v0.1.1     Create release (updates versions, commits, pushes, then gh creates tag/release)"
+	@echo "  make release v0.1.1     Create release with explicit version"
+	@echo "  make release patch      Bump patch version (0.0.x) and release"
+	@echo "  make release minor      Bump minor version (0.x.0) and release"
+	@echo "  make release major      Bump major version (x.0.0) and release"
 	@echo ""
 	@echo "Platform-specific builds:"
 	@echo "  make linux-x64          Build for Linux x86_64"
