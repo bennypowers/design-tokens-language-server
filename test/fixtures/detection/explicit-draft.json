@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#FF6B35"
+    }
+  }
+}
