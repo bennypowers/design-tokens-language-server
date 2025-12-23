@@ -129,9 +129,13 @@ func TestToCSS(t *testing.T) {
 
 func TestToHex(t *testing.T) {
 	t.Run("srgb to hex", func(t *testing.T) {
+		// Use exact decimal values that produce #FF6B35
+		// FF = 255/255 = 1.0
+		// 6B = 107/255 = 0.41960784313725490196...
+		// 35 = 53/255 = 0.20784313725490196078...
 		value := map[string]interface{}{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, 0.42, 0.21},
+			"components": []interface{}{1.0, 107.0 / 255.0, 53.0 / 255.0},
 		}
 
 		colorValue, err := common.ParseColorValue(value, schema.V2025_10)
