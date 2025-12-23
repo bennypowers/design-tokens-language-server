@@ -24,7 +24,12 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 		return nil, nil
 	}
 
-	// Only process CSS files
+	// Handle token files (JSON/YAML)
+	if doc.LanguageID() == "json" || doc.LanguageID() == "yaml" {
+		return DefinitionForTokenFile(req, doc, position)
+	}
+
+	// Only process CSS files beyond this point
 	if doc.LanguageID() != "css" {
 		return nil, nil
 	}

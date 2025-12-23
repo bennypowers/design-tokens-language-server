@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/tokens"
 	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"bennypowers.dev/dtls/lsp/testutil"
 	"github.com/stretchr/testify/assert"
@@ -28,15 +29,21 @@ func TestSemanticTokens_Draft_CurlyBraceReferences(t *testing.T) {
 	mockServer := testutil.NewMockServer()
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 
-	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+	// Add the token that the reference points to
+	mockServer.TokenManager().Add(&tokens.Token{
+		Name:  "color-primary",
+		Value: "#FF0000",
+	})
+
+	semanticTokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
 
 	// Should find tokens for "color.primary" reference on line 9
-	assert.NotEmpty(t, tokens, "Should find semantic tokens for curly brace reference")
+	assert.NotEmpty(t, semanticTokens, "Should find semantic tokens for curly brace reference")
 
 	// Verify we have tokens for both parts: "color" and "primary"
 	foundColorPart := false
 	foundPrimaryPart := false
-	for _, token := range tokens {
+	for _, token := range semanticTokens {
 		if token.Line == 9 {
 			if token.TokenType == 0 { // class (first part)
 				foundColorPart = true

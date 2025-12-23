@@ -4,17 +4,12 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"regexp"
-	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
-	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// Token reference pattern: {token.reference.path}
-var tokenReferenceRegexp = regexp.MustCompile(`\{([^}]+)\}`)
 
 // SemanticTokenIntermediate represents an intermediate token before delta encoding
 type SemanticTokenIntermediate struct {
@@ -123,62 +118,8 @@ func encodeSemanticTokens(intermediateTokens []SemanticTokenIntermediate) ([]uin
 // GetSemanticTokensForDocument extracts semantic tokens from a document
 // Positions and lengths are in UTF-16 code units (LSP default encoding)
 func GetSemanticTokensForDocument(ctx types.ServerContext, doc *documents.Document) []SemanticTokenIntermediate {
-	content := doc.Content()
-	tokens := []SemanticTokenIntermediate{}
-
-	// Split content into lines
-	lines := strings.Split(content, "\n")
-
-	for lineNum, line := range lines {
-		// Find all token references in this line
-		matches := tokenReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
-		if matches == nil {
-			continue
-		}
-
-		for _, match := range matches {
-			// match[2] and match[3] are the start and end of the first capture group (the reference)
-			referenceStart := match[2]
-			referenceEnd := match[3]
-			reference := line[referenceStart:referenceEnd]
-
-			// Convert dots to dashes for token lookup (design tokens use dots, but we store as dashes)
-			tokenName := strings.ReplaceAll(reference, ".", "-")
-
-			// Check if this reference exists in our token manager
-			if ctx.Token(tokenName) == nil {
-				continue
-			}
-
-			// Split reference into parts (e.g., "color.brand.primary" -> ["color", "brand", "primary"])
-			parts := strings.Split(reference, ".")
-
-			// Calculate the starting position of the reference within the line
-			// The reference starts at match[2] (after the opening {)
-			// Convert byte offset to UTF-16 code units
-			partStartChar := position.ByteOffsetToUTF16(line, referenceStart)
-
-			for i, part := range parts {
-				tokenType := 1 // property (default)
-				if i == 0 {
-					tokenType = 0 // class (for first part)
-				}
-
-				tokens = append(tokens, SemanticTokenIntermediate{
-					Line:           lineNum,
-					StartChar:      partStartChar,
-					Length:         position.StringLengthUTF16(part),
-					TokenType:      tokenType,
-					TokenModifiers: 0,
-				})
-
-				// Move to the next part (add UTF-16 length of part + 1 for the dot)
-				partStartChar += position.StringLengthUTF16(part) + 1
-			}
-		}
-	}
-
-	return tokens
+	// Use schema-aware extraction
+	return GetSemanticTokensForDocumentSchemaAware(ctx, doc)
 }
 
 // handleSemanticTokensRange handles the textDocument/semanticTokens/range request

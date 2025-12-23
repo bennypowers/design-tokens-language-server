@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/definition"
 	"bennypowers.dev/dtls/lsp/testutil"
 	"bennypowers.dev/dtls/lsp/types"
@@ -32,9 +33,15 @@ func TestDefinition_Draft_CurlyBraceReference(t *testing.T) {
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 	mockServer.AddDocument(doc)
 
-	// Load tokens from the document
-	// (In real implementation, this would be done by the token loader)
-	// For now, we'll test the definition logic assuming tokens are loaded
+	// Add the token with definition location
+	mockServer.TokenManager().Add(&tokens.Token{
+		Name:          "color-primary",
+		Value:         "#FF0000",
+		DefinitionURI: "file:///test.json",
+		Line:          3,
+		Character:     4,
+		Path:          []string{"color", "primary"},
+	})
 
 	req := &types.RequestContext{
 		Server: mockServer,
@@ -86,6 +93,16 @@ func TestDefinition_2025_JSONPointerReference(t *testing.T) {
 	mockServer := testutil.NewMockServer()
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 	mockServer.AddDocument(doc)
+
+	// Add the token with definition location
+	mockServer.TokenManager().Add(&tokens.Token{
+		Name:          "color-primary",
+		Value:         "srgb color",
+		DefinitionURI: "file:///test.json",
+		Line:          3,
+		Character:     4,
+		Path:          []string{"color", "primary"},
+	})
 
 	req := &types.RequestContext{
 		Server: mockServer,
