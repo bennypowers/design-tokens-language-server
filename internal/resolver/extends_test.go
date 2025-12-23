@@ -183,6 +183,84 @@ func TestResolveGroupExtensions_EmptyList(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestResolveGroupExtensions_DeeplyNested(t *testing.T) {
+	// Test multi-level inheritance: foundation -> theme -> brand -> product
+	fixturesDir := "../../test/fixtures/extends"
+	content, err := os.ReadFile(filepath.Join(fixturesDir, "deeply-nested.json"))
+	require.NoError(t, err)
+
+	parser := json.NewParser()
+	tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, nil)
+	require.NoError(t, err)
+
+	// Resolve extensions
+	tokenList, err = resolver.ResolveGroupExtensions(tokenList)
+	require.NoError(t, err)
+
+	// product should have tokens from all levels:
+	// - xs (from foundation)
+	// - sm (from theme)
+	// - md (from brand)
+	// - lg (own)
+	productTokens := filterByPrefixExcludingExtends(tokenList, "product")
+	assert.GreaterOrEqual(t, len(productTokens), 4, "product should inherit from all ancestor levels")
+
+	tokenNames := []string{}
+	for _, tok := range productTokens {
+		tokenNames = append(tokenNames, tok.Name)
+	}
+
+	// Check spacing tokens inherited through the chain
+	assert.Contains(t, tokenNames, "product-spacing-xs", "Should inherit xs from foundation")
+	assert.Contains(t, tokenNames, "product-spacing-sm", "Should inherit sm from theme")
+	assert.Contains(t, tokenNames, "product-spacing-md", "Should inherit md from brand")
+	assert.Contains(t, tokenNames, "product-spacing-lg", "Should have its own lg")
+
+	// Check color tokens inherited through the chain
+	assert.Contains(t, tokenNames, "product-color-base", "Should inherit base from foundation")
+	assert.Contains(t, tokenNames, "product-color-primary", "Should inherit primary from theme")
+	assert.Contains(t, tokenNames, "product-color-accent", "Should inherit accent from brand")
+}
+
+func TestResolveGroupExtensions_NestedPaths(t *testing.T) {
+	// Test extending from a nested group path (e.g., #/base/colors/semantic)
+	fixturesDir := "../../test/fixtures/extends"
+	content, err := os.ReadFile(filepath.Join(fixturesDir, "nested-paths.json"))
+	require.NoError(t, err)
+
+	parser := json.NewParser()
+	tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, nil)
+	require.NoError(t, err)
+
+	// Count tokens before extension resolution
+	t.Logf("Tokens before resolution: %d", len(tokenList))
+	for _, tok := range tokenList {
+		t.Logf("  %s at %v", tok.Name, tok.Path)
+	}
+
+	// Resolve extensions
+	tokenList, err = resolver.ResolveGroupExtensions(tokenList)
+	require.NoError(t, err)
+
+	// Count tokens after extension resolution
+	t.Logf("Tokens after resolution: %d", len(tokenList))
+
+	// extended should inherit success and error from base/colors/semantic
+	extendedTokens := filterByPrefixExcludingExtends(tokenList, "extended")
+	assert.GreaterOrEqual(t, len(extendedTokens), 3, "extended should have warning + inherited success/error")
+
+	tokenNames := []string{}
+	for _, tok := range extendedTokens {
+		tokenNames = append(tokenNames, tok.Name)
+	}
+
+	t.Logf("Extended tokens: %v", tokenNames)
+
+	assert.Contains(t, tokenNames, "extended-success", "Should inherit success from nested path")
+	assert.Contains(t, tokenNames, "extended-error", "Should inherit error from nested path")
+	assert.Contains(t, tokenNames, "extended-warning", "Should have its own warning")
+}
+
 // Helper function to filter tokens by prefix
 func filterByPrefix(tokenList []*tokens.Token, prefix string) []*tokens.Token {
 	result := []*tokens.Token{}

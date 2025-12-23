@@ -109,14 +109,17 @@ func (h *V2025_10SchemaHandler) ValidateTokenNode(node *yaml.Node) error {
 
 func (h *V2025_10SchemaHandler) FormatColorForCSS(colorValue interface{}) string {
 	// 2025.10 schema: colors can be structured objects or strings
-	// Try to extract hex field from structured color
+
+	// Try to extract hex field from structured color (fast path)
 	if colorMap, ok := colorValue.(map[string]interface{}); ok {
 		if hex, ok := colorMap["hex"].(string); ok {
 			return hex
 		}
 
-		// TODO: Convert from colorSpace/components to CSS
-		// For now, return empty string to indicate conversion needed
+		// Note: Full color space conversion is available in internal/color/convert.go
+		// This package cannot import it due to circular dependency (schema -> color -> parser/common -> schema)
+		// Callers should use color.ToCSS() directly for full conversion support
+		// This method is a lightweight convenience for the hex field only
 		return ""
 	}
 

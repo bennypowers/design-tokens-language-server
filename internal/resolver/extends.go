@@ -37,7 +37,6 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 			groupPath := strings.Join(tok.Path[:len(tok.Path)-1], "/")
 			// tok.Value is the JSON Pointer like "#/baseColors"
 			parentPath := strings.TrimPrefix(tok.Value, "#/")
-			parentPath = strings.ReplaceAll(parentPath, "/", "/")
 			extendsMap[groupPath] = parentPath
 		}
 	}
@@ -72,19 +71,32 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 		return tokenList, err
 	}
 
-	// Group tokens by their group path
-	tokensByGroup := make(map[string][]*tokens.Token)
-	for _, tok := range tokenList {
-		if len(tok.Path) == 0 {
-			continue
+	// Helper function to get tokens matching a path prefix
+	getTokensForGroup := func(groupPath string) []*tokens.Token {
+		pathParts := strings.Split(groupPath, "/")
+		result := []*tokens.Token{}
+
+		for _, tok := range tokenList {
+			// Skip $extends tokens
+			if len(tok.Path) > 0 && tok.Path[len(tok.Path)-1] == "$extends" {
+				continue
+			}
+
+			// Check if token's path starts with the group path
+			if len(tok.Path) >= len(pathParts) {
+				matches := true
+				for i, part := range pathParts {
+					if tok.Path[i] != part {
+						matches = false
+						break
+					}
+				}
+				if matches {
+					result = append(result, tok)
+				}
+			}
 		}
-		// Skip $extends tokens themselves
-		if tok.Path[len(tok.Path)-1] == "$extends" {
-			continue
-		}
-		// Get the top-level group
-		groupPath := tok.Path[0]
-		tokensByGroup[groupPath] = append(tokensByGroup[groupPath], tok)
+		return result
 	}
 
 	// Process extensions in topological order
@@ -94,16 +106,20 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 			continue
 		}
 
-		// Get parent and child tokens
-		parentTokens := tokensByGroup[parentPath]
-		childTokens := tokensByGroup[groupPath]
+		// Get parent and child tokens using the helper function
+		parentTokens := getTokensForGroup(parentPath)
+		childTokens := getTokensForGroup(groupPath)
+
+		// Parse group paths
+		parentPathParts := strings.Split(parentPath, "/")
+		childPathParts := strings.Split(groupPath, "/")
 
 		// Build set of child token names (to detect overrides)
 		childNames := make(map[string]bool)
 		for _, tok := range childTokens {
-			// Get relative name within the group
-			if len(tok.Path) > 1 {
-				relativeName := strings.Join(tok.Path[1:], "-")
+			// Get relative name within the child group
+			if len(tok.Path) > len(childPathParts) {
+				relativeName := strings.Join(tok.Path[len(childPathParts):], "-")
 				childNames[relativeName] = true
 			}
 		}
@@ -111,10 +127,10 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 		// Clone parent tokens into child group (if not overridden)
 		for _, parentTok := range parentTokens {
 			// Get relative path within parent group
-			if len(parentTok.Path) < 2 {
+			if len(parentTok.Path) <= len(parentPathParts) {
 				continue
 			}
-			relativePath := parentTok.Path[1:]
+			relativePath := parentTok.Path[len(parentPathParts):]
 			relativeName := strings.Join(relativePath, "-")
 
 			// Skip if child already has this token (override)
@@ -123,7 +139,7 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 			}
 
 			// Clone token with child group path
-			newPath := append([]string{groupPath}, relativePath...)
+			newPath := append(childPathParts, relativePath...)
 			newName := strings.Join(newPath, "-")
 
 			clonedToken := &tokens.Token{
@@ -145,9 +161,8 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 				DeprecationMessage: parentTok.DeprecationMessage,
 			}
 
-			// Add to token list and child group
+			// Add cloned token to the token list
 			tokenList = append(tokenList, clonedToken)
-			tokensByGroup[groupPath] = append(tokensByGroup[groupPath], clonedToken)
 		}
 	}
 

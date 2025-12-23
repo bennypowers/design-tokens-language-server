@@ -89,13 +89,14 @@ func TestV2025_10SchemaHandler_FormatColorForCSS(t *testing.T) {
 	}
 	assert.Equal(t, "#FF0000", handler.FormatColorForCSS(colorWithHex))
 
-	// 2025.10 colors without hex field (needs conversion)
+	// 2025.10 colors without hex field
 	colorWithoutHex := map[string]interface{}{
 		"colorSpace": "oklch",
 		"components": []interface{}{0.628, 0.258, 29.234},
 		"alpha":      1.0,
 	}
-	// TODO: Implement color space conversion
+	// Returns empty string - callers should use internal/color/convert.ToCSS() for full conversion
+	// (circular dependency prevents importing color package here)
 	assert.Equal(t, "", handler.FormatColorForCSS(colorWithoutHex))
 
 	// String colors also supported in 2025.10 (for backwards compat)
