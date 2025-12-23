@@ -1,0 +1,12 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1.0, 0.42, 0.21]
+      }
+    }
+  }
+}
