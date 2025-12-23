@@ -1,0 +1,27 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "primary": {
+      "_": {
+        "$type": "color",
+        "$value": "#FF0000"
+      },
+      "hover": {
+        "$type": "color",
+        "$value": "#CC0000"
+      }
+    },
+    "secondary": {
+      "@": {
+        "$type": "color",
+        "$value": "#00FF00"
+      }
+    },
+    "tertiary": {
+      "DEFAULT": {
+        "$type": "color",
+        "$value": "#0000FF"
+      }
+    }
+  }
+}

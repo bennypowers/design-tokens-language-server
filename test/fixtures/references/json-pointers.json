@@ -1,0 +1,18 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "color": {
+    "base": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1.0, 0.42, 0.21]
+      }
+    },
+    "primary": {
+      "$ref": "#/color/base"
+    },
+    "secondary": {
+      "$ref": "#/color/primary"
+    }
+  }
+}
