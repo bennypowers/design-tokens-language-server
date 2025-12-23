@@ -1,0 +1,21 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "brand": {
+      "primary": {
+        "$type": "color",
+        "$value": "#FF6B35"
+      }
+    }
+  },
+  "spacing": {
+    "_": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "small": {
+      "$type": "dimension",
+      "$value": "8px"
+    }
+  }
+}
