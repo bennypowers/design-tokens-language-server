@@ -1,0 +1,29 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "base": {
+    "spacing": {
+      "small": {
+        "$type": "dimension",
+        "$value": "8px"
+      }
+    }
+  },
+  "level1": {
+    "$extends": "#/base",
+    "spacing": {
+      "medium": {
+        "$type": "dimension",
+        "$value": "16px"
+      }
+    }
+  },
+  "level2": {
+    "$extends": "#/level1",
+    "spacing": {
+      "large": {
+        "$type": "dimension",
+        "$value": "32px"
+      }
+    }
+  }
+}

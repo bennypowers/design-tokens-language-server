@@ -1,0 +1,17 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "groupA": {
+    "$extends": "#/groupB",
+    "tokenA": {
+      "$type": "dimension",
+      "$value": "10px"
+    }
+  },
+  "groupB": {
+    "$extends": "#/groupA",
+    "tokenB": {
+      "$type": "dimension",
+      "$value": "20px"
+    }
+  }
+}
