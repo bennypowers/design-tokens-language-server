@@ -23,16 +23,23 @@ func TestResolveGroupExtensions_Simple(t *testing.T) {
 	tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, nil)
 	require.NoError(t, err)
 
-	// Before extension resolution, themeColors should only have "green"
-	themeTokens := filterByPrefix(tokenList, "themeColors")
+	// Debug: print all tokens
+	t.Logf("Total tokens: %d", len(tokenList))
+	for _, tok := range tokenList {
+		t.Logf("Token: %s, Path: %v, Type: %s, Value: %s", tok.Name, tok.Path, tok.Type, tok.Value)
+	}
+
+	// Before extension resolution, themeColors should only have "green" (excluding $extends)
+	themeTokens := filterByPrefixExcludingExtends(tokenList, "themeColors")
+	t.Logf("ThemeColors tokens before: %d", len(themeTokens))
 	assert.Equal(t, 1, len(themeTokens), "Should have 1 token in themeColors before extension")
 
 	// Resolve extensions
-	err = resolver.ResolveGroupExtensions(tokenList)
+	tokenList, err = resolver.ResolveGroupExtensions(tokenList)
 	require.NoError(t, err)
 
 	// After extension resolution, themeColors should have red, blue, green
-	themeTokens = filterByPrefix(tokenList, "themeColors")
+	themeTokens = filterByPrefixExcludingExtends(tokenList, "themeColors")
 	assert.Equal(t, 3, len(themeTokens), "Should have 3 tokens in themeColors after extension")
 
 	// Check that we have all expected tokens
@@ -56,11 +63,11 @@ func TestResolveGroupExtensions_Nested(t *testing.T) {
 	require.NoError(t, err)
 
 	// Resolve extensions
-	err = resolver.ResolveGroupExtensions(tokenList)
+	tokenList, err = resolver.ResolveGroupExtensions(tokenList)
 	require.NoError(t, err)
 
 	// level2 should have small (from base), medium (from level1), and large (own)
-	level2Tokens := filterByPrefix(tokenList, "level2")
+	level2Tokens := filterByPrefixExcludingExtends(tokenList, "level2")
 	assert.GreaterOrEqual(t, len(level2Tokens), 3, "level2 should inherit from both base and level1")
 
 	// Check for nested structure
@@ -84,11 +91,11 @@ func TestResolveGroupExtensions_Override(t *testing.T) {
 	require.NoError(t, err)
 
 	// Resolve extensions
-	err = resolver.ResolveGroupExtensions(tokenList)
+	tokenList, err = resolver.ResolveGroupExtensions(tokenList)
 	require.NoError(t, err)
 
 	// override should have both color (overridden) and spacing (inherited)
-	overrideTokens := filterByPrefix(tokenList, "override")
+	overrideTokens := filterByPrefixExcludingExtends(tokenList, "override")
 	assert.Equal(t, 2, len(overrideTokens), "Should have 2 tokens in override group")
 
 	// Find the color token
@@ -102,8 +109,22 @@ func TestResolveGroupExtensions_Override(t *testing.T) {
 	require.NotNil(t, colorToken, "Should find override-color token")
 
 	// The color value should be the child's value (blue), not parent's (red)
-	// Check that it contains blue color components [0, 0, 1.0]
-	assert.Contains(t, colorToken.Value, "0, 0, 1", "Color should be overridden to blue")
+	// Check RawValue for structured color values in 2025.10
+	require.NotNil(t, colorToken.RawValue, "Color token should have RawValue")
+
+	// RawValue should be a map with components [0, 0, 1.0] for blue
+	colorMap, ok := colorToken.RawValue.(map[string]interface{})
+	require.True(t, ok, "RawValue should be a map")
+
+	components, ok := colorMap["components"].([]interface{})
+	require.True(t, ok, "Should have components array")
+	require.Len(t, components, 3, "Should have 3 color components")
+
+	// Check for blue: [0, 0, 1.0]
+	// Components can be int or float64 depending on JSON decoding
+	assert.Contains(t, []interface{}{0, float64(0)}, components[0], "Red component should be 0")
+	assert.Contains(t, []interface{}{0, float64(0)}, components[1], "Green component should be 0")
+	assert.Contains(t, []interface{}{1, 1.0, float64(1)}, components[2], "Blue component should be 1")
 }
 
 func TestResolveGroupExtensions_CircularDetection(t *testing.T) {
@@ -117,7 +138,7 @@ func TestResolveGroupExtensions_CircularDetection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Resolve extensions - should return error
-	err = resolver.ResolveGroupExtensions(tokenList)
+	_, err = resolver.ResolveGroupExtensions(tokenList)
 	assert.Error(t, err, "Should detect circular extension")
 	assert.Contains(t, err.Error(), "circular", "Error should mention circular reference")
 }
@@ -146,11 +167,11 @@ func TestResolveGroupExtensions_DraftSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	// Resolve extensions - should be no-op for draft schema
-	err = resolver.ResolveGroupExtensions(tokenList)
+	tokenList, err = resolver.ResolveGroupExtensions(tokenList)
 	require.NoError(t, err)
 
 	// theme should still only have spacing token (no inheritance in draft)
-	themeTokens := filterByPrefix(tokenList, "theme")
+	themeTokens := filterByPrefixExcludingExtends(tokenList, "theme")
 	assert.Equal(t, 1, len(themeTokens), "Draft schema should not process $extends")
 }
 
@@ -158,7 +179,7 @@ func TestResolveGroupExtensions_EmptyList(t *testing.T) {
 	// Test that empty token list doesn't cause errors
 	var tokenList []*tokens.Token
 
-	err := resolver.ResolveGroupExtensions(tokenList)
+	_, err := resolver.ResolveGroupExtensions(tokenList)
 	assert.NoError(t, err)
 }
 
@@ -167,6 +188,21 @@ func filterByPrefix(tokenList []*tokens.Token, prefix string) []*tokens.Token {
 	result := []*tokens.Token{}
 	for _, tok := range tokenList {
 		if len(tok.Path) > 0 && tok.Path[0] == prefix {
+			result = append(result, tok)
+		}
+	}
+	return result
+}
+
+// Helper function to filter tokens by prefix, excluding $extends metadata tokens
+func filterByPrefixExcludingExtends(tokenList []*tokens.Token, prefix string) []*tokens.Token {
+	result := []*tokens.Token{}
+	for _, tok := range tokenList {
+		if len(tok.Path) > 0 && tok.Path[0] == prefix {
+			// Exclude $extends metadata tokens
+			if len(tok.Path) > 1 && tok.Path[len(tok.Path)-1] == "$extends" {
+				continue
+			}
 			result = append(result, tok)
 		}
 	}

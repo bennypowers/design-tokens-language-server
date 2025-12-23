@@ -395,6 +395,46 @@ func (p *Parser) extractTokensWithSchemaVersion(node *yaml.Node, jsonPath []stri
 			continue
 		}
 
+		// Handle $extends for 2025.10 schema (scalar value, not mapping)
+		if key == "$extends" && version == schema.V2025_10 {
+			if valueNode.Kind == yaml.ScalarNode {
+				// Create a special token for $extends
+				extendsPath := append([]string{}, jsonPath...)
+				extendsPath = append(extendsPath, "$extends")
+
+				// Build token name
+				extendsName := path
+				if extendsName == "" {
+					extendsName = "$extends"
+				} else {
+					extendsName = path + "-$extends"
+				}
+
+				// Extract position
+				line, character, err := extractTokenPosition(keyNode, extendsName)
+				if err != nil {
+					return err
+				}
+
+				// Create the $extends token
+				extendsToken := &tokens.Token{
+					Name:          extendsName,
+					Value:         valueNode.Value, // The JSON Pointer like "#/baseColors"
+					Prefix:        prefix,
+					Path:          extendsPath,
+					Reference:     "{" + strings.Join(extendsPath, ".") + "}",
+					Line:          line,
+					Character:     character,
+					SchemaVersion: version,
+					RawValue:      valueNode.Value,
+					IsResolved:    false,
+				}
+
+				*result = append(*result, extendsToken)
+			}
+			continue
+		}
+
 		// Skip non-mapping values
 		if valueNode.Kind != yaml.MappingNode {
 			continue
