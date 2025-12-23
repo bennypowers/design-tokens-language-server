@@ -1,0 +1,151 @@
+package semantictokens_test
+
+import (
+	"testing"
+
+	"bennypowers.dev/dtls/internal/documents"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
+	"bennypowers.dev/dtls/lsp/testutil"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSemanticTokens_Draft_CurlyBraceReferences(t *testing.T) {
+	// Test that curly brace references are highlighted in draft schema
+	content := `{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#FF0000"
+    },
+    "secondary": {
+      "$type": "color",
+      "$value": "{color.primary}"
+    }
+  }
+}`
+
+	mockServer := testutil.NewMockServer()
+	doc := documents.NewDocument("file:///test.json", "json", 1, content)
+
+	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+
+	// Should find tokens for "color.primary" reference on line 9
+	assert.NotEmpty(t, tokens, "Should find semantic tokens for curly brace reference")
+
+	// Verify we have tokens for both parts: "color" and "primary"
+	foundColorPart := false
+	foundPrimaryPart := false
+	for _, token := range tokens {
+		if token.Line == 9 {
+			if token.TokenType == 0 { // class (first part)
+				foundColorPart = true
+			}
+			if token.TokenType == 1 { // property (second part)
+				foundPrimaryPart = true
+			}
+		}
+	}
+
+	assert.True(t, foundColorPart, "Should highlight 'color' part of reference")
+	assert.True(t, foundPrimaryPart, "Should highlight 'primary' part of reference")
+}
+
+func TestSemanticTokens_2025_JSONPointerReferences(t *testing.T) {
+	// Test that $ref JSON Pointer references are highlighted in 2025.10 schema
+	content := `{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1.0, 0, 0]
+      }
+    },
+    "secondary": {
+      "$type": "color",
+      "$ref": "#/color/primary"
+    }
+  }
+}`
+
+	mockServer := testutil.NewMockServer()
+	doc := documents.NewDocument("file:///test.json", "json", 1, content)
+
+	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+
+	// Should find tokens for "$ref" keyword and JSON Pointer path
+	foundRefKeyword := false
+	foundPointerPath := false
+
+	for _, token := range tokens {
+		if token.Line == 12 {
+			// $ref should be highlighted as keyword
+			if token.TokenType == 3 { // keyword type
+				foundRefKeyword = true
+			}
+			// JSON Pointer path should be highlighted
+			if token.TokenType == 4 { // string/reference type
+				foundPointerPath = true
+			}
+		}
+	}
+
+	assert.True(t, foundRefKeyword, "Should highlight '$ref' keyword")
+	assert.True(t, foundPointerPath, "Should highlight JSON Pointer path")
+}
+
+func TestSemanticTokens_2025_RootKeyword(t *testing.T) {
+	// Test that $root is highlighted as a special keyword in 2025.10 schema
+	content := `{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "spacing": {
+    "$root": {
+      "$type": "dimension",
+      "$value": "16px"
+    }
+  }
+}`
+
+	mockServer := testutil.NewMockServer()
+	doc := documents.NewDocument("file:///test.json", "json", 1, content)
+
+	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+
+	// Should find token for "$root" keyword on line 3
+	foundRootKeyword := false
+	for _, token := range tokens {
+		if token.Line == 3 && token.TokenType == 3 { // keyword type
+			foundRootKeyword = true
+		}
+	}
+
+	assert.True(t, foundRootKeyword, "Should highlight '$root' as keyword")
+}
+
+func TestSemanticTokens_Draft_NoJSONPointerHighlighting(t *testing.T) {
+	// Test that JSON Pointers are NOT highlighted in draft schema
+	// (they shouldn't exist, but if they do, we ignore them)
+	content := `{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$ref": "#/some/path"
+    }
+  }
+}`
+
+	mockServer := testutil.NewMockServer()
+	doc := documents.NewDocument("file:///test.json", "json", 1, content)
+
+	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+
+	// Should NOT highlight $ref in draft schema
+	for _, token := range tokens {
+		if token.Line == 5 {
+			assert.NotEqual(t, 3, token.TokenType, "Should not highlight $ref as keyword in draft schema")
+		}
+	}
+}
