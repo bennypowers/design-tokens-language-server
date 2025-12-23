@@ -1,0 +1,25 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "hex": {
+      "$type": "color",
+      "$value": "#FF6B35"
+    },
+    "rgb": {
+      "$type": "color",
+      "$value": "rgb(255, 107, 53)"
+    },
+    "rgba": {
+      "$type": "color",
+      "$value": "rgba(255, 107, 53, 0.8)"
+    },
+    "hsl": {
+      "$type": "color",
+      "$value": "hsl(16, 100%, 60%)"
+    },
+    "named": {
+      "$type": "color",
+      "$value": "rebeccapurple"
+    }
+  }
+}
