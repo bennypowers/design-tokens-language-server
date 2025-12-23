@@ -1,0 +1,13 @@
+{
+  "color": {
+    "@": {
+      "$type": "color",
+      "$value": "#0000FF",
+      "$description": "Default color using @ marker"
+    },
+    "brand": {
+      "$type": "color",
+      "$value": "rgb(255, 107, 53)"
+    }
+  }
+}
