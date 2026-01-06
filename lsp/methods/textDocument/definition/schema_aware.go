@@ -12,9 +12,20 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
+// normalizeLineEndings normalizes line endings to LF for consistent processing
+func normalizeLineEndings(content string) string {
+	// Replace CRLF with LF, then replace any remaining CR with LF
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.ReplaceAll(content, "\r", "\n")
+	return content
+}
+
 // findReferenceAtPosition finds a token reference at the given position in a JSON/YAML file
 // Returns the token name if found, empty string otherwise
 func findReferenceAtPosition(content string, pos protocol.Position) string {
+	// Normalize line endings (CRLF -> LF) to handle Windows files correctly
+	content = normalizeLineEndings(content)
+
 	lines := strings.Split(content, "\n")
 	if int(pos.Line) >= len(lines) {
 		return ""
@@ -96,7 +107,8 @@ func findJSONPointerReferenceAtPosition(line string, pos protocol.Position) stri
 func getLineText(req *types.RequestContext, uri string, lineNum uint32) (string, error) {
 	// Try to get from document manager first (for open files)
 	if doc := req.Server.DocumentManager().Get(uri); doc != nil {
-		lines := strings.Split(doc.Content(), "\n")
+		content := normalizeLineEndings(doc.Content())
+		lines := strings.Split(content, "\n")
 		if int(lineNum) < len(lines) {
 			return lines[lineNum], nil
 		}
@@ -110,7 +122,8 @@ func getLineText(req *types.RequestContext, uri string, lineNum uint32) (string,
 		return "", err
 	}
 
-	lines := strings.Split(string(data), "\n")
+	content := normalizeLineEndings(string(data))
+	lines := strings.Split(content, "\n")
 	if int(lineNum) < len(lines) {
 		return lines[lineNum], nil
 	}

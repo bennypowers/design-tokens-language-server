@@ -89,6 +89,23 @@ func log(level Level, format string, args ...interface{}) {
 		return
 	}
 
-	// Format: [DTLS] message
-	fmt.Fprintf(output, prefix+" "+format+"\n", args...)
+	// Map level to label for clarity
+	levelLabel := ""
+	switch level {
+	case LevelDebug:
+		levelLabel = "DEBUG"
+	case LevelInfo:
+		levelLabel = "INFO"
+	case LevelWarn:
+		levelLabel = "WARN"
+	case LevelError:
+		levelLabel = "ERROR"
+	}
+
+	// Format: [DTLS] LEVEL: message
+	// Prepend prefix and level label to the args
+	newArgs := make([]interface{}, 0, len(args)+2)
+	newArgs = append(newArgs, prefix, levelLabel)
+	newArgs = append(newArgs, args...)
+	fmt.Fprintf(output, "%s %s: "+format+"\n", newArgs...)
 }

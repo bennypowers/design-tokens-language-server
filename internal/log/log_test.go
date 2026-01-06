@@ -97,6 +97,22 @@ func TestLogFormat(t *testing.T) {
 		assert.Contains(t, lines[0], "message 1")
 		assert.Contains(t, lines[1], "message 2")
 	})
+
+	t.Run("Messages include level labels", func(t *testing.T) {
+		buf.Reset()
+		log.SetLevel(log.LevelDebug)
+
+		log.Debug("debug")
+		log.Info("info")
+		log.Warn("warn")
+		log.Error("error")
+
+		output := buf.String()
+		assert.Contains(t, output, "DEBUG:", "Should include DEBUG level")
+		assert.Contains(t, output, "INFO:", "Should include INFO level")
+		assert.Contains(t, output, "WARN:", "Should include WARN level")
+		assert.Contains(t, output, "ERROR:", "Should include ERROR level")
+	})
 }
 
 func TestGetLevel(t *testing.T) {
