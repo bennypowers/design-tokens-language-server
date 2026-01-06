@@ -1,9 +1,9 @@
 package workspace
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -11,23 +11,23 @@ import (
 
 // DidChangeConfiguration handles the workspace/didChangeConfiguration notification
 func DidChangeConfiguration(req *types.RequestContext, params *protocol.DidChangeConfigurationParams) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Configuration changed\n")
+	log.Info("Configuration changed")
 
 	// Parse the settings
 	config, err := parseConfiguration(params.Settings)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to parse configuration: %v\n", err)
+		log.Info("Warning: failed to parse configuration: %v", err)
 		return nil // Don't fail, just use defaults
 	}
 
 	// Update server configuration
 	req.Server.SetConfig(config)
 
-	fmt.Fprintf(os.Stderr, "[DTLS] New configuration: %+v\n", config)
+	log.Info("New configuration: %+v", config)
 
 	// Reload tokens with new configuration
 	if err := req.Server.LoadTokensFromConfig(); err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to reload tokens: %v\n", err)
+		log.Info("Warning: failed to reload tokens: %v", err)
 	}
 
 	// Republish diagnostics for all open documents (only if using push model)
@@ -36,7 +36,7 @@ func DidChangeConfiguration(req *types.RequestContext, params *protocol.DidChang
 		if req.GLSP != nil {
 			for _, doc := range req.Server.AllDocuments() {
 				if err := req.Server.PublishDiagnostics(req.GLSP, doc.URI()); err != nil {
-					fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", doc.URI(), err)
+					log.Info("Warning: failed to publish diagnostics for %s: %v", doc.URI(), err)
 				}
 			}
 		}

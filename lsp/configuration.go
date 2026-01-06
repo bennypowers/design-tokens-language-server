@@ -1,10 +1,10 @@
 package lsp
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"errors"
 	"fmt"
 	"maps"
-	"os"
 
 	"bennypowers.dev/dtls/lsp/types"
 )
@@ -43,18 +43,18 @@ func (s *Server) LoadPackageJsonConfig() error {
 
 	if s.config.Prefix == "" && pkgConfig.Prefix != "" {
 		s.config.Prefix = pkgConfig.Prefix
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded prefix from package.json: %s\n", pkgConfig.Prefix)
+		log.Info("Loaded prefix from package.json: %s\n", pkgConfig.Prefix)
 	}
 
 	// Allow package.json to override if groupMarkers are still at defaults
 	if isGroupMarkersDefault(s.config.GroupMarkers, defaults.GroupMarkers) && len(pkgConfig.GroupMarkers) > 0 {
 		s.config.GroupMarkers = pkgConfig.GroupMarkers
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded groupMarkers from package.json: %v\n", pkgConfig.GroupMarkers)
+		log.Info("Loaded groupMarkers from package.json: %v\n", pkgConfig.GroupMarkers)
 	}
 
 	if len(s.config.TokensFiles) == 0 && len(pkgConfig.TokensFiles) > 0 {
 		s.config.TokensFiles = pkgConfig.TokensFiles
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded tokensFiles from package.json: %v\n", pkgConfig.TokensFiles)
+		log.Info("Loaded tokensFiles from package.json: %v\n", pkgConfig.TokensFiles)
 	}
 
 	return nil
@@ -200,9 +200,9 @@ func (s *Server) loadTokenFileAndLog(path string, opts *TokenFileOptions) error 
 	}
 
 	if len(opts.GroupMarkers) > 0 {
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
+		log.Info("Loaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
 	} else {
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded %s (prefix: %s)\n", path, opts.Prefix)
+		log.Info("Loaded %s (prefix: %s)\n", path, opts.Prefix)
 	}
 	return nil
 }
@@ -271,9 +271,9 @@ func (s *Server) reloadPreviouslyLoadedFiles() error {
 			continue
 		}
 		if len(opts.GroupMarkers) > 0 {
-			fmt.Fprintf(os.Stderr, "[DTLS] Reloaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
+			log.Info("Reloaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
 		} else {
-			fmt.Fprintf(os.Stderr, "[DTLS] Reloaded %s (prefix: %s)\n", path, opts.Prefix)
+			log.Info("Reloaded %s (prefix: %s)\n", path, opts.Prefix)
 		}
 	}
 

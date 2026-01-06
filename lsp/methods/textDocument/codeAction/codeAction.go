@@ -1,8 +1,8 @@
 package codeaction
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
-	"os"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
@@ -204,7 +204,7 @@ func resolveFixAllFallbacks(req *types.RequestContext, action *protocol.CodeActi
 // CodeAction handles the textDocument/codeAction request
 func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (any, error) {
 	uri := params.TextDocument.URI
-	fmt.Fprintf(os.Stderr, "[DTLS] CodeAction requested: %s\n", uri)
+	log.Info("CodeAction requested: %s", uri)
 
 	// Validate document
 	doc, ok := validateCSSDocument(req, uri)
@@ -229,13 +229,13 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 		actions = append(actions, *fixAllAction)
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Returning %d code actions\n", len(actions))
+	log.Info("Returning %d code actions", len(actions))
 	return actions, nil
 }
 
 // CodeActionResolve handles the codeAction/resolve request
 func CodeActionResolve(req *types.RequestContext, action *protocol.CodeAction) (*protocol.CodeAction, error) {
-	fmt.Fprintf(os.Stderr, "[DTLS] CodeActionResolve requested: %s\n", action.Title)
+	log.Info("CodeActionResolve requested: %s", action.Title)
 
 	// Handle fixAllFallbacks which uses lazy resolution
 	if action.Title == "Fix all token fallback values" {

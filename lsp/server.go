@@ -2,11 +2,11 @@ package lsp
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/methods/lifecycle"
@@ -220,7 +220,7 @@ func (s *Server) SetUsePullDiagnostics(use bool) {
 
 // PublishDiagnostics publishes diagnostics for a document
 func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Publishing diagnostics for: %s\n", uri)
+	log.Info("Publishing diagnostics for: %s", uri)
 
 	// Select a working context: use passed-in context if non-nil, otherwise fall back to server's context
 	workingContext := context
@@ -325,7 +325,7 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	// Guard against nil or empty context (can happen in tests without real LSP connection)
 	// An empty context (created with &glsp.Context{}) won't have Call initialized
 	if context == nil || context.Call == nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Skipping file watcher registration (no client context)\n")
+		log.Info("Skipping file watcher registration (no client context)")
 		return nil
 	}
 
@@ -375,7 +375,7 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	}
 
 	if len(watchers) == 0 {
-		fmt.Fprintf(os.Stderr, "[DTLS] No file watchers to register\n")
+		log.Info("No file watchers to register")
 		return nil
 	}
 
@@ -410,9 +410,9 @@ func (s *Server) RegisterFileWatchers(context *glsp.Context) error {
 	go func(ctx *glsp.Context) {
 		var result any
 		ctx.Call("client/registerCapability", params, &result)
-		fmt.Fprintf(os.Stderr, "[DTLS] File watcher registration completed\n")
+		log.Info("File watcher registration completed")
 	}(context)
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Sent file watcher registration request (%d watchers)\n", len(watchers))
+	log.Info("Sent file watcher registration request (%d watchers)", len(watchers))
 	return nil
 }

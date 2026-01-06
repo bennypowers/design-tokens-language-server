@@ -1,8 +1,7 @@
 package lifecycle
 
 import (
-	"fmt"
-	"os"
+	"bennypowers.dev/dtls/internal/log"
 
 	"bennypowers.dev/dtls/internal/uriutil"
 	"bennypowers.dev/dtls/internal/version"
@@ -18,7 +17,7 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 		clientName = params.ClientInfo.Name
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Initializing for client: %s\n", clientName)
+	log.Info("Initializing for client: %s", clientName)
 
 	// Detect if client supports pull diagnostics (LSP 3.17)
 	// The CustomHandler intercepts the initialize request and parses the raw capabilities JSON
@@ -37,9 +36,9 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 	req.Server.SetUsePullDiagnostics(supportsPullDiagnostics)
 
 	if supportsPullDiagnostics {
-		fmt.Fprintf(os.Stderr, "[DTLS] Using pull diagnostics model (LSP 3.17) - client will request diagnostics\n")
+		log.Info("Using pull diagnostics model (LSP 3.17) - client will request diagnostics")
 	} else {
-		fmt.Fprintf(os.Stderr, "[DTLS] Using push diagnostics model (LSP 3.0) - server will push diagnostics\n")
+		log.Info("Using push diagnostics model (LSP 3.0) - server will push diagnostics")
 	}
 
 	// Store the workspace root
@@ -47,11 +46,11 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 		req.Server.SetRootURI(*params.RootURI)
 		// Convert URI to file path
 		req.Server.SetRootPath(uriutil.URIToPath(*params.RootURI))
-		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root: %s\n", req.Server.RootPath())
+		log.Info("Workspace root: %s", req.Server.RootPath())
 	} else if params.RootPath != nil {
 		req.Server.SetRootPath(*params.RootPath)
 		req.Server.SetRootURI(uriutil.PathToURI(*params.RootPath))
-		fmt.Fprintf(os.Stderr, "[DTLS] Workspace root (from rootPath): %s\n", req.Server.RootPath())
+		log.Info("Workspace root (from rootPath): %s", req.Server.RootPath())
 	}
 
 	// Build server capabilities

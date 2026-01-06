@@ -36,9 +36,9 @@ func TestToCSS(t *testing.T) {
 	})
 
 	t.Run("2025.10 color with hex field", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, 0.42, 0.21},
+			"components": []any{1.0, 0.42, 0.21},
 			"alpha":      1.0,
 			"hex":        "#FF6B35",
 		}
@@ -52,9 +52,9 @@ func TestToCSS(t *testing.T) {
 	})
 
 	t.Run("2025.10 srgb without hex converts to hex", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, 0.42, 0.21},
+			"components": []any{1.0, 0.42, 0.21},
 			"alpha":      1.0,
 		}
 
@@ -67,9 +67,9 @@ func TestToCSS(t *testing.T) {
 	})
 
 	t.Run("2025.10 srgb with alpha < 1 uses rgba", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, 0.42, 0.21},
+			"components": []any{1.0, 0.42, 0.21},
 			"alpha":      0.8,
 		}
 
@@ -82,9 +82,9 @@ func TestToCSS(t *testing.T) {
 	})
 
 	t.Run("2025.10 hsl color space", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "hsl",
-			"components": []interface{}{16.0, 100.0, 60.0},
+			"components": []any{16.0, 100.0, 60.0},
 			"alpha":      1.0,
 		}
 
@@ -97,9 +97,9 @@ func TestToCSS(t *testing.T) {
 	})
 
 	t.Run("2025.10 modern color space uses color() function", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "oklch",
-			"components": []interface{}{0.68, 0.19, 25.0},
+			"components": []any{0.68, 0.19, 25.0},
 			"alpha":      1.0,
 		}
 
@@ -112,9 +112,9 @@ func TestToCSS(t *testing.T) {
 	})
 
 	t.Run("2025.10 component with 'none' keyword", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, "none", 0.21},
+			"components": []any{1.0, "none", 0.21},
 			"alpha":      1.0,
 		}
 
@@ -133,9 +133,9 @@ func TestToHex(t *testing.T) {
 		// FF = 255/255 = 1.0
 		// 6B = 107/255 = 0.41960784313725490196...
 		// 35 = 53/255 = 0.20784313725490196078...
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, 107.0 / 255.0, 53.0 / 255.0},
+			"components": []any{1.0, 107.0 / 255.0, 53.0 / 255.0},
 		}
 
 		colorValue, err := common.ParseColorValue(value, schema.V2025_10)
@@ -150,9 +150,9 @@ func TestToHex(t *testing.T) {
 	})
 
 	t.Run("components with 'none' treat as 0", func(t *testing.T) {
-		value := map[string]interface{}{
+		value := map[string]any{
 			"colorSpace": "srgb",
-			"components": []interface{}{1.0, "none", 0.0},
+			"components": []any{1.0, "none", 0.0},
 		}
 
 		colorValue, err := common.ParseColorValue(value, schema.V2025_10)

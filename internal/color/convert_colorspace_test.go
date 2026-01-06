@@ -19,7 +19,7 @@ func TestAdvancedColorSpaceConversions(t *testing.T) {
 	require.NoError(t, err, "Failed to read fixture file")
 
 	// Parse the fixture
-	var root map[string]interface{}
+	var root map[string]any
 	err = json.Unmarshal(content, &root)
 	require.NoError(t, err, "Failed to parse fixture")
 
@@ -151,9 +151,9 @@ func TestAdvancedColorSpaceConversions(t *testing.T) {
 			require.NotNil(t, tokenData, "Failed to navigate to token path %v", tt.tokenPath)
 
 			// Extract $value
-			tokenMap, ok := tokenData.(map[string]interface{})
+			tokenMap, ok := tokenData.(map[string]any)
 			require.True(t, ok, "Token should be a map")
-			colorValue, ok := tokenMap["$value"].(map[string]interface{})
+			colorValue, ok := tokenMap["$value"].(map[string]any)
 			require.True(t, ok, "Missing or invalid $value node")
 
 			// Verify colorSpace
@@ -174,68 +174,68 @@ func TestAdvancedColorSpaceConversions(t *testing.T) {
 func TestColorSpaceEdgeCases(t *testing.T) {
 	tests := []struct {
 		name        string
-		colorValue  map[string]interface{}
+		colorValue  map[string]any
 		expectedCSS string
 	}{
 		{
 			name: "HWB with insufficient components",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "hwb",
-				"components": []interface{}{120.0},
+				"components": []any{120.0},
 				"alpha":      1.0,
 			},
 			expectedCSS: "",
 		},
 		{
 			name: "OKLAB with insufficient components",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "oklab",
-				"components": []interface{}{0.5, 0.2},
+				"components": []any{0.5, 0.2},
 				"alpha":      1.0,
 			},
 			expectedCSS: "",
 		},
 		{
 			name: "OKLCH with none keyword converts to 0",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "oklch",
-				"components": []interface{}{0.65, "none", 240.0},
+				"components": []any{0.65, "none", 240.0},
 				"alpha":      1.0,
 			},
 			expectedCSS: "oklch(0.65 0.00 240.0)",
 		},
 		{
 			name: "LCH with none keyword converts to 0",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "lch",
-				"components": []interface{}{60.0, "none", 180.0},
+				"components": []any{60.0, "none", 180.0},
 				"alpha":      1.0,
 			},
 			expectedCSS: "lch(60.0 0.0 180.0)",
 		},
 		{
 			name: "LAB with none keyword converts to 0",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "lab",
-				"components": []interface{}{75.0, "none", -50.0},
+				"components": []any{75.0, "none", -50.0},
 				"alpha":      1.0,
 			},
 			expectedCSS: "lab(75.0 0.0 -50.0)",
 		},
 		{
 			name: "color() function with none",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "display-p3",
-				"components": []interface{}{1.0, "none", 0.2},
+				"components": []any{1.0, "none", 0.2},
 				"alpha":      1.0,
 			},
 			expectedCSS: "color(display-p3 1.0000 none 0.2000)",
 		},
 		{
 			name: "Unknown color space uses color() function",
-			colorValue: map[string]interface{}{
+			colorValue: map[string]any{
 				"colorSpace": "unknown-space",
-				"components": []interface{}{0.5, 0.5, 0.5},
+				"components": []any{0.5, 0.5, 0.5},
 				"alpha":      1.0,
 			},
 			expectedCSS: "color(unknown-space 0.5000 0.5000 0.5000)", // Lets browser handle unknown spaces
@@ -254,10 +254,10 @@ func TestColorSpaceEdgeCases(t *testing.T) {
 }
 
 // navigateToPath navigates through a JSON map following the path
-func navigateToPath(data interface{}, path []string) interface{} {
+func navigateToPath(data any, path []string) any {
 	current := data
 	for _, segment := range path {
-		m, ok := current.(map[string]interface{})
+		m, ok := current.(map[string]any)
 		if !ok {
 			return nil
 		}

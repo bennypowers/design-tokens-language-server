@@ -1,8 +1,7 @@
 package textDocument
 
 import (
-	"fmt"
-	"os"
+	"bennypowers.dev/dtls/internal/log"
 
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -10,7 +9,7 @@ import (
 
 // DidOpen handles the textDocument/didOpen notification
 func DidOpen(req *types.RequestContext, params *protocol.DidOpenTextDocumentParams) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Document opened: %s (language: %s, version: %d)\n",
+	log.Info("Document opened: %s (language: %s, version: %d)",
 		params.TextDocument.URI, params.TextDocument.LanguageID, int(params.TextDocument.Version))
 
 	err := req.Server.DocumentManager().DidOpen(params.TextDocument.URI, params.TextDocument.LanguageID,
@@ -24,7 +23,7 @@ func DidOpen(req *types.RequestContext, params *protocol.DidOpenTextDocumentPara
 	if !req.Server.UsePullDiagnostics() {
 		if glspCtx := req.Server.GLSPContext(); glspCtx != nil {
 			if err := req.Server.PublishDiagnostics(glspCtx, params.TextDocument.URI); err != nil {
-				fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", params.TextDocument.URI, err)
+				log.Info("Warning: failed to publish diagnostics for %s: %v", params.TextDocument.URI, err)
 			}
 		}
 	}
@@ -37,7 +36,7 @@ func DidChange(req *types.RequestContext, params *protocol.DidChangeTextDocument
 	uri := params.TextDocument.URI
 	version := int(params.TextDocument.Version)
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Document changed: %s (version: %d, changes: %d)\n", uri, version, len(params.ContentChanges))
+	log.Info("Document changed: %s (version: %d, changes: %d)", uri, version, len(params.ContentChanges))
 
 	// Convert any[] to proper type, filtering out invalid entries
 	changes := make([]protocol.TextDocumentContentChangeEvent, 0, len(params.ContentChanges))
@@ -57,7 +56,7 @@ func DidChange(req *types.RequestContext, params *protocol.DidChangeTextDocument
 	if !req.Server.UsePullDiagnostics() {
 		if glspCtx := req.Server.GLSPContext(); glspCtx != nil {
 			if err := req.Server.PublishDiagnostics(glspCtx, uri); err != nil {
-				fmt.Fprintf(os.Stderr, "[DTLS] Warning: failed to publish diagnostics for %s: %v\n", uri, err)
+				log.Info("Warning: failed to publish diagnostics for %s: %v", uri, err)
 			}
 		}
 	}
@@ -69,7 +68,7 @@ func DidChange(req *types.RequestContext, params *protocol.DidChangeTextDocument
 func DidClose(req *types.RequestContext, params *protocol.DidCloseTextDocumentParams) error {
 	uri := params.TextDocument.URI
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Document closed: %s\n", uri)
+	log.Info("Document closed: %s", uri)
 
 	return req.Server.DocumentManager().DidClose(uri)
 }

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"bennypowers.dev/dtls/internal/log"
 	"github.com/bmatcuk/doublestar/v4"
 )
 
@@ -81,7 +82,7 @@ func (s *Server) loadDiscoveredFiles(tokenFiles []string, opts *TokenFileOptions
 			errs = append(errs, fmt.Errorf("failed to load %s: %w", filePath, err))
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "[DTLS] Loaded: %s\n", filePath)
+		log.Info("Loaded: %s", filePath)
 	}
 
 	if len(errs) > 0 {
@@ -121,8 +122,8 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Loading token files from: %s\n", config.RootDir)
-	fmt.Fprintf(os.Stderr, "[DTLS] Patterns: %v\n", config.Patterns)
+	log.Info("Loading token files from: %s", config.RootDir)
+	log.Info("Patterns: %v", config.Patterns)
 
 	// Collect matching token files
 	var tokenFiles []string
@@ -131,7 +132,7 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 		return fmt.Errorf("failed to walk directory: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Found %d token files\n", len(tokenFiles))
+	log.Info("Found %d token files", len(tokenFiles))
 
 	// Load discovered files
 	opts := &TokenFileOptions{
@@ -142,7 +143,7 @@ func (s *Server) LoadTokenFiles(config TokenFileConfig) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Total tokens loaded: %d\n", s.tokens.Count())
+	log.Info("Total tokens loaded: %d", s.tokens.Count())
 	return nil
 }
 
@@ -157,7 +158,7 @@ func matchGlobPattern(pattern, path string) (bool, error) {
 
 // ReloadTokens clears and reloads all token files
 func (s *Server) ReloadTokens(config TokenFileConfig) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Reloading all tokens\n")
+	log.Info("Reloading all tokens")
 
 	// Clear existing tokens
 	s.tokens.Clear()

@@ -1,9 +1,9 @@
 package semantictokens
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
 	"math"
-	"os"
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/lsp/types"
@@ -25,7 +25,7 @@ type SemanticTokenIntermediate struct {
 // SemanticTokensFull handles the textDocument/semanticTokens/full request
 func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
 	uri := params.TextDocument.URI
-	fmt.Fprintf(os.Stderr, "[DTLS] Semantic tokens requested for: %s\n", uri)
+	log.Info("Semantic tokens requested for: %s", uri)
 
 	doc := req.Server.Document(uri)
 	if doc == nil {

@@ -1,8 +1,8 @@
 package diagnostic
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
-	"os"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/parser/css"
@@ -16,11 +16,11 @@ import (
 // DocumentDiagnostic handles the textDocument/diagnostic request (pull diagnostics)
 func DocumentDiagnostic(req *types.RequestContext, params *DocumentDiagnosticParams) (any, error) {
 	uri := params.TextDocument.URI
-	fmt.Fprintf(os.Stderr, "[DTLS] Pull diagnostics requested for: %s\n", uri)
+	log.Info("Pull diagnostics requested for: %s", uri)
 
 	diagnostics, err := GetDiagnostics(req.Server, uri)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Error getting diagnostics: %v\n", err)
+		log.Info("Error getting diagnostics: %v", err)
 		return nil, err
 	}
 

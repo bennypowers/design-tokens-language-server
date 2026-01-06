@@ -74,7 +74,7 @@ func objectColorToCSS(c *common.ObjectColorValue) string {
 }
 
 // srgbToCSS converts sRGB components to CSS
-func srgbToCSS(components []interface{}, alpha float64) string {
+func srgbToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -98,7 +98,7 @@ func srgbToCSS(components []interface{}, alpha float64) string {
 }
 
 // hslToCSS converts HSL components to CSS
-func hslToCSS(components []interface{}, alpha float64) string {
+func hslToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -115,7 +115,7 @@ func hslToCSS(components []interface{}, alpha float64) string {
 }
 
 // hwbToCSS converts HWB components to CSS
-func hwbToCSS(components []interface{}, alpha float64) string {
+func hwbToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -132,7 +132,7 @@ func hwbToCSS(components []interface{}, alpha float64) string {
 }
 
 // oklchToCSS converts OKLCH components to CSS
-func oklchToCSS(components []interface{}, alpha float64) string {
+func oklchToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -149,7 +149,7 @@ func oklchToCSS(components []interface{}, alpha float64) string {
 }
 
 // oklabToCSS converts OKLAB components to CSS
-func oklabToCSS(components []interface{}, alpha float64) string {
+func oklabToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -166,7 +166,7 @@ func oklabToCSS(components []interface{}, alpha float64) string {
 }
 
 // lchToCSS converts LCH components to CSS
-func lchToCSS(components []interface{}, alpha float64) string {
+func lchToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -183,7 +183,7 @@ func lchToCSS(components []interface{}, alpha float64) string {
 }
 
 // labToCSS converts LAB components to CSS
-func labToCSS(components []interface{}, alpha float64) string {
+func labToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -200,7 +200,7 @@ func labToCSS(components []interface{}, alpha float64) string {
 }
 
 // colorFunctionToCSS converts color space to CSS color() function
-func colorFunctionToCSS(colorSpace string, components []interface{}, alpha float64) string {
+func colorFunctionToCSS(colorSpace string, components []any, alpha float64) string {
 	if len(components) < 3 {
 		return ""
 	}
@@ -219,7 +219,7 @@ func colorFunctionToCSS(colorSpace string, components []interface{}, alpha float
 
 // componentToFloat converts a component value to float64
 // Handles both numeric values and "none" keyword
-func componentToFloat(component interface{}) float64 {
+func componentToFloat(component any) float64 {
 	switch v := component.(type) {
 	case float64:
 		return v
@@ -235,7 +235,7 @@ func componentToFloat(component interface{}) float64 {
 }
 
 // componentToString converts a component to string for CSS color() function
-func componentToString(component interface{}) string {
+func componentToString(component any) string {
 	switch v := component.(type) {
 	case float64:
 		return fmt.Sprintf("%.4f", v)
