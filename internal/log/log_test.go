@@ -3,6 +3,7 @@ package log_test
 import (
 	"bytes"
 	"strings"
+	"sync"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/log"
@@ -144,4 +145,103 @@ func TestLevelString(t *testing.T) {
 			assert.Equal(t, tt.expected, tt.level.String())
 		})
 	}
+}
+
+func TestConcurrentLogging(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(nil)
+	log.SetLevel(log.LevelDebug)
+
+	// Test concurrent logging from multiple goroutines
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	messagesPerGoroutine := 5
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < messagesPerGoroutine; j++ {
+				log.Info("message from goroutine %d iteration %d", id, j)
+				log.Debug("debug from goroutine %d iteration %d", id, j)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify all messages are present without corruption
+	output := buf.String()
+	lines := strings.Split(output, "\n")
+
+	// Should have numGoroutines * messagesPerGoroutine * 2 (Info + Debug) messages
+	// Plus empty lines from final newlines
+	expectedMessages := numGoroutines * messagesPerGoroutine * 2
+	nonEmptyLines := 0
+	for _, line := range lines {
+		if line != "" {
+			nonEmptyLines++
+		}
+	}
+
+	assert.Equal(t, expectedMessages, nonEmptyLines, "All messages should be logged without loss")
+
+	// Verify no message corruption (each line should have [DTLS] prefix and level)
+	for _, line := range lines {
+		if line != "" {
+			assert.Contains(t, line, "[DTLS]", "Each line should have prefix")
+			// Should have either INFO: or DEBUG:
+			hasLevel := strings.Contains(line, "INFO:") || strings.Contains(line, "DEBUG:")
+			assert.True(t, hasLevel, "Each line should have level label")
+		}
+	}
+}
+
+func TestConcurrentLevelChanges(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(nil)
+
+	// Test changing log level while logging is happening
+	var wg sync.WaitGroup
+
+	// Goroutine that constantly changes log level
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		levels := []log.Level{log.LevelDebug, log.LevelInfo, log.LevelWarn, log.LevelError}
+		for i := 0; i < 100; i++ {
+			log.SetLevel(levels[i%len(levels)])
+		}
+	}()
+
+	// Goroutines that log messages
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < 20; j++ {
+				log.Debug("debug %d-%d", id, j)
+				log.Info("info %d-%d", id, j)
+				log.Warn("warn %d-%d", id, j)
+				log.Error("error %d-%d", id, j)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify no corruption (all lines should be well-formed)
+	output := buf.String()
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if line != "" {
+			assert.Contains(t, line, "[DTLS]", "Each line should have prefix")
+		}
+	}
+
+	// Verify we can still get/set level after concurrent operations
+	log.SetLevel(log.LevelInfo)
+	assert.Equal(t, log.LevelInfo, log.GetLevel())
 }

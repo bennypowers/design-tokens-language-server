@@ -120,9 +120,6 @@ func log(level Level, format string, args ...interface{}) {
 	}
 
 	// Format: [DTLS] LEVEL: message
-	// Prepend prefix and level label to the args
-	newArgs := make([]interface{}, 0, len(args)+2)
-	newArgs = append(newArgs, prefix, levelLabel)
-	newArgs = append(newArgs, args...)
-	fmt.Fprintf(output, "%s %s: "+format+"\n", newArgs...)
+	message := fmt.Sprintf(format, args...)
+	fmt.Fprintf(output, "%s %s: %s\n", prefix, levelLabel, message)
 }
