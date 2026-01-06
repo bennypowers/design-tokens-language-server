@@ -249,6 +249,7 @@ func componentToFloat(component any) float64 {
 			return 0.0
 		}
 	}
+	// Unknown types default to 0.0; upstream ParseColorValue validates types
 	return 0.0
 }
 

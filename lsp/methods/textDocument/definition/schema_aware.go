@@ -1,11 +1,13 @@
 package definition
 
 import (
+	"os"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/parser/common"
 	posutil "bennypowers.dev/dtls/internal/position"
+	"bennypowers.dev/dtls/internal/uriutil"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -89,6 +91,33 @@ func findJSONPointerReferenceAtPosition(line string, pos protocol.Position) stri
 	return ""
 }
 
+// getLineText retrieves the text of a specific line from a URI.
+// First checks the document manager (for open files), then falls back to reading from disk.
+func getLineText(req *types.RequestContext, uri string, lineNum uint32) (string, error) {
+	// Try to get from document manager first (for open files)
+	if doc := req.Server.DocumentManager().Get(uri); doc != nil {
+		lines := strings.Split(doc.Content(), "\n")
+		if int(lineNum) < len(lines) {
+			return lines[lineNum], nil
+		}
+		return "", nil
+	}
+
+	// Fall back to reading from disk
+	filePath := uriutil.URIToPath(uri)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	if int(lineNum) < len(lines) {
+		return lines[lineNum], nil
+	}
+
+	return "", nil
+}
+
 // DefinitionForTokenFile handles go-to-definition for references within token files
 func DefinitionForTokenFile(req *types.RequestContext, doc *documents.Document, position protocol.Position) (any, error) {
 	// Find reference at the cursor position
@@ -105,15 +134,33 @@ func DefinitionForTokenFile(req *types.RequestContext, doc *documents.Document, 
 
 	// Return the definition location
 	if token.DefinitionURI != "" && len(token.Path) > 0 {
-		// Calculate token name length for range highlighting
-		// Use UTF-16 code units (LSP standard) instead of byte length
-		tokenNameLen := uint32(posutil.StringLengthUTF16(token.Name))
+		// Get the line text where the token is defined
+		// token.Character is a byte offset, so we need to convert to UTF-16
+		lineText, err := getLineText(req, token.DefinitionURI, token.Line)
+		if err != nil || lineText == "" {
+			// If we can't get the line text, fall back to zero-width range
+			location := protocol.Location{
+				URI: token.DefinitionURI,
+				Range: protocol.Range{
+					Start: protocol.Position{Line: token.Line, Character: 0},
+					End:   protocol.Position{Line: token.Line, Character: 0},
+				},
+			}
+			return []protocol.Location{location}, nil
+		}
+
+		// Convert byte offset to UTF-16 position
+		startCharUTF16 := uint32(posutil.ByteOffsetToUTF16(lineText, int(token.Character)))
+
+		// Calculate end position: start + token name length in UTF-16
+		tokenNameLenUTF16 := uint32(posutil.StringLengthUTF16(token.Name))
+		endCharUTF16 := startCharUTF16 + tokenNameLenUTF16
 
 		location := protocol.Location{
 			URI: token.DefinitionURI,
 			Range: protocol.Range{
-				Start: protocol.Position{Line: token.Line, Character: token.Character},
-				End:   protocol.Position{Line: token.Line, Character: token.Character + tokenNameLen},
+				Start: protocol.Position{Line: token.Line, Character: startCharUTF16},
+				End:   protocol.Position{Line: token.Line, Character: endCharUTF16},
 			},
 		}
 

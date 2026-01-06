@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 )
 
 // Level represents the severity of a log message
@@ -24,9 +25,13 @@ const (
 var (
 	mu       sync.Mutex
 	output   io.Writer = os.Stderr
-	minLevel Level     = LevelInfo
-	prefix   string    = "[DTLS]"
+	minLevel atomic.Int32
+	prefix   string = "[DTLS]"
 )
+
+func init() {
+	minLevel.Store(int32(LevelInfo))
+}
 
 // SetOutput sets the output destination (primarily for testing)
 func SetOutput(w io.Writer) {
@@ -37,16 +42,12 @@ func SetOutput(w io.Writer) {
 
 // SetLevel sets the minimum log level to display
 func SetLevel(level Level) {
-	mu.Lock()
-	defer mu.Unlock()
-	minLevel = level
+	minLevel.Store(int32(level))
 }
 
 // GetLevel returns the current minimum log level
 func GetLevel() Level {
-	mu.Lock()
-	defer mu.Unlock()
-	return minLevel
+	return Level(minLevel.Load())
 }
 
 // Debug logs a debug message (verbose debugging information)
@@ -70,10 +71,16 @@ func Error(format string, args ...interface{}) {
 }
 
 func log(level Level, format string, args ...interface{}) {
+	// Fast path: check level without lock to avoid contention for filtered messages
+	if int32(level) < minLevel.Load() {
+		return
+	}
+
 	mu.Lock()
 	defer mu.Unlock()
 
-	if level < minLevel {
+	// Re-check under lock in case level changed between fast-path check and lock acquisition
+	if int32(level) < minLevel.Load() {
 		return
 	}
 

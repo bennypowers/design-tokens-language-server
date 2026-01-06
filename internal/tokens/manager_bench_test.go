@@ -57,16 +57,25 @@ func BenchmarkManager_Get(b *testing.B) {
 			keyMid := fmt.Sprintf("color-token-%d", size/2)
 			keyEnd := fmt.Sprintf("color-token-%d", size-1)
 
-			b.ReportAllocs()
-			b.ResetTimer()
-
-			// Benchmark: lookup tokens
-			for i := 0; i < b.N; i++ {
-				// Test lookup at beginning, middle, and end
-				_ = m.Get(keyStart)
-				_ = m.Get(keyMid)
-				_ = m.Get(keyEnd)
-			}
+			// Benchmark: lookup tokens at different positions
+			b.Run("start", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = m.Get(keyStart)
+				}
+			})
+			b.Run("middle", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = m.Get(keyMid)
+				}
+			})
+			b.Run("end", func(b *testing.B) {
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					_ = m.Get(keyEnd)
+				}
+			})
 		})
 	}
 }

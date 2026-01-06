@@ -122,8 +122,8 @@ func TestToCSS(t *testing.T) {
 		require.NoError(t, err)
 
 		css := color.ToCSS(colorValue)
-		// Should handle 'none' keyword (treat as 0 for hex, or preserve for color())
-		assert.NotEmpty(t, css)
+		// 'none' treated as 0: rgb(255, 0, 54) = #ff0036 (0.21 * 255 ≈ 54)
+		assert.Equal(t, "#ff0036", css)
 	})
 }
 
