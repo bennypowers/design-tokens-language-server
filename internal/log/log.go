@@ -22,11 +22,28 @@ const (
 	LevelError
 )
 
+// String returns the string representation of the log level
+func (l Level) String() string {
+	switch l {
+	case LevelDebug:
+		return "LevelDebug"
+	case LevelInfo:
+		return "LevelInfo"
+	case LevelWarn:
+		return "LevelWarn"
+	case LevelError:
+		return "LevelError"
+	default:
+		return fmt.Sprintf("Level(%d)", l)
+	}
+}
+
+const prefix = "[DTLS]"
+
 var (
 	mu       sync.Mutex
 	output   io.Writer = os.Stderr
 	minLevel atomic.Int32
-	prefix   string = "[DTLS]"
 )
 
 func init() {

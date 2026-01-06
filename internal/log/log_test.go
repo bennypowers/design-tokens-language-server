@@ -126,3 +126,22 @@ func TestGetLevel(t *testing.T) {
 	log.SetLevel(log.LevelError)
 	assert.Equal(t, log.LevelError, log.GetLevel())
 }
+
+func TestLevelString(t *testing.T) {
+	tests := []struct {
+		level    log.Level
+		expected string
+	}{
+		{log.LevelDebug, "LevelDebug"},
+		{log.LevelInfo, "LevelInfo"},
+		{log.LevelWarn, "LevelWarn"},
+		{log.LevelError, "LevelError"},
+		{log.Level(99), "Level(99)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.level.String())
+		})
+	}
+}
