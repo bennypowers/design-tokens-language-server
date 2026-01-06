@@ -172,6 +172,8 @@ func TestAdvancedColorSpaceConversions(t *testing.T) {
 }
 
 func TestColorSpaceEdgeCases(t *testing.T) {
+	// Note: Empty CSS output ("") indicates conversion failure for invalid input.
+	// This is the expected graceful degradation behavior.
 	tests := []struct {
 		name        string
 		colorValue  map[string]any

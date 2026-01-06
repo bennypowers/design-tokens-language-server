@@ -98,20 +98,20 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 	if len(errs) > 0 {
 		// Report partial success if some tokens loaded
 		if successCount > 0 {
-			log.Info("Loaded %d/%d tokens from %s (%d failed)\n",
+			log.Info("Loaded %d/%d tokens from %s (%d failed)",
 				successCount, len(parsedTokens), filePath, len(errs))
 		} else {
-			log.Info("Failed to load any tokens from %s\n", filePath)
+			log.Info("Failed to load any tokens from %s", filePath)
 		}
 		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
 
 	// Log groupMarkers if provided (for future use when parsers support them)
 	if len(opts.GroupMarkers) > 0 {
-		log.Info("Loaded %d tokens from %s (prefix: %s, groupMarkers: %v)\n",
+		log.Info("Loaded %d tokens from %s (prefix: %s, groupMarkers: %v)",
 			successCount, filePath, opts.Prefix, opts.GroupMarkers)
 	} else {
-		log.Info("Loaded %d tokens from %s\n", successCount, filePath)
+		log.Info("Loaded %d tokens from %s", successCount, filePath)
 	}
 	return nil
 }

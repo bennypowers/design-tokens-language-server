@@ -23,7 +23,7 @@ func DidOpen(req *types.RequestContext, params *protocol.DidOpenTextDocumentPara
 	if !req.Server.UsePullDiagnostics() {
 		if glspCtx := req.Server.GLSPContext(); glspCtx != nil {
 			if err := req.Server.PublishDiagnostics(glspCtx, params.TextDocument.URI); err != nil {
-				log.Info("Warning: failed to publish diagnostics for %s: %v", params.TextDocument.URI, err)
+				log.Warn("Failed to publish diagnostics for %s: %v", params.TextDocument.URI, err)
 			}
 		}
 	}
@@ -56,7 +56,7 @@ func DidChange(req *types.RequestContext, params *protocol.DidChangeTextDocument
 	if !req.Server.UsePullDiagnostics() {
 		if glspCtx := req.Server.GLSPContext(); glspCtx != nil {
 			if err := req.Server.PublishDiagnostics(glspCtx, uri); err != nil {
-				log.Info("Warning: failed to publish diagnostics for %s: %v", uri, err)
+				log.Warn("Failed to publish diagnostics for %s: %v", uri, err)
 			}
 		}
 	}

@@ -157,7 +157,7 @@ func BenchmarkManager_MultiFile(b *testing.B) {
 
 					for tokenIdx := 0; tokenIdx < tokensPerFile; tokenIdx++ {
 						token := &Token{
-							Name:          fmt.Sprintf("color-token-%d", tokenIdx),
+							Name:          fmt.Sprintf("file%d-color-token-%d", fileIdx, tokenIdx),
 							Value:         "#FF6B35",
 							Type:          "color",
 							FilePath:      filePath,

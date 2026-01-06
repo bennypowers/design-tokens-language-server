@@ -5,7 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/parser/common"
-	"bennypowers.dev/dtls/internal/position"
+	posutil "bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -45,8 +45,8 @@ func findCurlyBraceReferenceAtPosition(line string, pos protocol.Position) strin
 		// match[2], match[3] - captured reference without braces
 
 		// Convert byte offsets to UTF-16 positions
-		matchStartUTF16 := position.ByteOffsetToUTF16(line, match[0])
-		matchEndUTF16 := position.ByteOffsetToUTF16(line, match[1])
+		matchStartUTF16 := posutil.ByteOffsetToUTF16(line, match[0])
+		matchEndUTF16 := posutil.ByteOffsetToUTF16(line, match[1])
 
 		// Check if cursor is within this match
 		if pos.Character >= uint32(matchStartUTF16) && pos.Character <= uint32(matchEndUTF16) {
@@ -72,8 +72,8 @@ func findJSONPointerReferenceAtPosition(line string, pos protocol.Position) stri
 		// match[2], match[3] - JSON Pointer path (e.g., "#/color/primary")
 
 		// Convert byte offsets to UTF-16 positions
-		matchStartUTF16 := position.ByteOffsetToUTF16(line, match[0])
-		matchEndUTF16 := position.ByteOffsetToUTF16(line, match[1])
+		matchStartUTF16 := posutil.ByteOffsetToUTF16(line, match[0])
+		matchEndUTF16 := posutil.ByteOffsetToUTF16(line, match[1])
 
 		// Check if cursor is within this match
 		if pos.Character >= uint32(matchStartUTF16) && pos.Character <= uint32(matchEndUTF16) {
@@ -106,7 +106,8 @@ func DefinitionForTokenFile(req *types.RequestContext, doc *documents.Document, 
 	// Return the definition location
 	if token.DefinitionURI != "" && len(token.Path) > 0 {
 		// Calculate token name length for range highlighting
-		tokenNameLen := uint32(len(token.Name))
+		// Use UTF-16 code units (LSP standard) instead of byte length
+		tokenNameLen := uint32(posutil.StringLengthUTF16(token.Name))
 
 		location := protocol.Location{
 			URI: token.DefinitionURI,

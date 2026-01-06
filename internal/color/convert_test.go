@@ -107,7 +107,7 @@ func TestToCSS(t *testing.T) {
 		require.NoError(t, err)
 
 		css := color.ToCSS(colorValue)
-		// Should use CSS color() function
+		// Should use CSS oklch() function for modern color space
 		assert.Contains(t, css, "oklch(")
 	})
 

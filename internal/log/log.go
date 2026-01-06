@@ -77,6 +77,11 @@ func log(level Level, format string, args ...interface{}) {
 		return
 	}
 
+	// Skip logging if output is nil (e.g., during test cleanup)
+	if output == nil {
+		return
+	}
+
 	// Format: [DTLS] message
 	fmt.Fprintf(output, prefix+" "+format+"\n", args...)
 }

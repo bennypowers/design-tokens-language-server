@@ -80,6 +80,17 @@ func objectColorToCSS(c *common.ObjectColorValue) string {
 	}
 }
 
+// clampInt restricts an integer to the 0-255 range for defense-in-depth
+func clampInt(v int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > 255 {
+		return 255
+	}
+	return v
+}
+
 // srgbToCSS converts sRGB components to CSS
 func srgbToCSS(components []any, alpha float64) string {
 	if len(components) < 3 {
@@ -90,10 +101,10 @@ func srgbToCSS(components []any, alpha float64) string {
 	g := math.Max(0, math.Min(1, componentToFloat(components[1])))
 	b := math.Max(0, math.Min(1, componentToFloat(components[2])))
 
-	// Convert 0-1 range to 0-255
-	rInt := int(math.Round(r * 255))
-	gInt := int(math.Round(g * 255))
-	bInt := int(math.Round(b * 255))
+	// Convert 0-1 range to 0-255 with final clamping for robustness
+	rInt := clampInt(int(math.Round(r * 255)))
+	gInt := clampInt(int(math.Round(g * 255)))
+	bInt := clampInt(int(math.Round(b * 255)))
 
 	// If alpha is 1.0, use hex or rgb
 	if alpha >= common.AlphaThreshold {
@@ -276,10 +287,10 @@ func ToHex(c *common.ObjectColorValue) (string, error) {
 	g := math.Max(0, math.Min(1, componentToFloat(c.Components[1])))
 	b := math.Max(0, math.Min(1, componentToFloat(c.Components[2])))
 
-	// Convert 0-1 range to 0-255
-	rInt := int(math.Round(r * 255))
-	gInt := int(math.Round(g * 255))
-	bInt := int(math.Round(b * 255))
+	// Convert 0-1 range to 0-255 with final clamping for robustness
+	rInt := clampInt(int(math.Round(r * 255)))
+	gInt := clampInt(int(math.Round(g * 255)))
+	bInt := clampInt(int(math.Round(b * 255)))
 
 	return fmt.Sprintf("#%02x%02x%02x", rInt, gInt, bInt), nil
 }
