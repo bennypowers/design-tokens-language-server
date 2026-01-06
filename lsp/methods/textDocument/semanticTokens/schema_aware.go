@@ -1,35 +1,39 @@
 package semantictokens
 
 import (
-	"regexp"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/parser/common"
 	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/internal/schema"
 	"bennypowers.dev/dtls/lsp/types"
 )
 
-// Token reference pattern: {token.reference.path}
-var tokenReferenceRegexp = regexp.MustCompile(`\{([^}]+)\}`)
-
-// JSON Pointer reference pattern: "$ref": "#/path/to/token"
-var jsonPointerRegexp = regexp.MustCompile(`"\$ref"\s*:\s*"(#[^"]+)"`)
-
-// $root keyword pattern
-var rootKeywordRegexp = regexp.MustCompile(`"\$root"\s*:`)
+// Token type constants matching LSP SemanticTokensLegend indices
+const (
+	TokenTypeVariable = 0 // "variable" - first part of reference (class)
+	TokenTypeProperty = 1 // "property" - subsequent parts of reference
+	TokenTypeKeyword  = 3 // "keyword" - $ref, $root keywords
+	TokenTypeString   = 4 // "string" - JSON Pointer paths
+)
 
 // detectSchemaVersion detects the schema version from document content
+// Uses regex to extract the actual $schema field value to avoid false positives
 func detectSchemaVersion(content string) schema.SchemaVersion {
-	// Simple detection based on $schema field
-	if strings.Contains(content, `"$schema"`) {
-		if strings.Contains(content, "2025.10") {
-			return schema.V2025_10
-		}
-		if strings.Contains(content, "draft") {
-			return schema.Draft
-		}
+	matches := common.SchemaFieldRegexp.FindStringSubmatch(content)
+	if len(matches) < 2 {
+		return schema.Draft // Default to draft if no $schema found
 	}
+
+	schemaURL := matches[1]
+	if strings.Contains(schemaURL, "2025.10") {
+		return schema.V2025_10
+	}
+	if strings.Contains(schemaURL, "draft") {
+		return schema.Draft
+	}
+
 	return schema.Draft
 }
 
@@ -38,7 +42,7 @@ func detectSchemaVersion(content string) schema.SchemaVersion {
 func extractJSONPointerTokens(line string, lineNum int) []SemanticTokenIntermediate {
 	tokens := []SemanticTokenIntermediate{}
 
-	matches := jsonPointerRegexp.FindAllStringSubmatchIndex(line, -1)
+	matches := common.JSONPointerReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
 	if matches == nil {
 		return tokens
 	}
@@ -57,7 +61,7 @@ func extractJSONPointerTokens(line string, lineNum int) []SemanticTokenIntermedi
 				Line:           lineNum,
 				StartChar:      refStartUTF16,
 				Length:         4, // "$ref"
-				TokenType:      3, // keyword type
+				TokenType:      TokenTypeKeyword,
 				TokenModifiers: 0,
 			})
 		}
@@ -70,7 +74,7 @@ func extractJSONPointerTokens(line string, lineNum int) []SemanticTokenIntermedi
 			Line:           lineNum,
 			StartChar:      pointerStartUTF16,
 			Length:         position.StringLengthUTF16(pointerPath),
-			TokenType:      4, // string/reference type
+			TokenType:      TokenTypeString,
 			TokenModifiers: 0,
 		})
 	}
@@ -82,7 +86,7 @@ func extractJSONPointerTokens(line string, lineNum int) []SemanticTokenIntermedi
 func extractRootKeywordTokens(line string, lineNum int) []SemanticTokenIntermediate {
 	tokens := []SemanticTokenIntermediate{}
 
-	matches := rootKeywordRegexp.FindAllStringIndex(line, -1)
+	matches := common.RootKeywordRegexp.FindAllStringIndex(line, -1)
 	if matches == nil {
 		return tokens
 	}
@@ -98,7 +102,7 @@ func extractRootKeywordTokens(line string, lineNum int) []SemanticTokenIntermedi
 				Line:           lineNum,
 				StartChar:      rootStartUTF16,
 				Length:         5, // "$root"
-				TokenType:      3, // keyword type
+				TokenType:      TokenTypeKeyword,
 				TokenModifiers: 0,
 			})
 		}
@@ -144,7 +148,7 @@ func extractCurlyBraceReferences(ctx types.ServerContext, line string, lineNum i
 	tokens := []SemanticTokenIntermediate{}
 
 	// Find all token references in this line
-	matches := tokenReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
+	matches := common.CurlyBraceReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
 	if matches == nil {
 		return tokens
 	}
@@ -172,9 +176,9 @@ func extractCurlyBraceReferences(ctx types.ServerContext, line string, lineNum i
 		partStartChar := position.ByteOffsetToUTF16(line, referenceStart)
 
 		for i, part := range parts {
-			tokenType := 1 // property (default)
+			tokenType := TokenTypeProperty
 			if i == 0 {
-				tokenType = 0 // class (for first part)
+				tokenType = TokenTypeVariable
 			}
 
 			tokens = append(tokens, SemanticTokenIntermediate{

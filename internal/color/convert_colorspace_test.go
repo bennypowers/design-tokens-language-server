@@ -1,6 +1,7 @@
 package color
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"bennypowers.dev/dtls/internal/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func TestAdvancedColorSpaceConversions(t *testing.T) {
@@ -19,8 +19,8 @@ func TestAdvancedColorSpaceConversions(t *testing.T) {
 	require.NoError(t, err, "Failed to read fixture file")
 
 	// Parse the fixture
-	var root yaml.Node
-	err = yaml.Unmarshal(content, &root)
+	var root map[string]interface{}
+	err = json.Unmarshal(content, &root)
 	require.NoError(t, err, "Failed to parse fixture")
 
 	tests := []struct {
@@ -147,17 +147,14 @@ func TestAdvancedColorSpaceConversions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Navigate to the token in the fixture
-			node := navigateToPath(&root, tt.tokenPath)
-			require.NotNil(t, node, "Failed to navigate to token path %v", tt.tokenPath)
+			tokenData := navigateToPath(root, tt.tokenPath)
+			require.NotNil(t, tokenData, "Failed to navigate to token path %v", tt.tokenPath)
 
 			// Extract $value
-			valueNode := findChildNode(node, "$value")
-			require.NotNil(t, valueNode, "Missing $value node")
-
-			// Convert node to map
-			var colorValue map[string]interface{}
-			err := valueNode.Decode(&colorValue)
-			require.NoError(t, err, "Failed to decode color value")
+			tokenMap, ok := tokenData.(map[string]interface{})
+			require.True(t, ok, "Token should be a map")
+			colorValue, ok := tokenMap["$value"].(map[string]interface{})
+			require.True(t, ok, "Missing or invalid $value node")
 
 			// Verify colorSpace
 			colorSpace, ok := colorValue["colorSpace"].(string)
@@ -235,13 +232,13 @@ func TestColorSpaceEdgeCases(t *testing.T) {
 			expectedCSS: "color(display-p3 1.0000 none 0.2000)",
 		},
 		{
-			name: "Unknown color space falls back to hex",
+			name: "Unknown color space uses color() function",
 			colorValue: map[string]interface{}{
 				"colorSpace": "unknown-space",
 				"components": []interface{}{0.5, 0.5, 0.5},
 				"alpha":      1.0,
 			},
-			expectedCSS: "#808080", // Falls back to hex conversion
+			expectedCSS: "color(unknown-space 0.5000 0.5000 0.5000)", // Lets browser handle unknown spaces
 		},
 	}
 
@@ -256,33 +253,19 @@ func TestColorSpaceEdgeCases(t *testing.T) {
 	}
 }
 
-// navigateToPath navigates through a YAML node tree following the path
-func navigateToPath(node *yaml.Node, path []string) *yaml.Node {
-	current := node
+// navigateToPath navigates through a JSON map following the path
+func navigateToPath(data interface{}, path []string) interface{} {
+	current := data
 	for _, segment := range path {
-		current = findChildNode(current, segment)
-		if current == nil {
+		m, ok := current.(map[string]interface{})
+		if !ok {
 			return nil
 		}
+		next, exists := m[segment]
+		if !exists {
+			return nil
+		}
+		current = next
 	}
 	return current
-}
-
-// findChildNode finds a child node by key
-func findChildNode(node *yaml.Node, key string) *yaml.Node {
-	// Handle document root
-	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
-		node = node.Content[0]
-	}
-
-	// Navigate mapping nodes
-	if node.Kind == yaml.MappingNode {
-		for i := 0; i < len(node.Content); i += 2 {
-			if node.Content[i].Value == key {
-				return node.Content[i+1]
-			}
-		}
-	}
-
-	return nil
 }

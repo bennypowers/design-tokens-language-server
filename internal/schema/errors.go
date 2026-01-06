@@ -101,10 +101,10 @@ func NewMixedSchemaFeaturesError(filePath, declaredSchema string, conflictingFea
 
 // ConflictingRootTokensError represents both $root and groupMarkers present
 type ConflictingRootTokensError struct {
-	FilePath       string
-	GroupPath      string
-	RootTokenName  string
-	MarkerName     string
+	FilePath      string
+	GroupPath     string
+	RootTokenName string
+	MarkerName    string
 }
 
 func (e *ConflictingRootTokensError) Error() string {
@@ -128,10 +128,10 @@ func NewConflictingRootTokensError(filePath, groupPath, rootTokenName, markerNam
 
 // InvalidColorFormatError represents color value format mismatch
 type InvalidColorFormatError struct {
-	FilePath      string
-	TokenPath     string
-	SchemaVersion string
-	FoundFormat   string
+	FilePath       string
+	TokenPath      string
+	SchemaVersion  string
+	FoundFormat    string
 	ExpectedFormat string
 }
 
@@ -157,7 +157,7 @@ func NewInvalidColorFormatError(filePath, tokenPath, schemaVersion, foundFormat,
 
 // CircularReferenceError represents a circular reference
 type CircularReferenceError struct {
-	FilePath  string
+	FilePath       string
 	ReferenceChain []string
 }
 

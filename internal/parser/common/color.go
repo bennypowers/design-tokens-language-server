@@ -49,10 +49,6 @@ func (o *ObjectColorValue) ToCSS() string {
 	// Otherwise, convert to CSS color() function
 	// For simplicity, we'll generate basic CSS color() syntax
 	// Full implementation would handle all 14 color spaces
-	alpha := 1.0
-	if o.Alpha != nil {
-		alpha = *o.Alpha
-	}
 
 	// Convert components to string
 	var compStr string
@@ -70,8 +66,11 @@ func (o *ObjectColorValue) ToCSS() string {
 		}
 	}
 
-	// Generate CSS color() function
-	return fmt.Sprintf("color(%s %s / %.4g)", o.ColorSpace, compStr, alpha)
+	// Generate CSS color() function with optional alpha
+	if o.Alpha != nil && *o.Alpha < 0.999 {
+		return fmt.Sprintf("color(%s %s / %.4g)", o.ColorSpace, compStr, *o.Alpha)
+	}
+	return fmt.Sprintf("color(%s %s)", o.ColorSpace, compStr)
 }
 
 func (o *ObjectColorValue) SchemaVersion() schema.SchemaVersion {

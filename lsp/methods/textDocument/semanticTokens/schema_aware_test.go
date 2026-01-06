@@ -45,10 +45,10 @@ func TestSemanticTokens_Draft_CurlyBraceReferences(t *testing.T) {
 	foundPrimaryPart := false
 	for _, token := range semanticTokens {
 		if token.Line == 9 {
-			if token.TokenType == 0 { // class (first part)
+			if token.TokenType == semantictokens.TokenTypeVariable {
 				foundColorPart = true
 			}
-			if token.TokenType == 1 { // property (second part)
+			if token.TokenType == semantictokens.TokenTypeProperty {
 				foundPrimaryPart = true
 			}
 		}
@@ -89,11 +89,11 @@ func TestSemanticTokens_2025_JSONPointerReferences(t *testing.T) {
 	for _, token := range tokens {
 		if token.Line == 12 {
 			// $ref should be highlighted as keyword
-			if token.TokenType == 3 { // keyword type
+			if token.TokenType == semantictokens.TokenTypeKeyword {
 				foundRefKeyword = true
 			}
 			// JSON Pointer path should be highlighted
-			if token.TokenType == 4 { // string/reference type
+			if token.TokenType == semantictokens.TokenTypeString {
 				foundPointerPath = true
 			}
 		}
@@ -123,7 +123,7 @@ func TestSemanticTokens_2025_RootKeyword(t *testing.T) {
 	// Should find token for "$root" keyword on line 3
 	foundRootKeyword := false
 	for _, token := range tokens {
-		if token.Line == 3 && token.TokenType == 3 { // keyword type
+		if token.Line == 3 && token.TokenType == semantictokens.TokenTypeKeyword {
 			foundRootKeyword = true
 		}
 	}
@@ -152,7 +152,7 @@ func TestSemanticTokens_Draft_NoJSONPointerHighlighting(t *testing.T) {
 	// Should NOT highlight $ref in draft schema
 	for _, token := range tokens {
 		if token.Line == 5 {
-			assert.NotEqual(t, 3, token.TokenType, "Should not highlight $ref as keyword in draft schema")
+			assert.NotEqual(t, semantictokens.TokenTypeKeyword, token.TokenType, "Should not highlight $ref as keyword in draft schema")
 		}
 	}
 }

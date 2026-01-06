@@ -54,7 +54,7 @@ func DetectVersionWithValidation(filePath string, content []byte, config *Detect
 	}
 
 	// Validate schema consistency
-	if err := ValidateSchemaConsistencyWithPath(filePath, content, version.String()); err != nil {
+	if err := ValidateSchemaConsistencyWithPath(filePath, content, version); err != nil {
 		return version, err // Return version but also error
 	}
 

@@ -13,6 +13,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// findTokenByName is a test helper that performs linear search to find a token by name
+func findTokenByName(tokenList []*tokens.Token, name string) *tokens.Token {
+	for _, tok := range tokenList {
+		if tok.Name == name {
+			return tok
+		}
+	}
+	return nil
+}
+
 func TestResolveAliases(t *testing.T) {
 	t.Run("resolve simple curly brace aliases", func(t *testing.T) {
 		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "resolver", "simple-alias.json"))
@@ -26,13 +36,7 @@ func TestResolveAliases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Find color.primary token
-		var primaryToken *tokens.Token
-		for _, tok := range tokenList {
-			if tok.Name == "color-primary" {
-				primaryToken = tok
-				break
-			}
-		}
+		primaryToken := findTokenByName(tokenList, "color-primary")
 		require.NotNil(t, primaryToken)
 
 		// Should be resolved
@@ -41,13 +45,7 @@ func TestResolveAliases(t *testing.T) {
 		assert.Equal(t, "#FF6B35", primaryToken.ResolvedValue, "color-primary should resolve to #FF6B35")
 
 		// Find spacing.medium token
-		var mediumToken *tokens.Token
-		for _, tok := range tokenList {
-			if tok.Name == "spacing-medium" {
-				mediumToken = tok
-				break
-			}
-		}
+		mediumToken := findTokenByName(tokenList, "spacing-medium")
 		require.NotNil(t, mediumToken)
 
 		assert.True(t, mediumToken.IsResolved)
@@ -148,13 +146,7 @@ func TestResolveAliases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Find color.base (not an alias)
-		var baseToken *tokens.Token
-		for _, tok := range tokenList {
-			if tok.Name == "color-base" {
-				baseToken = tok
-				break
-			}
-		}
+		baseToken := findTokenByName(tokenList, "color-base")
 		require.NotNil(t, baseToken)
 
 		assert.True(t, baseToken.IsResolved)

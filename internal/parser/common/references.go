@@ -20,8 +20,10 @@ const (
 
 // Reference represents a reference to another token
 type Reference struct {
-	Type   ReferenceType
-	Path   string
+	Type ReferenceType
+	Path string
+	// Line and Column are reserved for future position tracking
+	// Currently not populated by extraction functions
 	Line   int
 	Column int
 }
@@ -29,7 +31,8 @@ type Reference struct {
 // Regex for curly brace references: {path.to.token}
 var curlyBracePattern = regexp.MustCompile(`\{([^}]+)\}`)
 
-// ExtractReferences extracts references from a string value
+// ExtractReferences extracts references from a string value.
+// The version parameter is reserved for future schema-specific extraction logic.
 func ExtractReferences(content string, version schema.SchemaVersion) ([]Reference, error) {
 	var refs []Reference
 

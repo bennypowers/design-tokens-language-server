@@ -78,11 +78,20 @@ func TestExtractReferencesFromFixture(t *testing.T) {
 		var data map[string]interface{}
 		require.NoError(t, json.Unmarshal(content, &data))
 
-		colors := data["color"].(map[string]interface{})
+		colorsRaw, ok := data["color"]
+		require.True(t, ok, "fixture should have 'color' key")
+		colors, ok := colorsRaw.(map[string]interface{})
+		require.True(t, ok, "color should be a map")
 
 		// Check "primary" token which references "base"
-		primaryToken := colors["primary"].(map[string]interface{})
-		primaryValue := primaryToken["$value"].(string)
+		primaryTokenRaw, ok := colors["primary"]
+		require.True(t, ok, "fixture should have 'primary' token")
+		primaryToken, ok := primaryTokenRaw.(map[string]interface{})
+		require.True(t, ok, "primary should be a map")
+		primaryValueRaw, ok := primaryToken["$value"]
+		require.True(t, ok, "primary should have '$value' field")
+		primaryValue, ok := primaryValueRaw.(string)
+		require.True(t, ok, "primary $value should be a string")
 
 		refs, err := common.ExtractReferences(primaryValue, schema.Draft)
 		require.NoError(t, err)
@@ -90,8 +99,14 @@ func TestExtractReferencesFromFixture(t *testing.T) {
 		assert.Equal(t, "color.base", refs[0].Path)
 
 		// Check "secondary" token which references "primary"
-		secondaryToken := colors["secondary"].(map[string]interface{})
-		secondaryValue := secondaryToken["$value"].(string)
+		secondaryTokenRaw, ok := colors["secondary"]
+		require.True(t, ok, "fixture should have 'secondary' token")
+		secondaryToken, ok := secondaryTokenRaw.(map[string]interface{})
+		require.True(t, ok, "secondary should be a map")
+		secondaryValueRaw, ok := secondaryToken["$value"]
+		require.True(t, ok, "secondary should have '$value' field")
+		secondaryValue, ok := secondaryValueRaw.(string)
+		require.True(t, ok, "secondary $value should be a string")
 
 		refs, err = common.ExtractReferences(secondaryValue, schema.Draft)
 		require.NoError(t, err)
@@ -106,10 +121,16 @@ func TestExtractReferencesFromFixture(t *testing.T) {
 		var data map[string]interface{}
 		require.NoError(t, json.Unmarshal(content, &data))
 
-		colors := data["color"].(map[string]interface{})
+		colorsRaw, ok := data["color"]
+		require.True(t, ok, "fixture should have 'color' key")
+		colors, ok := colorsRaw.(map[string]interface{})
+		require.True(t, ok, "color should be a map")
 
 		// Check "primary" token which references "base"
-		primaryToken := colors["primary"].(map[string]interface{})
+		primaryTokenRaw, ok := colors["primary"]
+		require.True(t, ok, "fixture should have 'primary' token")
+		primaryToken, ok := primaryTokenRaw.(map[string]interface{})
+		require.True(t, ok, "primary should be a map")
 
 		refs, err := common.ExtractReferencesFromValue(primaryToken, schema.V2025_10)
 		require.NoError(t, err)

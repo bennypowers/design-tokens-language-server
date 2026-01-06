@@ -7,12 +7,12 @@ import (
 )
 
 // ValidateSchemaConsistency validates that file content matches the detected schema version
-func ValidateSchemaConsistency(content []byte, detectedVersion string) error {
+func ValidateSchemaConsistency(content []byte, detectedVersion SchemaVersion) error {
 	return ValidateSchemaConsistencyWithPath("", content, detectedVersion)
 }
 
 // ValidateSchemaConsistencyWithPath validates schema consistency with file path context
-func ValidateSchemaConsistencyWithPath(filePath string, content []byte, detectedVersion string) error {
+func ValidateSchemaConsistencyWithPath(filePath string, content []byte, detectedVersion SchemaVersion) error {
 	// Parse JSON to inspect structure
 	var data map[string]interface{}
 	if err := json.Unmarshal(content, &data); err != nil {
@@ -24,7 +24,7 @@ func ValidateSchemaConsistencyWithPath(filePath string, content []byte, detected
 	hasColorFormatIssue := false
 
 	// Check for 2025.10-only features in draft schema
-	if detectedVersion == "draft" {
+	if detectedVersion == Draft {
 		if hasStructuredColorObjects(data) {
 			conflictingFeatures = append(conflictingFeatures, "structured color objects (2025.10+ only)")
 			hasColorFormatIssue = true
@@ -42,9 +42,9 @@ func ValidateSchemaConsistencyWithPath(filePath string, content []byte, detected
 	}
 
 	// Check for draft-only patterns in 2025.10 schema
-	if detectedVersion == "v2025_10" {
+	if detectedVersion == V2025_10 {
 		if hasStringColorValues(data) {
-			return NewInvalidColorFormatError(filePath, "color tokens", "v2025_10", "string value", "structured object with colorSpace")
+			return NewInvalidColorFormatError(filePath, "color tokens", detectedVersion.String(), "string value", "structured object with colorSpace")
 		}
 	}
 
@@ -57,11 +57,11 @@ func ValidateSchemaConsistencyWithPath(filePath string, content []byte, detected
 	if len(conflictingFeatures) > 0 {
 		// If ONLY color format issue (no other features), return specific error
 		if len(conflictingFeatures) == 1 && hasColorFormatIssue {
-			return NewInvalidColorFormatError(filePath, "color tokens", detectedVersion, "structured object with colorSpace", "string value")
+			return NewInvalidColorFormatError(filePath, "color tokens", detectedVersion.String(), "structured object with colorSpace", "string value")
 		}
 
 		// Multiple incompatible features - return general error
-		return NewMixedSchemaFeaturesError(filePath, detectedVersion, conflictingFeatures)
+		return NewMixedSchemaFeaturesError(filePath, detectedVersion.String(), conflictingFeatures)
 	}
 
 	return nil
@@ -141,14 +141,14 @@ func checkForStringColors(obj interface{}) bool {
 }
 
 // validateRootTokens checks for conflicting root token patterns
-func validateRootTokens(filePath string, data map[string]interface{}, schemaVersion string) error {
+func validateRootTokens(filePath string, data map[string]interface{}, schemaVersion SchemaVersion) error {
 	// Common group marker names (draft-only)
 	groupMarkers := []string{"_", "@", "DEFAULT"}
 
 	return checkGroupsForRootConflicts(filePath, data, "", schemaVersion, groupMarkers)
 }
 
-func checkGroupsForRootConflicts(filePath string, obj map[string]interface{}, currentPath string, schemaVersion string, groupMarkers []string) error {
+func checkGroupsForRootConflicts(filePath string, obj map[string]interface{}, currentPath string, schemaVersion SchemaVersion, groupMarkers []string) error {
 	for key, value := range obj {
 		// Skip reserved fields
 		if strings.HasPrefix(key, "$") && key != "$root" {
@@ -186,9 +186,9 @@ func checkGroupsForRootConflicts(filePath string, obj map[string]interface{}, cu
 				}
 
 				// Warn if 2025.10 uses group markers
-				if schemaVersion == "v2025_10" && foundMarker != "" && !hasRoot {
+				if schemaVersion == V2025_10 && foundMarker != "" && !hasRoot {
 					// This is an error in 2025.10 - should use $root
-					return NewInvalidSchemaError(filePath, schemaVersion,
+					return NewInvalidSchemaError(filePath, schemaVersion.String(),
 						fmt.Sprintf("group '%s' uses draft-style marker '%s' instead of $root", key, foundMarker))
 				}
 			}

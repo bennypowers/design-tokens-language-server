@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -51,7 +52,7 @@ func (r *Registry) Get(version SchemaVersion) (SchemaHandler, error) {
 	return handler, nil
 }
 
-// Versions returns all registered schema versions
+// Versions returns all registered schema versions in sorted order
 func (r *Registry) Versions() []SchemaVersion {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -60,6 +61,12 @@ func (r *Registry) Versions() []SchemaVersion {
 	for version := range r.handlers {
 		versions = append(versions, version)
 	}
+
+	// Sort for deterministic order
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i] < versions[j]
+	})
+
 	return versions
 }
 

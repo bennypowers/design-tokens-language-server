@@ -1,18 +1,14 @@
 package definition
 
 import (
-	"regexp"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/parser/common"
 	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
-
-// Token reference patterns
-var curlyBraceReferenceRegexp = regexp.MustCompile(`\{([^}]+)\}`)
-var jsonPointerReferenceRegexp = regexp.MustCompile(`"\$ref"\s*:\s*"(#[^"]+)"`)
 
 // findReferenceAtPosition finds a token reference at the given position in a JSON/YAML file
 // Returns the token name if found, empty string otherwise
@@ -39,7 +35,7 @@ func findReferenceAtPosition(content string, pos protocol.Position) string {
 
 // findCurlyBraceReferenceAtPosition finds a curly brace reference at the position
 func findCurlyBraceReferenceAtPosition(line string, pos protocol.Position) string {
-	matches := curlyBraceReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
+	matches := common.CurlyBraceReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
 	if matches == nil {
 		return ""
 	}
@@ -66,7 +62,7 @@ func findCurlyBraceReferenceAtPosition(line string, pos protocol.Position) strin
 
 // findJSONPointerReferenceAtPosition finds a JSON Pointer reference at the position
 func findJSONPointerReferenceAtPosition(line string, pos protocol.Position) string {
-	matches := jsonPointerReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
+	matches := common.JSONPointerReferenceRegexp.FindAllStringSubmatchIndex(line, -1)
 	if matches == nil {
 		return ""
 	}

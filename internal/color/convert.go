@@ -67,8 +67,9 @@ func objectColorToCSS(c *common.ObjectColorValue) string {
 		return colorFunctionToCSS(colorSpace, c.Components, alpha)
 
 	default:
-		// Unknown color space, try to convert srgb to hex
-		return srgbToCSS(c.Components, alpha)
+		// Unknown color space, use CSS color() function as fallback
+		// This allows the browser to handle unknown color spaces
+		return colorFunctionToCSS(colorSpace, c.Components, alpha)
 	}
 }
 
@@ -78,9 +79,9 @@ func srgbToCSS(components []interface{}, alpha float64) string {
 		return ""
 	}
 
-	r := componentToFloat(components[0])
-	g := componentToFloat(components[1])
-	b := componentToFloat(components[2])
+	r := math.Max(0, math.Min(1, componentToFloat(components[0])))
+	g := math.Max(0, math.Min(1, componentToFloat(components[1])))
+	b := math.Max(0, math.Min(1, componentToFloat(components[2])))
 
 	// Convert 0-1 range to 0-255
 	rInt := int(math.Round(r * 255))
@@ -204,34 +205,16 @@ func colorFunctionToCSS(colorSpace string, components []interface{}, alpha float
 		return ""
 	}
 
-	// Map color space name to CSS identifier
-	cssColorSpace := colorSpace
-	switch colorSpace {
-	case "srgb-linear":
-		cssColorSpace = "srgb-linear"
-	case "display-p3":
-		cssColorSpace = "display-p3"
-	case "a98-rgb":
-		cssColorSpace = "a98-rgb"
-	case "prophoto-rgb":
-		cssColorSpace = "prophoto-rgb"
-	case "rec2020":
-		cssColorSpace = "rec2020"
-	case "xyz-d65":
-		cssColorSpace = "xyz-d65"
-	case "xyz-d50":
-		cssColorSpace = "xyz-d50"
-	}
-
+	// CSS color space identifiers match input names
 	c0 := componentToString(components[0])
 	c1 := componentToString(components[1])
 	c2 := componentToString(components[2])
 
 	if alpha >= 0.999 {
-		return fmt.Sprintf("color(%s %s %s %s)", cssColorSpace, c0, c1, c2)
+		return fmt.Sprintf("color(%s %s %s %s)", colorSpace, c0, c1, c2)
 	}
 
-	return fmt.Sprintf("color(%s %s %s %s / %.2f)", cssColorSpace, c0, c1, c2, alpha)
+	return fmt.Sprintf("color(%s %s %s %s / %.2f)", colorSpace, c0, c1, c2, alpha)
 }
 
 // componentToFloat converts a component value to float64
@@ -282,9 +265,9 @@ func ToHex(c *common.ObjectColorValue) (string, error) {
 		return "", fmt.Errorf("invalid number of components: %d", len(c.Components))
 	}
 
-	r := componentToFloat(c.Components[0])
-	g := componentToFloat(c.Components[1])
-	b := componentToFloat(c.Components[2])
+	r := math.Max(0, math.Min(1, componentToFloat(c.Components[0])))
+	g := math.Max(0, math.Min(1, componentToFloat(c.Components[1])))
+	b := math.Max(0, math.Min(1, componentToFloat(c.Components[2])))
 
 	// Convert 0-1 range to 0-255
 	rInt := int(math.Round(r * 255))

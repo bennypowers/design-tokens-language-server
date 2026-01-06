@@ -138,11 +138,20 @@ func (m *Manager) GetAll() []*Token {
 }
 
 // Remove removes a token by name
+// For multi-file scenarios, use RemoveBySourceFile or provide the full composite key
 func (m *Manager) Remove(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Try direct lookup first (legacy or composite key)
 	if _, exists := m.tokens[name]; !exists {
+		// Search across all files for matching token
+		for key, token := range m.tokens {
+			if strings.HasSuffix(key, ":"+name) || token.Name == name {
+				delete(m.tokens, key)
+				return nil
+			}
+		}
 		return fmt.Errorf("token not found: %s", name)
 	}
 
@@ -164,8 +173,8 @@ func (m *Manager) FindByPrefix(prefix string) []*Token {
 	defer m.mu.RUnlock()
 
 	matches := []*Token{}
-	for name, token := range m.tokens {
-		if strings.HasPrefix(name, prefix) {
+	for _, token := range m.tokens {
+		if strings.HasPrefix(token.Name, prefix) {
 			matches = append(matches, token)
 		}
 	}
@@ -254,15 +263,32 @@ func (m *Manager) GetSourceFiles() []string {
 }
 
 // GetSchemaVersionForFile returns the schema version used by a specific file
-// Returns Unknown if the file has no tokens or doesn't exist
+// Returns Unknown if the file has no tokens, doesn't exist, or has inconsistent schema versions.
+// All tokens from the same file should have the same schema version; if they don't,
+// this indicates a parsing bug and Unknown is returned.
 func (m *Manager) GetSchemaVersionForFile(filePath string) schema.SchemaVersion {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	var version schema.SchemaVersion
+	found := false
+
 	for _, token := range m.tokens {
 		if token.FilePath == filePath {
-			return token.SchemaVersion
+			if !found {
+				// First token from this file
+				version = token.SchemaVersion
+				found = true
+			} else if token.SchemaVersion != version {
+				// Inconsistency detected - this should not happen
+				// Return Unknown to signal an error condition
+				return schema.Unknown
+			}
 		}
 	}
-	return schema.Unknown
+
+	if !found {
+		return schema.Unknown
+	}
+	return version
 }

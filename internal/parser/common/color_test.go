@@ -83,6 +83,7 @@ func TestParseColorValue(t *testing.T) {
 		// Should handle "none" keyword in CSS output
 		css := colorValue.ToCSS()
 		assert.NotEmpty(t, css)
+		assert.Contains(t, css, "none", "none keyword should be preserved in CSS output")
 	})
 
 	t.Run("error on draft schema with structured color", func(t *testing.T) {

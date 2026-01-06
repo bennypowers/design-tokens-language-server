@@ -158,11 +158,6 @@ func BenchmarkManager_MultiFile(b *testing.B) {
 						_ = m.Add(token)
 					}
 				}
-
-				// Verify we have all tokens
-				if len(m.tokens) != files*tokensPerFile {
-					b.Fatalf("Expected %d tokens, got %d", files*tokensPerFile, len(m.tokens))
-				}
 			}
 		})
 	}

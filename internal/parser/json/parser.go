@@ -506,7 +506,10 @@ func (p *Parser) extractTokensWithSchemaVersion(node *yaml.Node, jsonPath []stri
 	return nil
 }
 
-// shouldSkipReservedField determines if a field should be skipped based on schema version
+// shouldSkipReservedField determines if a field should be skipped during token traversal.
+// Currently only skips the $schema field (metadata, not a token).
+// DTCG token properties ($type, $value, etc.) return false - they're processed as token data.
+// 2025.10 reference fields ($ref, $extends) return false - they're handled separately.
 func (p *Parser) shouldSkipReservedField(key string, version schema.SchemaVersion) bool {
 	// Always skip DTCG metadata fields (these are handled separately)
 	if key == "$type" || key == "$value" || key == "$description" || key == "$extensions" || key == "$deprecated" {

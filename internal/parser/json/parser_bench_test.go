@@ -51,7 +51,10 @@ func generateLargeTokenFile(numTokens int, schemaVer schema.SchemaVersion) []byt
 
 	tokens["color"] = colors
 
-	data, _ := json.Marshal(tokens)
+	data, err := json.Marshal(tokens)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal tokens: %v", err))
+	}
 	return data
 }
 
@@ -137,7 +140,10 @@ func BenchmarkParseWithSchemaVersion_WithAliases(b *testing.B) {
 		}
 
 		tokens["color"] = colors
-		data, _ := json.Marshal(tokens)
+		data, err := json.Marshal(tokens)
+		if err != nil {
+			panic(fmt.Sprintf("failed to marshal tokens: %v", err))
+		}
 		return data
 	}
 
@@ -193,7 +199,10 @@ func BenchmarkParseWithSchemaVersion_DeeplyNested(b *testing.B) {
 				}
 			}
 
-			data, _ := json.Marshal(tokens)
+			data, err := json.Marshal(tokens)
+			if err != nil {
+				b.Fatalf("failed to marshal tokens: %v", err)
+			}
 
 			b.ReportAllocs()
 			b.ResetTimer()

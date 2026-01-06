@@ -1,8 +1,10 @@
 package tokens_test
 
 import (
+	"fmt"
 	"testing"
 
+	"bennypowers.dev/dtls/internal/schema"
 	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -256,4 +258,37 @@ func TestTokenManagerConcurrentAccess(t *testing.T) {
 	// Should have all tokens without crashes
 	allTokens := manager.GetAll()
 	assert.GreaterOrEqual(t, len(allTokens), 1)
+}
+
+// TestManager_MultiFile_CorrectCount verifies that multi-file token management
+// correctly stores tokens with composite keys and maintains accurate counts
+func TestManager_MultiFile_CorrectCount(t *testing.T) {
+	numFiles := 5
+	tokensPerFile := 500
+	m := tokens.NewManager()
+
+	for fileIdx := 0; fileIdx < numFiles; fileIdx++ {
+		filePath := fmt.Sprintf("/test/tokens-%d.json", fileIdx)
+		schemaVer := schema.Draft
+		if fileIdx%2 == 0 {
+			schemaVer = schema.V2025_10
+		}
+
+		for tokenIdx := 0; tokenIdx < tokensPerFile; tokenIdx++ {
+			token := &tokens.Token{
+				Name:          fmt.Sprintf("color-token-%d", tokenIdx),
+				Value:         "#FF6B35",
+				Type:          "color",
+				FilePath:      filePath,
+				SchemaVersion: schemaVer,
+			}
+			err := m.Add(token)
+			require.NoError(t, err)
+		}
+	}
+
+	// Verify we have all tokens
+	expectedCount := numFiles * tokensPerFile
+	actualCount := m.Count()
+	assert.Equal(t, expectedCount, actualCount, "Expected %d tokens, got %d", expectedCount, actualCount)
 }

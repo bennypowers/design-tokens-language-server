@@ -22,7 +22,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 			}
 		}`)
 
-		err := schema.ValidateSchemaConsistency(content, "draft")
+		err := schema.ValidateSchemaConsistency(content, schema.Draft)
 		assert.NoError(t, err)
 	})
 
@@ -40,7 +40,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 			}
 		}`)
 
-		err := schema.ValidateSchemaConsistency(content, "v2025_10")
+		err := schema.ValidateSchemaConsistency(content, schema.V2025_10)
 		assert.NoError(t, err)
 	})
 
@@ -48,7 +48,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "mixed-schema-features.json"))
 		require.NoError(t, err)
 
-		err = schema.ValidateSchemaConsistency(fixtureData, "draft")
+		err = schema.ValidateSchemaConsistency(fixtureData, schema.Draft)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, schema.ErrMixedSchemaFeatures)
 	})
@@ -57,7 +57,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "invalid-color-format.json"))
 		require.NoError(t, err)
 
-		err = schema.ValidateSchemaConsistency(fixtureData, "draft")
+		err = schema.ValidateSchemaConsistency(fixtureData, schema.Draft)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, schema.ErrInvalidColorFormat)
 	})
@@ -66,7 +66,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "draft-with-2025-features.json"))
 		require.NoError(t, err)
 
-		err = schema.ValidateSchemaConsistency(fixtureData, "draft")
+		err = schema.ValidateSchemaConsistency(fixtureData, schema.Draft)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, schema.ErrMixedSchemaFeatures)
 		assert.Contains(t, err.Error(), "$extends")
@@ -77,7 +77,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 		require.NoError(t, err)
 
 		// This should fail because '_' is not $root in 2025.10
-		err = schema.ValidateSchemaConsistency(fixtureData, "v2025_10")
+		err = schema.ValidateSchemaConsistency(fixtureData, schema.V2025_10)
 		assert.Error(t, err)
 	})
 
@@ -85,7 +85,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "root-and-markers.json"))
 		require.NoError(t, err)
 
-		err = schema.ValidateSchemaConsistency(fixtureData, "v2025_10")
+		err = schema.ValidateSchemaConsistency(fixtureData, schema.V2025_10)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, schema.ErrConflictingRootTokens)
 	})
@@ -101,7 +101,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 			}
 		}`)
 
-		err := schema.ValidateSchemaConsistency(content, "v2025_10")
+		err := schema.ValidateSchemaConsistency(content, schema.V2025_10)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, schema.ErrInvalidColorFormat)
 	})
@@ -120,7 +120,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 			}
 		}`)
 
-		err := schema.ValidateSchemaConsistency(content, "draft")
+		err := schema.ValidateSchemaConsistency(content, schema.Draft)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, schema.ErrMixedSchemaFeatures)
 		assert.Contains(t, err.Error(), "$ref")
@@ -138,7 +138,7 @@ func TestValidateWithFilePath(t *testing.T) {
 			}
 		}`)
 
-		err := schema.ValidateSchemaConsistencyWithPath("tokens/colors.json", content, "draft")
+		err := schema.ValidateSchemaConsistencyWithPath("tokens/colors.json", content, schema.Draft)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "tokens/colors.json")
 	})

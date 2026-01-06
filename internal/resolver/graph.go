@@ -3,6 +3,7 @@ package resolver
 import (
 	"strings"
 
+	"bennypowers.dev/dtls/internal/parser/common"
 	"bennypowers.dev/dtls/internal/schema"
 	"bennypowers.dev/dtls/internal/tokens"
 )
@@ -76,20 +77,15 @@ func extractDependencies(tok *tokens.Token) []string {
 }
 
 // extractCurlyBraceReferences extracts token paths from curly brace references
+// Uses the shared regex pattern from internal/parser/common for consistency
 func extractCurlyBraceReferences(value string) []string {
 	refs := []string{}
-	start := -1
-
-	for i, ch := range value {
-		if ch == '{' {
-			start = i + 1
-		} else if ch == '}' && start != -1 {
-			ref := value[start:i]
-			refs = append(refs, ref)
-			start = -1
+	matches := common.CurlyBraceReferenceRegexp.FindAllStringSubmatch(value, -1)
+	for _, match := range matches {
+		if len(match) > 1 {
+			refs = append(refs, match[1]) // The captured group (path)
 		}
 	}
-
 	return refs
 }
 
@@ -183,8 +179,6 @@ func (g *DependencyGraph) findCycleDFS(node string, visited, recStack map[string
 	}
 
 	recStack[node] = false
-	// Remove node from path when backtracking
-	path = path[:len(path)-1]
 	return nil
 }
 
@@ -192,8 +186,7 @@ func (g *DependencyGraph) findCycleDFS(node string, visited, recStack map[string
 // Returns error if graph contains a cycle
 func (g *DependencyGraph) TopologicalSort() ([]string, error) {
 	// Check for cycles first
-	if g.HasCycle() {
-		cycle := g.FindCycle()
+	if cycle := g.FindCycle(); cycle != nil {
 		return nil, schema.NewCircularReferenceError("", cycle)
 	}
 

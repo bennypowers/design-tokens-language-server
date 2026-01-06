@@ -21,8 +21,8 @@ func TestParseWithSchemaVersion(t *testing.T) {
 		groupMarkers := []string{"_", "@", "DEFAULT"}
 
 		tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.Draft, groupMarkers)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, tokenList)
+		require.NoError(t, err)
+		require.NotEmpty(t, tokenList)
 
 		// Verify all tokens have correct schema version
 		for _, tok := range tokenList {
@@ -49,8 +49,8 @@ func TestParseWithSchemaVersion(t *testing.T) {
 		parser := json.NewParser()
 
 		tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, nil)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, tokenList)
+		require.NoError(t, err)
+		require.NotEmpty(t, tokenList)
 
 		// Verify all tokens have correct schema version
 		for _, tok := range tokenList {
@@ -82,7 +82,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 		parser := json.NewParser()
 
 		tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// $schema should not appear as a token
 		for _, tok := range tokenList {
@@ -98,7 +98,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 		parser := json.NewParser()
 
 		tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Find the secondary token (which has $ref)
 		var secondaryToken *tokens.Token
@@ -135,7 +135,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 		groupMarkers := []string{"_", "@", "DEFAULT"}
 
 		tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.V2025_10, groupMarkers)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// _ should create a token named "color-_", NOT promote to "color"
 		var underscoreToken *tokens.Token
@@ -163,7 +163,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 
 		// Parse without group markers - @ should create regular token
 		tokenList, err := parser.ParseWithSchemaVersion(content, "", schema.Draft, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// @ should create a token named "color-@"
 		var atToken *tokens.Token
@@ -188,8 +188,8 @@ func TestParseFileWithSchemaVersion(t *testing.T) {
 			schema.Draft,
 			groupMarkers,
 		)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, tokenList)
+		require.NoError(t, err)
+		require.NotEmpty(t, tokenList)
 
 		for _, tok := range tokenList {
 			assert.Equal(t, schema.Draft, tok.SchemaVersion)
@@ -205,8 +205,8 @@ func TestParseFileWithSchemaVersion(t *testing.T) {
 			schema.V2025_10,
 			nil,
 		)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, tokenList)
+		require.NoError(t, err)
+		require.NotEmpty(t, tokenList)
 
 		for _, tok := range tokenList {
 			assert.Equal(t, schema.V2025_10, tok.SchemaVersion)

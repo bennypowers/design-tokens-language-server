@@ -71,32 +71,26 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 		return tokenList, err
 	}
 
+	// Pre-index tokens by group path for performance
+	// This avoids O(n) scans for each getTokensForGroup call
+	groupIndex := make(map[string][]*tokens.Token)
+	for _, tok := range tokenList {
+		// Skip $extends tokens
+		if len(tok.Path) > 0 && tok.Path[len(tok.Path)-1] == "$extends" {
+			continue
+		}
+
+		// Index token under all its parent group paths
+		// e.g., "color/brand/primary" is indexed under "color", "color/brand", "color/brand/primary"
+		for i := 1; i <= len(tok.Path); i++ {
+			groupPath := strings.Join(tok.Path[:i], "/")
+			groupIndex[groupPath] = append(groupIndex[groupPath], tok)
+		}
+	}
+
 	// Helper function to get tokens matching a path prefix
 	getTokensForGroup := func(groupPath string) []*tokens.Token {
-		pathParts := strings.Split(groupPath, "/")
-		result := []*tokens.Token{}
-
-		for _, tok := range tokenList {
-			// Skip $extends tokens
-			if len(tok.Path) > 0 && tok.Path[len(tok.Path)-1] == "$extends" {
-				continue
-			}
-
-			// Check if token's path starts with the group path
-			if len(tok.Path) >= len(pathParts) {
-				matches := true
-				for i, part := range pathParts {
-					if tok.Path[i] != part {
-						matches = false
-						break
-					}
-				}
-				if matches {
-					result = append(result, tok)
-				}
-			}
-		}
-		return result
+		return groupIndex[groupPath]
 	}
 
 	// Process extensions in topological order
@@ -139,8 +133,19 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 			}
 
 			// Clone token with child group path
-			newPath := append(childPathParts, relativePath...)
+			newPath := make([]string, len(childPathParts)+len(relativePath))
+			copy(newPath, childPathParts)
+			copy(newPath[len(childPathParts):], relativePath)
 			newName := strings.Join(newPath, "-")
+
+			// Deep copy extensions to avoid shared references
+			var extensions map[string]interface{}
+			if parentTok.Extensions != nil {
+				extensions = make(map[string]interface{}, len(parentTok.Extensions))
+				for k, v := range parentTok.Extensions {
+					extensions[k] = v // Note: nested structures still shared
+				}
+			}
 
 			clonedToken := &tokens.Token{
 				Name:               newName,
@@ -159,10 +164,17 @@ func ResolveGroupExtensions(tokenList []*tokens.Token) ([]*tokens.Token, error) 
 				IsResolved:         parentTok.IsResolved,
 				Deprecated:         parentTok.Deprecated,
 				DeprecationMessage: parentTok.DeprecationMessage,
+				Extensions:         extensions,
 			}
 
 			// Add cloned token to the token list
 			tokenList = append(tokenList, clonedToken)
+
+			// Update the index so future extends can see this inherited token
+			for i := 1; i <= len(newPath); i++ {
+				indexPath := strings.Join(newPath[:i], "/")
+				groupIndex[indexPath] = append(groupIndex[indexPath], clonedToken)
+			}
 		}
 	}
 
