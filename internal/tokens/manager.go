@@ -8,22 +8,58 @@ import (
 	"bennypowers.dev/dtls/internal/schema"
 )
 
-// Manager manages design tokens loaded from various sources
+// Manager manages design tokens loaded from various sources.
+//
+// Multi-Schema Support:
+// The Manager uses a composite key system to support tokens from multiple files
+// with different schema versions simultaneously. This is essential for workspaces
+// where legacy (draft) and modern (2025.10) token files coexist.
+//
+// Key Format:
+//   - With file path: "filePath:tokenName" (e.g., "/path/tokens.json:color-primary")
+//   - Without file path: "tokenName" (legacy support for backward compatibility)
+//
+// This design allows:
+//   - Multiple files to define tokens with the same name without collision
+//   - Schema-specific parsing and resolution for each file
+//   - Incremental migration from draft to 2025.10 schema
+//
+// Example:
+//
+//	// Two files can both define "color-primary"
+//	legacy/tokens.json:color-primary  (draft schema)
+//	design/tokens.json:color-primary  (2025.10 schema)
 type Manager struct {
-	// Composite key: "filePath:tokenName" for multi-schema support
-	// This allows tokens with same name from different files to coexist
+	// tokens stores design tokens using composite keys.
+	// Key format: "filePath:tokenName" for multi-file support,
+	// or just "tokenName" for legacy single-file scenarios.
 	tokens map[string]*Token
 	mu     sync.RWMutex
 }
 
-// NewManager creates a new token manager
+// NewManager creates a new token manager with an empty token registry.
 func NewManager() *Manager {
 	return &Manager{
 		tokens: make(map[string]*Token),
 	}
 }
 
-// makeKey creates a composite key for token storage
+// makeKey creates a composite key for token storage.
+//
+// The key format enables multi-schema workspace support by including the file path:
+//   - If filePath is provided: returns "filePath:tokenName"
+//   - If filePath is empty: returns "tokenName" (for backward compatibility)
+//
+// This allows tokens with identical names from different files to coexist without
+// collision, which is critical when supporting both draft and 2025.10 schemas in
+// the same workspace.
+//
+// Parameters:
+//   - filePath: The absolute path to the token file, or empty string for legacy support
+//   - tokenName: The hyphenated token name (e.g., "color-primary")
+//
+// Returns:
+//   - A composite key string used for internal storage
 func makeKey(filePath, tokenName string) string {
 	if filePath == "" {
 		// Legacy tokens without file path
