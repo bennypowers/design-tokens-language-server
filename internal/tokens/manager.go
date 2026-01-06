@@ -146,8 +146,19 @@ func (m *Manager) Remove(name string) error {
 	// Try direct lookup first (legacy or composite key)
 	if _, exists := m.tokens[name]; !exists {
 		// Search across all files for matching token
+		// Use exact segment matching to avoid partial matches
 		for key, token := range m.tokens {
-			if strings.HasSuffix(key, ":"+name) || token.Name == name {
+			// Check if the token name (after the last ':') exactly matches
+			lastColon := strings.LastIndex(key, ":")
+			if lastColon != -1 {
+				// Composite key: extract token name after ':'
+				tokenNameInKey := key[lastColon+1:]
+				if tokenNameInKey == name {
+					delete(m.tokens, key)
+					return nil
+				}
+			} else if token.Name == name {
+				// Legacy key without file path
 				delete(m.tokens, key)
 				return nil
 			}

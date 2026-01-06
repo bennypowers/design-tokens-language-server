@@ -6,6 +6,30 @@ import (
 	"bennypowers.dev/dtls/internal/schema"
 )
 
+// AlphaThreshold is the value below which alpha is included in CSS output.
+// Values >= 0.999 are treated as fully opaque to avoid unnecessary alpha channels
+// in CSS output, improving compatibility and reducing output size.
+const AlphaThreshold = 0.999
+
+// ValidColorSpaces lists the 14 color spaces supported by DTCG 2025.10 spec
+// Reference: https://www.designtokens.org/
+var ValidColorSpaces = map[string]bool{
+	"srgb":         true,
+	"display-p3":   true,
+	"a98-rgb":      true,
+	"prophoto-rgb": true,
+	"rec2020":      true,
+	"xyz-d50":      true,
+	"xyz-d65":      true,
+	"lab":          true,
+	"lch":          true,
+	"oklab":        true,
+	"oklch":        true,
+	"srgb-linear":  true,
+	"hsl":          true,
+	"hwb":          true,
+}
+
 // ColorValue represents a color token value in any schema format
 type ColorValue interface {
 	ToCSS() string
@@ -67,7 +91,7 @@ func (o *ObjectColorValue) ToCSS() string {
 	}
 
 	// Generate CSS color() function with optional alpha
-	if o.Alpha != nil && *o.Alpha < 0.999 {
+	if o.Alpha != nil && *o.Alpha < AlphaThreshold {
 		return fmt.Sprintf("color(%s %s / %.4g)", o.ColorSpace, compStr, *o.Alpha)
 	}
 	return fmt.Sprintf("color(%s %s)", o.ColorSpace, compStr)
@@ -88,7 +112,7 @@ func ParseColorValue(value interface{}, version schema.SchemaVersion) (ColorValu
 		// Draft expects string values
 		str, ok := value.(string)
 		if !ok {
-			return nil, schema.NewInvalidColorFormatError("", "", "draft", "structured object with colorSpace", "string value")
+			return nil, schema.NewInvalidColorFormatError("", "", "draft", "string value", "structured object with colorSpace")
 		}
 		return &StringColorValue{
 			Value:  str,
@@ -108,6 +132,11 @@ func ParseColorValue(value interface{}, version schema.SchemaVersion) (ColorValu
 			return nil, fmt.Errorf("missing or invalid colorSpace field in color object")
 		}
 
+		// Note: We don't validate colorSpace against ValidColorSpaces here to remain
+		// flexible for future color spaces. Unknown color spaces will be passed through
+		// to the CSS color() function, allowing the browser to handle them.
+		// ValidColorSpaces is available for callers who need stricter validation.
+
 		// Extract components
 		componentsRaw, ok := obj["components"]
 		if !ok {
@@ -117,6 +146,20 @@ func ParseColorValue(value interface{}, version schema.SchemaVersion) (ColorValu
 		components, ok := componentsRaw.([]interface{})
 		if !ok {
 			return nil, fmt.Errorf("components must be an array")
+		}
+
+		// Validate component values are either float64 or "none" string
+		for i, comp := range components {
+			switch v := comp.(type) {
+			case float64:
+				// Valid numeric component
+			case string:
+				if v != "none" {
+					return nil, fmt.Errorf("component[%d]: invalid string value %q; only \"none\" keyword is allowed", i, v)
+				}
+			default:
+				return nil, fmt.Errorf("component[%d]: invalid type %T; must be float64 or \"none\" string", i, comp)
+			}
 		}
 
 		// Extract optional alpha

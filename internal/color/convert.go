@@ -34,9 +34,16 @@ func objectColorToCSS(c *common.ObjectColorValue) string {
 	}
 
 	// Get alpha value (default to 1.0 if not specified)
+	// Clamp to [0,1] range and handle invalid values
 	alpha := 1.0
 	if c.Alpha != nil {
-		alpha = *c.Alpha
+		// Clamp to valid range and handle NaN/Inf
+		alphaVal := *c.Alpha
+		if math.IsNaN(alphaVal) || math.IsInf(alphaVal, 0) {
+			alpha = 1.0 // Default to opaque for invalid values
+		} else {
+			alpha = math.Max(0.0, math.Min(1.0, alphaVal))
+		}
 	}
 
 	// Handle different color spaces
@@ -89,7 +96,7 @@ func srgbToCSS(components []any, alpha float64) string {
 	bInt := int(math.Round(b * 255))
 
 	// If alpha is 1.0, use hex or rgb
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("#%02x%02x%02x", rInt, gInt, bInt)
 	}
 
@@ -107,7 +114,7 @@ func hslToCSS(components []any, alpha float64) string {
 	s := componentToFloat(components[1])
 	l := componentToFloat(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("hsl(%.1f, %.1f%%, %.1f%%)", h, s, l)
 	}
 
@@ -124,7 +131,7 @@ func hwbToCSS(components []any, alpha float64) string {
 	w := componentToFloat(components[1])
 	b := componentToFloat(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("hwb(%.1f %.1f%% %.1f%%)", h, w, b)
 	}
 
@@ -141,7 +148,7 @@ func oklchToCSS(components []any, alpha float64) string {
 	c := componentToFloat(components[1])
 	h := componentToFloat(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("oklch(%.2f %.2f %.1f)", l, c, h)
 	}
 
@@ -158,7 +165,7 @@ func oklabToCSS(components []any, alpha float64) string {
 	a := componentToFloat(components[1])
 	b := componentToFloat(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("oklab(%.2f %.2f %.2f)", l, a, b)
 	}
 
@@ -175,7 +182,7 @@ func lchToCSS(components []any, alpha float64) string {
 	c := componentToFloat(components[1])
 	h := componentToFloat(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("lch(%.1f %.1f %.1f)", l, c, h)
 	}
 
@@ -192,7 +199,7 @@ func labToCSS(components []any, alpha float64) string {
 	a := componentToFloat(components[1])
 	b := componentToFloat(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("lab(%.1f %.1f %.1f)", l, a, b)
 	}
 
@@ -210,7 +217,7 @@ func colorFunctionToCSS(colorSpace string, components []any, alpha float64) stri
 	c1 := componentToString(components[1])
 	c2 := componentToString(components[2])
 
-	if alpha >= 0.999 {
+	if alpha >= common.AlphaThreshold {
 		return fmt.Sprintf("color(%s %s %s %s)", colorSpace, c0, c1, c2)
 	}
 

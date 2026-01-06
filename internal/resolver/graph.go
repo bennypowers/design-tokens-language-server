@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"fmt"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/parser/common"
@@ -152,6 +153,7 @@ func (g *DependencyGraph) FindCycle() []string {
 func (g *DependencyGraph) findCycleDFS(node string, visited, recStack map[string]bool, path []string) []string {
 	if recStack[node] {
 		// Found a cycle - return the path from this node
+		// Invariant: node must be in path because we add it immediately after setting recStack[node] = true
 		cycleStart := -1
 		for i, n := range path {
 			if n == node {
@@ -159,10 +161,11 @@ func (g *DependencyGraph) findCycleDFS(node string, visited, recStack map[string
 				break
 			}
 		}
-		if cycleStart != -1 {
-			return append(path[cycleStart:], node)
+		if cycleStart == -1 {
+			// This should never happen - indicates a broken invariant in the DFS algorithm
+			panic(fmt.Sprintf("cycle detection invariant violated: node %q in recStack but not in path %v", node, path))
 		}
-		return append(path, node)
+		return append(path[cycleStart:], node)
 	}
 	if visited[node] {
 		return nil
@@ -185,7 +188,12 @@ func (g *DependencyGraph) findCycleDFS(node string, visited, recStack map[string
 // TopologicalSort returns tokens in dependency order (dependencies first)
 // Returns error if graph contains a cycle
 func (g *DependencyGraph) TopologicalSort() ([]string, error) {
-	// Check for cycles first
+	// Check for cycles first using dedicated cycle detection.
+	// Note: This performs a separate DFS before the sorting DFS below, which is
+	// intentionally redundant for clarity. The separation allows FindCycle() to
+	// provide detailed error reporting with the full cycle path, while the sort
+	// DFS below is optimized for building the result list. This trade-off favors
+	// clear error messages and maintainability over performance optimization.
 	if cycle := g.FindCycle(); cycle != nil {
 		return nil, schema.NewCircularReferenceError("", cycle)
 	}

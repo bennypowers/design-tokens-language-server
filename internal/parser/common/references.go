@@ -1,7 +1,6 @@
 package common
 
 import (
-	"regexp"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/schema"
@@ -28,16 +27,13 @@ type Reference struct {
 	Column int
 }
 
-// Regex for curly brace references: {path.to.token}
-var curlyBracePattern = regexp.MustCompile(`\{([^}]+)\}`)
-
 // ExtractReferences extracts references from a string value.
 // The version parameter is reserved for future schema-specific extraction logic.
 func ExtractReferences(content string, version schema.SchemaVersion) ([]Reference, error) {
 	var refs []Reference
 
 	// Extract curly brace references (supported in both schemas)
-	matches := curlyBracePattern.FindAllStringSubmatch(content, -1)
+	matches := CurlyBraceReferenceRegexp.FindAllStringSubmatch(content, -1)
 	for _, match := range matches {
 		if len(match) > 1 {
 			refs = append(refs, Reference{
@@ -66,8 +62,8 @@ func ExtractReferencesFromValue(value interface{}, version schema.SchemaVersion)
 				return nil, schema.NewMixedSchemaFeaturesError("", "draft", []string{"$ref (2025.10+ only)"})
 			}
 
-			// Convert JSON Pointer to path
-			// Remove leading "#/" if present
+			// Strip "#/" prefix from JSON Pointer
+			// Keep slash format for Reference.Path (conversion to dots happens later if needed)
 			path := strings.TrimPrefix(refPath, "#/")
 
 			return []Reference{
@@ -87,8 +83,13 @@ func ExtractReferencesFromValue(value interface{}, version schema.SchemaVersion)
 }
 
 // ConvertJSONPointerToTokenPath converts a JSON Pointer path to a token path
-// Example: "color/brand/primary" -> "color.brand.primary"
+// Automatically strips the "#/" prefix if present
+// Examples:
+//   "#/color/brand/primary" -> "color.brand.primary"
+//   "color/brand/primary" -> "color.brand.primary"
 func ConvertJSONPointerToTokenPath(jsonPointer string) string {
+	// Strip leading "#/" if present
+	jsonPointer = strings.TrimPrefix(jsonPointer, "#/")
 	return strings.ReplaceAll(jsonPointer, "/", ".")
 }
 

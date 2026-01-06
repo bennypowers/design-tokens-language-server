@@ -105,11 +105,14 @@ func DefinitionForTokenFile(req *types.RequestContext, doc *documents.Document, 
 
 	// Return the definition location
 	if token.DefinitionURI != "" && len(token.Path) > 0 {
+		// Calculate token name length for range highlighting
+		tokenNameLen := uint32(len(token.Name))
+
 		location := protocol.Location{
 			URI: token.DefinitionURI,
 			Range: protocol.Range{
 				Start: protocol.Position{Line: token.Line, Character: token.Character},
-				End:   protocol.Position{Line: token.Line, Character: token.Character},
+				End:   protocol.Position{Line: token.Line, Character: token.Character + tokenNameLen},
 			},
 		}
 

@@ -420,6 +420,7 @@ func (p *Parser) extractTokensWithSchemaVersion(node *yaml.Node, jsonPath []stri
 				extendsToken := &tokens.Token{
 					Name:          extendsName,
 					Value:         valueNode.Value, // The JSON Pointer like "#/baseColors"
+					Type:          "$extends",      // Special type for extension references
 					Prefix:        prefix,
 					Path:          extendsPath,
 					Reference:     "{" + strings.Join(extendsPath, ".") + "}",
@@ -511,24 +512,8 @@ func (p *Parser) extractTokensWithSchemaVersion(node *yaml.Node, jsonPath []stri
 // DTCG token properties ($type, $value, etc.) return false - they're processed as token data.
 // 2025.10 reference fields ($ref, $extends) return false - they're handled separately.
 func (p *Parser) shouldSkipReservedField(key string, version schema.SchemaVersion) bool {
-	// Always skip DTCG metadata fields (these are handled separately)
-	if key == "$type" || key == "$value" || key == "$description" || key == "$extensions" || key == "$deprecated" {
-		return false // Don't skip - these are token properties
-	}
-
-	// Skip $schema field (not a token)
-	if key == "$schema" {
-		return true
-	}
-
-	// For 2025.10+, $ref and $extends are handled as references, not child tokens
-	if version != schema.Draft {
-		if key == "$ref" || key == "$extends" {
-			return false // Don't skip - these are processed but not as child tokens
-		}
-	}
-
-	return false
+	// Only $schema should be skipped - it's metadata, not a token
+	return key == "$schema"
 }
 
 // createToken creates a Token from AST nodes with accurate position data

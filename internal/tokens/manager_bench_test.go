@@ -52,15 +52,20 @@ func BenchmarkManager_Get(b *testing.B) {
 				_ = m.Add(token)
 			}
 
+			// Pre-compute lookup keys
+			keyStart := fmt.Sprintf("color-token-%d", 0)
+			keyMid := fmt.Sprintf("color-token-%d", size/2)
+			keyEnd := fmt.Sprintf("color-token-%d", size-1)
+
 			b.ReportAllocs()
 			b.ResetTimer()
 
 			// Benchmark: lookup tokens
 			for i := 0; i < b.N; i++ {
 				// Test lookup at beginning, middle, and end
-				_ = m.Get(fmt.Sprintf("color-token-%d", 0))
-				_ = m.Get(fmt.Sprintf("color-token-%d", size/2))
-				_ = m.Get(fmt.Sprintf("color-token-%d", size-1))
+				_ = m.Get(keyStart)
+				_ = m.Get(keyMid)
+				_ = m.Get(keyEnd)
 			}
 		})
 	}
@@ -86,12 +91,15 @@ func BenchmarkManager_GetWithPrefix(b *testing.B) {
 				_ = m.Add(token)
 			}
 
+			// Pre-compute lookup key
+			lookupKey := fmt.Sprintf("--ds-color-token-%d", size/2)
+
 			b.ReportAllocs()
 			b.ResetTimer()
 
 			// Benchmark CSS variable lookup (requires iteration)
 			for i := 0; i < b.N; i++ {
-				_ = m.Get(fmt.Sprintf("--ds-color-token-%d", size/2))
+				_ = m.Get(lookupKey)
 			}
 		})
 	}

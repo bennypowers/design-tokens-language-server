@@ -81,6 +81,10 @@ func TestParseColorValue(t *testing.T) {
 		assert.True(t, colorValue.IsValid())
 
 		// Should handle "none" keyword in CSS output
+		// Note: The "none" keyword relies on CSS Color Module Level 4 syntax and may have
+		// limited browser support. This test asserts preservation for spec compliance,
+		// but consumers should verify Level 4 compatibility when using colorValue.ToCSS()
+		// output in production or UIs.
 		css := colorValue.ToCSS()
 		assert.NotEmpty(t, css)
 		assert.Contains(t, css, "none", "none keyword should be preserved in CSS output")
