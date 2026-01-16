@@ -1,10 +1,12 @@
 # Makefile for Design Tokens Language Server (Go implementation)
-# Based on CEM's proven CGO cross-compilation setup
+# Uses go-release-workflows for cross-compilation
 
 SHELL := /bin/bash
-WINDOWS_CC_IMAGE := dtls-windows-cc-image
 BINARY_NAME := design-tokens-language-server
 DIST_DIR := dist/bin
+
+# Shared Windows cross-compilation image (from go-release-workflows)
+SHARED_WINDOWS_CC_IMAGE := dtls-shared-windows-cc
 
 # Extract version from goals if present (e.g., "make release v0.1.1" or "make release patch")
 VERSION ?= $(filter v% patch minor major,$(MAKECMDGOALS))
@@ -12,7 +14,9 @@ VERSION ?= $(filter v% patch minor major,$(MAKECMDGOALS))
 # Go build flags with version injection
 GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
-.PHONY: all build build-all test test-coverage patch-coverage show-coverage lint install clean windows-x64 windows-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64 build-windows-cc-image rebuild-windows-cc-image release patch minor major
+.PHONY: all build build-all test test-coverage patch-coverage show-coverage lint install clean \
+        linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64 win32-arm64 \
+        build-shared-windows-image release patch minor major
 
 all: build
 
@@ -81,7 +85,7 @@ show-coverage: test-coverage
 	@go tool cover -html=coverage.out
 
 ## Build all platform binaries (requires cross-compilation toolchains)
-build-all: linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64
+build-all: linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64 win32-arm64
 	@echo "All binaries built successfully!"
 	@ls -lh $(DIST_DIR)/
 
@@ -90,101 +94,81 @@ linux-x64:
 	@mkdir -p $(DIST_DIR)
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 		go build $(GO_BUILD_FLAGS) \
-		-o $(DIST_DIR)/$(BINARY_NAME)-x86_64-unknown-linux-gnu \
+		-o $(DIST_DIR)/$(BINARY_NAME)-linux-x64 \
 		./cmd/design-tokens-language-server
-	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-x86_64-unknown-linux-gnu"
 
 ## Linux ARM64 (CGO cross-compilation - requires gcc-aarch64-linux-gnu)
 linux-arm64:
 	@mkdir -p $(DIST_DIR)
-	@if ! command -v aarch64-linux-gnu-gcc &> /dev/null; then \
-		echo "Error: aarch64-linux-gnu-gcc not found. Install gcc-aarch64-linux-gnu"; \
-		exit 1; \
-	fi
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
 		CC=aarch64-linux-gnu-gcc \
 		go build $(GO_BUILD_FLAGS) \
-		-o $(DIST_DIR)/$(BINARY_NAME)-aarch64-unknown-linux-gnu \
+		-o $(DIST_DIR)/$(BINARY_NAME)-linux-arm64 \
 		./cmd/design-tokens-language-server
-	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-aarch64-unknown-linux-gnu"
 
-## macOS x86_64 (requires macOS host or osxcross)
+## macOS x86_64 (requires macOS host)
+## Explicit -arch flags ensure correct architecture when cross-compiling on macOS
 darwin-x64:
 	@mkdir -p $(DIST_DIR)
-	@if [ "$$(uname -s)" != "Darwin" ]; then \
-		echo "Warning: Building macOS binaries requires macOS host or osxcross"; \
-		echo "Skipping darwin-x64..."; \
-	else \
-		CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-			go build $(GO_BUILD_FLAGS) \
-			-o $(DIST_DIR)/$(BINARY_NAME)-x86_64-apple-darwin \
-			./cmd/design-tokens-language-server; \
-		echo "Built: $(DIST_DIR)/$(BINARY_NAME)-x86_64-apple-darwin"; \
-	fi
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
+		CC="clang -arch x86_64" \
+		CGO_CFLAGS="-arch x86_64" CGO_LDFLAGS="-arch x86_64" \
+		go build $(GO_BUILD_FLAGS) \
+		-o $(DIST_DIR)/$(BINARY_NAME)-darwin-x64 \
+		./cmd/design-tokens-language-server
 
-## macOS ARM64 (Apple Silicon - requires macOS host or osxcross)
+## macOS ARM64 (Apple Silicon - requires macOS host)
+## Explicit -arch flags ensure correct architecture when cross-compiling on macOS
 darwin-arm64:
 	@mkdir -p $(DIST_DIR)
-	@if [ "$$(uname -s)" != "Darwin" ]; then \
-		echo "Warning: Building macOS binaries requires macOS host or osxcross"; \
-		echo "Skipping darwin-arm64..."; \
+	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+		CC="clang -arch arm64" \
+		CGO_CFLAGS="-arch arm64" CGO_LDFLAGS="-arch arm64" \
+		go build $(GO_BUILD_FLAGS) \
+		-o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 \
+		./cmd/design-tokens-language-server
+
+## Build the shared Windows cross-compilation image (uses go-release-workflows Containerfile)
+build-shared-windows-image:
+	@if ! podman image exists $(SHARED_WINDOWS_CC_IMAGE); then \
+		echo "Building shared Windows cross-compilation image..."; \
+		curl -fsSL https://raw.githubusercontent.com/bennypowers/go-release-workflows/main/.github/actions/setup-windows-build/Containerfile \
+			| podman build -t $(SHARED_WINDOWS_CC_IMAGE) -f - .; \
 	else \
-		CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
-			go build $(GO_BUILD_FLAGS) \
-			-o $(DIST_DIR)/$(BINARY_NAME)-aarch64-apple-darwin \
-			./cmd/design-tokens-language-server; \
-		echo "Built: $(DIST_DIR)/$(BINARY_NAME)-aarch64-apple-darwin"; \
+		echo "Image $(SHARED_WINDOWS_CC_IMAGE) already exists, skipping build."; \
 	fi
 
-## Build the Podman image for Windows cross-compilation (cached)
-build-windows-cc-image:
-	@if ! podman image exists $(WINDOWS_CC_IMAGE); then \
-		echo "Building Windows cross-compilation image..."; \
-		podman build -t $(WINDOWS_CC_IMAGE) . ; \
-	else \
-		echo "Image $(WINDOWS_CC_IMAGE) already exists, skipping build."; \
-		echo "Use 'make rebuild-windows-cc-image' to force rebuild."; \
-	fi
-
-## Force rebuild of the Windows cross-compilation image
-rebuild-windows-cc-image:
-	podman build --no-cache -t $(WINDOWS_CC_IMAGE) .
-
-## Windows x86_64 (requires Podman and Containerfile)
-windows-x64: build-windows-cc-image
+## Windows x86_64 (requires Podman)
+win32-x64: build-shared-windows-image
 	@mkdir -p $(DIST_DIR)
 	podman run --rm \
-		-v $(PWD):/app:Z \
-		-w /app \
+		-v $(PWD):/src:Z \
+		-w /src \
 		-e GOOS=windows \
 		-e GOARCH=amd64 \
 		-e CGO_ENABLED=1 \
 		-e CC=x86_64-w64-mingw32-gcc \
 		-e CXX=x86_64-w64-mingw32-g++ \
-		$(WINDOWS_CC_IMAGE) \
+		$(SHARED_WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
-			-o dist/bin/$(BINARY_NAME)-win-x64.exe \
+			-o $(DIST_DIR)/$(BINARY_NAME)-win32-x64.exe \
 			./cmd/design-tokens-language-server
-	@echo "Built: $(DIST_DIR)/$(BINARY_NAME)-win-x64.exe"
 
-## Windows ARM64 (requires Podman - experimental, MinGW ARM64 support varies)
-windows-arm64: build-windows-cc-image
+## Windows ARM64 (requires Podman)
+win32-arm64: build-shared-windows-image
 	@mkdir -p $(DIST_DIR)
-	@echo "Warning: Windows ARM64 cross-compilation is experimental"
-	@podman run --rm \
-		-v $(PWD):/app:Z \
-		-w /app \
+	podman run --rm \
+		-v $(PWD):/src:Z \
+		-w /src \
 		-e GOOS=windows \
 		-e GOARCH=arm64 \
 		-e CGO_ENABLED=1 \
-		$(WINDOWS_CC_IMAGE) \
+		-e CC=aarch64-w64-mingw32-gcc \
+		-e CXX=aarch64-w64-mingw32-g++ \
+		$(SHARED_WINDOWS_CC_IMAGE) \
 		go build $(GO_BUILD_FLAGS) \
-			-o dist/bin/$(BINARY_NAME)-win-arm64.exe \
-			./cmd/design-tokens-language-server || { \
-		echo "Warning: Windows ARM64 build failed - MinGW ARM64 toolchain may not be fully supported"; \
-		echo "This is expected for experimental targets and does not indicate a problem."; \
-		true; \
-	}
+			-o $(DIST_DIR)/$(BINARY_NAME)-win32-arm64.exe \
+			./cmd/design-tokens-language-server
 
 ## VSCode extension targets
 vscode-build: build
@@ -247,7 +231,8 @@ help:
 	@echo "  make linux-arm64        Build for Linux ARM64 (requires gcc-aarch64-linux-gnu)"
 	@echo "  make darwin-x64         Build for macOS x86_64 (requires macOS host)"
 	@echo "  make darwin-arm64       Build for macOS ARM64 (requires macOS host)"
-	@echo "  make windows-x64        Build for Windows x64 (requires Podman)"
+	@echo "  make win32-x64          Build for Windows x64 (requires Podman)"
+	@echo "  make win32-arm64        Build for Windows ARM64 (requires Podman)"
 	@echo ""
 	@echo "VSCode extension:"
 	@echo "  make vscode-build       Build VSCode extension for local testing"
@@ -255,5 +240,5 @@ help:
 	@echo ""
 	@echo "Requirements for cross-compilation:"
 	@echo "  - Linux ARM64: gcc-aarch64-linux-gnu"
-	@echo "  - macOS: macOS host or osxcross"
-	@echo "  - Windows: Podman (uses Containerfile)"
+	@echo "  - macOS: macOS host with Xcode"
+	@echo "  - Windows: Podman (uses shared go-release-workflows image)"
