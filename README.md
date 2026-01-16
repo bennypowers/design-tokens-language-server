@@ -189,27 +189,10 @@ DTCG.
 
 #### Schema Version Detection
 
-DTLS automatically detects which schema version your token files use. For best
-results, add a `$schema` field to your token files:
-
-```json
-{
-  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
-  "color": { ... }
-}
-```
-
-Or for Editor's Draft:
-
-```json
-{
-  "$schema": "https://www.designtokens.org/schemas/draft.json",
-  "color": { ... }
-}
-```
-
-Without a `$schema` field, DTLS uses duck-typing to detect the schema version
-based on file contents. See [Schema Versioning Guide](./docs/SCHEMA_VERSIONING.md)
+DTLS automatically detects which schema version your token files use based on
+file contents (duck-typing). It looks for features like structured color values,
+`$ref`, and `$extends` to identify 2025.10 stable, falling back to Editor's
+Draft for ambiguous files. See [Schema Versioning Guide](./docs/SCHEMA_VERSIONING.md)
 for details on detection and migration.
 
 #### Configuration
