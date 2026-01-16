@@ -273,13 +273,13 @@ settings.
 
 See [CONTRIBUTING.md][contributingmd]
 
-[dtcg]: https://www.designtokens.org/
-[contributingmd]: ./CONTRIBUTING.md
-[issue]: https://github.com/bennypowers/issues/new
 [build]:     https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg
 [buildyaml]: https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml
 [coverage]: https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ
 [coveragereport]: https://codecov.io/gh/bennypowers/design-tokens-language-server/
+[dtcg]: https://www.designtokens.org/
+[contributingmd]: ./CONTRIBUTING.md
+[issue]: https://github.com/bennypowers/design-tokens-language-server/issues/new/
 [zedextensions]: https://zed.dev/extensions/design-tokens
 [vscodemarketplace]: https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode
 [neovimlspdocs]: https://neovim.io/doc/user/lsp.html
