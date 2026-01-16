@@ -3,8 +3,8 @@
 [![build](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg)](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml)
 [![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
 
-Editor tools for working with [<abbr title="design tokens community
-  group">DTCG</abbr> formatted design tokens][dtcg] in CSS, and 
+Editor tools for working with <abbr title="design tokens community
+  group">[DTCG][dtcg]</abbr> formatted design tokens in CSS, and
 for token definitions in JSON or YAML files.
 
 > [!NOTE]
@@ -273,4 +273,5 @@ settings.
 ```
 
 ## 🤝 Contributing
+
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
