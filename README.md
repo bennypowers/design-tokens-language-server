@@ -11,7 +11,7 @@ Supports both **Editor's Draft** and **DTCG 2025.10 stable** schema versions,
 including multi-schema workspaces where different token files use different schema versions.
 
 > [!NOTE]
-> This pre-release software. If you encounter bugs or unexpected behavior,
+> This is pre-release software. If you encounter bugs or unexpected behavior,
 > please file a detailed [issue][issue].
 
 ## ✨ Features
@@ -78,12 +78,12 @@ definition JSON or YAML files
 
 DTLS supports both DTCG schema versions:
 
-- **[Editor's Draft](https://www.designtokens.org/TR/drafts/format/)** - Original DTCG format
+- **[Editor's Draft][editorsdraft]** - Original DTCG format
   - String color values (hex, rgb, hsl, named colors)
   - Curly brace references: `{color.brand.primary}`
   - Group markers for root tokens: `_`, `@`, `DEFAULT`
 
-- **[2025.10 Stable](https://www.designtokens.org/tr/2025.10/)** - Latest stable specification
+- **[2025.10 Stable][202510stable]** - Latest stable specification
   - Structured color values with 14 color spaces (sRGB, oklch, display-p3, etc.)
   - JSON Pointer references: `$ref: "#/color/brand/primary"`
   - Group inheritance: `$extends: "#/baseColors"`
@@ -393,3 +393,5 @@ See [CONTRIBUTING.md][contributingmd]
 [vscodemarketplace]: https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode
 [neovimlspdocs]: https://neovim.io/doc/user/lsp.html
 [cwcdash]: https://neovim.io/doc/user/windows.html#CTRL-W_g_CTRL-%5D
+[editorsdraft]: https://second-editors-draft.tr.designtokens.org/format/
+[202510stable]: https://www.designtokens.org/tr/2025.10/
