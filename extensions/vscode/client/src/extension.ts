@@ -17,37 +17,30 @@ export async function activate(context: ExtensionContext) {
   const args = ["--stdio"];
 
   // Determine the OS-specific binary name
+  // Uses standard platform naming: linux-x64, darwin-arm64, win32-x64, etc.
   const binaryName = (() => {
     const archMapping: Record<string, string> = {
-      arm64: "aarch64",
-      x64: "x86_64",
+      arm64: "arm64",
+      x64: "x64",
     };
 
     const osMapping: Record<string, string> = {
-      darwin: "apple-darwin",
-      linux: "unknown-linux-gnu",
-      win32: "win",
+      darwin: "darwin",
+      linux: "linux",
+      win32: "win32",
     };
 
-    const architecture = archMapping[arch];
-    const operatingSystem = osMapping[platform];
+    const archSuffix = archMapping[arch];
+    const osSuffix = osMapping[platform];
 
-    if (!architecture || !operatingSystem) {
+    if (!archSuffix || !osSuffix) {
       throw new Error(
         `Unsupported platform or architecture: ${platform}-${arch}`,
       );
     }
 
-    // Windows uses simplified naming: design-tokens-language-server-win-x64.exe
-    if (platform === "win32") {
-      if (arch !== "x64" && arch !== "arm64") {
-        throw new Error(`Unsupported Windows architecture: ${arch}`);
-      }
-      return `design-tokens-language-server-win-${arch}.exe`;
-    }
-
-    // Unix platforms use target triple: design-tokens-language-server-x86_64-apple-darwin
-    return `design-tokens-language-server-${architecture}-${operatingSystem}`;
+    const ext = platform === "win32" ? ".exe" : "";
+    return `design-tokens-language-server-${osSuffix}-${archSuffix}${ext}`;
   })();
 
   const command = context.asAbsolutePath(

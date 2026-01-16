@@ -1,15 +1,15 @@
 # 🎨 Design Tokens Language Server 🪙
 
-[![build](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg)](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml)
-[![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
+[![build][build]][buildyaml]
+[![coverage][coverage]][coveragereport]
 
-Editor tools for working with [<abbr title="design tokens community
-  group">DTCG</abbr> formatted design tokens][dtcg] in CSS, and 
+Editor tools for working with <abbr title="design tokens community
+  group">[DTCG][dtcg]</abbr> formatted design tokens in CSS, and
 for token definitions in JSON or YAML files.
 
 > [!NOTE]
 > This pre-release software. If you encounter bugs or unexpected behavior,
-> please file a detailed [issue](https://github.com/bennypowers/issues/new).
+> please file a detailed [issue][issue].
 
 ## ✨ Features
 
@@ -61,9 +61,8 @@ jump from a token reference in a JSON file to the token's definition.
 
 ![Json file jump in neovim](./docs/goto-definition.png)
 
-Go to definition in a split window using Neovim's
-[`<C-w C-]>` binding](https://neovim.io/doc/user/windows.html#CTRL-W_g_CTRL-%5D),
-which defers to LSP methods when they're available
+Go to definition in a split window using Neovim's [`<C-w C-]>` binding][cwcdash],
+which defers to LSP methods when they're available.
 
 ### 🗺️ References
 
@@ -81,7 +80,7 @@ Download the latest release for your platform and place the binary in your
 
 #### Neovim
 
-Using native Neovim LSP (see [`:help lsp`](https://neovim.io/doc/user/lsp.html) for more
+Using native Neovim LSP (see [`:help lsp`][neovimlspdocs] for more
 info):
 
 Create a file like `~/.config/nvim/lsp/design_tokens_ls.lua`:
@@ -118,21 +117,19 @@ return {
 
 Then configure your LSP setup to load configs from `~/.config/nvim/lsp/`. This allows
 you to manage each language server in its own file. See the
-[neovim lsp docs](https://neovim.io/doc/user/lsp.html) for details on setting up native
-LSP clients.
+[neovim docs][neovimlspdocs] for details on setting up native LSP clients.
 
 #### VS Code
 
-Install from the
-[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode).
+Install from the [VS Code Marketplace][vscodemarketplace].
 
 The extension includes the language server binary, so no additional installation is
 required.
 
 #### Zed
 
-Install from the [Zed Extensions](https://zed.dev/extensions/design-tokens) page, or
-search for "Design Tokens" in Zed's extension panel.
+Install from the [Zed Extensions][zedextensions] page, or search for
+"Design Tokens" in Zed's extension panel.
 
 ## ⚙️ Configuration
 
@@ -273,4 +270,17 @@ settings.
 ```
 
 ## 🤝 Contributing
-See [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+See [CONTRIBUTING.md][contributingmd]
+
+[dtcg]: https://www.designtokens.org/
+[contributingmd]: ./CONTRIBUTING.md
+[issue]: https://github.com/bennypowers/issues/new
+[build]:     https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg
+[buildyaml]: https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml
+[coverage]: https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ
+[coveragereport]: https://codecov.io/gh/bennypowers/design-tokens-language-server/
+[zedextensions]: https://zed.dev/extensions/design-tokens
+[vscodemarketplace]: https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode
+[neovimlspdocs]: https://neovim.io/doc/user/lsp.html
+[cwcdash]: https://neovim.io/doc/user/windows.html#CTRL-W_g_CTRL-%5D
