@@ -334,7 +334,7 @@ Configure group markers in `package.json`:
 
 ```json
 {
-  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
   "color": {
     "red": {
       "$root": {
