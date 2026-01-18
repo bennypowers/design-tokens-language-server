@@ -89,3 +89,4 @@ func (m *mockServerContextMinimal) UsePullDiagnostics() bool         { return fa
 func (m *mockServerContextMinimal) SetUsePullDiagnostics(use bool)   {}
 func (m *mockServerContextMinimal) AddWarning(err error)             {}
 func (m *mockServerContextMinimal) TakeWarnings() []error            { return nil }
+func (m *mockServerContextMinimal) ShouldProcessAsTokenFile(uri string) bool { return true }

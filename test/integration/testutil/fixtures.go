@@ -111,3 +111,39 @@ func OpenTokenFixture(t *testing.T, server *lsp.Server, uri, fixtureName string)
 	err := textDocument.DidOpen(req, params)
 	require.NoError(t, err, "Failed to open token fixture: %s", fixtureName)
 }
+
+// LoadNonTokenFixture loads a non-token file fixture and returns the bytes
+func LoadNonTokenFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	path := filepath.Join(FixtureRoot(), "non-token-files", name)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: Test fixture path - test code only
+	require.NoError(t, err, "Failed to load non-token fixture: %s", name)
+	return data
+}
+
+// OpenNonTokenFixture opens a non-token JSON/YAML fixture file as a document in the server
+// This is for testing that LSP features are NOT provided for non-token files
+func OpenNonTokenFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {
+	t.Helper()
+	content := LoadNonTokenFixture(t, fixtureName)
+
+	// Determine language ID from URI extension
+	languageID := "json"
+	if len(uri) > 5 && uri[len(uri)-5:] == ".yaml" {
+		languageID = "yaml"
+	} else if len(uri) > 4 && uri[len(uri)-4:] == ".yml" {
+		languageID = "yaml"
+	}
+
+	params := &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        uri,
+			LanguageID: languageID,
+			Version:    1,
+			Text:       string(content),
+		},
+	}
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, params)
+	require.NoError(t, err, "Failed to open non-token fixture: %s", fixtureName)
+}

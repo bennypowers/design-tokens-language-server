@@ -26,6 +26,9 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 
 	// Handle token files (JSON/YAML)
 	if doc.LanguageID() == "json" || doc.LanguageID() == "yaml" {
+		if !req.Server.ShouldProcessAsTokenFile(uri) {
+			return nil, nil
+		}
 		return DefinitionForTokenFile(req, doc, position)
 	}
 

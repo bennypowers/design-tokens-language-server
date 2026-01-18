@@ -38,6 +38,11 @@ func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticToke
 		return nil, nil
 	}
 
+	// Only process files that should be treated as token files
+	if !req.Server.ShouldProcessAsTokenFile(uri) {
+		return nil, nil
+	}
+
 	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
 
 	// Encode tokens using delta encoding

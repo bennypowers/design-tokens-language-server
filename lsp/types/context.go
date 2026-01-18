@@ -32,6 +32,11 @@ type ServerContext interface {
 	LoadPackageJsonConfig() error
 	IsTokenFile(path string) bool
 
+	// Token file detection
+	// ShouldProcessAsTokenFile checks if a document should receive token file features.
+	// Returns true if the file is configured as a token file OR has a valid Design Tokens $schema.
+	ShouldProcessAsTokenFile(uri string) bool
+
 	// Workspace initialization (called by Initialize handler)
 	LoadTokensFromConfig() error
 	RegisterFileWatchers(ctx *glsp.Context) error

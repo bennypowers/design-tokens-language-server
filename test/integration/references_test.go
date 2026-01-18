@@ -25,6 +25,7 @@ func TestReferencesOnVarCall(t *testing.T) {
 	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "basic-colors.json")
 
 	// Request references from the token file (cursor on "primary")
+	// Note: Line 3 is "primary" key after $schema field on line 1
 	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -32,7 +33,7 @@ func TestReferencesOnVarCall(t *testing.T) {
 				URI: "file:///tokens.json",
 			},
 			Position: protocol.Position{
-				Line:      2, // "primary" key
+				Line:      3, // "primary" key (line 3 after $schema on line 1)
 				Character: 6,
 			},
 		},
@@ -70,6 +71,7 @@ func TestReferencesMultipleFiles(t *testing.T) {
 	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "basic-colors.json")
 
 	// Request references from token file (cursor on "primary")
+	// Note: Line 3 is "primary" key after $schema field on line 1
 	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -77,7 +79,7 @@ func TestReferencesMultipleFiles(t *testing.T) {
 				URI: "file:///tokens.json",
 			},
 			Position: protocol.Position{
-				Line:      2,
+				Line:      3, // "primary" key (line 3 after $schema on line 1)
 				Character: 6,
 			},
 		},
@@ -147,6 +149,7 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "basic-colors.json")
 
 	// Request references from token file with IncludeDeclaration
+	// Note: Line 3 is "primary" key after $schema field on line 1
 	req := types.NewRequestContext(server, nil)
 	locations, err := references.References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -154,7 +157,7 @@ func TestReferencesWithDeclaration(t *testing.T) {
 				URI: "file:///tokens.json",
 			},
 			Position: protocol.Position{
-				Line:      2,
+				Line:      3, // "primary" key (line 3 after $schema on line 1)
 				Character: 6,
 			},
 		},
@@ -172,7 +175,7 @@ func TestReferencesWithDeclaration(t *testing.T) {
 	// Check that declaration is included
 	foundDeclaration := false
 	for _, loc := range locations {
-		if loc.URI == "file:///tokens.json" && loc.Range.Start.Line == 2 {
+		if loc.URI == "file:///tokens.json" && loc.Range.Start.Line == 3 {
 			foundDeclaration = true
 		}
 	}

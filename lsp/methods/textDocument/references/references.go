@@ -28,6 +28,11 @@ func validateTokenContext(req *types.RequestContext, uri protocol.DocumentUri, p
 		return nil, ""
 	}
 
+	// Only process files that should be treated as token files
+	if !req.Server.ShouldProcessAsTokenFile(string(uri)) {
+		return nil, ""
+	}
+
 	// For JSON/YAML files, find the token at cursor position
 	tokenName := findTokenAtPosition(doc.Content(), position, doc.LanguageID())
 	log.Info("Token name at cursor: '%s'", tokenName)

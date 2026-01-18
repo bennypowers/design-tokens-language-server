@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
   "test1": { "$value": "{color.primary}", "$type": "color" },
   "test2": { "$value": "{spacing.small}", "$type": "color" }
 }

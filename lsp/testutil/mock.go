@@ -23,10 +23,11 @@ type MockServerContext struct {
 	usePullDiagnostics         bool
 
 	// Optional callbacks for custom behavior in tests
-	LoadTokensFunc         func() error
-	RegisterWatchersFunc   func(*glsp.Context) error
-	IsTokenFileFunc        func(string) bool
-	PublishDiagnosticsFunc func(*glsp.Context, string) error
+	LoadTokensFunc                func() error
+	RegisterWatchersFunc          func(*glsp.Context) error
+	IsTokenFileFunc               func(string) bool
+	ShouldProcessAsTokenFileFunc  func(string) bool
+	PublishDiagnosticsFunc        func(*glsp.Context, string) error
 
 	// Tracking flags for tests that need to verify methods were called
 	LoadTokensCalled       bool
@@ -136,6 +137,16 @@ func (m *MockServerContext) IsTokenFile(path string) bool {
 	}
 
 	return false
+}
+
+// ShouldProcessAsTokenFile checks if a document should receive token file features
+func (m *MockServerContext) ShouldProcessAsTokenFile(uri string) bool {
+	if m.ShouldProcessAsTokenFileFunc != nil {
+		return m.ShouldProcessAsTokenFileFunc(uri)
+	}
+
+	// Default implementation: always return true for mock (tests expect features to work)
+	return true
 }
 
 // LoadTokensFromConfig loads tokens from configuration

@@ -1,0 +1,8 @@
+{
+  "name": "example-package",
+  "version": "1.0.0",
+  "description": "This is a regular package.json, not a design tokens file",
+  "dependencies": {
+    "lodash": "^4.17.21"
+  }
+}
