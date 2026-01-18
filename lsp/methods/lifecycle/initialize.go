@@ -80,7 +80,7 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 				"tokenModifiers": []string{},
 			},
 			"full": map[string]any{
-				"delta": false, // Disabled: delta implementation needs proper result caching and diffing
+				"delta": true,
 			},
 		},
 	}

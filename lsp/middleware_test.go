@@ -8,6 +8,7 @@ import (
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/tokens"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
@@ -48,6 +49,10 @@ func (m *mockServerContext) SetUsePullDiagnostics(use bool)   {}
 func (m *mockServerContext) AddWarning(err error)             {}
 func (m *mockServerContext) TakeWarnings() []error            { return nil }
 func (m *mockServerContext) ShouldProcessAsTokenFile(uri string) bool { return true }
+func (m *mockServerContext) LoadTokensFromDocumentContent(uri, languageID, content string) error {
+	return nil
+}
+func (m *mockServerContext) SemanticTokenCache() types.SemanticTokenCacher { return semantictokens.NewTokenCache() }
 
 func TestMethod_PanicRecovery(t *testing.T) {
 	// Capture log output

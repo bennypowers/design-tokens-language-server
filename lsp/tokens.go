@@ -141,3 +141,51 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 	}
 	return nil
 }
+
+// LoadTokensFromDocumentContent loads tokens from a document's content into the token manager.
+// This is used when opening a file with Design Tokens schema that isn't configured in tokensFiles.
+// The uri is used to set the DefinitionURI for go-to-definition support.
+func (s *Server) LoadTokensFromDocumentContent(uri, languageID, content string) error {
+	var parsedTokens []*tokens.Token
+	var err error
+
+	switch languageID {
+	case "json":
+		parser := json.NewParser()
+		parsedTokens, err = parser.Parse([]byte(content), "")
+	case "yaml":
+		parser := yaml.NewParser()
+		parsedTokens, err = parser.Parse([]byte(content), "")
+	default:
+		// Not a supported token file format
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to parse tokens from document: %w", err)
+	}
+
+	// Convert URI to file path for FilePath field
+	filePath := uriutil.URIToPath(uri)
+
+	var errs []error
+	successCount := 0
+	for _, token := range parsedTokens {
+		token.FilePath = filePath
+		token.DefinitionURI = uri
+		if err := s.tokens.Add(token); err != nil {
+			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
+		} else {
+			successCount++
+		}
+	}
+
+	if successCount > 0 {
+		log.Info("Auto-loaded %d tokens from %s", successCount, uri)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
+	}
+	return nil
+}

@@ -14,7 +14,7 @@ import (
 
 // FixtureRoot returns the path to the test fixtures directory
 func FixtureRoot() string {
-	return filepath.Join("..", "fixtures")
+	return "testdata"
 }
 
 // LoadTokenFixture loads a token fixture file and returns the bytes

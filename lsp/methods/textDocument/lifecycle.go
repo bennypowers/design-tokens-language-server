@@ -1,6 +1,7 @@
 package textDocument
 
 import (
+	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/log"
 
 	"bennypowers.dev/dtls/lsp/types"
@@ -16,6 +17,21 @@ func DidOpen(req *types.RequestContext, params *protocol.DidOpenTextDocumentPara
 		int(params.TextDocument.Version), params.TextDocument.Text)
 	if err != nil {
 		return err
+	}
+
+	// Auto-load tokens from files that look like DTCG token files
+	// This enables semantic tokens and other features for token files not in config
+	languageID := params.TextDocument.LanguageID
+	content := params.TextDocument.Text
+	if (languageID == "json" || languageID == "yaml") &&
+		(documents.IsDesignTokensSchema(content) || documents.LooksLikeDTCGContent(content)) {
+		if err := req.Server.LoadTokensFromDocumentContent(
+			params.TextDocument.URI,
+			languageID,
+			content,
+		); err != nil {
+			log.Warn("Failed to auto-load tokens from %s: %v", params.TextDocument.URI, err)
+		}
 	}
 
 	// Publish diagnostics for the opened document (only if using push model)
@@ -69,6 +85,9 @@ func DidClose(req *types.RequestContext, params *protocol.DidCloseTextDocumentPa
 	uri := params.TextDocument.URI
 
 	log.Info("Document closed: %s", uri)
+
+	// Invalidate semantic token cache for this document
+	req.Server.SemanticTokenCache().Invalidate(uri)
 
 	return req.Server.DocumentManager().DidClose(uri)
 }

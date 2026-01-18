@@ -36,23 +36,25 @@ type Server struct {
 	tokens             *tokens.Manager
 	glspServer         *server.Server
 	context            *glsp.Context
-	rootURI                     string                       // Workspace root URI
-	rootPath                    string                       // Workspace root path (file system)
-	config                      types.ServerConfig           // Server configuration
-	configMu                    sync.RWMutex                 // Protects config, context, clientDiagnosticCapability, and usePullDiagnostics from concurrent access
-	loadedFiles                 map[string]*TokenFileOptions // Track loaded files: filepath -> options (prefix, groupMarkers)
-	loadedFilesMu               sync.RWMutex                 // Protects loadedFiles from concurrent access
-	clientDiagnosticCapability  *bool                        // Client's diagnostic capability detected from raw initialize params (nil = not detected yet)
-	usePullDiagnostics          bool                         // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
+	rootURI                     string                                // Workspace root URI
+	rootPath                    string                                // Workspace root path (file system)
+	config                      types.ServerConfig                    // Server configuration
+	configMu                    sync.RWMutex                          // Protects config, context, clientDiagnosticCapability, and usePullDiagnostics from concurrent access
+	loadedFiles                 map[string]*TokenFileOptions          // Track loaded files: filepath -> options (prefix, groupMarkers)
+	loadedFilesMu               sync.RWMutex                          // Protects loadedFiles from concurrent access
+	clientDiagnosticCapability  *bool                                 // Client's diagnostic capability detected from raw initialize params (nil = not detected yet)
+	usePullDiagnostics          bool                                  // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
+	semanticTokenCache          *semantictokens.TokenCache            // Cache for semantic tokens delta support
 }
 
 // NewServer creates a new Design Tokens LSP server
 func NewServer() (*Server, error) {
 	s := &Server{
-		documents:   documents.NewManager(),
-		tokens:      tokens.NewManager(),
-		config:      types.DefaultConfig(),
-		loadedFiles: make(map[string]*TokenFileOptions),
+		documents:          documents.NewManager(),
+		tokens:             tokens.NewManager(),
+		config:             types.DefaultConfig(),
+		loadedFiles:        make(map[string]*TokenFileOptions),
+		semanticTokenCache: semantictokens.NewTokenCache(),
 	}
 
 	// Create the GLSP server with our handlers wrapped with middleware
@@ -219,6 +221,11 @@ func (s *Server) SetUsePullDiagnostics(use bool) {
 	s.usePullDiagnostics = use
 }
 
+// SemanticTokenCache returns the semantic tokens cache for delta support
+func (s *Server) SemanticTokenCache() types.SemanticTokenCacher {
+	return s.semanticTokenCache
+}
+
 // PublishDiagnostics publishes diagnostics for a document
 func (s *Server) PublishDiagnostics(context *glsp.Context, uri string) error {
 	log.Info("Publishing diagnostics for: %s", uri)
@@ -313,7 +320,8 @@ func (s *Server) IsTokenFile(path string) bool {
 // ShouldProcessAsTokenFile checks if a document should receive token file features.
 // Returns true if:
 // 1. The file is configured as a token file (via IsTokenFile), OR
-// 2. The document has a valid Design Tokens $schema declaration
+// 2. The document has a valid Design Tokens $schema declaration, OR
+// 3. The document content looks like DTCG format (has $value/$type patterns)
 func (s *Server) ShouldProcessAsTokenFile(uri string) bool {
 	// Convert URI to path for IsTokenFile check
 	path := uriutil.URIToPath(uri)
@@ -321,13 +329,21 @@ func (s *Server) ShouldProcessAsTokenFile(uri string) bool {
 		return true
 	}
 
-	// Check document content for Design Tokens schema
+	// Check document content for Design Tokens schema or DTCG patterns
 	doc := s.Document(uri)
 	if doc == nil {
 		return false
 	}
 
-	return documents.IsDesignTokensSchema(doc.Content())
+	content := doc.Content()
+
+	// Check for explicit Design Tokens schema
+	if documents.IsDesignTokensSchema(content) {
+		return true
+	}
+
+	// Check for DTCG content patterns (duck typing)
+	return documents.LooksLikeDTCGContent(content)
 }
 
 // RemoveLoadedFile removes a file from the loaded files tracking map

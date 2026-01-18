@@ -5,6 +5,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/tokens"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
 )
@@ -21,6 +22,7 @@ type MockServerContext struct {
 	glspContext                *glsp.Context
 	clientDiagnosticCapability *bool
 	usePullDiagnostics         bool
+	semanticTokenCache         *semantictokens.TokenCache
 
 	// Optional callbacks for custom behavior in tests
 	LoadTokensFunc                func() error
@@ -37,12 +39,13 @@ type MockServerContext struct {
 // NewMockServerContext creates a new mock server context with default behavior
 func NewMockServerContext() *MockServerContext {
 	return &MockServerContext{
-		docs:        documents.NewManager(),
-		tokens:      tokens.NewManager(),
-		config:      types.DefaultConfig(),
-		loadedFiles: make(map[string]string),
-		rootURI:     "",
-		rootPath:    "",
+		docs:               documents.NewManager(),
+		tokens:             tokens.NewManager(),
+		config:             types.DefaultConfig(),
+		loadedFiles:        make(map[string]string),
+		rootURI:            "",
+		rootPath:           "",
+		semanticTokenCache: semantictokens.NewTokenCache(),
 	}
 }
 
@@ -127,7 +130,7 @@ func (m *MockServerContext) IsTokenFile(path string) bool {
 			}
 		}
 		// Handle object-style entries like {"path": "..."}
-		if obj, ok := item.(map[string]interface{}); ok {
+		if obj, ok := item.(map[string]any); ok {
 			if pathVal, exists := obj["path"]; exists {
 				if pathStr, ok := pathVal.(string); ok && pathStr == path {
 					return true
@@ -170,6 +173,11 @@ func (m *MockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
 	if m.RegisterWatchersFunc != nil {
 		return m.RegisterWatchersFunc(ctx)
 	}
+	return nil
+}
+
+// LoadTokensFromDocumentContent loads tokens from document content (no-op for mock)
+func (m *MockServerContext) LoadTokensFromDocumentContent(uri, languageID, content string) error {
 	return nil
 }
 
@@ -216,6 +224,11 @@ func (m *MockServerContext) UsePullDiagnostics() bool {
 // SetUsePullDiagnostics sets whether to use pull diagnostics
 func (m *MockServerContext) SetUsePullDiagnostics(use bool) {
 	m.usePullDiagnostics = use
+}
+
+// SemanticTokenCache returns the semantic tokens cache for delta support
+func (m *MockServerContext) SemanticTokenCache() types.SemanticTokenCacher {
+	return m.semanticTokenCache
 }
 
 // AddDocument adds a document to the manager

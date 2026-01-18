@@ -16,6 +16,7 @@ import (
 	documentcolor "bennypowers.dev/dtls/lsp/methods/textDocument/documentColor"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/hover"
 	"bennypowers.dev/dtls/lsp/methods/textDocument/references"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tliron/glsp"
@@ -29,10 +30,11 @@ import (
 func TestHandlers_WrappersSmokeTest(t *testing.T) {
 	// Create minimal server for smoke tests
 	server := &Server{
-		documents:   documents.NewManager(),
-		tokens:      tokens.NewManager(),
-		config:      types.ServerConfig{},
-		loadedFiles: make(map[string]*TokenFileOptions),
+		documents:          documents.NewManager(),
+		tokens:             tokens.NewManager(),
+		config:             types.ServerConfig{},
+		loadedFiles:        make(map[string]*TokenFileOptions),
+		semanticTokenCache: semantictokens.NewTokenCache(),
 	}
 
 	// Dummy context (nil is fine for these simple wrappers)

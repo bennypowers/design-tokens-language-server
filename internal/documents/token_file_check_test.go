@@ -58,6 +58,134 @@ func TestIsDesignTokensSchema(t *testing.T) {
 	}
 }
 
+func TestLooksLikeDTCGContent(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected bool
+	}{
+		{
+			name: "token with $value",
+			content: `{
+  "color": {
+    "primary": {
+      "$value": "#ff0000"
+    }
+  }
+}`,
+			expected: true,
+		},
+		{
+			name: "token with $type",
+			content: `{
+  "color": {
+    "primary": {
+      "$type": "color"
+    }
+  }
+}`,
+			expected: true,
+		},
+		{
+			name: "token with $value at root",
+			content: `{
+  "$value": "#ff0000"
+}`,
+			expected: true,
+		},
+		{
+			name: "deeply nested $value",
+			content: `{
+  "color": {
+    "brand": {
+      "primary": {
+        "base": {
+          "$value": "#ff0000"
+        }
+      }
+    }
+  }
+}`,
+			expected: true,
+		},
+		{
+			name: "regular JSON without DTCG patterns",
+			content: `{
+  "name": "example-package",
+  "version": "1.0.0"
+}`,
+			expected: false,
+		},
+		{
+			name: "empty object",
+			content: `{}`,
+			expected: false,
+		},
+		{
+			name:     "empty string",
+			content:  "",
+			expected: false,
+		},
+		{
+			name:     "invalid JSON",
+			content:  `{not valid json`,
+			expected: false,
+		},
+		{
+			name: "YAML with $value",
+			content: `color:
+  primary:
+    $value: "#ff0000"`,
+			expected: true,
+		},
+		{
+			name: "YAML with $type",
+			content: `spacing:
+  small:
+    $type: dimension`,
+			expected: true,
+		},
+		{
+			name: "file with only $-prefixed metadata at root",
+			content: `{
+  "$description": "Design tokens file",
+  "$version": "1.0.0"
+}`,
+			expected: false,
+		},
+		{
+			name: "RHDS-style tokens (real-world)",
+			content: `{
+  "color": {
+    "red": {
+      "100": {
+        "$value": "#fce8e8",
+        "$type": "color"
+      }
+    }
+  }
+}`,
+			expected: true,
+		},
+		{
+			name: "depth limit protection",
+			content: `{
+  "a": {"b": {"c": {"d": {"e": {"f": {"g": {"h": {"i": {"j": {"k": {"l": {"$value": "deep"}}}}}}}}}}}}
+}`,
+			expected: false, // Exceeds depth limit of 10
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := LooksLikeDTCGContent(tt.content)
+			if result != tt.expected {
+				t.Errorf("LooksLikeDTCGContent() = %v, expected %v", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestIsDesignTokensSchema_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string

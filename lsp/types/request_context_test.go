@@ -90,3 +90,15 @@ func (m *mockServerContextMinimal) SetUsePullDiagnostics(use bool)   {}
 func (m *mockServerContextMinimal) AddWarning(err error)             {}
 func (m *mockServerContextMinimal) TakeWarnings() []error            { return nil }
 func (m *mockServerContextMinimal) ShouldProcessAsTokenFile(uri string) bool { return true }
+func (m *mockServerContextMinimal) LoadTokensFromDocumentContent(uri, languageID, content string) error {
+	return nil
+}
+func (m *mockServerContextMinimal) SemanticTokenCache() SemanticTokenCacher { return &mockSemanticTokenCache{} }
+
+// mockSemanticTokenCache is a minimal mock for SemanticTokenCacher
+type mockSemanticTokenCache struct{}
+
+func (m *mockSemanticTokenCache) Store(uri string, data []uint32, version int) string { return "" }
+func (m *mockSemanticTokenCache) Get(resultID string) *SemanticTokenCacheEntry        { return nil }
+func (m *mockSemanticTokenCache) GetByURI(uri string) *SemanticTokenCacheEntry        { return nil }
+func (m *mockSemanticTokenCache) Invalidate(uri string)                               {}

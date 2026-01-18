@@ -310,7 +310,7 @@ func TestPackageJsonConfiguration(t *testing.T) {
 
 	t.Run("blocks path traversal in npm: protocol", func(t *testing.T) {
 		// Use the malicious-repo fixture which has path traversal attempts in package.json
-		fixtureDir := filepath.Join("..", "fixtures", "malicious-repo")
+		fixtureDir := filepath.Join("testdata", "malicious-repo")
 
 		// Verify the fixture exists
 		require.DirExists(t, fixtureDir, "malicious-repo fixture should exist")
