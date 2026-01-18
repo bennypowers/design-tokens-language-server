@@ -350,8 +350,11 @@ func TestSemanticTokensDelta_CacheInvalidationOnClose(t *testing.T) {
 	entry := server.SemanticTokenCache().Get(originalResultID)
 	require.NotNil(t, entry, "Cache should have entry before close")
 
-	// Close the document - this should invalidate the cache
-	server.SemanticTokenCache().Invalidate(uri)
+	// Close the document via DidClose - this should invalidate the cache
+	err = textDocument.DidClose(req, &protocol.DidCloseTextDocumentParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+	require.NoError(t, err)
 
 	// Verify cache entry is gone
 	entry = server.SemanticTokenCache().Get(originalResultID)

@@ -77,6 +77,7 @@ type SemanticTokenCacheEntry struct {
 type SemanticTokenCacher interface {
 	Store(uri string, data []uint32, version int) string
 	Get(resultID string) *SemanticTokenCacheEntry
+	GetForURI(resultID, uri string) *SemanticTokenCacheEntry
 	GetByURI(uri string) *SemanticTokenCacheEntry
 	Invalidate(uri string)
 }

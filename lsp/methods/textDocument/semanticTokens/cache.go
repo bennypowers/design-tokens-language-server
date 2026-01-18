@@ -66,22 +66,48 @@ func (c *TokenCache) Store(uri string, data []uint32, version int) string {
 	return resultID
 }
 
-// Get retrieves a cache entry by resultID
+// copyEntry creates an immutable copy of a cache entry to prevent callers from mutating cached data
+func copyEntry(entry *internalEntry) *types.SemanticTokenCacheEntry {
+	dataCopy := make([]uint32, len(entry.Data))
+	copy(dataCopy, entry.Data)
+	return &types.SemanticTokenCacheEntry{
+		ResultID: entry.ResultID,
+		Data:     dataCopy,
+		Version:  entry.Version,
+	}
+}
+
+// Get retrieves a cache entry by resultID.
+// Returns a copy to prevent mutation of cached data.
 func (c *TokenCache) Get(resultID string) *types.SemanticTokenCacheEntry {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	if entry, ok := c.byResultID[resultID]; ok {
-		return &entry.SemanticTokenCacheEntry
+		return copyEntry(entry)
 	}
 	return nil
 }
 
-// GetByURI retrieves a cache entry by document URI
+// GetForURI retrieves a cache entry by resultID only if it belongs to the given URI.
+// Returns nil if the resultID doesn't exist or belongs to a different document.
+// This prevents delta computation from using tokens from a different file.
+// Returns a copy to prevent mutation of cached data.
+func (c *TokenCache) GetForURI(resultID, uri string) *types.SemanticTokenCacheEntry {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if entry, ok := c.byResultID[resultID]; ok && entry.uri == uri {
+		return copyEntry(entry)
+	}
+	return nil
+}
+
+// GetByURI retrieves a cache entry by document URI.
+// Returns a copy to prevent mutation of cached data.
 func (c *TokenCache) GetByURI(uri string) *types.SemanticTokenCacheEntry {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	if entry, ok := c.byURI[uri]; ok {
-		return &entry.SemanticTokenCacheEntry
+		return copyEntry(entry)
 	}
 	return nil
 }

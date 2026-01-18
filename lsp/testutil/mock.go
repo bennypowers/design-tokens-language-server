@@ -24,16 +24,24 @@ type MockServerContext struct {
 	usePullDiagnostics         bool
 	semanticTokenCache         *semantictokens.TokenCache
 
-	// Optional callbacks for custom behavior in tests
-	LoadTokensFunc                func() error
-	RegisterWatchersFunc          func(*glsp.Context) error
-	IsTokenFileFunc               func(string) bool
-	ShouldProcessAsTokenFileFunc  func(string) bool
-	PublishDiagnosticsFunc        func(*glsp.Context, string) error
+	// Optional callbacks for custom behavior in tests.
+	// When set, these functions are called instead of the default implementations.
+	LoadTokensFunc                    func() error
+	RegisterWatchersFunc              func(*glsp.Context) error
+	IsTokenFileFunc                   func(string) bool
+	ShouldProcessAsTokenFileFunc      func(string) bool
+	PublishDiagnosticsFunc            func(*glsp.Context, string) error
+	// LoadTokensFromDocumentContentFunc is called when LoadTokensFromDocumentContent is invoked.
+	// Use this to customize auto-load behavior or verify the parameters passed.
+	LoadTokensFromDocumentContentFunc func(uri, languageID, content string) error
 
-	// Tracking flags for tests that need to verify methods were called
-	LoadTokensCalled       bool
+	// Tracking flags for tests that need to verify methods were called.
+	// These are set to true when the corresponding method is invoked.
+	LoadTokensCalled bool
 	RegisterWatchersCalled bool
+	// LoadTokensFromDocumentContentCalled is set to true when LoadTokensFromDocumentContent is called.
+	// Use this to verify that the auto-load path was triggered during didOpen.
+	LoadTokensFromDocumentContentCalled bool
 }
 
 // NewMockServerContext creates a new mock server context with default behavior
@@ -176,8 +184,12 @@ func (m *MockServerContext) RegisterFileWatchers(ctx *glsp.Context) error {
 	return nil
 }
 
-// LoadTokensFromDocumentContent loads tokens from document content (no-op for mock)
+// LoadTokensFromDocumentContent loads tokens from document content
 func (m *MockServerContext) LoadTokensFromDocumentContent(uri, languageID, content string) error {
+	m.LoadTokensFromDocumentContentCalled = true
+	if m.LoadTokensFromDocumentContentFunc != nil {
+		return m.LoadTokensFromDocumentContentFunc(uri, languageID, content)
+	}
 	return nil
 }
 

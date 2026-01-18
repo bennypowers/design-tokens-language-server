@@ -209,8 +209,9 @@ func SemanticTokensFullDelta(req *types.RequestContext, params *SemanticTokensDe
 
 	cache := req.Server.SemanticTokenCache()
 
-	// Try to get the previous result from cache
-	prevEntry := cache.Get(params.PreviousResultID)
+	// Try to get the previous result from cache, validating it belongs to this document
+	// This prevents delta computation from using tokens from a different file
+	prevEntry := cache.GetForURI(params.PreviousResultID, uri)
 
 	// Compute current tokens
 	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)

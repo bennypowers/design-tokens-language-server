@@ -186,3 +186,57 @@ func TestTokenCache_MultipleDocuments(t *testing.T) {
 	assert.Nil(t, cache.Get(resultID1))
 	assert.NotNil(t, cache.Get(resultID2))
 }
+
+func TestTokenCache_GetForURI_ValidatesURI(t *testing.T) {
+	cache := semantictokens.NewTokenCache()
+	uri1 := "file:///test1.json"
+	uri2 := "file:///test2.json"
+	data := []uint32{0, 0, 5, 0, 0}
+	version := 1
+
+	resultID := cache.Store(uri1, data, version)
+
+	t.Run("returns entry when URI matches", func(t *testing.T) {
+		entry := cache.GetForURI(resultID, uri1)
+		require.NotNil(t, entry)
+		assert.Equal(t, resultID, entry.ResultID)
+		assert.Equal(t, data, entry.Data)
+	})
+
+	t.Run("returns nil when URI does not match", func(t *testing.T) {
+		// Same resultID but different URI should return nil
+		entry := cache.GetForURI(resultID, uri2)
+		assert.Nil(t, entry, "GetForURI should return nil when URI doesn't match")
+	})
+
+	t.Run("returns nil for non-existent resultID", func(t *testing.T) {
+		entry := cache.GetForURI("non-existent", uri1)
+		assert.Nil(t, entry)
+	})
+}
+
+func TestTokenCache_GetForURI_PreventsCrossFileDelta(t *testing.T) {
+	// This test verifies the fix for the bug where delta could be computed
+	// between tokens from different files if a stale resultID was reused
+	cache := semantictokens.NewTokenCache()
+	uri1 := "file:///tokens1.json"
+	uri2 := "file:///tokens2.json"
+	data1 := []uint32{0, 0, 10, 0, 0}
+	data2 := []uint32{1, 5, 8, 1, 0}
+
+	// Store tokens for both files
+	resultID1 := cache.Store(uri1, data1, 1)
+	resultID2 := cache.Store(uri2, data2, 1)
+
+	// Trying to get tokens for uri2 using uri1's resultID should fail
+	entry := cache.GetForURI(resultID1, uri2)
+	assert.Nil(t, entry, "Should not return tokens from a different file")
+
+	// Correct lookups should work
+	entry1 := cache.GetForURI(resultID1, uri1)
+	entry2 := cache.GetForURI(resultID2, uri2)
+	require.NotNil(t, entry1)
+	require.NotNil(t, entry2)
+	assert.Equal(t, data1, entry1.Data)
+	assert.Equal(t, data2, entry2.Data)
+}
