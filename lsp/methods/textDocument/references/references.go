@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tidwall/jsonc"
@@ -14,17 +15,58 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// handleCSSReferences finds the token definition for a var() call in CSS
+func handleCSSReferences(req *types.RequestContext, doc *documents.Document, position protocol.Position) ([]protocol.Location, error) {
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
+	result, err := parser.Parse(doc.Content())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+
+	for _, varCall := range result.VarCalls {
+		if isPositionInVarCall(position, varCall) {
+			token := req.Server.Token(varCall.TokenName)
+			if token == nil {
+				return nil, nil
+			}
+
+			if token.DefinitionURI != "" {
+				location := protocol.Location{
+					URI: token.DefinitionURI,
+					Range: protocol.Range{
+						Start: protocol.Position{Line: token.Line, Character: token.Character},
+						End:   protocol.Position{Line: token.Line, Character: token.Character},
+					},
+				}
+				return []protocol.Location{location}, nil
+			}
+			return nil, nil
+		}
+	}
+	return nil, nil
+}
+
+// isPositionInVarCall checks if a position is within a var() call
+func isPositionInVarCall(pos protocol.Position, varCall *css.VarCall) bool {
+	if pos.Line < varCall.Range.Start.Line || pos.Line > varCall.Range.End.Line {
+		return false
+	}
+	if pos.Line == varCall.Range.Start.Line && pos.Character < varCall.Range.Start.Character {
+		return false
+	}
+	if pos.Line == varCall.Range.End.Line && pos.Character >= varCall.Range.End.Character {
+		return false
+	}
+	return true
+}
+
 // validateTokenContext validates the basic request context and extracts the token at cursor.
 // Returns the token and tokenName, or (nil, "") if validation fails.
 func validateTokenContext(req *types.RequestContext, uri protocol.DocumentUri, position protocol.Position) (*tokens.Token, string) {
 	// Get document
 	doc := req.Server.Document(uri)
 	if doc == nil {
-		return nil, ""
-	}
-
-	// Return nil for CSS files (let css-ls handle it)
-	if doc.LanguageID() == "css" {
 		return nil, ""
 	}
 
@@ -136,7 +178,7 @@ func addDeclarationIfRequested(req *types.RequestContext, params *protocol.Refer
 }
 
 // References returns all references to a token
-// For CSS files: returns nil (let css-ls handle it)
+// For CSS files: returns the token definition location
 // For JSON/YAML files: finds all references to the token at cursor
 func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]protocol.Location, error) {
 	uri := params.TextDocument.URI
@@ -144,7 +186,18 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 
 	log.Info("References requested: %s at line %d, char %d", uri, position.Line, position.Character)
 
-	// Validate context and get token
+	// Get document first to check language
+	doc := req.Server.Document(uri)
+	if doc == nil {
+		return nil, nil
+	}
+
+	// Handle CSS files - return token definition location
+	if doc.LanguageID() == "css" {
+		return handleCSSReferences(req, doc, position)
+	}
+
+	// Validate context and get token (for JSON/YAML)
 	token, tokenName := validateTokenContext(req, uri, position)
 	if token == nil {
 		return nil, nil

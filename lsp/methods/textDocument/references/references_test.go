@@ -12,11 +12,20 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// TestReferences_CSSFile tests that references returns nil for CSS files (let css-ls handle it)
-func TestReferences_CSSFile(t *testing.T) {
+// TestReferences_CSSFile_ReturnsTokenDefinition tests that references from CSS returns the token definition
+func TestReferences_CSSFile_ReturnsTokenDefinition(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add token with definition location
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:          "color-primary",
+		Path:          []string{"color", "primary"},
+		DefinitionURI: "file:///tokens.json",
+		Line:          2,
+		Character:     4,
+	})
 
 	uri := "file:///test.css"
 	cssContent := `.button { color: var(--color-primary); }`
@@ -27,13 +36,166 @@ func TestReferences_CSSFile(t *testing.T) {
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
 			Position:     protocol.Position{Line: 0, Character: 24},
 		},
-		Context: protocol.ReferenceContext{
-			IncludeDeclaration: false,
-		},
+		Context: protocol.ReferenceContext{IncludeDeclaration: false},
 	})
 
 	require.NoError(t, err)
-	// Should return nil for CSS files
+	require.NotNil(t, result)
+	require.Len(t, result, 1)
+	assert.Equal(t, "file:///tokens.json", string(result[0].URI))
+	assert.Equal(t, uint32(2), result[0].Range.Start.Line)
+	assert.Equal(t, uint32(4), result[0].Range.Start.Character)
+}
+
+// TestReferences_CSSFile_UnknownToken tests that references returns nil when token is not found
+func TestReferences_CSSFile_UnknownToken(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	uri := "file:///test.css"
+	cssContent := `.button { color: var(--unknown-token); }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	result, err := References(req, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 24},
+		},
+		Context: protocol.ReferenceContext{IncludeDeclaration: false},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+// TestReferences_CSSFile_OutsideVarCall tests that references returns nil when cursor is not on var()
+func TestReferences_CSSFile_OutsideVarCall(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add a token
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:          "color-primary",
+		Path:          []string{"color", "primary"},
+		DefinitionURI: "file:///tokens.json",
+		Line:          2,
+		Character:     4,
+	})
+
+	uri := "file:///test.css"
+	cssContent := `.button { color: var(--color-primary); }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	// Cursor at position 0 (on the dot of .button)
+	result, err := References(req, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 0},
+		},
+		Context: protocol.ReferenceContext{IncludeDeclaration: false},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+// TestReferences_CSSFile_TokenWithoutDefinitionURI tests that references returns nil when token has no DefinitionURI
+func TestReferences_CSSFile_TokenWithoutDefinitionURI(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add token without definition location
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name: "color-primary",
+		Path: []string{"color", "primary"},
+		// No DefinitionURI set
+	})
+
+	uri := "file:///test.css"
+	cssContent := `.button { color: var(--color-primary); }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	result, err := References(req, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 24},
+		},
+		Context: protocol.ReferenceContext{IncludeDeclaration: false},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+// TestReferences_CSSFile_PositionOnDifferentLine tests cursor on a different line than the var() call
+func TestReferences_CSSFile_PositionOnDifferentLine(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add a token
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:          "color-primary",
+		Path:          []string{"color", "primary"},
+		DefinitionURI: "file:///tokens.json",
+		Line:          2,
+		Character:     4,
+	})
+
+	uri := "file:///test.css"
+	// Multi-line CSS - var() is on line 1
+	cssContent := `.button {
+  color: var(--color-primary);
+}`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	// Cursor on line 0, which is before the var() call on line 1
+	result, err := References(req, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 5},
+		},
+		Context: protocol.ReferenceContext{IncludeDeclaration: false},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+// TestReferences_CSSFile_PositionPastVarCall tests cursor position after the var() call ends
+func TestReferences_CSSFile_PositionPastVarCall(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add a token
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:          "color-primary",
+		Path:          []string{"color", "primary"},
+		DefinitionURI: "file:///tokens.json",
+		Line:          2,
+		Character:     4,
+	})
+
+	uri := "file:///test.css"
+	// .button { color: var(--color-primary); }
+	//                                      ^^ position 36 is ')' closing paren, position 37 is ';'
+	cssContent := `.button { color: var(--color-primary); }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	// Cursor at position 37 (on the semicolon, after the var() call ends)
+	result, err := References(req, &protocol.ReferenceParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 37},
+		},
+		Context: protocol.ReferenceContext{IncludeDeclaration: false},
+	})
+
+	require.NoError(t, err)
 	assert.Nil(t, result)
 }
 

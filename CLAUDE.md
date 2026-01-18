@@ -4,6 +4,8 @@ Use go 1.25+ features. Use `go vet` and the `gopls` LSP plugin - check all code 
 
 Getter methods should be named `Foo()`, not `GetFoo()`.
 
+When implementing new features or fixing bugs, practice TDD.
+
 ## Logging Requirements
 
 **CRITICAL: NEVER pollute stdout - it's used for LSP JSON-RPC communication**
@@ -68,9 +70,7 @@ func TestSomething(t *testing.T) {
 }
 ```
 
-## Testing
-
-Practice TDD. When writing tests, always use the fixture/golden patterns with `testdata/` directories per Go idiom.
+When writing tests, always use the fixture/golden patterns with `testdata/` directories per Go idiom.
 
 ### testdata Directory Convention
 
@@ -135,6 +135,23 @@ fs := fstest.MapFS{
 - **Multiple Expected Files**: Use `expected-variant.json`, `expected-size.json` pattern for testing multiple positions/cases in one fixture
 
 - **Regression Test Isolation**: Keep regression test fixtures in separate directories (e.g., `testdata-regression/`) to avoid interference with standard test discovery
+
+### Coverage
+
+Each PR must exceed an 80% coverage threshold for line coverage.
+
+Measure coverage using:
+```bash
+go test -cover ./...
+# For detailed HTML report:
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+Coverage is checked automatically in CI. To verify locally before submitting:
+```bash
+make test-coverage
+```
 
 ## Git
 
