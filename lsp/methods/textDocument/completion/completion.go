@@ -1,9 +1,9 @@
 package completion
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 	"text/template"
 
@@ -43,7 +43,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 	uri := params.TextDocument.URI
 	pos := params.Position
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Completion requested: %s at line %d, char %d\n", uri, pos.Line, pos.Character)
+	log.Info("Completion requested: %s at line %d, char %d", uri, pos.Line, pos.Character)
 
 	// Get document
 	doc := req.Server.Document(uri)
@@ -62,7 +62,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 		return nil, nil
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Completion word: '%s'\n", word)
+	log.Info("Completion word: '%s'", word)
 
 	// Check if we're in a valid completion context (inside a block or property value)
 	if !isInCompletionContext(doc.Content(), pos) {
@@ -96,7 +96,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Returning %d completion items\n", len(items))
+	log.Info("Returning %d completion items", len(items))
 
 	return &protocol.CompletionList{
 		IsIncomplete: false,
@@ -131,7 +131,7 @@ func CompletionResolve(req *types.RequestContext, item *protocol.CompletionItem)
 	// Render documentation using template
 	documentation, err := renderTokenDoc(token)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DTLS] Failed to render token documentation: %v\n", err)
+		log.Info("Failed to render token documentation: %v", err)
 		return item, nil
 	}
 

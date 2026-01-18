@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"bennypowers.dev/dtls/internal/collections"
+	"bennypowers.dev/dtls/internal/parser/common"
+	"bennypowers.dev/dtls/internal/schema"
 	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/tidwall/jsonc"
 	"gopkg.in/yaml.v3"
@@ -44,6 +46,36 @@ func (p *Parser) ParseWithGroupMarkers(data []byte, prefix string, groupMarkers 
 	result := []*tokens.Token{}
 	if len(root.Content) > 0 {
 		if err := p.extractTokensWithPathAndGroupMarkers(root.Content[0], []string{}, "", prefix, groupMarkers, &result); err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
+}
+
+// ParseWithSchemaVersion parses JSON token data with schema version awareness
+// For 2025.10+: treats $root as reserved token name, ignores groupMarkers
+// For draft: uses groupMarkers logic
+func (p *Parser) ParseWithSchemaVersion(data []byte, prefix string, version schema.SchemaVersion, groupMarkers []string) ([]*tokens.Token, error) {
+	// Remove comments using jsonc
+	cleanJSON := jsonc.ToJSON(data)
+
+	// Parse JSON with yaml.v3 to get AST with position data
+	var root yaml.Node
+	if err := yaml.Unmarshal(cleanJSON, &root); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	// Extract tokens from AST with schema version
+	result := []*tokens.Token{}
+	if len(root.Content) > 0 {
+		// For 2025.10+, ignore groupMarkers (use $root instead)
+		effectiveGroupMarkers := groupMarkers
+		if version != schema.Draft {
+			effectiveGroupMarkers = nil
+		}
+
+		if err := p.extractTokensWithSchemaVersion(root.Content[0], []string{}, "", prefix, version, effectiveGroupMarkers, &result); err != nil {
 			return nil, err
 		}
 	}
@@ -164,6 +196,11 @@ func buildTokenPaths(jsonPath []string, path, key string, isTransparent bool) ([
 // tryPromoteGroupMarkerChild attempts to promote a group marker child to parent token (Pattern 2: RHDS style)
 // Returns a set of promoted marker names and an error if token creation fails
 func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, currentPath, groupMarkers []string, result *[]*tokens.Token) (collections.Set[string], error) {
+	return p.tryPromoteGroupMarkerChildWithSchemaVersion(keyNode, path, valueNode, prefix, currentPath, groupMarkers, schema.Unknown, result)
+}
+
+// tryPromoteGroupMarkerChildWithSchemaVersion attempts to promote a group marker child to parent token with schema version awareness
+func (p *Parser) tryPromoteGroupMarkerChildWithSchemaVersion(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, currentPath, groupMarkers []string, version schema.SchemaVersion, result *[]*tokens.Token) (collections.Set[string], error) {
 	promotedMarkers := collections.NewSet[string]()
 
 	// Pattern 2 (RHDS style): Check if this group has a child that's a group marker with $value
@@ -188,7 +225,13 @@ func (p *Parser) tryPromoteGroupMarkerChild(keyNode *yaml.Node, path string, val
 				if nonMetaChildren > 1 {
 					// Create a token for the PARENT using the group marker child's data
 					// Use the PARENT's path, not the group marker's path
-					token, err := p.createToken(keyNode, path, markerNode, prefix, currentPath)
+					var token *tokens.Token
+					var err error
+					if version != schema.Unknown {
+						token, err = p.createTokenWithSchemaVersion(keyNode, path, markerNode, prefix, currentPath, version, true)
+					} else {
+						token, err = p.createToken(keyNode, path, markerNode, prefix, currentPath)
+					}
 					if err != nil {
 						return promotedMarkers, err
 					}
@@ -214,8 +257,8 @@ func createFilteredChildNode(valueNode *yaml.Node, promotedMarkers collections.S
 		k := valueNode.Content[i].Value
 		v := valueNode.Content[i+1]
 
-		// Skip DTCG metadata keys
-		if strings.HasPrefix(k, "$") {
+		// Skip DTCG metadata keys (but not $root, $ref, $extends which are 2025.10 features)
+		if k == "$type" || k == "$value" || k == "$description" || k == "$extensions" || k == "$deprecated" || k == "$schema" {
 			continue
 		}
 
@@ -318,6 +361,161 @@ func (p *Parser) extractTokensWithPathAndGroupMarkers(node *yaml.Node, jsonPath 
 	return nil
 }
 
+// extractTokensWithSchemaVersion recursively extracts tokens with schema version awareness
+func (p *Parser) extractTokensWithSchemaVersion(node *yaml.Node, jsonPath []string, path, prefix string, version schema.SchemaVersion, groupMarkers []string, result *[]*tokens.Token) error {
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	// Collect key-value pairs and sort by key for deterministic order
+	type kvPair struct {
+		keyNode   *yaml.Node
+		valueNode *yaml.Node
+		index     int
+	}
+	pairs := make([]kvPair, 0)
+	for i := 0; i < len(node.Content); i += 2 {
+		pairs = append(pairs, kvPair{
+			keyNode:   node.Content[i],
+			valueNode: node.Content[i+1],
+			index:     i,
+		})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].keyNode.Value < pairs[j].keyNode.Value
+	})
+
+	for _, pair := range pairs {
+		keyNode := pair.keyNode
+		valueNode := pair.valueNode
+		key := keyNode.Value
+
+		// Skip reserved fields based on schema version
+		if p.shouldSkipReservedField(key, version) {
+			continue
+		}
+
+		// Handle $extends for 2025.10 schema (scalar value, not mapping)
+		if key == "$extends" && version == schema.V2025_10 {
+			if valueNode.Kind == yaml.ScalarNode {
+				// Create a special token for $extends
+				extendsPath := append([]string{}, jsonPath...)
+				extendsPath = append(extendsPath, "$extends")
+
+				// Build token name
+				extendsName := path
+				if extendsName == "" {
+					extendsName = "$extends"
+				} else {
+					extendsName = path + "-$extends"
+				}
+
+				// Extract position
+				line, character, err := extractTokenPosition(keyNode, extendsName)
+				if err != nil {
+					return err
+				}
+
+				// Create the $extends token
+				extendsToken := &tokens.Token{
+					Name:          extendsName,
+					Value:         valueNode.Value, // The JSON Pointer like "#/baseColors"
+					Type:          "$extends",      // Special type for extension references
+					Prefix:        prefix,
+					Path:          extendsPath,
+					Reference:     "{" + strings.Join(extendsPath, ".") + "}",
+					Line:          line,
+					Character:     character,
+					SchemaVersion: version,
+					RawValue:      valueNode.Value,
+					IsResolved:    false,
+				}
+
+				*result = append(*result, extendsToken)
+			}
+			continue
+		}
+
+		// Skip non-mapping values
+		if valueNode.Kind != yaml.MappingNode {
+			continue
+		}
+
+		// Check if this is a token (has $value or $ref)
+		dollarValueNode := getNodeValue(valueNode, "$value")
+		dollarRefNode := getNodeValue(valueNode, "$ref")
+		hasValue := dollarValueNode != nil
+		hasRef := dollarRefNode != nil && version != schema.Draft
+
+		// Check if this is a root token
+		isRootToken := common.IsRootToken(key, version, groupMarkers)
+
+		// Determine if this marker should be transparent (not added to path)
+		isTransparentMarker := determineTransparency(key, valueNode, groupMarkers)
+		isMarker := isGroupMarker(key, groupMarkers) && version == schema.Draft // Only use markers for draft
+
+		// Build paths - skip adding key if it's a transparent group marker or $root
+		currentPath, newPath := buildTokenPaths(jsonPath, path, key, isTransparentMarker || isRootToken)
+
+		// If has $value or $ref, extract the token
+		if hasValue || hasRef {
+			token, err := p.createTokenWithSchemaVersion(keyNode, path, valueNode, prefix, currentPath, version, isRootToken)
+			if err != nil {
+				return err
+			}
+			*result = append(*result, token)
+		}
+
+		// Check if we should recurse into children
+		shouldRecurse := false
+		var promotedMarkers collections.Set[string]
+
+		if !hasValue && !hasRef {
+			// No $value means it's a group - check for group marker children first
+			shouldRecurse = true
+			// Only try promoting for draft schema
+			if version == schema.Draft {
+				var err error
+				promotedMarkers, err = p.tryPromoteGroupMarkerChildWithSchemaVersion(keyNode, path, valueNode, prefix, currentPath, groupMarkers, version, result)
+				if err != nil {
+					return err
+				}
+			} else {
+				promotedMarkers = collections.NewSet[string]()
+			}
+		} else if isMarker {
+			// Has $value but is a group marker - recurse into children too
+			shouldRecurse = true
+			promotedMarkers = collections.NewSet[string]()
+		} else if isRootToken {
+			// $root can have children in 2025.10
+			shouldRecurse = true
+			promotedMarkers = collections.NewSet[string]()
+		}
+
+		// Recurse into children if needed
+		if shouldRecurse {
+			childNode := createFilteredChildNode(valueNode, promotedMarkers)
+			if len(childNode.Content) > 0 {
+				if err := p.extractTokensWithSchemaVersion(childNode, currentPath, newPath, prefix, version, groupMarkers, result); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// shouldSkipReservedField determines if a field should be skipped during token traversal.
+// Currently only skips the $schema field (metadata, not a token).
+// DTCG token properties ($type, $value, etc.) return false - they're processed as token data.
+// 2025.10 reference fields ($ref, $extends) return false - they're handled separately.
+func (p *Parser) shouldSkipReservedField(key string, version schema.SchemaVersion) bool {
+	// Only $schema should be skipped - it's metadata, not a token
+	return key == "$schema"
+}
+
 // createToken creates a Token from AST nodes with accurate position data
 func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, jsonPath []string) (*tokens.Token, error) {
 	key := keyNode.Value
@@ -363,6 +561,77 @@ func (p *Parser) createToken(keyNode *yaml.Node, path string, valueNode *yaml.No
 	return token, nil
 }
 
+// createTokenWithSchemaVersion creates a Token from AST nodes with schema version awareness
+func (p *Parser) createTokenWithSchemaVersion(keyNode *yaml.Node, path string, valueNode *yaml.Node, prefix string, jsonPath []string, version schema.SchemaVersion, isRootToken bool) (*tokens.Token, error) {
+	key := keyNode.Value
+
+	// Build token name from path
+	name := path
+	if name == "" {
+		name = key
+	} else if !isRootToken {
+		// Don't append key to name if it's a root token ($root or group marker)
+		name = path + "-" + key
+	}
+	// If isRootToken, name stays as path (e.g., "color" not "color-$root")
+
+	// Build reference format
+	reference := "{" + strings.Join(jsonPath, ".") + "}"
+
+	// Extract position
+	line, character, err := extractTokenPosition(keyNode, name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract $value or $ref from value node
+	dollarValueNode := getNodeValue(valueNode, "$value")
+	dollarRefNode := getNodeValue(valueNode, "$ref")
+
+	value := ""
+	var rawValue interface{}
+
+	if dollarValueNode != nil {
+		// For draft schema, value is always a string
+		// For 2025.10, value could be structured (color objects)
+		if dollarValueNode.Kind == yaml.ScalarNode {
+			value = dollarValueNode.Value
+			rawValue = value
+		} else {
+			// Structured value (e.g., color object in 2025.10)
+			var structuredValue interface{}
+			if err := dollarValueNode.Decode(&structuredValue); err == nil {
+				rawValue = structuredValue
+				// For now, leave value empty for structured values
+				// Phase 5 will handle converting to CSS
+			}
+		}
+	} else if dollarRefNode != nil && version != schema.Draft {
+		// Handle $ref for 2025.10 (store reference path)
+		value = dollarRefNode.Value
+		rawValue = value
+	}
+
+	// Create token
+	token := &tokens.Token{
+		Name:          name,
+		Value:         value,
+		Prefix:        prefix,
+		Path:          jsonPath,
+		Reference:     reference,
+		Line:          line,
+		Character:     character,
+		SchemaVersion: version,
+		RawValue:      rawValue,
+		IsResolved:    false,
+	}
+
+	// Extract metadata fields
+	extractTokenMetadata(valueNode, token)
+
+	return token, nil
+}
+
 // ParseFile parses a JSON file and returns tokens
 func (p *Parser) ParseFile(filename, prefix string) ([]*tokens.Token, error) {
 	return p.ParseFileWithGroupMarkers(filename, prefix, nil)
@@ -376,6 +645,21 @@ func (p *Parser) ParseFileWithGroupMarkers(filename, prefix string, groupMarkers
 	}
 
 	parsed, err := p.ParseWithGroupMarkers(data, prefix, groupMarkers)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file %s: %w", filename, err)
+	}
+
+	return parsed, nil
+}
+
+// ParseFileWithSchemaVersion parses a JSON file with schema version awareness
+func (p *Parser) ParseFileWithSchemaVersion(filename, prefix string, version schema.SchemaVersion, groupMarkers []string) ([]*tokens.Token, error) {
+	data, err := os.ReadFile(filename) //nolint:gosec // G304: File path from LSP configuration - local trusted environment
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
+	}
+
+	parsed, err := p.ParseWithSchemaVersion(data, prefix, version, groupMarkers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse file %s: %w", filename, err)
 	}

@@ -1,8 +1,8 @@
 package documentcolor
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
-	"os"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/parser/css"
@@ -15,7 +15,7 @@ import (
 func DocumentColor(req *types.RequestContext, params *protocol.DocumentColorParams) ([]protocol.ColorInformation, error) {
 	uri := params.TextDocument.URI
 
-	fmt.Fprintf(os.Stderr, "[DTLS] DocumentColor requested: %s\n", uri)
+	log.Info("DocumentColor requested: %s", uri)
 
 	// Get document
 	doc := req.Server.Document(uri)
@@ -55,7 +55,7 @@ func DocumentColor(req *types.RequestContext, params *protocol.DocumentColorPara
 		// Parse the color value
 		color, err := parseColor(token.Value)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse color %s: %v\n", token.Value, err)
+			log.Info("Failed to parse color %s: %v", token.Value, err)
 			parseErrors = append(parseErrors, fmt.Errorf("failed to parse color token %s (value: %s): %w", varCall.TokenName, token.Value, err))
 			continue
 		}
@@ -91,7 +91,7 @@ func DocumentColor(req *types.RequestContext, params *protocol.DocumentColorPara
 		// Parse the color value
 		color, err := parseColor(token.Value)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse color %s: %v\n", token.Value, err)
+			log.Info("Failed to parse color %s: %v", token.Value, err)
 			parseErrors = append(parseErrors, fmt.Errorf("failed to parse color token %s (value: %s): %w", variable.Name, token.Value, err))
 			continue
 		}
@@ -111,7 +111,7 @@ func DocumentColor(req *types.RequestContext, params *protocol.DocumentColorPara
 		})
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Found %d colors\n", len(colors))
+	log.Info("Found %d colors", len(colors))
 
 	// Add parse errors as warnings
 	// Don't fail the operation - we can still return partial results
@@ -129,7 +129,7 @@ func ColorPresentation(req *types.RequestContext, params *protocol.ColorPresenta
 	uri := params.TextDocument.URI
 	color := params.Color
 
-	fmt.Fprintf(os.Stderr, "[DTLS] ColorPresentation requested: %s\n", uri)
+	log.Info("ColorPresentation requested: %s", uri)
 
 	// Convert protocol.Color to csscolorparser.Color for comparison
 	requestedColor := csscolorparser.Color{
@@ -153,7 +153,7 @@ func ColorPresentation(req *types.RequestContext, params *protocol.ColorPresenta
 		// Parse the token's color value
 		tokenColor, err := parseColor(token.Value)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[DTLS] Failed to parse color token %s (value: %s): %v\n", token.Name, token.Value, err)
+			log.Info("Failed to parse color token %s (value: %s): %v", token.Name, token.Value, err)
 			parseErrors = append(parseErrors, fmt.Errorf("failed to parse color token %s (value: %s): %w", token.Name, token.Value, err))
 			continue
 		}
@@ -174,7 +174,7 @@ func ColorPresentation(req *types.RequestContext, params *protocol.ColorPresenta
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Found %d matching color tokens\n", len(presentations))
+	log.Info("Found %d matching color tokens", len(presentations))
 
 	// Add parse errors as warnings
 	// Don't fail the operation - we can still return partial results

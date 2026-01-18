@@ -1,0 +1,17 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "a": {
+      "$type": "color",
+      "$value": "{color.b}"
+    },
+    "b": {
+      "$type": "color",
+      "$value": "{color.c}"
+    },
+    "c": {
+      "$type": "color",
+      "$value": "{color.a}"
+    }
+  }
+}

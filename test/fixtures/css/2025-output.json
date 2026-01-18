@@ -1,0 +1,38 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "color": {
+    "srgb": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1.0, 0.42, 0.21],
+        "alpha": 1.0,
+        "hex": "#FF6B35"
+      }
+    },
+    "srgbNoHex": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1.0, 0.42, 0.21],
+        "alpha": 0.8
+      }
+    },
+    "hsl": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "hsl",
+        "components": [16, 100, 60],
+        "alpha": 1.0
+      }
+    },
+    "oklch": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.68, 0.19, 25],
+        "alpha": 1.0
+      }
+    }
+  }
+}

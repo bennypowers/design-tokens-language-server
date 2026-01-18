@@ -2,8 +2,8 @@ package workspace
 
 import (
 	"fmt"
-	"os"
 
+	"bennypowers.dev/dtls/internal/log"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -12,7 +12,7 @@ import (
 func LogError(context *glsp.Context, format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 	// Always log to stderr for debugging
-	fmt.Fprintf(os.Stderr, "[DTLS ERROR] %s\n", message)
+	log.Error("%s", message)
 
 	// Optionally notify client if context available
 	if context != nil {
@@ -29,7 +29,7 @@ func LogError(context *glsp.Context, format string, args ...any) {
 func LogWarning(context *glsp.Context, format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 	// Always log to stderr for debugging
-	fmt.Fprintf(os.Stderr, "[DTLS WARNING] %s\n", message)
+	log.Warn("%s", message)
 
 	// Optionally notify client if context available
 	if context != nil {

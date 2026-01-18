@@ -1,0 +1,36 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "base": {
+    "colors": {
+      "semantic": {
+        "success": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [0.0, 1.0, 0.0],
+            "alpha": 1.0
+          }
+        },
+        "error": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [1.0, 0.0, 0.0],
+            "alpha": 1.0
+          }
+        }
+      }
+    }
+  },
+  "extended": {
+    "$extends": "#/base/colors/semantic",
+    "warning": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1.0, 1.0, 0.0],
+        "alpha": 1.0
+      }
+    }
+  }
+}

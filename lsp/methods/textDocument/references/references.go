@@ -1,9 +1,9 @@
 package references
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
 	"math"
-	"os"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
@@ -30,14 +30,14 @@ func validateTokenContext(req *types.RequestContext, uri protocol.DocumentUri, p
 
 	// For JSON/YAML files, find the token at cursor position
 	tokenName := findTokenAtPosition(doc.Content(), position, doc.LanguageID())
-	fmt.Fprintf(os.Stderr, "[DTLS] Token name at cursor: '%s'\n", tokenName)
+	log.Info("Token name at cursor: '%s'", tokenName)
 	if tokenName == "" {
 		return nil, ""
 	}
 
 	// Look up the token
 	token := req.Server.Token(tokenName)
-	fmt.Fprintf(os.Stderr, "[DTLS] Token lookup result: %v\n", token != nil)
+	log.Info("Token lookup result: %v", token != nil)
 	if token == nil {
 		return nil, ""
 	}
@@ -137,7 +137,7 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 	uri := params.TextDocument.URI
 	position := params.Position
 
-	fmt.Fprintf(os.Stderr, "[DTLS] References requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
+	log.Info("References requested: %s at line %d, char %d", uri, position.Line, position.Character)
 
 	// Validate context and get token
 	token, tokenName := validateTokenContext(req, uri, position)
@@ -145,7 +145,7 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 		return nil, nil
 	}
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Finding references for %s (CSS name: %s, reference: %s)\n",
+	log.Info("Finding references for %s (CSS name: %s, reference: %s)",
 		tokenName, token.CSSVariableName(), token.Reference)
 
 	// Find all references across all documents
@@ -170,7 +170,7 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 	// Include declaration if requested
 	addDeclarationIfRequested(req, params, token, &locations)
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Found %d references\n", len(locations))
+	log.Info("Found %d references", len(locations))
 	return locations, nil
 }
 
@@ -266,7 +266,7 @@ func findSubstringRanges(content, substring string) []protocol.Range {
 
 			// Check for overflow - skip positions that exceed uint32 limits
 			if lineNum > math.MaxUint32 || actualIdx > math.MaxUint32 || endIdx > math.MaxUint32 {
-				fmt.Fprintf(os.Stderr, "[DTLS] Warning: Skipping reference at line %d, char %d (exceeds uint32 limit)\n", lineNum, actualIdx)
+				log.Info("Warning: Skipping reference at line %d, char %d (exceeds uint32 limit)", lineNum, actualIdx)
 				offset = endIdx
 				continue
 			}
@@ -315,7 +315,7 @@ func findTokenDefinitionRange(content string, path []string, languageID string) 
 
 				// Check for overflow - skip if exceeds uint32 limits
 				if lineNum > math.MaxUint32 || idx > math.MaxUint32 || endIdx > math.MaxUint32 {
-					fmt.Fprintf(os.Stderr, "[DTLS] Warning: Token definition position exceeds uint32 limit at line %d\n", lineNum)
+					log.Info("Warning: Token definition position exceeds uint32 limit at line %d", lineNum)
 					continue
 				}
 

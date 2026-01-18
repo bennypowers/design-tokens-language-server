@@ -1,6 +1,10 @@
 package tokens
 
-import "strings"
+import (
+	"strings"
+
+	"bennypowers.dev/dtls/internal/schema"
+)
 
 // Token represents a design token following the DTCG specification
 // See: https://design-tokens.github.io/community-group/format/
@@ -46,6 +50,18 @@ type Token struct {
 
 	// Reference is the original reference format (e.g., "{color.primary}")
 	Reference string `json:"-"`
+
+	// SchemaVersion is the detected schema version for this token
+	SchemaVersion schema.SchemaVersion `json:"-"`
+
+	// RawValue is the original $value before resolution (can be string or structured object)
+	RawValue interface{} `json:"-"`
+
+	// ResolvedValue is the value after alias/extends resolution
+	ResolvedValue interface{} `json:"-"`
+
+	// IsResolved indicates if alias resolution has been performed
+	IsResolved bool `json:"-"`
 }
 
 // CSSVariableName returns the CSS custom property name for this token

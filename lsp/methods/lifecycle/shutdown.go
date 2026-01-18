@@ -1,8 +1,7 @@
 package lifecycle
 
 import (
-	"fmt"
-	"os"
+	"bennypowers.dev/dtls/internal/log"
 
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
@@ -10,7 +9,7 @@ import (
 
 // Shutdown handles the LSP shutdown request
 func Shutdown(req *types.RequestContext) error {
-	fmt.Fprintf(os.Stderr, "[DTLS] Server shutting down\n")
+	log.Info("Server shutting down")
 
 	// Clean up the CSS parser pool
 	// Note: This is currently handled by server.Close() but we put it here

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "spacing": {
+    "_": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "small": {
+      "$type": "dimension",
+      "$value": "8px"
+    }
+  }
+}

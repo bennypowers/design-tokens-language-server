@@ -1,0 +1,23 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "spacing": {
+    "$root": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "small": {
+      "$type": "dimension",
+      "$value": "8px"
+    }
+  },
+  "color": {
+    "brand": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.68, 0.19, 25],
+        "alpha": 1.0
+      }
+    }
+  }
+}

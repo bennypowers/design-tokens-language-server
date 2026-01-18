@@ -1,8 +1,8 @@
 package definition
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
-	"os"
 
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
@@ -16,7 +16,7 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 	uri := params.TextDocument.URI
 	position := params.Position
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Definition requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
+	log.Info("Definition requested: %s at line %d, char %d", uri, position.Line, position.Character)
 
 	// Get document
 	doc := req.Server.Document(uri)
@@ -24,7 +24,12 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 		return nil, nil
 	}
 
-	// Only process CSS files
+	// Handle token files (JSON/YAML)
+	if doc.LanguageID() == "json" || doc.LanguageID() == "yaml" {
+		return DefinitionForTokenFile(req, doc, position)
+	}
+
+	// Only process CSS files beyond this point
 	if doc.LanguageID() != "css" {
 		return nil, nil
 	}
@@ -57,7 +62,7 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 					},
 				}
 
-				fmt.Fprintf(os.Stderr, "[DTLS] Found definition for %s in %s at line %d, char %d\n",
+				log.Info("Found definition for %s in %s at line %d, char %d",
 					varCall.TokenName, token.DefinitionURI, token.Line, token.Character)
 				return []protocol.Location{location}, nil
 			}

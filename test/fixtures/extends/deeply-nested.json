@@ -1,0 +1,68 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "foundation": {
+    "spacing": {
+      "xs": {
+        "$type": "dimension",
+        "$value": "4px"
+      }
+    },
+    "color": {
+      "base": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.5, 0.5, 0.5],
+          "alpha": 1.0
+        }
+      }
+    }
+  },
+  "theme": {
+    "$extends": "#/foundation",
+    "spacing": {
+      "sm": {
+        "$type": "dimension",
+        "$value": "8px"
+      }
+    },
+    "color": {
+      "primary": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.0, 0.5, 1.0],
+          "alpha": 1.0
+        }
+      }
+    }
+  },
+  "brand": {
+    "$extends": "#/theme",
+    "spacing": {
+      "md": {
+        "$type": "dimension",
+        "$value": "16px"
+      }
+    },
+    "color": {
+      "accent": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [1.0, 0.5, 0.0],
+          "alpha": 1.0
+        }
+      }
+    }
+  },
+  "product": {
+    "$extends": "#/brand",
+    "spacing": {
+      "lg": {
+        "$type": "dimension",
+        "$value": "32px"
+      }
+    }
+  }
+}

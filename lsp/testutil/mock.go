@@ -206,3 +206,18 @@ func (m *MockServerContext) UsePullDiagnostics() bool {
 func (m *MockServerContext) SetUsePullDiagnostics(use bool) {
 	m.usePullDiagnostics = use
 }
+
+// AddDocument adds a document to the manager
+func (m *MockServerContext) AddDocument(doc *documents.Document) {
+	_ = m.docs.DidOpen(doc.URI(), doc.LanguageID(), doc.Version(), doc.Content())
+}
+
+// AddToken adds a token to the manager
+func (m *MockServerContext) AddToken(token *tokens.Token) {
+	m.tokens.Add(token)
+}
+
+// NewMockServer is an alias for NewMockServerContext for convenience
+func NewMockServer() *MockServerContext {
+	return NewMockServerContext()
+}

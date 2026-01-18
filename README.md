@@ -7,8 +7,11 @@ Editor tools for working with <abbr title="design tokens community
   group">[DTCG][dtcg]</abbr> formatted design tokens in CSS, and
 for token definitions in JSON or YAML files.
 
+Supports both **Editor's Draft** and **DTCG 2025.10 stable** schema versions,
+including multi-schema workspaces where different token files use different schema versions.
+
 > [!NOTE]
-> This pre-release software. If you encounter bugs or unexpected behavior,
+> This is pre-release software. If you encounter bugs or unexpected behavior,
 > please file a detailed [issue][issue].
 
 ## ✨ Features
@@ -70,6 +73,45 @@ Locate all references to a token in open files, whether in CSS or in the token
 definition JSON or YAML files
 
 ![References](./docs/references.png)
+
+## 📚 Schema Support
+
+DTLS supports both DTCG schema versions:
+
+- **[Editor's Draft][editorsdraft]** - Original DTCG format
+  - String color values (hex, rgb, hsl, named colors)
+  - Curly brace references: `{color.brand.primary}`
+  - Group markers for root tokens: `_`, `@`, `DEFAULT`
+
+- **[2025.10 Stable][202510stable]** - Latest stable specification
+  - Structured color values with 14 color spaces (sRGB, oklch, display-p3, etc.)
+  - JSON Pointer references: `$ref: "#/color/brand/primary"`
+  - Group inheritance: `$extends: "#/baseColors"`
+  - Standardized `$root` token for root-level tokens
+  - All draft features (backward compatible)
+
+### Multi-Schema Workspaces
+
+DTLS can load multiple token files with different schema versions simultaneously:
+
+```json
+{
+  "designTokensLanguageServer": {
+    "tokensFiles": [
+      "legacy/draft-tokens.json",        // Editor's Draft
+      "design-system/tokens.json"         // 2025.10 (auto-detected from $schema)
+    ]
+  }
+}
+```
+
+Schema version detection priority:
+1. `$schema` field in the token file (recommended)
+2. Per-file `schemaVersion` config in `package.json`
+3. Duck-typing based on features (structured colors, `$ref`, `$extends`)
+4. Defaults to Editor's Draft for ambiguous files
+
+For more information, see [Schema Versioning Guide](./docs/SCHEMA_VERSIONING.md).
 
 ## 🧰 Usage
 
@@ -145,7 +187,17 @@ have a design token file in a different format, you can use
 [style-dictionary](https://styledictionary.com/info/dtcg/) to convert it to
 DTCG.
 
-You can configure the language server globally on on a per-project basis.
+#### Schema Version Detection
+
+DTLS automatically detects which schema version your token files use based on
+file contents (duck-typing). It looks for features like structured color values,
+`$ref`, and `$extends` to identify 2025.10 stable, falling back to Editor's
+Draft for ambiguous files. See [Schema Versioning Guide](./docs/SCHEMA_VERSIONING.md)
+for details on detection and migration.
+
+#### Configuration
+
+You can configure the language server globally or on a per-project basis.
 Per-project configuration is done via a `designTokensLanguageServer` block in
 your project's `package.json`.
 
@@ -219,6 +271,10 @@ in the `prefix` property of the token file object.
 
 ### Group Markers
 
+> [!IMPORTANT]
+> Group markers are **only used with Editor's Draft schema**. The 2025.10 stable
+> specification uses the standardized `$root` reserved token name instead.
+
 Because the DTCG format is nested, a conflict can emerge when the token file
 author wants to define a group of tokens, but have the group name also be a
 token. For example, `--token-color-red` and `--token-color-red-darker` are both
@@ -226,9 +282,10 @@ valid tokens, but unless the author manually prefixes each token in the `red`
 group with `red-`, it would not be possible to define a token called
 `--token-color-red`.
 
-Design Tokens Language Server therefore has a concept of "group markers" to
-contain the token data for a group. The group marker is a well-known token name
-that is used to represent the group's top-most token.
+**Editor's Draft Schema:**
+Design Tokens Language Server uses "group markers" to contain the token data for
+a group. The group marker is a well-known token name that is used to represent
+the group's top-most token.
 
 The default group markers are `_`, `@`, and `DEFAULT`, because those are
 examples mentioned in the various issues on DTCG and style-dictionary which
@@ -239,18 +296,61 @@ specific token file), then tokens with the same name as any of the group markers
 will be treated as a group, and that tokens's data will be used for the group
 name, minus the group marker.
 
-For example, if you have a token file with the following tokens:
+**2025.10 Stable Schema:**
+Use the standardized `$root` reserved token name instead of group markers. No
+configuration needed.
+
+**Editor's Draft Example:**
 
 ```json
 {
   "color": {
     "red": {
-      "GROUP": {
+      "_": {
         "$value": "#FF0000",
-        "$description": "Red color",
-        "darker": {
-          "$value": "#AA0000",
-          "$description": "Darker red color"
+        "$description": "Red color"
+      },
+      "darker": {
+        "$value": "#AA0000",
+        "$description": "Darker red color"
+      }
+    }
+  }
+}
+```
+
+This creates tokens: `--color-red` and `--color-red-darker`.
+
+Configure group markers in `package.json`:
+
+```json
+"designTokensLanguageServer": {
+  "prefix": "my-ds",
+  "groupMarkers": ["_"],
+}
+```
+
+**2025.10 Example:**
+
+```json
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "color": {
+    "red": {
+      "$root": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [1.0, 0, 0],
+          "alpha": 1.0
+        }
+      },
+      "darker": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.67, 0, 0],
+          "alpha": 1.0
         }
       }
     }
@@ -258,16 +358,8 @@ For example, if you have a token file with the following tokens:
 }
 ```
 
-Then, set the `groupMarkers` property to `["GROUP"]` in your `package.json` for
-that particular token file, or globally for all token files in your editor
-settings.
-
-```json
-"designTokensLanguageServer": {
-  "prefix": "my-ds",
-  "groupMarkers": ["GROUP"],
-},
-```
+This creates the same tokens: `--color-red` and `--color-red-darker`. No
+configuration needed - `$root` is standardized.
 
 ## 🤝 Contributing
 
@@ -284,3 +376,5 @@ See [CONTRIBUTING.md][contributingmd]
 [vscodemarketplace]: https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode
 [neovimlspdocs]: https://neovim.io/doc/user/lsp.html
 [cwcdash]: https://neovim.io/doc/user/windows.html#CTRL-W_g_CTRL-%5D
+[editorsdraft]: https://second-editors-draft.tr.designtokens.org/format/
+[202510stable]: https://www.designtokens.org/tr/2025.10/

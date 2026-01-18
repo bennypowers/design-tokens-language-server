@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {
+    "error": {
+      "$type": "color",
+      "$value": "{color.base.red}"
+    }
+  }
+}

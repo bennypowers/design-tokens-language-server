@@ -1,0 +1,11 @@
+{
+  "color": {
+    "base": {
+      "$type": "color",
+      "$value": "#FF6B35"
+    },
+    "primary": {
+      "$ref": "#/color/base"
+    }
+  }
+}

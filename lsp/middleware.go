@@ -1,8 +1,8 @@
 package lsp
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"fmt"
-	"os"
 	"runtime/debug"
 
 	"bennypowers.dev/dtls/lsp/methods/workspace"
@@ -22,7 +22,7 @@ func method[P, R any](
 		defer func() {
 			if r := recover(); r != nil {
 				stackTrace := string(debug.Stack())
-				fmt.Fprintf(os.Stderr, "[LSP] PANIC in %s: %v\nStack trace:\n%s",
+				log.Error("PANIC in %s: %v\nStack trace:\n%s",
 					methodName, r, stackTrace)
 				// Log panic to LSP client
 				workspace.LogError(glspCtx, "Internal error in %s: %v", methodName, r)
@@ -33,7 +33,7 @@ func method[P, R any](
 		}()
 
 		// Request logging
-		fmt.Fprintf(os.Stderr, "[LSP] %s started\n", methodName)
+		log.Debug("%s started", methodName)
 
 		// Create request context
 		req := types.NewRequestContext(s, glspCtx)
@@ -50,14 +50,14 @@ func method[P, R any](
 
 		// Error context wrapping
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[LSP] %s error: %v\n", methodName, err)
+			log.Error("%s error: %v", methodName, err)
 			// Log error to LSP client via window/logMessage
 			workspace.LogError(glspCtx, "%s: %v", methodName, err)
 			return result, fmt.Errorf("%s: %w", methodName, err)
 		}
 
 		// Success logging
-		fmt.Fprintf(os.Stderr, "[LSP] %s completed successfully\n", methodName)
+		log.Debug("%s completed successfully", methodName)
 		return result, nil
 	}
 }
@@ -72,7 +72,7 @@ func notify[P any](
 		defer func() {
 			if r := recover(); r != nil {
 				stackTrace := string(debug.Stack())
-				fmt.Fprintf(os.Stderr, "[LSP] PANIC in %s: %v\nStack trace:\n%s",
+				log.Error("PANIC in %s: %v\nStack trace:\n%s",
 					methodName, r, stackTrace)
 				// Log panic to LSP client
 				workspace.LogError(glspCtx, "Internal error in %s: %v", methodName, r)
@@ -80,7 +80,7 @@ func notify[P any](
 			}
 		}()
 
-		fmt.Fprintf(os.Stderr, "[LSP] %s started\n", methodName)
+		log.Debug("%s started", methodName)
 
 		// Create request context
 		req := types.NewRequestContext(s, glspCtx)
@@ -96,13 +96,13 @@ func notify[P any](
 		}
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[LSP] %s error: %v\n", methodName, err)
+			log.Error("%s error: %v", methodName, err)
 			// Log error to LSP client via window/logMessage
 			workspace.LogError(glspCtx, "%s: %v", methodName, err)
 			return fmt.Errorf("%s: %w", methodName, err)
 		}
 
-		fmt.Fprintf(os.Stderr, "[LSP] %s completed successfully\n", methodName)
+		log.Debug("%s completed successfully", methodName)
 		return nil
 	}
 }
@@ -117,7 +117,7 @@ func noParam(
 		defer func() {
 			if r := recover(); r != nil {
 				stackTrace := string(debug.Stack())
-				fmt.Fprintf(os.Stderr, "[LSP] PANIC in %s: %v\nStack trace:\n%s",
+				log.Error("PANIC in %s: %v\nStack trace:\n%s",
 					methodName, r, stackTrace)
 				// Log panic to LSP client
 				workspace.LogError(glspCtx, "Internal error in %s: %v", methodName, r)
@@ -125,7 +125,7 @@ func noParam(
 			}
 		}()
 
-		fmt.Fprintf(os.Stderr, "[LSP] %s started\n", methodName)
+		log.Debug("%s started", methodName)
 
 		// Create request context
 		req := types.NewRequestContext(s, glspCtx)
@@ -141,13 +141,13 @@ func noParam(
 		}
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[LSP] %s error: %v\n", methodName, err)
+			log.Error("%s error: %v", methodName, err)
 			// Log error to LSP client via window/logMessage
 			workspace.LogError(glspCtx, "%s: %v", methodName, err)
 			return fmt.Errorf("%s: %w", methodName, err)
 		}
 
-		fmt.Fprintf(os.Stderr, "[LSP] %s completed successfully\n", methodName)
+		log.Debug("%s completed successfully", methodName)
 		return nil
 	}
 }

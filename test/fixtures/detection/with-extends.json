@@ -1,0 +1,15 @@
+{
+  "baseColors": {
+    "red": {
+      "$type": "color",
+      "$value": "#FF0000"
+    }
+  },
+  "themeColors": {
+    "$extends": "#/baseColors",
+    "blue": {
+      "$type": "color",
+      "$value": "#0000FF"
+    }
+  }
+}

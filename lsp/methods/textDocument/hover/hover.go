@@ -1,9 +1,9 @@
 package hover
 
 import (
+	"bennypowers.dev/dtls/internal/log"
 	"bytes"
 	"fmt"
-	"os"
 	"text/template"
 
 	"bennypowers.dev/dtls/internal/parser/css"
@@ -153,7 +153,7 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 	uri := params.TextDocument.URI
 	position := params.Position
 
-	fmt.Fprintf(os.Stderr, "[DTLS] Hover requested: %s at line %d, char %d\n", uri, position.Line, position.Character)
+	log.Info("Hover requested: %s at line %d, char %d", uri, position.Line, position.Character)
 
 	// Get document
 	doc := req.Server.Document(uri)
