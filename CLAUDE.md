@@ -138,7 +138,20 @@ fs := fstest.MapFS{
 
 ### Coverage
 
-Each PR must exceed an 80% coverage threshold
+Each PR must exceed an 80% coverage threshold for line coverage.
+
+Measure coverage using:
+```bash
+go test -cover ./...
+# For detailed HTML report:
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+Coverage is checked automatically in CI. To verify locally before submitting:
+```bash
+make test-coverage
+```
 
 ## Git
 

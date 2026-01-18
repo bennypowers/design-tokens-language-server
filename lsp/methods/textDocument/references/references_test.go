@@ -182,11 +182,11 @@ func TestReferences_CSSFile_PositionAtEndOfVarCall(t *testing.T) {
 
 	uri := "file:///test.css"
 	// .button { color: var(--color-primary); }
-	// Position 37 is at the closing paren ')'
+	// Position 37 is just after the closing paren ')' (on the semicolon)
 	cssContent := `.button { color: var(--color-primary); }`
 	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	// Cursor at position 37 (the closing paren), which is >= end character
+	// Cursor at position 37 (past the var() call), which is >= end character
 	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
