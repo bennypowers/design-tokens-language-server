@@ -68,9 +68,9 @@ func TestSomething(t *testing.T) {
 }
 ```
 
-## Testing
+Practice TDD.
 
-Practice TDD. When writing tests, always use the fixture/golden patterns with `testdata/` directories per Go idiom.
+When writing tests, always use the fixture/golden patterns with `testdata/` directories per Go idiom.
 
 ### testdata Directory Convention
 
@@ -135,6 +135,10 @@ fs := fstest.MapFS{
 - **Multiple Expected Files**: Use `expected-variant.json`, `expected-size.json` pattern for testing multiple positions/cases in one fixture
 
 - **Regression Test Isolation**: Keep regression test fixtures in separate directories (e.g., `testdata-regression/`) to avoid interference with standard test discovery
+
+### Coverage
+
+Each PR must exceed an 80% coverage threshold
 
 ## Git
 
