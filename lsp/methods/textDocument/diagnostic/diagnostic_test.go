@@ -322,3 +322,91 @@ func TestGetDiagnostics_EmptyArrayJSON(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "[]", string(jsonBytes), "Empty diagnostics must serialize to JSON [] not null")
 }
+
+func TestGetDiagnostics_RelatedInformation(t *testing.T) {
+	t.Run("includes related info when client supports it", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetSupportsDiagnosticRelatedInfo(true)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:               "color.legacy",
+			Value:              "#cc0000",
+			Deprecated:         true,
+			DeprecationMessage: "Use color.primary instead",
+			DefinitionURI:      "file:///tokens.json",
+			Line:               10,
+			Character:          4,
+			Path:               []string{"color", "legacy"},
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-legacy); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		diagnostics, err := GetDiagnostics(ctx, uri)
+		require.NoError(t, err)
+		require.Len(t, diagnostics, 1)
+
+		diag := diagnostics[0]
+		require.NotNil(t, diag.RelatedInformation, "Should have related information")
+		require.Len(t, diag.RelatedInformation, 1)
+
+		relatedInfo := diag.RelatedInformation[0]
+		assert.Equal(t, "file:///tokens.json", relatedInfo.Location.URI)
+		assert.Contains(t, relatedInfo.Message, "Token")
+		assert.Contains(t, relatedInfo.Message, "defined here")
+	})
+
+	t.Run("omits related info when client does not support it", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetSupportsDiagnosticRelatedInfo(false)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:               "color.legacy",
+			Value:              "#cc0000",
+			Deprecated:         true,
+			DeprecationMessage: "Use color.primary instead",
+			DefinitionURI:      "file:///tokens.json",
+			Line:               10,
+			Character:          4,
+			Path:               []string{"color", "legacy"},
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-legacy); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		diagnostics, err := GetDiagnostics(ctx, uri)
+		require.NoError(t, err)
+		require.Len(t, diagnostics, 1)
+
+		diag := diagnostics[0]
+		assert.Nil(t, diag.RelatedInformation, "Should not have related information")
+	})
+
+	t.Run("defaults to no related info when capability unknown", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		// Don't set related info support - test default behavior
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:          "color.legacy",
+			Value:         "#cc0000",
+			Deprecated:    true,
+			DefinitionURI: "file:///tokens.json",
+			Line:          10,
+			Character:     4,
+			Path:          []string{"color", "legacy"},
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-legacy); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		diagnostics, err := GetDiagnostics(ctx, uri)
+		require.NoError(t, err)
+		require.Len(t, diagnostics, 1)
+
+		diag := diagnostics[0]
+		assert.Nil(t, diag.RelatedInformation, "Should not have related information by default")
+	})
+}

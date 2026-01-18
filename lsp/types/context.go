@@ -4,6 +4,7 @@ import (
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // ServerContext provides all dependencies needed for LSP handlers.
@@ -54,6 +55,17 @@ type ServerContext interface {
 	// Client capability detection (for LSP 3.17 features)
 	ClientDiagnosticCapability() *bool
 	SetClientDiagnosticCapability(hasCapability bool)
+
+	// Full client capabilities (stored during initialize)
+	ClientCapabilities() *protocol.ClientCapabilities
+	SetClientCapabilities(caps protocol.ClientCapabilities)
+
+	// Capability helpers derived from ClientCapabilities
+	SupportsSnippets() bool
+	PreferredHoverFormat() protocol.MarkupKind
+	SupportsDefinitionLinks() bool
+	SupportsDiagnosticRelatedInfo() bool
+	SupportsCodeActionLiterals() bool
 
 	// Diagnostics mode (pull vs push)
 	UsePullDiagnostics() bool

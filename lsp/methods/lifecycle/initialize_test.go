@@ -169,6 +169,70 @@ func TestInitialize(t *testing.T) {
 	})
 }
 
+func TestInitialize_StoresClientCapabilities(t *testing.T) {
+	t.Run("stores client capabilities during initialization", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		params := &protocol.InitializeParams{
+			Capabilities: protocol.ClientCapabilities{
+				TextDocument: &protocol.TextDocumentClientCapabilities{
+					Completion: &protocol.CompletionClientCapabilities{
+						CompletionItem: &struct {
+							SnippetSupport            *bool                   `json:"snippetSupport,omitempty"`
+							CommitCharactersSupport   *bool                   `json:"commitCharactersSupport,omitempty"`
+							DocumentationFormat       []protocol.MarkupKind   `json:"documentationFormat,omitempty"`
+							DeprecatedSupport         *bool                   `json:"deprecatedSupport,omitempty"`
+							PreselectSupport          *bool                   `json:"preselectSupport,omitempty"`
+							TagSupport                *struct {
+								ValueSet []protocol.CompletionItemTag `json:"valueSet"`
+							} `json:"tagSupport,omitempty"`
+							InsertReplaceSupport      *bool                   `json:"insertReplaceSupport,omitempty"`
+							ResolveSupport            *struct {
+								Properties []string `json:"properties"`
+							} `json:"resolveSupport,omitempty"`
+							InsertTextModeSupport     *struct {
+								ValueSet []protocol.InsertTextMode `json:"valueSet"`
+							} `json:"insertTextModeSupport,omitempty"`
+						}{
+							SnippetSupport: boolPtr(true),
+						},
+					},
+				},
+			},
+		}
+
+		result, err := Initialize(req, params)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Verify client capabilities were stored
+		storedCaps := ctx.ClientCapabilities()
+		require.NotNil(t, storedCaps, "ClientCapabilities should be stored")
+		require.NotNil(t, storedCaps.TextDocument)
+		require.NotNil(t, storedCaps.TextDocument.Completion)
+		require.NotNil(t, storedCaps.TextDocument.Completion.CompletionItem)
+		assert.True(t, *storedCaps.TextDocument.Completion.CompletionItem.SnippetSupport)
+	})
+
+	t.Run("stores empty capabilities when none provided", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		params := &protocol.InitializeParams{}
+
+		result, err := Initialize(req, params)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Capabilities should still be stored (even if empty)
+		storedCaps := ctx.ClientCapabilities()
+		require.NotNil(t, storedCaps, "ClientCapabilities should be stored even when empty")
+	})
+}
+
 func TestPathConversion(t *testing.T) {
 	t.Run("uriToPath strips file:// prefix", func(t *testing.T) {
 		tests := []struct {

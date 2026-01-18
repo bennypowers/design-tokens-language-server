@@ -15,6 +15,7 @@ import (
 // TestCodeActionFixIncorrectFallback tests code action for fixing incorrect fallback
 func TestCodeActionFixIncorrectFallback(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "incorrect-fallback.css")
 
@@ -79,6 +80,7 @@ func TestCodeActionFixIncorrectFallback(t *testing.T) {
 // TestCodeActionAddFallback tests code action for adding fallback
 func TestCodeActionAddFallback(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "basic-var-calls.css")
 
@@ -130,6 +132,7 @@ func TestCodeActionAddFallback(t *testing.T) {
 // TestCodeActionDeprecatedToken tests code action for deprecated token
 func TestCodeActionDeprecatedToken(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "deprecated-token.css")
 
@@ -330,6 +333,7 @@ func TestCodeAction_CompositeTypes(t *testing.T) {
 // TestCodeAction_FontFamilyFallback tests that font-family fallbacks are properly quoted
 func TestCodeAction_FontFamilyFallback(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "font-family-quoting.css")
 
@@ -418,6 +422,7 @@ func TestCodeAction_FontFamilyFallback(t *testing.T) {
 // TestCodeAction_DeprecatedMessagePatterns tests extraction of token names from deprecation messages
 func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "deprecated-patterns.css")
 
@@ -599,6 +604,7 @@ func TestCodeAction_DeprecatedMessagePatterns(t *testing.T) {
 // TestCodeAction_FallbackTypes tests add/fix fallback actions for various token types
 func TestCodeAction_FallbackTypes(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "fallback-types.css")
 
@@ -706,6 +712,7 @@ func TestCodeAction_FallbackTypes(t *testing.T) {
 // TestCodeAction_TokenTypeVariations tests add fallback for various token types
 func TestCodeAction_TokenTypeVariations(t *testing.T) {
 	server := testutil.NewTestServer(t)
+	testutil.SetCodeActionLiteralSupport(server)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "token-type-variations.css")
 

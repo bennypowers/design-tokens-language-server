@@ -276,3 +276,118 @@ func TestIsPositionInVarCall(t *testing.T) {
 		})
 	}
 }
+
+func TestDefinition_LinkSupport(t *testing.T) {
+	t.Run("returns LocationLink when client supports linkSupport", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetSupportsDefinitionLinks(true)
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:          "color.primary",
+			Value:         "#ff0000",
+			DefinitionURI: "file:///tokens.json",
+			Line:          5,
+			Character:     2,
+			Path:          []string{"color", "primary"},
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-primary); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		result, err := Definition(req, &protocol.DefinitionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 24},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Should return LocationLink array
+		links, ok := result.([]protocol.LocationLink)
+		require.True(t, ok, "Result should be []protocol.LocationLink")
+		require.Len(t, links, 1)
+
+		link := links[0]
+		assert.NotNil(t, link.OriginSelectionRange, "Should have OriginSelectionRange")
+		assert.Equal(t, "file:///tokens.json", string(link.TargetURI))
+		assert.Equal(t, protocol.Position{Line: 5, Character: 2}, link.TargetRange.Start)
+	})
+
+	t.Run("returns Location when client does not support linkSupport", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetSupportsDefinitionLinks(false)
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:          "color.primary",
+			Value:         "#ff0000",
+			DefinitionURI: "file:///tokens.json",
+			Line:          5,
+			Character:     2,
+			Path:          []string{"color", "primary"},
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-primary); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		result, err := Definition(req, &protocol.DefinitionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 24},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Should return Location array (not LocationLink)
+		locations, ok := result.([]protocol.Location)
+		require.True(t, ok, "Result should be []protocol.Location")
+		require.Len(t, locations, 1)
+
+		loc := locations[0]
+		assert.Equal(t, "file:///tokens.json", loc.URI)
+	})
+
+	t.Run("defaults to Location when capability is unknown", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		// Don't set link support - test default behavior
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:          "color.primary",
+			Value:         "#ff0000",
+			DefinitionURI: "file:///tokens.json",
+			Line:          5,
+			Character:     2,
+			Path:          []string{"color", "primary"},
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-primary); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		result, err := Definition(req, &protocol.DefinitionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 24},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Should return Location array (default)
+		locations, ok := result.([]protocol.Location)
+		require.True(t, ok, "Result should be []protocol.Location")
+		require.Len(t, locations, 1)
+	})
+}

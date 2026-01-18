@@ -57,17 +57,39 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 
 			// Return the definition location in the token file
 			if token.DefinitionURI != "" && len(token.Path) > 0 {
-				location := protocol.Location{
-					URI: token.DefinitionURI,
-					Range: protocol.Range{
-						Start: protocol.Position{Line: token.Line, Character: token.Character},
-						End:   protocol.Position{Line: token.Line, Character: token.Character},
-					},
+				targetRange := protocol.Range{
+					Start: protocol.Position{Line: token.Line, Character: token.Character},
+					End:   protocol.Position{Line: token.Line, Character: token.Character},
 				}
 
 				log.Info("Found definition for %s in %s at line %d, char %d",
 					varCall.TokenName, token.DefinitionURI, token.Line, token.Character)
-				return []protocol.Location{location}, nil
+
+				// Return LocationLink when client supports it (includes origin selection range)
+				if req.Server.SupportsDefinitionLinks() {
+					originRange := protocol.Range{
+						Start: protocol.Position{
+							Line:      varCall.Range.Start.Line,
+							Character: varCall.Range.Start.Character,
+						},
+						End: protocol.Position{
+							Line:      varCall.Range.End.Line,
+							Character: varCall.Range.End.Character,
+						},
+					}
+					return []protocol.LocationLink{{
+						OriginSelectionRange: &originRange,
+						TargetURI:            protocol.DocumentUri(token.DefinitionURI),
+						TargetRange:          targetRange,
+						TargetSelectionRange: targetRange,
+					}}, nil
+				}
+
+				// Return Location for legacy clients
+				return []protocol.Location{{
+					URI:   token.DefinitionURI,
+					Range: targetRange,
+				}}, nil
 			}
 
 			return nil, nil

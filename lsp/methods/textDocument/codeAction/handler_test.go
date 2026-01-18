@@ -14,6 +14,7 @@ import (
 
 func TestCodeAction_IncorrectFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	ctx.SetSupportsCodeActionLiterals(true)
 	glspCtx := &glsp.Context{}
 	req := types.NewRequestContext(ctx, glspCtx)
 
@@ -69,6 +70,7 @@ func TestCodeAction_IncorrectFallback(t *testing.T) {
 
 func TestCodeAction_AddFallback(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	ctx.SetSupportsCodeActionLiterals(true)
 	glspCtx := &glsp.Context{}
 	req := types.NewRequestContext(ctx, glspCtx)
 
@@ -164,6 +166,7 @@ func TestCodeAction_DocumentNotFound(t *testing.T) {
 
 func TestCodeAction_OutsideRange(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	ctx.SetSupportsCodeActionLiterals(true)
 	glspCtx := &glsp.Context{}
 	req := types.NewRequestContext(ctx, glspCtx)
 

@@ -123,6 +123,31 @@ func LoadNonTokenFixture(t *testing.T, name string) []byte {
 	return data
 }
 
+// SetCodeActionLiteralSupport sets the client capabilities to support CodeAction literals.
+// Call this before tests that use code actions.
+func SetCodeActionLiteralSupport(server *lsp.Server) {
+	server.SetClientCapabilities(protocol.ClientCapabilities{
+		TextDocument: &protocol.TextDocumentClientCapabilities{
+			CodeAction: &protocol.CodeActionClientCapabilities{
+				CodeActionLiteralSupport: &struct {
+					CodeActionKind struct {
+						ValueSet []protocol.CodeActionKind `json:"valueSet"`
+					} `json:"codeActionKind"`
+				}{
+					CodeActionKind: struct {
+						ValueSet []protocol.CodeActionKind `json:"valueSet"`
+					}{
+						ValueSet: []protocol.CodeActionKind{
+							protocol.CodeActionKindQuickFix,
+							protocol.CodeActionKindRefactorRewrite,
+						},
+					},
+				},
+			},
+		},
+	})
+}
+
 // OpenNonTokenFixture opens a non-token JSON/YAML fixture file as a document in the server
 // This is for testing that LSP features are NOT provided for non-token files
 func OpenNonTokenFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {

@@ -206,6 +206,13 @@ func CodeAction(req *types.RequestContext, params *protocol.CodeActionParams) (a
 	uri := params.TextDocument.URI
 	log.Info("CodeAction requested: %s", uri)
 
+	// Check if client supports CodeAction literals
+	// Legacy clients only support Command, which we don't implement
+	if !req.Server.SupportsCodeActionLiterals() {
+		log.Info("Client does not support CodeAction literals, returning nil")
+		return nil, nil
+	}
+
 	// Validate document
 	doc, ok := validateCSSDocument(req, uri)
 	if !ok {
