@@ -2,7 +2,6 @@ package tokens_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/json"
@@ -18,14 +17,14 @@ func TestMultiSchemaWorkspace_Integration(t *testing.T) {
 	parser := json.NewParser()
 
 	// Load draft schema tokens
-	draftContent, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "multi-schema", "mixed-workspace", "draft-tokens.json"))
+	draftContent, err := os.ReadFile("testdata/multi-schema/mixed-workspace/draft-tokens.json")
 	require.NoError(t, err)
 
 	draftTokens, err := parser.ParseWithSchemaVersion(draftContent, "draft", schema.Draft, []string{"_"})
 	require.NoError(t, err)
 
 	// Load 2025.10 schema tokens
-	v2025Content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "multi-schema", "mixed-workspace", "2025-tokens.json"))
+	v2025Content, err := os.ReadFile("testdata/multi-schema/mixed-workspace/2025-tokens.json")
 	require.NoError(t, err)
 
 	v2025Tokens, err := parser.ParseWithSchemaVersion(v2025Content, "2025", schema.V2025_10, nil)
@@ -76,14 +75,14 @@ func TestMultiSchemaWorkspace_TokenIsolation(t *testing.T) {
 	parser := json.NewParser()
 
 	// Load draft schema tokens
-	draftContent, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "multi-schema", "mixed-workspace", "draft-tokens.json"))
+	draftContent, err := os.ReadFile("testdata/multi-schema/mixed-workspace/draft-tokens.json")
 	require.NoError(t, err)
 
 	draftTokens, err := parser.ParseWithSchemaVersion(draftContent, "draft", schema.Draft, []string{"_"})
 	require.NoError(t, err)
 
 	// Load 2025.10 schema tokens
-	v2025Content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "multi-schema", "mixed-workspace", "2025-tokens.json"))
+	v2025Content, err := os.ReadFile("testdata/multi-schema/mixed-workspace/2025-tokens.json")
 	require.NoError(t, err)
 
 	v2025Tokens, err := parser.ParseWithSchemaVersion(v2025Content, "2025", schema.V2025_10, nil)

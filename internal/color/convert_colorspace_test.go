@@ -3,7 +3,6 @@ package color
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/common"
@@ -14,8 +13,7 @@ import (
 
 func TestAdvancedColorSpaceConversions(t *testing.T) {
 	// Load fixture file
-	fixturePath := filepath.Join("..", "..", "test", "fixtures", "color", "colorspace-advanced.json")
-	content, err := os.ReadFile(fixturePath)
+	content, err := os.ReadFile("testdata/colorspace-advanced.json")
 	require.NoError(t, err, "Failed to read fixture file")
 
 	// Parse the fixture

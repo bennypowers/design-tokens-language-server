@@ -2,7 +2,6 @@ package schema_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/schema"
@@ -45,7 +44,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 	})
 
 	t.Run("mixed schema features fail validation", func(t *testing.T) {
-		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "mixed-schema-features.json"))
+		fixtureData, err := os.ReadFile("testdata/errors/mixed-schema-features.json")
 		require.NoError(t, err)
 
 		err = schema.ValidateSchemaConsistency(fixtureData, schema.Draft)
@@ -54,7 +53,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 	})
 
 	t.Run("draft schema with 2025.10 color objects fails", func(t *testing.T) {
-		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "invalid-color-format.json"))
+		fixtureData, err := os.ReadFile("testdata/errors/invalid-color-format.json")
 		require.NoError(t, err)
 
 		err = schema.ValidateSchemaConsistency(fixtureData, schema.Draft)
@@ -63,7 +62,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 	})
 
 	t.Run("draft schema with $extends fails", func(t *testing.T) {
-		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "draft-with-2025-features.json"))
+		fixtureData, err := os.ReadFile("testdata/errors/draft-with-2025-features.json")
 		require.NoError(t, err)
 
 		err = schema.ValidateSchemaConsistency(fixtureData, schema.Draft)
@@ -73,7 +72,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 	})
 
 	t.Run("2025.10 schema with group markers fails", func(t *testing.T) {
-		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "2025-with-draft-root.json"))
+		fixtureData, err := os.ReadFile("testdata/errors/2025-with-draft-root.json")
 		require.NoError(t, err)
 
 		// This should fail because '_' is not $root in 2025.10
@@ -82,7 +81,7 @@ func TestValidateSchemaConsistency(t *testing.T) {
 	})
 
 	t.Run("both $root and group markers fails", func(t *testing.T) {
-		fixtureData, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "root-and-markers.json"))
+		fixtureData, err := os.ReadFile("testdata/errors/root-and-markers.json")
 		require.NoError(t, err)
 
 		err = schema.ValidateSchemaConsistency(fixtureData, schema.V2025_10)

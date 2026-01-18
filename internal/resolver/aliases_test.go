@@ -2,7 +2,6 @@ package resolver_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/json"
@@ -25,7 +24,7 @@ func findTokenByName(tokenList []*tokens.Token, name string) *tokens.Token {
 
 func TestResolveAliases(t *testing.T) {
 	t.Run("resolve simple curly brace aliases", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "resolver", "simple-alias.json"))
+		content, err := os.ReadFile("testdata/aliases/simple-alias.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -53,7 +52,7 @@ func TestResolveAliases(t *testing.T) {
 	})
 
 	t.Run("resolve chained aliases", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "resolver", "chained-alias.json"))
+		content, err := os.ReadFile("testdata/aliases/chained-alias.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -87,7 +86,7 @@ func TestResolveAliases(t *testing.T) {
 	})
 
 	t.Run("detect circular references", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "resolver", "circular-alias.json"))
+		content, err := os.ReadFile("testdata/aliases/circular-alias.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -100,7 +99,7 @@ func TestResolveAliases(t *testing.T) {
 	})
 
 	t.Run("resolve JSON Pointer aliases (2025.10)", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "resolver", "json-pointer-alias.json"))
+		content, err := os.ReadFile("testdata/aliases/json-pointer-alias.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -135,7 +134,7 @@ func TestResolveAliases(t *testing.T) {
 	})
 
 	t.Run("non-alias tokens are marked resolved", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "resolver", "simple-alias.json"))
+		content, err := os.ReadFile("testdata/aliases/simple-alias.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()

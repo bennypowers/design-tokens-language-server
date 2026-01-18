@@ -3,7 +3,6 @@ package common_test
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/common"
@@ -70,42 +69,42 @@ func TestGenerateRootTokenPath(t *testing.T) {
 
 func TestRootTokensFromFixture(t *testing.T) {
 	t.Run("parse draft group markers from fixture", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "root", "draft-markers.json"))
+		content, err := os.ReadFile("testdata/root/draft-markers.json")
 		require.NoError(t, err)
 
-		var data map[string]interface{}
+		var data map[string]any
 		require.NoError(t, json.Unmarshal(content, &data))
 
-		colors := data["color"].(map[string]interface{})
+		colors := data["color"].(map[string]any)
 		markers := []string{"_", "@", "DEFAULT"}
 
 		// Check "primary" group with "_" marker
-		primary := colors["primary"].(map[string]interface{})
+		primary := colors["primary"].(map[string]any)
 		assert.Contains(t, primary, "_")
 		assert.True(t, common.IsRootToken("_", schema.Draft, markers))
 
 		// Check "secondary" group with "@" marker
-		secondary := colors["secondary"].(map[string]interface{})
+		secondary := colors["secondary"].(map[string]any)
 		assert.Contains(t, secondary, "@")
 		assert.True(t, common.IsRootToken("@", schema.Draft, markers))
 
 		// Check "tertiary" group with "DEFAULT" marker
-		tertiary := colors["tertiary"].(map[string]interface{})
+		tertiary := colors["tertiary"].(map[string]any)
 		assert.Contains(t, tertiary, "DEFAULT")
 		assert.True(t, common.IsRootToken("DEFAULT", schema.Draft, markers))
 	})
 
 	t.Run("parse 2025.10 $root from fixture", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "root", "2025-root.json"))
+		content, err := os.ReadFile("testdata/root/2025-root.json")
 		require.NoError(t, err)
 
-		var data map[string]interface{}
+		var data map[string]any
 		require.NoError(t, json.Unmarshal(content, &data))
 
-		colors := data["color"].(map[string]interface{})
+		colors := data["color"].(map[string]any)
 
 		// Check "primary" group with "$root"
-		primary := colors["primary"].(map[string]interface{})
+		primary := colors["primary"].(map[string]any)
 		assert.Contains(t, primary, "$root")
 		assert.True(t, common.IsRootToken("$root", schema.V2025_10, nil))
 	})
