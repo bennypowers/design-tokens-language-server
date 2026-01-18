@@ -312,6 +312,27 @@ func (s *Server) SupportsDiagnosticRelatedInfo() bool {
 	return *s.clientCapabilities.TextDocument.PublishDiagnostics.RelatedInformation
 }
 
+// SupportsCodeActionLiterals returns whether the client supports CodeAction literals.
+// Checks capabilities.textDocument.codeAction.codeActionLiteralSupport.
+// Returns true by default for modern clients.
+func (s *Server) SupportsCodeActionLiterals() bool {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+
+	if s.clientCapabilities == nil {
+		// Default to true for modern clients
+		return true
+	}
+	if s.clientCapabilities.TextDocument == nil {
+		return true
+	}
+	if s.clientCapabilities.TextDocument.CodeAction == nil {
+		return true
+	}
+	// If codeActionLiteralSupport is present, the client supports CodeAction literals
+	return s.clientCapabilities.TextDocument.CodeAction.CodeActionLiteralSupport != nil
+}
+
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
 // If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
 // and instead wait for the client to request diagnostics via textDocument/diagnostic

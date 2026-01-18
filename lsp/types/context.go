@@ -65,6 +65,7 @@ type ServerContext interface {
 	PreferredHoverFormat() protocol.MarkupKind
 	SupportsDefinitionLinks() bool
 	SupportsDiagnosticRelatedInfo() bool
+	SupportsCodeActionLiterals() bool
 
 	// Diagnostics mode (pull vs push)
 	UsePullDiagnostics() bool

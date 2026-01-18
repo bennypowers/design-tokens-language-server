@@ -27,6 +27,7 @@ type MockServerContext struct {
 	preferredHoverFormat       *protocol.MarkupKind
 	supportsDefinitionLinks       *bool
 	supportsDiagnosticRelatedInfo *bool
+	supportsCodeActionLiterals    *bool
 	usePullDiagnostics            bool
 	semanticTokenCache         *semantictokens.TokenCache
 
@@ -286,6 +287,19 @@ func (m *MockServerContext) SupportsDiagnosticRelatedInfo() bool {
 // SetSupportsDiagnosticRelatedInfo sets the diagnostic related info support override for testing
 func (m *MockServerContext) SetSupportsDiagnosticRelatedInfo(supports bool) {
 	m.supportsDiagnosticRelatedInfo = &supports
+}
+
+// SupportsCodeActionLiterals returns whether the client supports CodeAction literals
+func (m *MockServerContext) SupportsCodeActionLiterals() bool {
+	if m.supportsCodeActionLiterals != nil {
+		return *m.supportsCodeActionLiterals
+	}
+	return true // Default to true for modern clients
+}
+
+// SetSupportsCodeActionLiterals sets the code action literal support override for testing
+func (m *MockServerContext) SetSupportsCodeActionLiterals(supports bool) {
+	m.supportsCodeActionLiterals = &supports
 }
 
 // PublishDiagnostics publishes diagnostics for a document
