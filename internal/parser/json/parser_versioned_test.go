@@ -2,7 +2,6 @@ package json_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/json"
@@ -14,7 +13,7 @@ import (
 
 func TestParseWithSchemaVersion(t *testing.T) {
 	t.Run("parse draft schema with group markers", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "parser", "draft-tokens.json"))
+		content, err := os.ReadFile("testdata/draft-tokens.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -43,7 +42,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 	})
 
 	t.Run("parse 2025.10 schema with $root", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "parser", "2025-tokens.json"))
+		content, err := os.ReadFile("testdata/2025-tokens.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -76,7 +75,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 	})
 
 	t.Run("skip $schema field in 2025.10", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "parser", "2025-tokens.json"))
+		content, err := os.ReadFile("testdata/2025-tokens.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -92,7 +91,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 	})
 
 	t.Run("handle $ref in 2025.10 (don't parse as child token)", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "parser", "2025-tokens.json"))
+		content, err := os.ReadFile("testdata/2025-tokens.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -156,7 +155,7 @@ func TestParseWithSchemaVersion(t *testing.T) {
 	})
 
 	t.Run("draft schema with no groupMarkers", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "parser", "draft-no-schema.json"))
+		content, err := os.ReadFile("testdata/draft-no-schema.json")
 		require.NoError(t, err)
 
 		parser := json.NewParser()
@@ -183,7 +182,7 @@ func TestParseFileWithSchemaVersion(t *testing.T) {
 		groupMarkers := []string{"_", "@", "DEFAULT"}
 
 		tokenList, err := parser.ParseFileWithSchemaVersion(
-			filepath.Join("..", "..", "..", "test", "fixtures", "parser", "draft-tokens.json"),
+			"testdata/draft-tokens.json",
 			"",
 			schema.Draft,
 			groupMarkers,
@@ -200,7 +199,7 @@ func TestParseFileWithSchemaVersion(t *testing.T) {
 		parser := json.NewParser()
 
 		tokenList, err := parser.ParseFileWithSchemaVersion(
-			filepath.Join("..", "..", "..", "test", "fixtures", "parser", "2025-tokens.json"),
+			"testdata/2025-tokens.json",
 			"",
 			schema.V2025_10,
 			nil,

@@ -2,7 +2,6 @@ package resolver_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/json"
@@ -15,8 +14,7 @@ import (
 
 func TestResolveGroupExtensions_Simple(t *testing.T) {
 	// Test simple group extension: child inherits from parent
-	fixturesDir := "../../test/fixtures/extends"
-	content, err := os.ReadFile(filepath.Join(fixturesDir, "simple.json"))
+	content, err := os.ReadFile("testdata/extends/simple.json")
 	require.NoError(t, err)
 
 	parser := json.NewParser()
@@ -54,8 +52,7 @@ func TestResolveGroupExtensions_Simple(t *testing.T) {
 
 func TestResolveGroupExtensions_Nested(t *testing.T) {
 	// Test nested group extensions: level2 extends level1 which extends base
-	fixturesDir := "../../test/fixtures/extends"
-	content, err := os.ReadFile(filepath.Join(fixturesDir, "nested.json"))
+	content, err := os.ReadFile("testdata/extends/nested.json")
 	require.NoError(t, err)
 
 	parser := json.NewParser()
@@ -82,8 +79,7 @@ func TestResolveGroupExtensions_Nested(t *testing.T) {
 
 func TestResolveGroupExtensions_Override(t *testing.T) {
 	// Test that child tokens override parent tokens
-	fixturesDir := "../../test/fixtures/extends"
-	content, err := os.ReadFile(filepath.Join(fixturesDir, "override.json"))
+	content, err := os.ReadFile("testdata/extends/override.json")
 	require.NoError(t, err)
 
 	parser := json.NewParser()
@@ -129,8 +125,7 @@ func TestResolveGroupExtensions_Override(t *testing.T) {
 
 func TestResolveGroupExtensions_CircularDetection(t *testing.T) {
 	// Test that circular extensions are detected and return error
-	fixturesDir := "../../test/fixtures/extends"
-	content, err := os.ReadFile(filepath.Join(fixturesDir, "circular.json"))
+	content, err := os.ReadFile("testdata/extends/circular.json")
 	require.NoError(t, err)
 
 	parser := json.NewParser()
@@ -185,8 +180,7 @@ func TestResolveGroupExtensions_EmptyList(t *testing.T) {
 
 func TestResolveGroupExtensions_DeeplyNested(t *testing.T) {
 	// Test multi-level inheritance: foundation -> theme -> brand -> product
-	fixturesDir := "../../test/fixtures/extends"
-	content, err := os.ReadFile(filepath.Join(fixturesDir, "deeply-nested.json"))
+	content, err := os.ReadFile("testdata/extends/deeply-nested.json")
 	require.NoError(t, err)
 
 	parser := json.NewParser()
@@ -224,8 +218,7 @@ func TestResolveGroupExtensions_DeeplyNested(t *testing.T) {
 
 func TestResolveGroupExtensions_NestedPaths(t *testing.T) {
 	// Test extending from a nested group path (e.g., #/base/colors/semantic)
-	fixturesDir := "../../test/fixtures/extends"
-	content, err := os.ReadFile(filepath.Join(fixturesDir, "nested-paths.json"))
+	content, err := os.ReadFile("testdata/extends/nested-paths.json")
 	require.NoError(t, err)
 
 	parser := json.NewParser()

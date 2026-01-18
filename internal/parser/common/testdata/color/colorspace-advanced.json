@@ -1,0 +1,151 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10.json",
+  "color": {
+    "hwb": {
+      "red": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "hwb",
+          "components": [0, 0, 0],
+          "alpha": 1.0
+        }
+      },
+      "transparent": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "hwb",
+          "components": [120, 20, 30],
+          "alpha": 0.5
+        }
+      }
+    },
+    "oklab": {
+      "green": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklab",
+          "components": [0.5, -0.1, 0.2],
+          "alpha": 1.0
+        }
+      },
+      "semitransparent": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklab",
+          "components": [0.7, 0.05, -0.15],
+          "alpha": 0.75
+        }
+      }
+    },
+    "oklch": {
+      "primary": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.65, 0.18, 240],
+          "alpha": 1.0
+        }
+      },
+      "accent": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.8, 0.12, 120],
+          "alpha": 0.9
+        }
+      }
+    },
+    "lch": {
+      "vibrant": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "lch",
+          "components": [60, 80, 300],
+          "alpha": 1.0
+        }
+      },
+      "muted": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "lch",
+          "components": [45, 40, 180],
+          "alpha": 0.6
+        }
+      }
+    },
+    "lab": {
+      "bright": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "lab",
+          "components": [75, 25, -50],
+          "alpha": 1.0
+        }
+      },
+      "dark": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "lab",
+          "components": [30, -15, 20],
+          "alpha": 0.85
+        }
+      }
+    },
+    "displayP3": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "display-p3",
+        "components": [1.0, 0.5, 0.2],
+        "alpha": 1.0
+      }
+    },
+    "srgbLinear": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb-linear",
+        "components": [0.8, 0.6, 0.4],
+        "alpha": 1.0
+      }
+    },
+    "a98rgb": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "a98-rgb",
+        "components": [0.9, 0.7, 0.5],
+        "alpha": 1.0
+      }
+    },
+    "prophotoRgb": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "prophoto-rgb",
+        "components": [0.85, 0.65, 0.45],
+        "alpha": 1.0
+      }
+    },
+    "rec2020": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "rec2020",
+        "components": [0.95, 0.75, 0.55],
+        "alpha": 1.0
+      }
+    },
+    "xyzD50": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "xyz-d50",
+        "components": [0.4, 0.3, 0.2],
+        "alpha": 1.0
+      }
+    },
+    "xyzD65": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "xyz-d65",
+        "components": [0.45, 0.35, 0.25],
+        "alpha": 1.0
+      }
+    }
+  }
+}

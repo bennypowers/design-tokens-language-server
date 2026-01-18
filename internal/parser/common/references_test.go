@@ -3,7 +3,6 @@ package common_test
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/common"
@@ -39,7 +38,7 @@ func TestExtractReferences(t *testing.T) {
 	t.Run("extract JSON pointer reference", func(t *testing.T) {
 		// JSON Pointer references use $ref field, not string interpolation
 		// So this tests parsing a structured $ref
-		refObj := map[string]interface{}{
+		refObj := map[string]any{
 			"$ref": "#/color/base",
 		}
 
@@ -60,7 +59,7 @@ func TestExtractReferences(t *testing.T) {
 	})
 
 	t.Run("error on JSON pointer in draft schema", func(t *testing.T) {
-		refObj := map[string]interface{}{
+		refObj := map[string]any{
 			"$ref": "#/color/base",
 		}
 
@@ -72,21 +71,21 @@ func TestExtractReferences(t *testing.T) {
 
 func TestExtractReferencesFromFixture(t *testing.T) {
 	t.Run("extract curly brace references from fixture", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "references", "curly-braces.json"))
+		content, err := os.ReadFile("testdata/references/curly-braces.json")
 		require.NoError(t, err)
 
-		var data map[string]interface{}
+		var data map[string]any
 		require.NoError(t, json.Unmarshal(content, &data))
 
 		colorsRaw, ok := data["color"]
 		require.True(t, ok, "fixture should have 'color' key")
-		colors, ok := colorsRaw.(map[string]interface{})
+		colors, ok := colorsRaw.(map[string]any)
 		require.True(t, ok, "color should be a map")
 
 		// Check "primary" token which references "base"
 		primaryTokenRaw, ok := colors["primary"]
 		require.True(t, ok, "fixture should have 'primary' token")
-		primaryToken, ok := primaryTokenRaw.(map[string]interface{})
+		primaryToken, ok := primaryTokenRaw.(map[string]any)
 		require.True(t, ok, "primary should be a map")
 		primaryValueRaw, ok := primaryToken["$value"]
 		require.True(t, ok, "primary should have '$value' field")
@@ -101,7 +100,7 @@ func TestExtractReferencesFromFixture(t *testing.T) {
 		// Check "secondary" token which references "primary"
 		secondaryTokenRaw, ok := colors["secondary"]
 		require.True(t, ok, "fixture should have 'secondary' token")
-		secondaryToken, ok := secondaryTokenRaw.(map[string]interface{})
+		secondaryToken, ok := secondaryTokenRaw.(map[string]any)
 		require.True(t, ok, "secondary should be a map")
 		secondaryValueRaw, ok := secondaryToken["$value"]
 		require.True(t, ok, "secondary should have '$value' field")
@@ -115,21 +114,21 @@ func TestExtractReferencesFromFixture(t *testing.T) {
 	})
 
 	t.Run("extract JSON pointer references from fixture", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "references", "json-pointers.json"))
+		content, err := os.ReadFile("testdata/references/json-pointers.json")
 		require.NoError(t, err)
 
-		var data map[string]interface{}
+		var data map[string]any
 		require.NoError(t, json.Unmarshal(content, &data))
 
 		colorsRaw, ok := data["color"]
 		require.True(t, ok, "fixture should have 'color' key")
-		colors, ok := colorsRaw.(map[string]interface{})
+		colors, ok := colorsRaw.(map[string]any)
 		require.True(t, ok, "color should be a map")
 
 		// Check "primary" token which references "base"
 		primaryTokenRaw, ok := colors["primary"]
 		require.True(t, ok, "fixture should have 'primary' token")
-		primaryToken, ok := primaryTokenRaw.(map[string]interface{})
+		primaryToken, ok := primaryTokenRaw.(map[string]any)
 		require.True(t, ok, "primary should be a map")
 
 		refs, err := common.ExtractReferencesFromValue(primaryToken, schema.V2025_10)
@@ -151,7 +150,7 @@ func TestReferencePathConversion(t *testing.T) {
 	})
 
 	t.Run("convert JSON pointer to token path", func(t *testing.T) {
-		refObj := map[string]interface{}{
+		refObj := map[string]any{
 			"$ref": "#/color/brand/primary",
 		}
 
@@ -161,5 +160,66 @@ func TestReferencePathConversion(t *testing.T) {
 
 		// Path should be slash-separated (JSON Pointer format)
 		assert.Equal(t, "color/brand/primary", refs[0].Path)
+	})
+}
+
+func TestConvertJSONPointerToTokenPath(t *testing.T) {
+	t.Run("converts with hash prefix", func(t *testing.T) {
+		result := common.ConvertJSONPointerToTokenPath("#/color/brand/primary")
+		assert.Equal(t, "color.brand.primary", result)
+	})
+
+	t.Run("converts without hash prefix", func(t *testing.T) {
+		result := common.ConvertJSONPointerToTokenPath("color/brand/primary")
+		assert.Equal(t, "color.brand.primary", result)
+	})
+
+	t.Run("handles single segment", func(t *testing.T) {
+		result := common.ConvertJSONPointerToTokenPath("#/color")
+		assert.Equal(t, "color", result)
+	})
+
+	t.Run("handles deeply nested path", func(t *testing.T) {
+		result := common.ConvertJSONPointerToTokenPath("#/a/b/c/d/e")
+		assert.Equal(t, "a.b.c.d.e", result)
+	})
+
+	t.Run("handles empty string", func(t *testing.T) {
+		result := common.ConvertJSONPointerToTokenPath("")
+		assert.Equal(t, "", result)
+	})
+
+	t.Run("handles just hash", func(t *testing.T) {
+		result := common.ConvertJSONPointerToTokenPath("#/")
+		assert.Equal(t, "", result)
+	})
+}
+
+func TestConvertTokenPathToJSONPointer(t *testing.T) {
+	t.Run("converts simple path", func(t *testing.T) {
+		result := common.ConvertTokenPathToJSONPointer("color.brand.primary")
+		assert.Equal(t, "#/color/brand/primary", result)
+	})
+
+	t.Run("handles single segment", func(t *testing.T) {
+		result := common.ConvertTokenPathToJSONPointer("color")
+		assert.Equal(t, "#/color", result)
+	})
+
+	t.Run("handles deeply nested path", func(t *testing.T) {
+		result := common.ConvertTokenPathToJSONPointer("a.b.c.d.e")
+		assert.Equal(t, "#/a/b/c/d/e", result)
+	})
+
+	t.Run("handles empty string", func(t *testing.T) {
+		result := common.ConvertTokenPathToJSONPointer("")
+		assert.Equal(t, "#/", result)
+	})
+
+	t.Run("roundtrip conversion", func(t *testing.T) {
+		original := "color.brand.primary"
+		jsonPointer := common.ConvertTokenPathToJSONPointer(original)
+		result := common.ConvertJSONPointerToTokenPath(jsonPointer)
+		assert.Equal(t, original, result)
 	})
 }

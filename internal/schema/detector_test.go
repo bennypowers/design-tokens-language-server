@@ -2,7 +2,6 @@ package schema_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/schema"
@@ -12,14 +11,14 @@ import (
 
 func TestDetectVersion(t *testing.T) {
 	t.Run("detect from explicit $schema field", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "explicit-draft.json"))
+		content, err := os.ReadFile("testdata/detection/explicit-draft.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersion(content, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, schema.Draft, version)
 
-		content, err = os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "explicit-2025.json"))
+		content, err = os.ReadFile("testdata/detection/explicit-2025.json")
 		require.NoError(t, err)
 
 		version, err = schema.DetectVersion(content, nil)
@@ -28,7 +27,7 @@ func TestDetectVersion(t *testing.T) {
 	})
 
 	t.Run("detect 2025.10 from structured color format", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "duck-type-2025.json"))
+		content, err := os.ReadFile("testdata/detection/duck-type-2025.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersion(content, nil)
@@ -37,7 +36,7 @@ func TestDetectVersion(t *testing.T) {
 	})
 
 	t.Run("detect 2025.10 from $ref field", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "with-ref.json"))
+		content, err := os.ReadFile("testdata/detection/with-ref.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersion(content, nil)
@@ -46,7 +45,7 @@ func TestDetectVersion(t *testing.T) {
 	})
 
 	t.Run("detect 2025.10 from $extends field", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "with-extends.json"))
+		content, err := os.ReadFile("testdata/detection/with-extends.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersion(content, nil)
@@ -55,7 +54,7 @@ func TestDetectVersion(t *testing.T) {
 	})
 
 	t.Run("default to draft for ambiguous files", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "duck-type-draft.json"))
+		content, err := os.ReadFile("testdata/detection/duck-type-draft.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersion(content, nil)
@@ -88,7 +87,7 @@ func TestDetectVersion(t *testing.T) {
 	})
 
 	t.Run("error when no detection method works and no config", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "ambiguous.json"))
+		content, err := os.ReadFile("testdata/detection/ambiguous.json")
 		require.NoError(t, err)
 
 		// With no config, ambiguous file defaults to draft
@@ -101,7 +100,7 @@ func TestDetectVersion(t *testing.T) {
 func TestDetectWithValidation(t *testing.T) {
 	t.Run("validate after detection", func(t *testing.T) {
 		// File with draft schema but 2025.10 features
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "errors", "invalid-color-format.json"))
+		content, err := os.ReadFile("testdata/errors/invalid-color-format.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersionWithValidation("test.json", content, nil)
@@ -111,7 +110,7 @@ func TestDetectWithValidation(t *testing.T) {
 	})
 
 	t.Run("valid file passes detection and validation", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "test", "fixtures", "detection", "explicit-draft.json"))
+		content, err := os.ReadFile("testdata/detection/explicit-draft.json")
 		require.NoError(t, err)
 
 		version, err := schema.DetectVersionWithValidation("test.json", content, nil)

@@ -3,7 +3,6 @@ package common_test
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/common"
@@ -110,17 +109,17 @@ func TestParseColorValue(t *testing.T) {
 
 func TestColorValueFromFixture(t *testing.T) {
 	t.Run("parse all draft color formats from fixture", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "color", "draft-colors.json"))
+		content, err := os.ReadFile("testdata/color/draft-colors.json")
 		require.NoError(t, err)
 
-		var data map[string]interface{}
+		var data map[string]any
 		require.NoError(t, json.Unmarshal(content, &data))
 
-		colors := data["color"].(map[string]interface{})
+		colors := data["color"].(map[string]any)
 
 		for name, tokenData := range colors {
 			t.Run(name, func(t *testing.T) {
-				token := tokenData.(map[string]interface{})
+				token := tokenData.(map[string]any)
 				value := token["$value"]
 
 				colorValue, err := common.ParseColorValue(value, schema.Draft)
@@ -131,17 +130,17 @@ func TestColorValueFromFixture(t *testing.T) {
 	})
 
 	t.Run("parse all 2025.10 color formats from fixture", func(t *testing.T) {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "test", "fixtures", "color", "2025-colors.json"))
+		content, err := os.ReadFile("testdata/color/2025-colors.json")
 		require.NoError(t, err)
 
-		var data map[string]interface{}
+		var data map[string]any
 		require.NoError(t, json.Unmarshal(content, &data))
 
-		colors := data["color"].(map[string]interface{})
+		colors := data["color"].(map[string]any)
 
 		for name, tokenData := range colors {
 			t.Run(name, func(t *testing.T) {
-				token := tokenData.(map[string]interface{})
+				token := tokenData.(map[string]any)
 				value := token["$value"]
 
 				colorValue, err := common.ParseColorValue(value, schema.V2025_10)
