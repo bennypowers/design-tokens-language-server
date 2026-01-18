@@ -728,29 +728,29 @@ func TestServer_SupportsDiagnosticRelatedInfo(t *testing.T) {
 }
 
 func TestServer_SupportsCodeActionLiterals(t *testing.T) {
-	t.Run("returns true when capabilities are nil (default for modern clients)", func(t *testing.T) {
+	t.Run("returns false when capabilities are nil", func(t *testing.T) {
 		s, err := NewServer()
 		require.NoError(t, err)
 
-		assert.True(t, s.SupportsCodeActionLiterals())
+		assert.False(t, s.SupportsCodeActionLiterals())
 	})
 
-	t.Run("returns true when TextDocument is nil", func(t *testing.T) {
+	t.Run("returns false when TextDocument is nil", func(t *testing.T) {
 		s, err := NewServer()
 		require.NoError(t, err)
 
 		s.SetClientCapabilities(protocol.ClientCapabilities{})
-		assert.True(t, s.SupportsCodeActionLiterals())
+		assert.False(t, s.SupportsCodeActionLiterals())
 	})
 
-	t.Run("returns true when CodeAction is nil", func(t *testing.T) {
+	t.Run("returns false when CodeAction is nil", func(t *testing.T) {
 		s, err := NewServer()
 		require.NoError(t, err)
 
 		s.SetClientCapabilities(protocol.ClientCapabilities{
 			TextDocument: &protocol.TextDocumentClientCapabilities{},
 		})
-		assert.True(t, s.SupportsCodeActionLiterals())
+		assert.False(t, s.SupportsCodeActionLiterals())
 	})
 
 	t.Run("returns false when CodeActionLiteralSupport is nil", func(t *testing.T) {

@@ -314,22 +314,21 @@ func (s *Server) SupportsDiagnosticRelatedInfo() bool {
 
 // SupportsCodeActionLiterals returns whether the client supports CodeAction literals.
 // Checks capabilities.textDocument.codeAction.codeActionLiteralSupport.
-// Returns true by default for modern clients.
+// Returns false unless the capability is explicitly present (per LSP spec).
 func (s *Server) SupportsCodeActionLiterals() bool {
 	s.configMu.RLock()
 	defer s.configMu.RUnlock()
 
 	if s.clientCapabilities == nil {
-		// Default to true for modern clients
-		return true
+		return false
 	}
 	if s.clientCapabilities.TextDocument == nil {
-		return true
+		return false
 	}
 	if s.clientCapabilities.TextDocument.CodeAction == nil {
-		return true
+		return false
 	}
-	// If codeActionLiteralSupport is present, the client supports CodeAction literals
+	// Only return true when codeActionLiteralSupport is explicitly present
 	return s.clientCapabilities.TextDocument.CodeAction.CodeActionLiteralSupport != nil
 }
 

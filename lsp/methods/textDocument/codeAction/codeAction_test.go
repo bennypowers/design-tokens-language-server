@@ -22,10 +22,35 @@ func ptrIntegerOrString(s string) *protocol.IntegerOrString {
 	return &protocol.IntegerOrString{Value: s}
 }
 
+// setCodeActionLiteralSupport sets the client capabilities to support CodeAction literals
+func setCodeActionLiteralSupport(s *lsp.Server) {
+	s.SetClientCapabilities(protocol.ClientCapabilities{
+		TextDocument: &protocol.TextDocumentClientCapabilities{
+			CodeAction: &protocol.CodeActionClientCapabilities{
+				CodeActionLiteralSupport: &struct {
+					CodeActionKind struct {
+						ValueSet []protocol.CodeActionKind `json:"valueSet"`
+					} `json:"codeActionKind"`
+				}{
+					CodeActionKind: struct {
+						ValueSet []protocol.CodeActionKind `json:"valueSet"`
+					}{
+						ValueSet: []protocol.CodeActionKind{
+							protocol.CodeActionKindQuickFix,
+							protocol.CodeActionKindRefactorRewrite,
+						},
+					},
+				},
+			},
+		},
+	})
+}
+
 // TestRangesIntersect tests the rangesIntersect function with half-open range semantics [start, end)
 func TestToggleFallback(t *testing.T) {
 	s, err := lsp.NewServer()
 	require.NoError(t, err)
+	setCodeActionLiteralSupport(s)
 
 	// Add test token
 	token := &tokens.Token{
@@ -140,6 +165,7 @@ func TestToggleFallback(t *testing.T) {
 func TestToggleRangeFallbacks(t *testing.T) {
 	s, err := lsp.NewServer()
 	require.NoError(t, err)
+	setCodeActionLiteralSupport(s)
 
 	// Add test tokens
 	_ = s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
@@ -245,6 +271,7 @@ func TestToggleRangeFallbacks(t *testing.T) {
 func TestFixAllFallbacks(t *testing.T) {
 	s, err := lsp.NewServer()
 	require.NoError(t, err)
+	setCodeActionLiteralSupport(s)
 
 	// Add test tokens
 	_ = s.TokenManager().Add(&tokens.Token{Name: "color-primary", Value: "#ff0000", Type: "color"})
@@ -417,7 +444,7 @@ func TestCodeAction_LiteralSupport(t *testing.T) {
 		assert.Nil(t, result, "Should return nil for legacy clients without literal support")
 	})
 
-	t.Run("defaults to supported when capabilities unknown", func(t *testing.T) {
+	t.Run("returns nil when capabilities unknown (per LSP spec)", func(t *testing.T) {
 		s, err := lsp.NewServer()
 		require.NoError(t, err)
 
@@ -428,7 +455,7 @@ func TestCodeAction_LiteralSupport(t *testing.T) {
 			Type:  "color",
 		})
 
-		// Don't set any client capabilities - test default behavior
+		// Don't set any client capabilities - per LSP spec, assume not supported
 
 		uri := "file:///test.css"
 		_ = s.DocumentManager().DidOpen(uri, "css", 1, `.button { color: var(--color-primary); }`)
@@ -445,9 +472,6 @@ func TestCodeAction_LiteralSupport(t *testing.T) {
 		req := types.NewRequestContext(s, nil)
 		result, err := codeaction.CodeAction(req, params)
 		require.NoError(t, err)
-		require.NotNil(t, result, "Should default to supporting literals for modern clients")
-
-		actions := result.([]protocol.CodeAction)
-		assert.NotEmpty(t, actions, "Should have code actions by default")
+		assert.Nil(t, result, "Should return nil when capabilities are unknown (per LSP spec)")
 	})
 }

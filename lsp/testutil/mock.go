@@ -237,10 +237,19 @@ func (m *MockServerContext) SetClientCapabilities(caps protocol.ClientCapabiliti
 	m.clientCapabilities = &caps
 }
 
-// SupportsSnippets returns whether the client supports snippet completions
+// SupportsSnippets returns whether the client supports snippet completions.
+// Uses override if set, otherwise falls back to clientCapabilities.
 func (m *MockServerContext) SupportsSnippets() bool {
 	if m.supportsSnippets != nil {
 		return *m.supportsSnippets
+	}
+	// Fall back to clientCapabilities if set
+	if m.clientCapabilities != nil &&
+		m.clientCapabilities.TextDocument != nil &&
+		m.clientCapabilities.TextDocument.Completion != nil &&
+		m.clientCapabilities.TextDocument.Completion.CompletionItem != nil &&
+		m.clientCapabilities.TextDocument.Completion.CompletionItem.SnippetSupport != nil {
+		return *m.clientCapabilities.TextDocument.Completion.CompletionItem.SnippetSupport
 	}
 	return false
 }
@@ -250,10 +259,18 @@ func (m *MockServerContext) SetSupportsSnippets(supports bool) {
 	m.supportsSnippets = &supports
 }
 
-// PreferredHoverFormat returns the client's preferred hover content format
+// PreferredHoverFormat returns the client's preferred hover content format.
+// Uses override if set, otherwise falls back to clientCapabilities.
 func (m *MockServerContext) PreferredHoverFormat() protocol.MarkupKind {
 	if m.preferredHoverFormat != nil {
 		return *m.preferredHoverFormat
+	}
+	// Fall back to clientCapabilities if set
+	if m.clientCapabilities != nil &&
+		m.clientCapabilities.TextDocument != nil &&
+		m.clientCapabilities.TextDocument.Hover != nil &&
+		len(m.clientCapabilities.TextDocument.Hover.ContentFormat) > 0 {
+		return m.clientCapabilities.TextDocument.Hover.ContentFormat[0]
 	}
 	return protocol.MarkupKindMarkdown // Default to markdown
 }
@@ -263,10 +280,18 @@ func (m *MockServerContext) SetPreferredHoverFormat(format protocol.MarkupKind) 
 	m.preferredHoverFormat = &format
 }
 
-// SupportsDefinitionLinks returns whether the client supports LocationLink responses
+// SupportsDefinitionLinks returns whether the client supports LocationLink responses.
+// Uses override if set, otherwise falls back to clientCapabilities.
 func (m *MockServerContext) SupportsDefinitionLinks() bool {
 	if m.supportsDefinitionLinks != nil {
 		return *m.supportsDefinitionLinks
+	}
+	// Fall back to clientCapabilities if set
+	if m.clientCapabilities != nil &&
+		m.clientCapabilities.TextDocument != nil &&
+		m.clientCapabilities.TextDocument.Definition != nil &&
+		m.clientCapabilities.TextDocument.Definition.LinkSupport != nil {
+		return *m.clientCapabilities.TextDocument.Definition.LinkSupport
 	}
 	return false
 }
@@ -276,10 +301,18 @@ func (m *MockServerContext) SetSupportsDefinitionLinks(supports bool) {
 	m.supportsDefinitionLinks = &supports
 }
 
-// SupportsDiagnosticRelatedInfo returns whether the client supports diagnostic related information
+// SupportsDiagnosticRelatedInfo returns whether the client supports diagnostic related information.
+// Uses override if set, otherwise falls back to clientCapabilities.
 func (m *MockServerContext) SupportsDiagnosticRelatedInfo() bool {
 	if m.supportsDiagnosticRelatedInfo != nil {
 		return *m.supportsDiagnosticRelatedInfo
+	}
+	// Fall back to clientCapabilities if set
+	if m.clientCapabilities != nil &&
+		m.clientCapabilities.TextDocument != nil &&
+		m.clientCapabilities.TextDocument.PublishDiagnostics != nil &&
+		m.clientCapabilities.TextDocument.PublishDiagnostics.RelatedInformation != nil {
+		return *m.clientCapabilities.TextDocument.PublishDiagnostics.RelatedInformation
 	}
 	return false
 }
@@ -289,12 +322,21 @@ func (m *MockServerContext) SetSupportsDiagnosticRelatedInfo(supports bool) {
 	m.supportsDiagnosticRelatedInfo = &supports
 }
 
-// SupportsCodeActionLiterals returns whether the client supports CodeAction literals
+// SupportsCodeActionLiterals returns whether the client supports CodeAction literals.
+// Uses override if set, otherwise falls back to clientCapabilities.
+// Returns false unless the capability is explicitly present (per LSP spec).
 func (m *MockServerContext) SupportsCodeActionLiterals() bool {
 	if m.supportsCodeActionLiterals != nil {
 		return *m.supportsCodeActionLiterals
 	}
-	return true // Default to true for modern clients
+	// Fall back to clientCapabilities if set
+	if m.clientCapabilities != nil &&
+		m.clientCapabilities.TextDocument != nil &&
+		m.clientCapabilities.TextDocument.CodeAction != nil &&
+		m.clientCapabilities.TextDocument.CodeAction.CodeActionLiteralSupport != nil {
+		return true
+	}
+	return false
 }
 
 // SetSupportsCodeActionLiterals sets the code action literal support override for testing

@@ -269,9 +269,8 @@ func TestCompletionSnippetFormat(t *testing.T) {
 
 	// Check first item has snippet format
 	item := completions.Items[0]
-	if item.InsertTextFormat != nil {
-		assert.Equal(t, protocol.InsertTextFormatSnippet, *item.InsertTextFormat)
-	}
+	require.NotNil(t, item.InsertTextFormat, "InsertTextFormat should be set when snippets are supported")
+	assert.Equal(t, protocol.InsertTextFormatSnippet, *item.InsertTextFormat)
 }
 
 // TestCompletionResolveNoData tests resolving completion item without data
