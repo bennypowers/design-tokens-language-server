@@ -25,6 +25,7 @@ type MockServerContext struct {
 	clientCapabilities         *protocol.ClientCapabilities
 	supportsSnippets           *bool
 	preferredHoverFormat       *protocol.MarkupKind
+	supportsDefinitionLinks    *bool
 	usePullDiagnostics         bool
 	semanticTokenCache         *semantictokens.TokenCache
 
@@ -258,6 +259,19 @@ func (m *MockServerContext) PreferredHoverFormat() protocol.MarkupKind {
 // SetPreferredHoverFormat sets the hover format override for testing
 func (m *MockServerContext) SetPreferredHoverFormat(format protocol.MarkupKind) {
 	m.preferredHoverFormat = &format
+}
+
+// SupportsDefinitionLinks returns whether the client supports LocationLink responses
+func (m *MockServerContext) SupportsDefinitionLinks() bool {
+	if m.supportsDefinitionLinks != nil {
+		return *m.supportsDefinitionLinks
+	}
+	return false
+}
+
+// SetSupportsDefinitionLinks sets the definition link support override for testing
+func (m *MockServerContext) SetSupportsDefinitionLinks(supports bool) {
+	m.supportsDefinitionLinks = &supports
 }
 
 // PublishDiagnostics publishes diagnostics for a document

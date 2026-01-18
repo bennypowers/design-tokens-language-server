@@ -270,6 +270,27 @@ func (s *Server) PreferredHoverFormat() protocol.MarkupKind {
 	return s.clientCapabilities.TextDocument.Hover.ContentFormat[0]
 }
 
+// SupportsDefinitionLinks returns whether the client supports LocationLink responses.
+// Checks capabilities.textDocument.definition.linkSupport.
+func (s *Server) SupportsDefinitionLinks() bool {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+
+	if s.clientCapabilities == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.Definition == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.Definition.LinkSupport == nil {
+		return false
+	}
+	return *s.clientCapabilities.TextDocument.Definition.LinkSupport
+}
+
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
 // If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
 // and instead wait for the client to request diagnostics via textDocument/diagnostic
