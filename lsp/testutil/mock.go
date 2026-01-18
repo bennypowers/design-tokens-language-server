@@ -25,8 +25,9 @@ type MockServerContext struct {
 	clientCapabilities         *protocol.ClientCapabilities
 	supportsSnippets           *bool
 	preferredHoverFormat       *protocol.MarkupKind
-	supportsDefinitionLinks    *bool
-	usePullDiagnostics         bool
+	supportsDefinitionLinks       *bool
+	supportsDiagnosticRelatedInfo *bool
+	usePullDiagnostics            bool
 	semanticTokenCache         *semantictokens.TokenCache
 
 	// Optional callbacks for custom behavior in tests.
@@ -272,6 +273,19 @@ func (m *MockServerContext) SupportsDefinitionLinks() bool {
 // SetSupportsDefinitionLinks sets the definition link support override for testing
 func (m *MockServerContext) SetSupportsDefinitionLinks(supports bool) {
 	m.supportsDefinitionLinks = &supports
+}
+
+// SupportsDiagnosticRelatedInfo returns whether the client supports diagnostic related information
+func (m *MockServerContext) SupportsDiagnosticRelatedInfo() bool {
+	if m.supportsDiagnosticRelatedInfo != nil {
+		return *m.supportsDiagnosticRelatedInfo
+	}
+	return false
+}
+
+// SetSupportsDiagnosticRelatedInfo sets the diagnostic related info support override for testing
+func (m *MockServerContext) SetSupportsDiagnosticRelatedInfo(supports bool) {
+	m.supportsDiagnosticRelatedInfo = &supports
 }
 
 // PublishDiagnostics publishes diagnostics for a document

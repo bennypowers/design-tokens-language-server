@@ -52,6 +52,7 @@ func (m *mockServerContext) SetClientCapabilities(caps protocol.ClientCapabiliti
 func (m *mockServerContext) SupportsSnippets() bool { return false }
 func (m *mockServerContext) PreferredHoverFormat() protocol.MarkupKind { return protocol.MarkupKindMarkdown }
 func (m *mockServerContext) SupportsDefinitionLinks() bool { return false }
+func (m *mockServerContext) SupportsDiagnosticRelatedInfo() bool { return false }
 func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }

@@ -291,6 +291,27 @@ func (s *Server) SupportsDefinitionLinks() bool {
 	return *s.clientCapabilities.TextDocument.Definition.LinkSupport
 }
 
+// SupportsDiagnosticRelatedInfo returns whether the client supports diagnostic related information.
+// Checks capabilities.textDocument.publishDiagnostics.relatedInformation.
+func (s *Server) SupportsDiagnosticRelatedInfo() bool {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+
+	if s.clientCapabilities == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.PublishDiagnostics == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.PublishDiagnostics.RelatedInformation == nil {
+		return false
+	}
+	return *s.clientCapabilities.TextDocument.PublishDiagnostics.RelatedInformation
+}
+
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
 // If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
 // and instead wait for the client to request diagnostics via textDocument/diagnostic

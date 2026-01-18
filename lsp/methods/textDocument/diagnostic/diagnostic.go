@@ -74,7 +74,7 @@ func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic,
 			}
 
 			severity := protocol.DiagnosticSeverityInformation
-			diagnostics = append(diagnostics, protocol.Diagnostic{
+			diag := protocol.Diagnostic{
 				Range: protocol.Range{
 					Start: protocol.Position{
 						Line:      varCall.Range.Start.Line,
@@ -88,7 +88,23 @@ func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic,
 				Severity: &severity,
 				Message:  message,
 				Tags:     []protocol.DiagnosticTag{protocol.DiagnosticTagDeprecated},
-			})
+			}
+
+			// Add related information pointing to token definition when supported
+			if ctx.SupportsDiagnosticRelatedInfo() && token.DefinitionURI != "" {
+				diag.RelatedInformation = []protocol.DiagnosticRelatedInformation{{
+					Location: protocol.Location{
+						URI: token.DefinitionURI,
+						Range: protocol.Range{
+							Start: protocol.Position{Line: token.Line, Character: token.Character},
+							End:   protocol.Position{Line: token.Line, Character: token.Character},
+						},
+					},
+					Message: fmt.Sprintf("Token %s defined here", token.CSSVariableName()),
+				}}
+			}
+
+			diagnostics = append(diagnostics, diag)
 		}
 
 		// Check for incorrect fallback
