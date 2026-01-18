@@ -24,6 +24,7 @@ type MockServerContext struct {
 	clientDiagnosticCapability *bool
 	clientCapabilities         *protocol.ClientCapabilities
 	supportsSnippets           *bool
+	preferredHoverFormat       *protocol.MarkupKind
 	usePullDiagnostics         bool
 	semanticTokenCache         *semantictokens.TokenCache
 
@@ -244,6 +245,19 @@ func (m *MockServerContext) SupportsSnippets() bool {
 // SetSupportsSnippets sets the snippet support override for testing
 func (m *MockServerContext) SetSupportsSnippets(supports bool) {
 	m.supportsSnippets = &supports
+}
+
+// PreferredHoverFormat returns the client's preferred hover content format
+func (m *MockServerContext) PreferredHoverFormat() protocol.MarkupKind {
+	if m.preferredHoverFormat != nil {
+		return *m.preferredHoverFormat
+	}
+	return protocol.MarkupKindMarkdown // Default to markdown
+}
+
+// SetPreferredHoverFormat sets the hover format override for testing
+func (m *MockServerContext) SetPreferredHoverFormat(format protocol.MarkupKind) {
+	m.preferredHoverFormat = &format
 }
 
 // PublishDiagnostics publishes diagnostics for a document

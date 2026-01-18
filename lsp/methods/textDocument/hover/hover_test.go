@@ -642,3 +642,102 @@ func TestHover_NestedVarInFallback(t *testing.T) {
 		assert.NotContains(t, content.Value, "--_card-background", "Should not show outer local variable")
 	})
 }
+
+func TestHover_ContentFormat(t *testing.T) {
+	t.Run("returns markdown when client prefers it", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetPreferredHoverFormat(protocol.MarkupKindMarkdown)
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:        "color.primary",
+			Value:       "#ff0000",
+			Type:        "color",
+			Description: "Primary brand color",
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-primary); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		hover, err := Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 24},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, hover)
+
+		content, ok := hover.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+		assert.Equal(t, protocol.MarkupKindMarkdown, content.Kind)
+		assert.Contains(t, content.Value, "**Value**") // Markdown formatting
+	})
+
+	t.Run("returns plaintext when client only supports plaintext", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetPreferredHoverFormat(protocol.MarkupKindPlainText)
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:        "color.primary",
+			Value:       "#ff0000",
+			Type:        "color",
+			Description: "Primary brand color",
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-primary); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		hover, err := Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 24},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, hover)
+
+		content, ok := hover.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+		assert.Equal(t, protocol.MarkupKindPlainText, content.Kind)
+		assert.NotContains(t, content.Value, "**") // No markdown formatting
+		assert.Contains(t, content.Value, "Value:") // Plaintext formatting
+	})
+
+	t.Run("defaults to markdown when no preference", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		// Don't set format preference - test default behavior
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:  "color.primary",
+			Value: "#ff0000",
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: var(--color-primary); }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		hover, err := Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 24},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, hover)
+
+		content, ok := hover.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+		assert.Equal(t, protocol.MarkupKindMarkdown, content.Kind)
+	})
+}

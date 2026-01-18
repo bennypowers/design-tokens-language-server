@@ -62,6 +62,7 @@ type ServerContext interface {
 
 	// Capability helpers derived from ClientCapabilities
 	SupportsSnippets() bool
+	PreferredHoverFormat() protocol.MarkupKind
 
 	// Diagnostics mode (pull vs push)
 	UsePullDiagnostics() bool

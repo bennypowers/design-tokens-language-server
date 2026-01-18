@@ -31,19 +31,49 @@ var unknownTokenTemplate = template.Must(template.New("unknownToken").Parse(`❌
 
 This token is not defined in any loaded token files.`))
 
-// renderTokenHover renders the hover markdown for a token
-func renderTokenHover(token *tokens.Token) (string, error) {
+// Plaintext template for token hover content
+var tokenHoverPlaintextTemplate = template.Must(template.New("tokenHoverPlaintext").Parse(`{{.CSSVariableName}}
+{{if .Description}}
+{{.Description}}
+{{end}}
+Value: {{.Value}}
+{{if .Type}}Type: {{.Type}}
+{{end}}{{if .Deprecated}}
+DEPRECATED{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
+{{end}}{{if .FilePath}}
+Defined in: {{.FilePath}}
+{{end}}`))
+
+// Plaintext template for unknown token message
+var unknownTokenPlaintextTemplate = template.Must(template.New("unknownTokenPlaintext").Parse(`Unknown token: {{.}}
+
+This token is not defined in any loaded token files.`))
+
+// renderTokenHover renders the hover content for a token in the specified format
+func renderTokenHover(token *tokens.Token, format protocol.MarkupKind) (string, error) {
 	var buf bytes.Buffer
-	if err := tokenHoverTemplate.Execute(&buf, token); err != nil {
+	var tmpl *template.Template
+	if format == protocol.MarkupKindPlainText {
+		tmpl = tokenHoverPlaintextTemplate
+	} else {
+		tmpl = tokenHoverTemplate
+	}
+	if err := tmpl.Execute(&buf, token); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
 }
 
-// renderUnknownToken renders the hover markdown for an unknown token
-func renderUnknownToken(tokenName string) (string, error) {
+// renderUnknownToken renders the hover content for an unknown token in the specified format
+func renderUnknownToken(tokenName string, format protocol.MarkupKind) (string, error) {
 	var buf bytes.Buffer
-	if err := unknownTokenTemplate.Execute(&buf, tokenName); err != nil {
+	var tmpl *template.Template
+	if format == protocol.MarkupKindPlainText {
+		tmpl = unknownTokenPlaintextTemplate
+	} else {
+		tmpl = unknownTokenTemplate
+	}
+	if err := tmpl.Execute(&buf, tokenName); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -87,12 +117,12 @@ func findInnermostVariable(position protocol.Position, variables []*css.Variable
 	return bestVariable
 }
 
-// createHoverResponse creates a protocol.Hover response with markdown content and range.
+// createHoverResponse creates a protocol.Hover response with content in the specified format.
 // This is a common helper to avoid duplication across different hover scenarios.
-func createHoverResponse(content string, cssRange css.Range) *protocol.Hover {
+func createHoverResponse(content string, cssRange css.Range, format protocol.MarkupKind) *protocol.Hover {
 	return &protocol.Hover{
 		Contents: protocol.MarkupContent{
-			Kind:  protocol.MarkupKindMarkdown,
+			Kind:  format,
 			Value: content,
 		},
 		Range: &protocol.Range{
@@ -111,41 +141,43 @@ func createHoverResponse(content string, cssRange css.Range) *protocol.Hover {
 // processVarCallHover processes hover for a var() call, looking up the token and rendering content.
 // Returns hover response or error. Shows "unknown token" message if token is not found.
 func processVarCallHover(req *types.RequestContext, varCall *css.VarCall) (*protocol.Hover, error) {
+	format := req.Server.PreferredHoverFormat()
 	token := req.Server.Token(varCall.TokenName)
 
 	if token == nil {
 		// Token not found - render unknown token message
-		content, err := renderUnknownToken(varCall.TokenName)
+		content, err := renderUnknownToken(varCall.TokenName, format)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render unknown token message: %w", err)
 		}
-		return createHoverResponse(content, varCall.Range), nil
+		return createHoverResponse(content, varCall.Range, format), nil
 	}
 
 	// Render token hover content
-	content, err := renderTokenHover(token)
+	content, err := renderTokenHover(token, format)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render token hover: %w", err)
 	}
 
-	return createHoverResponse(content, varCall.Range), nil
+	return createHoverResponse(content, varCall.Range, format), nil
 }
 
 // processVariableHover processes hover for a variable declaration, looking up the token and rendering content.
 // Returns nil if the token is not found (local CSS variables without token definitions).
 func processVariableHover(req *types.RequestContext, variable *css.Variable) (*protocol.Hover, error) {
+	format := req.Server.PreferredHoverFormat()
 	token := req.Server.Token(variable.Name)
 	if token == nil {
 		return nil, nil
 	}
 
 	// Render token hover content
-	content, err := renderTokenHover(token)
+	content, err := renderTokenHover(token, format)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render token hover for declaration: %w", err)
 	}
 
-	return createHoverResponse(content, variable.Range), nil
+	return createHoverResponse(content, variable.Range, format), nil
 }
 
 // Hover handles the textDocument/hover request

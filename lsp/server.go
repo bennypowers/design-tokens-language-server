@@ -247,6 +247,29 @@ func (s *Server) SupportsSnippets() bool {
 	return *s.clientCapabilities.TextDocument.Completion.CompletionItem.SnippetSupport
 }
 
+// PreferredHoverFormat returns the client's preferred hover content format.
+// Checks capabilities.textDocument.hover.contentFormat and returns the first
+// supported format. Defaults to markdown if no preference is specified.
+func (s *Server) PreferredHoverFormat() protocol.MarkupKind {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+
+	if s.clientCapabilities == nil {
+		return protocol.MarkupKindMarkdown
+	}
+	if s.clientCapabilities.TextDocument == nil {
+		return protocol.MarkupKindMarkdown
+	}
+	if s.clientCapabilities.TextDocument.Hover == nil {
+		return protocol.MarkupKindMarkdown
+	}
+	if len(s.clientCapabilities.TextDocument.Hover.ContentFormat) == 0 {
+		return protocol.MarkupKindMarkdown
+	}
+	// Return the first (most preferred) format
+	return s.clientCapabilities.TextDocument.Hover.ContentFormat[0]
+}
+
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
 // If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
 // and instead wait for the client to request diagnostics via textDocument/diagnostic
