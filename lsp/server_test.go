@@ -461,3 +461,333 @@ func TestIsTokenFile(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_SupportsSnippets(t *testing.T) {
+	t.Run("returns false when capabilities are nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		assert.False(t, s.SupportsSnippets())
+	})
+
+	t.Run("returns false when TextDocument is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{})
+		assert.False(t, s.SupportsSnippets())
+	})
+
+	t.Run("returns false when Completion is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{},
+		})
+		assert.False(t, s.SupportsSnippets())
+	})
+
+	t.Run("returns false when CompletionItem is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Completion: &protocol.CompletionClientCapabilities{},
+			},
+		})
+		assert.False(t, s.SupportsSnippets())
+	})
+
+	t.Run("returns false when SnippetSupport is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Completion: &protocol.CompletionClientCapabilities{
+					CompletionItem: &struct {
+						SnippetSupport          *bool    `json:"snippetSupport,omitempty"`
+						CommitCharactersSupport *bool    `json:"commitCharactersSupport,omitempty"`
+						DocumentationFormat     []protocol.MarkupKind `json:"documentationFormat,omitempty"`
+						DeprecatedSupport       *bool    `json:"deprecatedSupport,omitempty"`
+						PreselectSupport        *bool    `json:"preselectSupport,omitempty"`
+						TagSupport              *struct {
+							ValueSet []protocol.CompletionItemTag `json:"valueSet"`
+						} `json:"tagSupport,omitempty"`
+						InsertReplaceSupport    *bool `json:"insertReplaceSupport,omitempty"`
+						ResolveSupport          *struct {
+							Properties []string `json:"properties"`
+						} `json:"resolveSupport,omitempty"`
+						InsertTextModeSupport   *struct {
+							ValueSet []protocol.InsertTextMode `json:"valueSet"`
+						} `json:"insertTextModeSupport,omitempty"`
+					}{},
+				},
+			},
+		})
+		assert.False(t, s.SupportsSnippets())
+	})
+
+	t.Run("returns true when SnippetSupport is true", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		snippetSupport := true
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Completion: &protocol.CompletionClientCapabilities{
+					CompletionItem: &struct {
+						SnippetSupport          *bool    `json:"snippetSupport,omitempty"`
+						CommitCharactersSupport *bool    `json:"commitCharactersSupport,omitempty"`
+						DocumentationFormat     []protocol.MarkupKind `json:"documentationFormat,omitempty"`
+						DeprecatedSupport       *bool    `json:"deprecatedSupport,omitempty"`
+						PreselectSupport        *bool    `json:"preselectSupport,omitempty"`
+						TagSupport              *struct {
+							ValueSet []protocol.CompletionItemTag `json:"valueSet"`
+						} `json:"tagSupport,omitempty"`
+						InsertReplaceSupport    *bool `json:"insertReplaceSupport,omitempty"`
+						ResolveSupport          *struct {
+							Properties []string `json:"properties"`
+						} `json:"resolveSupport,omitempty"`
+						InsertTextModeSupport   *struct {
+							ValueSet []protocol.InsertTextMode `json:"valueSet"`
+						} `json:"insertTextModeSupport,omitempty"`
+					}{
+						SnippetSupport: &snippetSupport,
+					},
+				},
+			},
+		})
+		assert.True(t, s.SupportsSnippets())
+	})
+}
+
+func TestServer_PreferredHoverFormat(t *testing.T) {
+	t.Run("returns markdown when capabilities are nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		assert.Equal(t, protocol.MarkupKindMarkdown, s.PreferredHoverFormat())
+	})
+
+	t.Run("returns markdown when TextDocument is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{})
+		assert.Equal(t, protocol.MarkupKindMarkdown, s.PreferredHoverFormat())
+	})
+
+	t.Run("returns markdown when Hover is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{},
+		})
+		assert.Equal(t, protocol.MarkupKindMarkdown, s.PreferredHoverFormat())
+	})
+
+	t.Run("returns markdown when ContentFormat is empty", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Hover: &protocol.HoverClientCapabilities{
+					ContentFormat: []protocol.MarkupKind{},
+				},
+			},
+		})
+		assert.Equal(t, protocol.MarkupKindMarkdown, s.PreferredHoverFormat())
+	})
+
+	t.Run("returns first format from ContentFormat", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Hover: &protocol.HoverClientCapabilities{
+					ContentFormat: []protocol.MarkupKind{protocol.MarkupKindPlainText, protocol.MarkupKindMarkdown},
+				},
+			},
+		})
+		assert.Equal(t, protocol.MarkupKindPlainText, s.PreferredHoverFormat())
+	})
+}
+
+func TestServer_SupportsDefinitionLinks(t *testing.T) {
+	t.Run("returns false when capabilities are nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		assert.False(t, s.SupportsDefinitionLinks())
+	})
+
+	t.Run("returns false when TextDocument is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{})
+		assert.False(t, s.SupportsDefinitionLinks())
+	})
+
+	t.Run("returns false when Definition is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{},
+		})
+		assert.False(t, s.SupportsDefinitionLinks())
+	})
+
+	t.Run("returns false when LinkSupport is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Definition: &protocol.DefinitionClientCapabilities{},
+			},
+		})
+		assert.False(t, s.SupportsDefinitionLinks())
+	})
+
+	t.Run("returns true when LinkSupport is true", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		linkSupport := true
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Definition: &protocol.DefinitionClientCapabilities{
+					LinkSupport: &linkSupport,
+				},
+			},
+		})
+		assert.True(t, s.SupportsDefinitionLinks())
+	})
+}
+
+func TestServer_SupportsDiagnosticRelatedInfo(t *testing.T) {
+	t.Run("returns false when capabilities are nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		assert.False(t, s.SupportsDiagnosticRelatedInfo())
+	})
+
+	t.Run("returns false when TextDocument is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{})
+		assert.False(t, s.SupportsDiagnosticRelatedInfo())
+	})
+
+	t.Run("returns false when PublishDiagnostics is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{},
+		})
+		assert.False(t, s.SupportsDiagnosticRelatedInfo())
+	})
+
+	t.Run("returns false when RelatedInformation is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				PublishDiagnostics: &protocol.PublishDiagnosticsClientCapabilities{},
+			},
+		})
+		assert.False(t, s.SupportsDiagnosticRelatedInfo())
+	})
+
+	t.Run("returns true when RelatedInformation is true", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		relatedInfo := true
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				PublishDiagnostics: &protocol.PublishDiagnosticsClientCapabilities{
+					RelatedInformation: &relatedInfo,
+				},
+			},
+		})
+		assert.True(t, s.SupportsDiagnosticRelatedInfo())
+	})
+}
+
+func TestServer_SupportsCodeActionLiterals(t *testing.T) {
+	t.Run("returns true when capabilities are nil (default for modern clients)", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		assert.True(t, s.SupportsCodeActionLiterals())
+	})
+
+	t.Run("returns true when TextDocument is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{})
+		assert.True(t, s.SupportsCodeActionLiterals())
+	})
+
+	t.Run("returns true when CodeAction is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{},
+		})
+		assert.True(t, s.SupportsCodeActionLiterals())
+	})
+
+	t.Run("returns false when CodeActionLiteralSupport is nil", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				CodeAction: &protocol.CodeActionClientCapabilities{
+					// No CodeActionLiteralSupport
+				},
+			},
+		})
+		assert.False(t, s.SupportsCodeActionLiterals())
+	})
+
+	t.Run("returns true when CodeActionLiteralSupport is present", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.SetClientCapabilities(protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				CodeAction: &protocol.CodeActionClientCapabilities{
+					CodeActionLiteralSupport: &struct {
+						CodeActionKind struct {
+							ValueSet []protocol.CodeActionKind `json:"valueSet"`
+						} `json:"codeActionKind"`
+					}{
+						CodeActionKind: struct {
+							ValueSet []protocol.CodeActionKind `json:"valueSet"`
+						}{
+							ValueSet: []protocol.CodeActionKind{protocol.CodeActionKindRefactorRewrite},
+						},
+					},
+				},
+			},
+		})
+		assert.True(t, s.SupportsCodeActionLiterals())
+	})
+}
