@@ -90,6 +90,7 @@ func (m *mockServerContextMinimal) ClientDiagnosticCapability() *bool           
 func (m *mockServerContextMinimal) SetClientDiagnosticCapability(hasCapability bool) {}
 func (m *mockServerContextMinimal) ClientCapabilities() *protocol.ClientCapabilities { return nil }
 func (m *mockServerContextMinimal) SetClientCapabilities(caps protocol.ClientCapabilities) {}
+func (m *mockServerContextMinimal) SupportsSnippets() bool { return false }
 func (m *mockServerContextMinimal) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }

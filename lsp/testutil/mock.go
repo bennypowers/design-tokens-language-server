@@ -23,6 +23,7 @@ type MockServerContext struct {
 	glspContext                *glsp.Context
 	clientDiagnosticCapability *bool
 	clientCapabilities         *protocol.ClientCapabilities
+	supportsSnippets           *bool
 	usePullDiagnostics         bool
 	semanticTokenCache         *semantictokens.TokenCache
 
@@ -230,6 +231,19 @@ func (m *MockServerContext) ClientCapabilities() *protocol.ClientCapabilities {
 // SetClientCapabilities sets the client capabilities
 func (m *MockServerContext) SetClientCapabilities(caps protocol.ClientCapabilities) {
 	m.clientCapabilities = &caps
+}
+
+// SupportsSnippets returns whether the client supports snippet completions
+func (m *MockServerContext) SupportsSnippets() bool {
+	if m.supportsSnippets != nil {
+		return *m.supportsSnippets
+	}
+	return false
+}
+
+// SetSupportsSnippets sets the snippet support override for testing
+func (m *MockServerContext) SetSupportsSnippets(supports bool) {
+	m.supportsSnippets = &supports
 }
 
 // PublishDiagnostics publishes diagnostics for a document

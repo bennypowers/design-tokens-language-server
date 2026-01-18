@@ -49,6 +49,7 @@ func (m *mockServerContext) ClientDiagnosticCapability() *bool            { retu
 func (m *mockServerContext) SetClientDiagnosticCapability(hasCapability bool) {}
 func (m *mockServerContext) ClientCapabilities() *protocol.ClientCapabilities { return nil }
 func (m *mockServerContext) SetClientCapabilities(caps protocol.ClientCapabilities) {}
+func (m *mockServerContext) SupportsSnippets() bool { return false }
 func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }

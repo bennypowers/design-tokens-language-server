@@ -223,6 +223,30 @@ func (s *Server) SetClientCapabilities(caps protocol.ClientCapabilities) {
 	s.clientCapabilities = &caps
 }
 
+// SupportsSnippets returns whether the client supports snippet completions.
+// Checks capabilities.textDocument.completion.completionItem.snippetSupport.
+func (s *Server) SupportsSnippets() bool {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+
+	if s.clientCapabilities == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.Completion == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.Completion.CompletionItem == nil {
+		return false
+	}
+	if s.clientCapabilities.TextDocument.Completion.CompletionItem.SnippetSupport == nil {
+		return false
+	}
+	return *s.clientCapabilities.TextDocument.Completion.CompletionItem.SnippetSupport
+}
+
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
 // If true, the server should NOT send push diagnostics (textDocument/publishDiagnostics)
 // and instead wait for the client to request diagnostics via textDocument/diagnostic

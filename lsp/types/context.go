@@ -60,6 +60,9 @@ type ServerContext interface {
 	ClientCapabilities() *protocol.ClientCapabilities
 	SetClientCapabilities(caps protocol.ClientCapabilities)
 
+	// Capability helpers derived from ClientCapabilities
+	SupportsSnippets() bool
+
 	// Diagnostics mode (pull vs push)
 	UsePullDiagnostics() bool
 	SetUsePullDiagnostics(use bool)

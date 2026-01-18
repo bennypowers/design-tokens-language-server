@@ -213,11 +213,39 @@ func TestCompletionOutsideBlock(t *testing.T) {
 	}
 }
 
-// TestCompletionSnippetFormat tests that completion items have snippet format
+// TestCompletionSnippetFormat tests that completion items have snippet format when client supports it
 func TestCompletionSnippetFormat(t *testing.T) {
 	server := testutil.NewTestServer(t)
 	testutil.LoadBasicTokens(t, server)
 	testutil.OpenCSSFixture(t, server, "file:///test.css", "completion-context.css")
+
+	// Set client capabilities to support snippets
+	snippetSupport := true
+	server.SetClientCapabilities(protocol.ClientCapabilities{
+		TextDocument: &protocol.TextDocumentClientCapabilities{
+			Completion: &protocol.CompletionClientCapabilities{
+				CompletionItem: &struct {
+					SnippetSupport            *bool                   `json:"snippetSupport,omitempty"`
+					CommitCharactersSupport   *bool                   `json:"commitCharactersSupport,omitempty"`
+					DocumentationFormat       []protocol.MarkupKind   `json:"documentationFormat,omitempty"`
+					DeprecatedSupport         *bool                   `json:"deprecatedSupport,omitempty"`
+					PreselectSupport          *bool                   `json:"preselectSupport,omitempty"`
+					TagSupport                *struct {
+						ValueSet []protocol.CompletionItemTag `json:"valueSet"`
+					} `json:"tagSupport,omitempty"`
+					InsertReplaceSupport      *bool                   `json:"insertReplaceSupport,omitempty"`
+					ResolveSupport            *struct {
+						Properties []string `json:"properties"`
+					} `json:"resolveSupport,omitempty"`
+					InsertTextModeSupport     *struct {
+						ValueSet []protocol.InsertTextMode `json:"valueSet"`
+					} `json:"insertTextModeSupport,omitempty"`
+				}{
+					SnippetSupport: &snippetSupport,
+				},
+			},
+		},
+	})
 
 	// Request completion - see fixture for position
 	req := types.NewRequestContext(server, nil)

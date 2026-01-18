@@ -14,6 +14,7 @@ import (
 
 func TestCompletion_CSSVariableCompletion(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
+	ctx.SetSupportsSnippets(true) // Enable snippets for this test
 	glspCtx := &glsp.Context{}
 	req := types.NewRequestContext(ctx, glspCtx)
 
@@ -462,6 +463,111 @@ func TestIsInCompletionContext(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestCompletion_SnippetSupport(t *testing.T) {
+	t.Run("uses snippet format when client supports snippets", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetSupportsSnippets(true)
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:  "color.primary",
+			Value: "#ff0000",
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: --col }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		result, err := Completion(req, &protocol.CompletionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 20},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		completionList, ok := result.(*protocol.CompletionList)
+		require.True(t, ok)
+		require.GreaterOrEqual(t, len(completionList.Items), 1)
+
+		item := completionList.Items[0]
+		assert.Equal(t, protocol.InsertTextFormatSnippet, *item.InsertTextFormat)
+		assert.Contains(t, *item.InsertText, "${1:")
+	})
+
+	t.Run("uses plain text format when client does not support snippets", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		ctx.SetSupportsSnippets(false)
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:  "color.primary",
+			Value: "#ff0000",
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: --col }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		result, err := Completion(req, &protocol.CompletionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 20},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		completionList, ok := result.(*protocol.CompletionList)
+		require.True(t, ok)
+		require.GreaterOrEqual(t, len(completionList.Items), 1)
+
+		item := completionList.Items[0]
+		assert.Equal(t, protocol.InsertTextFormatPlainText, *item.InsertTextFormat)
+		assert.NotContains(t, *item.InsertText, "${1:")
+		assert.Contains(t, *item.InsertText, "var(")
+	})
+
+	t.Run("defaults to plain text when capability is unknown", func(t *testing.T) {
+		ctx := testutil.NewMockServerContext()
+		// Don't set snippet support - test default behavior
+		glspCtx := &glsp.Context{}
+		req := types.NewRequestContext(ctx, glspCtx)
+
+		_ = ctx.TokenManager().Add(&tokens.Token{
+			Name:  "color.primary",
+			Value: "#ff0000",
+		})
+
+		uri := "file:///test.css"
+		cssContent := `.button { color: --col }`
+		_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+		result, err := Completion(req, &protocol.CompletionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+				Position:     protocol.Position{Line: 0, Character: 20},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		completionList, ok := result.(*protocol.CompletionList)
+		require.True(t, ok)
+		require.GreaterOrEqual(t, len(completionList.Items), 1)
+
+		item := completionList.Items[0]
+		// Default to plain text for safety
+		assert.Equal(t, protocol.InsertTextFormatPlainText, *item.InsertTextFormat)
+	})
 }
 
 // TestNormalizeTokenName tests the normalizeTokenName helper function

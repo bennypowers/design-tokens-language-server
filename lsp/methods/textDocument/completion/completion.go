@@ -79,9 +79,19 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 
 		// Check if the token matches the current word
 		if strings.HasPrefix(normalizedLabel, normalizedWord) {
-			insertTextFormat := protocol.InsertTextFormatSnippet
 			kind := protocol.CompletionItemKindVariable
-			insertText := fmt.Sprintf("var(%s${1:, %s})$0", cssVar, token.Value)
+
+			// Use snippets only if client supports them
+			var insertTextFormat protocol.InsertTextFormat
+			var insertText string
+			if req.Server.SupportsSnippets() {
+				insertTextFormat = protocol.InsertTextFormatSnippet
+				insertText = fmt.Sprintf("var(%s${1:, %s})$0", cssVar, token.Value)
+			} else {
+				insertTextFormat = protocol.InsertTextFormatPlainText
+				insertText = fmt.Sprintf("var(%s)", cssVar)
+			}
+
 			item := protocol.CompletionItem{
 				Label:            cssVar,
 				Kind:             &kind,
