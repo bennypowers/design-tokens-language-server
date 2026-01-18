@@ -19,6 +19,9 @@ func Initialize(req *types.RequestContext, params *protocol.InitializeParams) (a
 
 	log.Info("Initializing for client: %s", clientName)
 
+	// Store client capabilities for later use by handlers
+	req.Server.SetClientCapabilities(params.Capabilities)
+
 	// Detect if client supports pull diagnostics (LSP 3.17)
 	// The CustomHandler intercepts the initialize request and parses the raw capabilities JSON
 	// to detect the presence of the textDocument.diagnostic field (LSP 3.17 feature).

@@ -8,6 +8,7 @@ import (
 	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 func TestRequestContext_AddWarning(t *testing.T) {
@@ -87,6 +88,8 @@ func (m *mockServerContextMinimal) GLSPContext() *glsp.Context                  
 func (m *mockServerContextMinimal) SetGLSPContext(ctx *glsp.Context)             {}
 func (m *mockServerContextMinimal) ClientDiagnosticCapability() *bool            { return nil }
 func (m *mockServerContextMinimal) SetClientDiagnosticCapability(hasCapability bool) {}
+func (m *mockServerContextMinimal) ClientCapabilities() *protocol.ClientCapabilities { return nil }
+func (m *mockServerContextMinimal) SetClientCapabilities(caps protocol.ClientCapabilities) {}
 func (m *mockServerContextMinimal) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }

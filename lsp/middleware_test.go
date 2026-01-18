@@ -12,6 +12,7 @@ import (
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // Verify compile-time interface satisfaction
@@ -46,6 +47,8 @@ func (m *mockServerContext) GLSPContext() *glsp.Context                   { retu
 func (m *mockServerContext) SetGLSPContext(ctx *glsp.Context)             {}
 func (m *mockServerContext) ClientDiagnosticCapability() *bool            { return nil }
 func (m *mockServerContext) SetClientDiagnosticCapability(hasCapability bool) {}
+func (m *mockServerContext) ClientCapabilities() *protocol.ClientCapabilities { return nil }
+func (m *mockServerContext) SetClientCapabilities(caps protocol.ClientCapabilities) {}
 func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }

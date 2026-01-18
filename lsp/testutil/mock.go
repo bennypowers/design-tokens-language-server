@@ -8,6 +8,7 @@ import (
 	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 // MockServerContext implements types.ServerContext for testing.
@@ -21,6 +22,7 @@ type MockServerContext struct {
 	loadedFiles                map[string]string
 	glspContext                *glsp.Context
 	clientDiagnosticCapability *bool
+	clientCapabilities         *protocol.ClientCapabilities
 	usePullDiagnostics         bool
 	semanticTokenCache         *semantictokens.TokenCache
 
@@ -218,6 +220,16 @@ func (m *MockServerContext) ClientDiagnosticCapability() *bool {
 // SetClientDiagnosticCapability sets the client's diagnostic capability
 func (m *MockServerContext) SetClientDiagnosticCapability(hasCapability bool) {
 	m.clientDiagnosticCapability = &hasCapability
+}
+
+// ClientCapabilities returns the stored client capabilities
+func (m *MockServerContext) ClientCapabilities() *protocol.ClientCapabilities {
+	return m.clientCapabilities
+}
+
+// SetClientCapabilities sets the client capabilities
+func (m *MockServerContext) SetClientCapabilities(caps protocol.ClientCapabilities) {
+	m.clientCapabilities = &caps
 }
 
 // PublishDiagnostics publishes diagnostics for a document

@@ -39,10 +39,11 @@ type Server struct {
 	rootURI                     string                                // Workspace root URI
 	rootPath                    string                                // Workspace root path (file system)
 	config                      types.ServerConfig                    // Server configuration
-	configMu                    sync.RWMutex                          // Protects config, context, clientDiagnosticCapability, and usePullDiagnostics from concurrent access
+	configMu                    sync.RWMutex                          // Protects config, context, clientDiagnosticCapability, clientCapabilities, and usePullDiagnostics from concurrent access
 	loadedFiles                 map[string]*TokenFileOptions          // Track loaded files: filepath -> options (prefix, groupMarkers)
 	loadedFilesMu               sync.RWMutex                          // Protects loadedFiles from concurrent access
 	clientDiagnosticCapability  *bool                                 // Client's diagnostic capability detected from raw initialize params (nil = not detected yet)
+	clientCapabilities          *protocol.ClientCapabilities          // Full client capabilities stored during initialize
 	usePullDiagnostics          bool                                  // Whether to use pull diagnostics (LSP 3.17) vs push (LSP 3.0)
 	semanticTokenCache          *semantictokens.TokenCache            // Cache for semantic tokens delta support
 }
@@ -203,6 +204,23 @@ func (s *Server) SetClientDiagnosticCapability(hasCapability bool) {
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
 	s.clientDiagnosticCapability = &hasCapability
+}
+
+// ClientCapabilities returns the stored client capabilities from initialize.
+// Returns nil if initialize has not been called yet.
+// Access is protected by configMu to prevent concurrent races.
+func (s *Server) ClientCapabilities() *protocol.ClientCapabilities {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+	return s.clientCapabilities
+}
+
+// SetClientCapabilities stores the client capabilities from initialize.
+// Access is protected by configMu to prevent concurrent races.
+func (s *Server) SetClientCapabilities(caps protocol.ClientCapabilities) {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	s.clientCapabilities = &caps
 }
 
 // UsePullDiagnostics returns whether the client supports pull diagnostics (LSP 3.17)
