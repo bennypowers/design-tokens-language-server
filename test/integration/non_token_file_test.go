@@ -167,8 +167,13 @@ func TestNonTokenFile_SemanticTokens(t *testing.T) {
 func TestTokenFileWithSchema_Definition(t *testing.T) {
 	server := testutil.NewTestServer(t)
 
+	uri := "file:///tokens.json"
+
 	// Load the token file with schema - this file has a valid Design Tokens $schema
-	testutil.OpenNonTokenFixture(t, server, "file:///tokens.json", "token-file-with-schema.json")
+	testutil.OpenNonTokenFixture(t, server, uri, "token-file-with-schema.json")
+
+	// Verify the file is recognized as a token file due to its $schema
+	require.True(t, server.ShouldProcessAsTokenFile(uri), "File with Design Tokens $schema should be processed as token file")
 
 	// Load tokens from the fixture so we can resolve references
 	content := testutil.LoadNonTokenFixture(t, "token-file-with-schema.json")
@@ -177,23 +182,22 @@ func TestTokenFileWithSchema_Definition(t *testing.T) {
 
 	req := types.NewRequestContext(server, nil)
 
-	// Position on "color" key inside secondary's reference on line 7: `      "$value": "{color.primary}"`
-	// Line 7, char 20 should be inside {color.primary}
+	// Position on "primary" key on line 3: `    "primary": {`
+	// Line 3, char 6 should be on "primary"
 	result, err := definition.Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
-				URI: "file:///tokens.json",
+				URI: uri,
 			},
-			Position: protocol.Position{Line: 7, Character: 20}, // inside {color.primary}
+			Position: protocol.Position{Line: 3, Character: 6}, // on "primary" key
 		},
 	})
 
 	require.NoError(t, err)
-	// Should return result because file has valid Design Tokens schema
-	// Note: May return nil if cursor is not exactly on a resolvable reference,
-	// but the important thing is that we tried to process it (no early exit)
-	// The semantic tokens test verifies the file IS processed
-	_ = result // Result may be nil if not on exact reference position
+	// The definition request was processed (didn't return early due to non-token file).
+	// Result may be nil if the cursor isn't on a valid reference, but the key assertion
+	// is that ShouldProcessAsTokenFile returned true above.
+	_ = result
 }
 
 // TestTokenFileWithSchema_SemanticTokens verifies that semantic tokens work for files with design tokens schema

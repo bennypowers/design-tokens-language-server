@@ -101,6 +101,35 @@ func TestIsDesignTokensSchema_EdgeCases(t *testing.T) {
 			content:  `{"$schema": "http://www.designtokens.org/schemas/draft.json"}`,
 			expected: false, // require https
 		},
+		{
+			name: "nested schema on its own line (would match old regex)",
+			content: `{
+  "nested": {
+    "$schema": "https://www.designtokens.org/schemas/draft.json"
+  }
+}`,
+			expected: false, // only top-level schemas should match
+		},
+		{
+			name: "top-level schema with nested object also having schema",
+			content: `{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "nested": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  }
+}`,
+			expected: true, // top-level schema is valid
+		},
+		{
+			name:     "invalid JSON/YAML",
+			content:  `{not valid json`,
+			expected: false,
+		},
+		{
+			name:     "$schema is not a string",
+			content:  `{"$schema": 123}`,
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

@@ -3,22 +3,34 @@ package documents
 import (
 	"strings"
 
-	"bennypowers.dev/dtls/internal/parser/common"
+	"gopkg.in/yaml.v3"
 )
 
 // designTokensSchemaPrefix is the required prefix for Design Tokens schema URLs
 const designTokensSchemaPrefix = "https://www.designtokens.org/schemas/"
 
-// IsDesignTokensSchema checks if the content contains a $schema field pointing
-// to a Design Tokens schema URL (https://www.designtokens.org/schemas/**/*.json).
-// This function only matches top-level $schema declarations.
+// IsDesignTokensSchema checks if the content contains a top-level $schema field
+// pointing to a Design Tokens schema URL (https://www.designtokens.org/schemas/**/*.json).
+// It parses the content as YAML (which also handles JSON) to ensure only the
+// document root's $schema is considered, not nested $schema fields.
 func IsDesignTokensSchema(content string) bool {
-	matches := common.SchemaFieldRegexp.FindStringSubmatch(content)
-	if len(matches) < 2 {
+	// Parse content as YAML (works for both YAML and JSON)
+	var doc map[string]any
+	if err := yaml.Unmarshal([]byte(content), &doc); err != nil {
 		return false
 	}
 
-	schemaURL := matches[1]
+	// Check for top-level $schema key
+	schemaValue, exists := doc["$schema"]
+	if !exists {
+		return false
+	}
+
+	// Ensure $schema value is a string
+	schemaURL, ok := schemaValue.(string)
+	if !ok {
+		return false
+	}
 
 	// Check if schema URL starts with the Design Tokens schema prefix
 	if !strings.HasPrefix(schemaURL, designTokensSchemaPrefix) {

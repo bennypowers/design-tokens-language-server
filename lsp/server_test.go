@@ -310,6 +310,75 @@ func TestPublishDiagnostics_NilContext(t *testing.T) {
 	})
 }
 
+func TestShouldProcessAsTokenFile(t *testing.T) {
+	t.Run("returns true when file is in config", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		s.rootPath = "/workspace"
+		s.config.TokensFiles = []any{"tokens.json"}
+
+		// Open a document (without $schema)
+		err = s.documents.DidOpen("file:///workspace/tokens.json", "json", 1, `{"color": {"$value": "#fff"}}`)
+		require.NoError(t, err)
+
+		result := s.ShouldProcessAsTokenFile("file:///workspace/tokens.json")
+		assert.True(t, result, "Should return true for configured token file")
+	})
+
+	t.Run("returns true when document has Design Tokens schema", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		// Open a document with valid $schema (not in config)
+		content := `{
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
+  "color": {"$value": "#fff"}
+}`
+		err = s.documents.DidOpen("file:///tokens.json", "json", 1, content)
+		require.NoError(t, err)
+
+		result := s.ShouldProcessAsTokenFile("file:///tokens.json")
+		assert.True(t, result, "Should return true for file with Design Tokens schema")
+	})
+
+	t.Run("returns false when document has non-Design-Tokens schema", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		// Open a document with different $schema
+		content := `{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object"
+}`
+		err = s.documents.DidOpen("file:///schema.json", "json", 1, content)
+		require.NoError(t, err)
+
+		result := s.ShouldProcessAsTokenFile("file:///schema.json")
+		assert.False(t, result, "Should return false for file with non-Design-Tokens schema")
+	})
+
+	t.Run("returns false when document has no schema", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		// Open a document without $schema (not in config)
+		err = s.documents.DidOpen("file:///package.json", "json", 1, `{"name": "test"}`)
+		require.NoError(t, err)
+
+		result := s.ShouldProcessAsTokenFile("file:///package.json")
+		assert.False(t, result, "Should return false for file without schema and not in config")
+	})
+
+	t.Run("returns false when document does not exist", func(t *testing.T) {
+		s, err := NewServer()
+		require.NoError(t, err)
+
+		result := s.ShouldProcessAsTokenFile("file:///nonexistent.json")
+		assert.False(t, result, "Should return false for non-existent document")
+	})
+}
+
 func TestIsTokenFile(t *testing.T) {
 	tests := []struct {
 		name           string

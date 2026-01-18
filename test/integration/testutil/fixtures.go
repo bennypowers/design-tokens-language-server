@@ -68,6 +68,16 @@ func LoadTokensWithPrefix(t *testing.T, server *lsp.Server, prefix string) {
 	require.NoError(t, err, "Failed to load tokens with prefix")
 }
 
+// languageIDFromURI determines the language ID based on the URI extension
+func languageIDFromURI(uri string) string {
+	if len(uri) > 5 && uri[len(uri)-5:] == ".yaml" {
+		return "yaml"
+	} else if len(uri) > 4 && uri[len(uri)-4:] == ".yml" {
+		return "yaml"
+	}
+	return "json"
+}
+
 // OpenCSSFixture opens a CSS fixture file in the server
 func OpenCSSFixture(t *testing.T, server *lsp.Server, uri, fixtureName string) {
 	t.Helper()
@@ -91,18 +101,10 @@ func OpenTokenFixture(t *testing.T, server *lsp.Server, uri, fixtureName string)
 	t.Helper()
 	content := LoadTokenFixture(t, fixtureName)
 
-	// Determine language ID from URI extension
-	languageID := "json"
-	if len(uri) > 5 && uri[len(uri)-5:] == ".yaml" {
-		languageID = "yaml"
-	} else if len(uri) > 4 && uri[len(uri)-4:] == ".yml" {
-		languageID = "yaml"
-	}
-
 	params := &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        uri,
-			LanguageID: languageID,
+			LanguageID: languageIDFromURI(uri),
 			Version:    1,
 			Text:       string(content),
 		},
@@ -127,18 +129,10 @@ func OpenNonTokenFixture(t *testing.T, server *lsp.Server, uri, fixtureName stri
 	t.Helper()
 	content := LoadNonTokenFixture(t, fixtureName)
 
-	// Determine language ID from URI extension
-	languageID := "json"
-	if len(uri) > 5 && uri[len(uri)-5:] == ".yaml" {
-		languageID = "yaml"
-	} else if len(uri) > 4 && uri[len(uri)-4:] == ".yml" {
-		languageID = "yaml"
-	}
-
 	params := &protocol.DidOpenTextDocumentParams{
 		TextDocument: protocol.TextDocumentItem{
 			URI:        uri,
-			LanguageID: languageID,
+			LanguageID: languageIDFromURI(uri),
 			Version:    1,
 			Text:       string(content),
 		},
