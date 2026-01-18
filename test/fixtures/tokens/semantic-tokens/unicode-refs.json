@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.designtokens.org/schemas/draft.json",
   "emoji": {
     "🎨": {
       "$value": "#ff0000",

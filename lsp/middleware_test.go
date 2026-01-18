@@ -43,10 +43,11 @@ func (m *mockServerContext) SetClientDiagnosticCapability(hasCapability bool) {}
 func (m *mockServerContext) PublishDiagnostics(context *glsp.Context, uri string) error {
 	return nil
 }
-func (m *mockServerContext) UsePullDiagnostics() bool       { return false }
-func (m *mockServerContext) SetUsePullDiagnostics(use bool) {}
-func (m *mockServerContext) AddWarning(err error)           {}
-func (m *mockServerContext) TakeWarnings() []error          { return nil }
+func (m *mockServerContext) UsePullDiagnostics() bool         { return false }
+func (m *mockServerContext) SetUsePullDiagnostics(use bool)   {}
+func (m *mockServerContext) AddWarning(err error)             {}
+func (m *mockServerContext) TakeWarnings() []error            { return nil }
+func (m *mockServerContext) ShouldProcessAsTokenFile(uri string) bool { return true }
 
 func TestMethod_PanicRecovery(t *testing.T) {
 	// Capture log output

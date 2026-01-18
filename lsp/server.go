@@ -9,6 +9,7 @@ import (
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
+	"bennypowers.dev/dtls/internal/uriutil"
 	"bennypowers.dev/dtls/lsp/methods/lifecycle"
 	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	codeaction "bennypowers.dev/dtls/lsp/methods/textDocument/codeAction"
@@ -307,6 +308,26 @@ func (s *Server) IsTokenFile(path string) bool {
 
 	// Not in loadedFiles: this is not a tracked token file
 	return false
+}
+
+// ShouldProcessAsTokenFile checks if a document should receive token file features.
+// Returns true if:
+// 1. The file is configured as a token file (via IsTokenFile), OR
+// 2. The document has a valid Design Tokens $schema declaration
+func (s *Server) ShouldProcessAsTokenFile(uri string) bool {
+	// Convert URI to path for IsTokenFile check
+	path := uriutil.URIToPath(uri)
+	if s.IsTokenFile(path) {
+		return true
+	}
+
+	// Check document content for Design Tokens schema
+	doc := s.Document(uri)
+	if doc == nil {
+		return false
+	}
+
+	return documents.IsDesignTokensSchema(doc.Content())
 }
 
 // RemoveLoadedFile removes a file from the loaded files tracking map
