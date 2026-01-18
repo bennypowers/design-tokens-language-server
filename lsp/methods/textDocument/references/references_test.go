@@ -165,8 +165,8 @@ func TestReferences_CSSFile_PositionOnDifferentLine(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// TestReferences_CSSFile_PositionAtEndOfVarCall tests cursor at the closing paren of var()
-func TestReferences_CSSFile_PositionAtEndOfVarCall(t *testing.T) {
+// TestReferences_CSSFile_PositionPastVarCall tests cursor position after the var() call ends
+func TestReferences_CSSFile_PositionPastVarCall(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 	glspCtx := &glsp.Context{}
 	req := types.NewRequestContext(ctx, glspCtx)
@@ -182,11 +182,11 @@ func TestReferences_CSSFile_PositionAtEndOfVarCall(t *testing.T) {
 
 	uri := "file:///test.css"
 	// .button { color: var(--color-primary); }
-	// Position 37 is just after the closing paren ')' (on the semicolon)
+	//                                      ^^ position 36 is ')' closing paren, position 37 is ';'
 	cssContent := `.button { color: var(--color-primary); }`
 	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
 
-	// Cursor at position 37 (past the var() call), which is >= end character
+	// Cursor at position 37 (on the semicolon, after the var() call ends)
 	result, err := References(req, &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},

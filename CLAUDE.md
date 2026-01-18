@@ -4,6 +4,8 @@ Use go 1.25+ features. Use `go vet` and the `gopls` LSP plugin - check all code 
 
 Getter methods should be named `Foo()`, not `GetFoo()`.
 
+When implementing new features or fixing bugs, practice TDD.
+
 ## Logging Requirements
 
 **CRITICAL: NEVER pollute stdout - it's used for LSP JSON-RPC communication**
@@ -67,8 +69,6 @@ func TestSomething(t *testing.T) {
 	assert.Contains(t, output, "expected message")
 }
 ```
-
-Practice TDD.
 
 When writing tests, always use the fixture/golden patterns with `testdata/` directories per Go idiom.
 
