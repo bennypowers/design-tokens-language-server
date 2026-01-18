@@ -44,3 +44,52 @@ func IsDesignTokensSchema(content string) bool {
 
 	return true
 }
+
+// LooksLikeDTCGContent checks if the content looks like a DTCG token file
+// by detecting characteristic patterns like $value, $type fields.
+// This is a heuristic detection used when $schema is not present.
+func LooksLikeDTCGContent(content string) bool {
+	// Parse content as YAML (works for both YAML and JSON)
+	var doc map[string]any
+	if err := yaml.Unmarshal([]byte(content), &doc); err != nil {
+		return false
+	}
+
+	// Check if it has DTCG patterns
+	return hasDTCGPatterns(doc, 0)
+}
+
+// hasDTCGPatterns recursively checks for DTCG token patterns
+// maxDepth prevents excessive recursion on large files
+func hasDTCGPatterns(data map[string]any, depth int) bool {
+	// Limit recursion depth to avoid performance issues on large files
+	if depth > 10 {
+		return false
+	}
+
+	// Check for $value field (primary DTCG indicator)
+	if _, hasValue := data["$value"]; hasValue {
+		return true
+	}
+
+	// Check for $type field at current level
+	if _, hasType := data["$type"]; hasType {
+		return true
+	}
+
+	// Recurse into nested objects
+	for key, value := range data {
+		// Skip $-prefixed keys at root level as they're metadata
+		if depth == 0 && strings.HasPrefix(key, "$") {
+			continue
+		}
+
+		if nested, ok := value.(map[string]any); ok {
+			if hasDTCGPatterns(nested, depth+1) {
+				return true
+			}
+		}
+	}
+
+	return false
+}

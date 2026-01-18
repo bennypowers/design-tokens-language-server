@@ -51,8 +51,12 @@ func SemanticTokensFull(req *types.RequestContext, params *protocol.SemanticToke
 		return nil, fmt.Errorf("failed to encode semantic tokens: %w", err)
 	}
 
+	// Store in cache and return with resultID for delta support
+	resultID := req.Server.SemanticTokenCache().Store(uri, data, doc.Version())
+
 	return &protocol.SemanticTokens{
-		Data: data,
+		ResultID: &resultID,
+		Data:     data,
 	}, nil
 }
 
@@ -171,5 +175,78 @@ func SemanticTokensRange(req *types.RequestContext, params *protocol.SemanticTok
 
 	return &protocol.SemanticTokens{
 		Data: encodedData,
+	}, nil
+}
+
+// SemanticTokensDeltaParams is the params for textDocument/semanticTokens/full/delta request
+type SemanticTokensDeltaParams struct {
+	TextDocument     protocol.TextDocumentIdentifier `json:"textDocument"`
+	PreviousResultID string                          `json:"previousResultId"`
+}
+
+// SemanticTokensFullDelta handles the textDocument/semanticTokens/full/delta request
+// Returns either SemanticTokens (full) or SemanticTokensDelta depending on whether
+// the previous result ID is still valid and a delta can be computed.
+func SemanticTokensFullDelta(req *types.RequestContext, params *SemanticTokensDeltaParams) (any, error) {
+	uri := params.TextDocument.URI
+	log.Info("Semantic tokens delta requested for: %s (previousResultId: %s)", uri, params.PreviousResultID)
+
+	doc := req.Server.Document(uri)
+	if doc == nil {
+		return nil, fmt.Errorf("document not found: %s", uri)
+	}
+
+	// Only provide semantic tokens for JSON and YAML token files
+	languageID := doc.LanguageID()
+	if languageID != "json" && languageID != "yaml" {
+		return nil, nil
+	}
+
+	// Only process files that should be treated as token files
+	if !req.Server.ShouldProcessAsTokenFile(uri) {
+		return nil, nil
+	}
+
+	cache := req.Server.SemanticTokenCache()
+
+	// Try to get the previous result from cache, validating it belongs to this document
+	// This prevents delta computation from using tokens from a different file
+	prevEntry := cache.GetForURI(params.PreviousResultID, uri)
+
+	// Compute current tokens
+	intermediateTokens := GetSemanticTokensForDocument(req.Server, doc)
+	newData, err := encodeSemanticTokens(intermediateTokens)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode semantic tokens: %w", err)
+	}
+
+	// Store new tokens in cache
+	newResultID := cache.Store(uri, newData, doc.Version())
+
+	// If previous result not found or stale, return full tokens
+	if prevEntry == nil {
+		log.Info("Previous result ID not found, returning full tokens")
+		return &protocol.SemanticTokens{
+			ResultID: &newResultID,
+			Data:     newData,
+		}, nil
+	}
+
+	// Compute delta
+	edits := ComputeDelta(prevEntry.Data, newData)
+
+	// If no edits needed, return empty delta
+	if len(edits) == 0 {
+		log.Info("No changes detected, returning empty delta")
+		return &protocol.SemanticTokensDelta{
+			ResultId: &newResultID,
+			Edits:    []protocol.SemanticTokensEdit{},
+		}, nil
+	}
+
+	log.Info("Returning delta with %d edits", len(edits))
+	return &protocol.SemanticTokensDelta{
+		ResultId: &newResultID,
+		Edits:    edits,
 	}, nil
 }

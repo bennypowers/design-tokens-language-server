@@ -228,4 +228,169 @@ func TestSemanticTokensDeltaEncoding(t *testing.T) {
 	}
 }
 
+func TestSemanticTokensFullDelta_ReturnsEmptyDeltaWhenUnchanged(t *testing.T) {
+	s := testutil.NewMockServerContext()
 
+	// Add a test token
+	token := &tokens.Token{
+		Name:  "color-brand-primary",
+		Value: "#FF6B35",
+		Type:  "color",
+	}
+	if err := s.TokenManager().Add(token); err != nil {
+		t.Fatalf("Failed to add token: %v", err)
+	}
+
+	// Create and register document
+	content := `{"secondary": {"$value": "{color.brand.primary}"}}`
+	uri := "file:///test.json"
+	_ = s.DocumentManager().DidOpen(uri, "json", 1, content)
+
+	// First: get full tokens
+	req := types.NewRequestContext(s, nil)
+	fullResult, err := semantictokens.SemanticTokensFull(req, &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+	if err != nil {
+		t.Fatalf("SemanticTokensFull failed: %v", err)
+	}
+	if fullResult.ResultID == nil || *fullResult.ResultID == "" {
+		t.Fatal("Expected ResultID in full response")
+	}
+
+	// Second: request delta with same result ID (no changes)
+	deltaResult, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: uri},
+		PreviousResultID: *fullResult.ResultID,
+	})
+	if err != nil {
+		t.Fatalf("SemanticTokensFullDelta failed: %v", err)
+	}
+
+	// Should return delta with no edits
+	delta, ok := deltaResult.(*protocol.SemanticTokensDelta)
+	if !ok {
+		t.Fatalf("Expected SemanticTokensDelta, got %T", deltaResult)
+	}
+	if len(delta.Edits) != 0 {
+		t.Errorf("Expected no edits, got %d", len(delta.Edits))
+	}
+}
+
+func TestSemanticTokensFullDelta_ReturnsFullWhenPreviousResultIDNotFound(t *testing.T) {
+	s := testutil.NewMockServerContext()
+
+	// Add a test token that matches the reference
+	token := &tokens.Token{
+		Name:  "color-brand-primary",
+		Value: "#FF6B35",
+		Type:  "color",
+	}
+	if err := s.TokenManager().Add(token); err != nil {
+		t.Fatalf("Failed to add token: %v", err)
+	}
+
+	// Create and register document with DTCG schema and valid reference
+	content := `{
+		"$schema": "https://json.schemastore.org/design-tokens.json",
+		"secondary": {"$value": "{color.brand.primary}", "$type": "color"}
+	}`
+	uri := "file:///test.json"
+	_ = s.DocumentManager().DidOpen(uri, "json", 1, content)
+
+	// Request delta with non-existent result ID
+	req := types.NewRequestContext(s, nil)
+	result, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: uri},
+		PreviousResultID: "non-existent-result-id",
+	})
+	if err != nil {
+		t.Fatalf("SemanticTokensFullDelta failed: %v", err)
+	}
+
+	// Should return full tokens
+	fullResponse, ok := result.(*protocol.SemanticTokens)
+	if !ok {
+		t.Fatalf("Expected SemanticTokens (full response), got %T", result)
+	}
+	if fullResponse.ResultID == nil || *fullResponse.ResultID == "" {
+		t.Error("Expected ResultID in full response")
+	}
+	// Note: Data may still be empty if the token reference doesn't resolve (schema mismatch, etc.)
+	// The important check is that we got a full response, not a delta
+}
+
+func TestSemanticTokensFullDelta_DocumentNotFound(t *testing.T) {
+	s := testutil.NewMockServerContext()
+
+	req := types.NewRequestContext(s, nil)
+	_, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: "file:///non-existent.json"},
+		PreviousResultID: "some-id",
+	})
+
+	if err == nil {
+		t.Error("Expected error for non-existent document")
+	}
+}
+
+func TestSemanticTokensFullDelta_NonTokenFile(t *testing.T) {
+	s := testutil.NewMockServerContext()
+	// Configure to reject this file
+	s.ShouldProcessAsTokenFileFunc = func(uri string) bool { return false }
+
+	// Create and register a non-token file
+	uri := "file:///test.css"
+	_ = s.DocumentManager().DidOpen(uri, "css", 1, ".foo { color: red; }")
+
+	req := types.NewRequestContext(s, nil)
+	result, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: uri},
+		PreviousResultID: "some-id",
+	})
+
+	// Should return nil for non-token files
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if result != nil {
+		t.Errorf("Expected nil result for non-token file, got %v", result)
+	}
+}
+
+func TestSemanticTokensFull_ReturnsResultID(t *testing.T) {
+	s := testutil.NewMockServerContext()
+
+	// Add a test token
+	token := &tokens.Token{
+		Name:  "color-brand-primary",
+		Value: "#FF6B35",
+		Type:  "color",
+	}
+	if err := s.TokenManager().Add(token); err != nil {
+		t.Fatalf("Failed to add token: %v", err)
+	}
+
+	// Create and register document
+	content := `{"secondary": {"$value": "{color.brand.primary}"}}`
+	uri := "file:///test.json"
+	_ = s.DocumentManager().DidOpen(uri, "json", 1, content)
+
+	req := types.NewRequestContext(s, nil)
+	result, err := semantictokens.SemanticTokensFull(req, &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+
+	if err != nil {
+		t.Fatalf("SemanticTokensFull failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+	if result.ResultID == nil {
+		t.Error("Expected ResultID to be set")
+	}
+	if *result.ResultID == "" {
+		t.Error("Expected ResultID to be non-empty")
+	}
+}

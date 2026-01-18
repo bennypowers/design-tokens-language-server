@@ -41,6 +41,9 @@ type ServerContext interface {
 	LoadTokensFromConfig() error
 	RegisterFileWatchers(ctx *glsp.Context) error
 
+	// Load tokens from an open document (for files with Design Tokens schema)
+	LoadTokensFromDocumentContent(uri, languageID, content string) error
+
 	// File tracking (for managing loaded token files)
 	RemoveLoadedFile(path string)
 
@@ -58,6 +61,25 @@ type ServerContext interface {
 
 	// Diagnostics publishing
 	PublishDiagnostics(context *glsp.Context, uri string) error
+
+	// Semantic tokens delta support
+	SemanticTokenCache() SemanticTokenCacher
+}
+
+// SemanticTokenCacheEntry holds cached semantic tokens for a document
+type SemanticTokenCacheEntry struct {
+	ResultID string
+	Data     []uint32
+	Version  int
+}
+
+// SemanticTokenCacher is the interface for semantic token cache operations
+type SemanticTokenCacher interface {
+	Store(uri string, data []uint32, version int) string
+	Get(resultID string) *SemanticTokenCacheEntry
+	GetForURI(resultID, uri string) *SemanticTokenCacheEntry
+	GetByURI(uri string) *SemanticTokenCacheEntry
+	Invalidate(uri string)
 }
 
 // No need for ServerConfig interface - handlers can access fields directly

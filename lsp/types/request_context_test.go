@@ -58,8 +58,13 @@ func NewMockServerContextForTest() *mockServerContextMinimal {
 	return &mockServerContextMinimal{}
 }
 
-// Minimal mock just for request context tests
-type mockServerContextMinimal struct{}
+// mockServerContextMinimal is a minimal mock just for request context tests.
+// It provides stub implementations for all ServerContext methods.
+type mockServerContextMinimal struct {
+	// cache holds a stable semantic token cache instance, lazily initialized on first access.
+	// This ensures consistent behavior across multiple SemanticTokenCache() calls.
+	cache SemanticTokenCacher
+}
 
 func (m *mockServerContextMinimal) Document(uri string) *documents.Document      { return nil }
 func (m *mockServerContextMinimal) DocumentManager() *documents.Manager          { return nil }
@@ -90,3 +95,21 @@ func (m *mockServerContextMinimal) SetUsePullDiagnostics(use bool)   {}
 func (m *mockServerContextMinimal) AddWarning(err error)             {}
 func (m *mockServerContextMinimal) TakeWarnings() []error            { return nil }
 func (m *mockServerContextMinimal) ShouldProcessAsTokenFile(uri string) bool { return true }
+func (m *mockServerContextMinimal) LoadTokensFromDocumentContent(uri, languageID, content string) error {
+	return nil
+}
+func (m *mockServerContextMinimal) SemanticTokenCache() SemanticTokenCacher {
+	if m.cache == nil {
+		m.cache = &mockSemanticTokenCache{}
+	}
+	return m.cache
+}
+
+// mockSemanticTokenCache is a minimal mock for SemanticTokenCacher
+type mockSemanticTokenCache struct{}
+
+func (m *mockSemanticTokenCache) Store(uri string, data []uint32, version int) string  { return "" }
+func (m *mockSemanticTokenCache) Get(resultID string) *SemanticTokenCacheEntry         { return nil }
+func (m *mockSemanticTokenCache) GetForURI(resultID, uri string) *SemanticTokenCacheEntry { return nil }
+func (m *mockSemanticTokenCache) GetByURI(uri string) *SemanticTokenCacheEntry         { return nil }
+func (m *mockSemanticTokenCache) Invalidate(uri string)                                {}

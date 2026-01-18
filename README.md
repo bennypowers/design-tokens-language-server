@@ -131,7 +131,7 @@ Create a file like `~/.config/nvim/lsp/design_tokens_ls.lua`:
 ---@type vim.lsp.ClientConfig
 return {
   cmd = { 'design-tokens-language-server' },
-  root_markers = { 'package.json', '.git' },
+  root_markers = { '.git', 'package.json' },
   filetypes = { 'css', 'json', 'yaml' },
   settings = {
     dtls = {
@@ -160,6 +160,27 @@ return {
 Then configure your LSP setup to load configs from `~/.config/nvim/lsp/`. This allows
 you to manage each language server in its own file. See the
 [neovim docs][neovimlspdocs] for details on setting up native LSP clients.
+
+> [!TIP]
+> If your tokens are in `node_modules` (e.g., `npm:@my-ds/tokens/tokens.json`),
+> the default `root_markers` may find the wrong `package.json`. The example
+> above uses `{ '.git', 'package.json' }` which prefers `.git` over nested
+> `package.json` files - this works for most git-based projects.
+>
+> For non-git projects or monorepos, use a custom `root_dir` that explicitly
+> skips `node_modules`:
+>
+> ```lua
+> root_dir = function(bufnr, on_dir)
+>   local root = vim.fs.root(bufnr, function(name, path)
+>     if name == 'package.json' and not path:match('node_modules') then
+>       return true
+>     end
+>     return name == '.git'
+>   end)
+>   if root then on_dir(root) end
+> end,
+> ```
 
 #### VS Code
 

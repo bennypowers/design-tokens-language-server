@@ -3,6 +3,7 @@ package integration_test
 import (
 	"testing"
 
+	"bennypowers.dev/dtls/lsp/methods/textDocument"
 	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"bennypowers.dev/dtls/test/integration/testutil"
@@ -246,4 +247,171 @@ func TestSemanticTokensRange_PartialOverlap(t *testing.T) {
 	// Should have some tokens that fall within this range
 	// The exact count depends on the fixture content
 	assert.Equal(t, 0, len(result.Data)%5, "Should be valid delta encoding")
+}
+
+// TestSemanticTokensDelta_FullWorkflow tests the complete delta workflow
+func TestSemanticTokensDelta_FullWorkflow(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	// Open the fixture file
+	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "semantic-tokens/tokens.json")
+
+	// Load the tokens from this file into the token manager so references can be resolved
+	tokensContent := testutil.LoadTokenFixture(t, "semantic-tokens/tokens.json")
+	err := server.LoadTokensFromJSON(tokensContent, "")
+	require.NoError(t, err)
+
+	// First request: get full tokens
+	req := types.NewRequestContext(server, nil)
+	fullResult, err := semantictokens.SemanticTokensFull(req, &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{
+			URI: "file:///tokens.json",
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, fullResult)
+	require.NotNil(t, fullResult.ResultID, "Full response should include ResultID")
+	require.NotEmpty(t, *fullResult.ResultID, "ResultID should not be empty")
+	assert.NotEmpty(t, fullResult.Data, "Should have semantic token data")
+
+	originalResultID := *fullResult.ResultID
+
+	// Second request: request delta with same document (no changes)
+	deltaResult, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: "file:///tokens.json"},
+		PreviousResultID: originalResultID,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, deltaResult)
+
+	// Since document hasn't changed, should return empty delta
+	deltaResponse, ok := deltaResult.(*protocol.SemanticTokensDelta)
+	require.True(t, ok, "Should return SemanticTokensDelta when delta is possible")
+	require.NotNil(t, deltaResponse.ResultId, "Delta response should include ResultID")
+	assert.Empty(t, deltaResponse.Edits, "Should have empty edits when nothing changed")
+}
+
+// TestSemanticTokensDelta_StaleResultID tests behavior with unknown result ID
+func TestSemanticTokensDelta_StaleResultID(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	// Open the fixture file
+	testutil.OpenTokenFixture(t, server, "file:///tokens.json", "semantic-tokens/tokens.json")
+
+	// Load tokens
+	tokensContent := testutil.LoadTokenFixture(t, "semantic-tokens/tokens.json")
+	err := server.LoadTokensFromJSON(tokensContent, "")
+	require.NoError(t, err)
+
+	// Request delta with invalid/stale result ID
+	req := types.NewRequestContext(server, nil)
+	result, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: "file:///tokens.json"},
+		PreviousResultID: "invalid-result-id-that-does-not-exist",
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Should return full tokens when previous result ID is not found
+	fullResponse, ok := result.(*protocol.SemanticTokens)
+	require.True(t, ok, "Should return SemanticTokens (full) when previous result ID not found")
+	require.NotNil(t, fullResponse.ResultID, "Full response should include new ResultID")
+	assert.NotEmpty(t, fullResponse.Data, "Should have full token data")
+}
+
+// TestSemanticTokensDelta_CacheInvalidationOnClose tests cache eviction on document close
+func TestSemanticTokensDelta_CacheInvalidationOnClose(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	uri := "file:///tokens.json"
+
+	// Open the fixture file
+	testutil.OpenTokenFixture(t, server, uri, "semantic-tokens/tokens.json")
+
+	// Load tokens
+	tokensContent := testutil.LoadTokenFixture(t, "semantic-tokens/tokens.json")
+	err := server.LoadTokensFromJSON(tokensContent, "")
+	require.NoError(t, err)
+
+	// Get full tokens to populate cache
+	req := types.NewRequestContext(server, nil)
+	fullResult, err := semantictokens.SemanticTokensFull(req, &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, fullResult.ResultID)
+
+	originalResultID := *fullResult.ResultID
+
+	// Verify cache has entry
+	entry := server.SemanticTokenCache().Get(originalResultID)
+	require.NotNil(t, entry, "Cache should have entry before close")
+
+	// Close the document via DidClose - this should invalidate the cache
+	err = textDocument.DidClose(req, &protocol.DidCloseTextDocumentParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+	require.NoError(t, err)
+
+	// Verify cache entry is gone
+	entry = server.SemanticTokenCache().Get(originalResultID)
+	assert.Nil(t, entry, "Cache entry should be invalidated after close")
+
+	// Re-open and request delta with old result ID
+	testutil.OpenTokenFixture(t, server, uri, "semantic-tokens/tokens.json")
+
+	result, err := semantictokens.SemanticTokensFullDelta(req, &semantictokens.SemanticTokensDeltaParams{
+		TextDocument:     protocol.TextDocumentIdentifier{URI: uri},
+		PreviousResultID: originalResultID,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Should return full tokens since old result ID no longer exists
+	fullResponse, ok := result.(*protocol.SemanticTokens)
+	require.True(t, ok, "Should return full tokens after cache invalidation")
+	require.NotNil(t, fullResponse.ResultID)
+	assert.NotEqual(t, originalResultID, *fullResponse.ResultID, "Should have new ResultID")
+}
+
+// TestSemanticTokens_AutoLoadOnDidOpen tests that tokens are auto-loaded when
+// a file with Design Tokens schema is opened via didOpen, without needing
+// explicit configuration in tokensFiles
+func TestSemanticTokens_AutoLoadOnDidOpen(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	// Load the token fixture content (has Design Tokens schema)
+	content := testutil.LoadTokenFixture(t, "semantic-tokens/tokens.json")
+
+	// Simulate opening the file via didOpen - this should auto-load the tokens
+	uri := "file:///auto-load-test/tokens.json"
+	params := &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        uri,
+			LanguageID: "json",
+			Version:    1,
+			Text:       string(content),
+		},
+	}
+
+	// Call didOpen handler
+	req := types.NewRequestContext(server, nil)
+	err := textDocument.DidOpen(req, params)
+	require.NoError(t, err)
+
+	// Now request semantic tokens - should work without manually loading tokens
+	result, err := semantictokens.SemanticTokensFull(req, &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result, "Should return semantic tokens")
+	assert.NotEmpty(t, result.Data, "Should have semantic token data from auto-loaded tokens")
+
+	// Verify token data is correct (each token = 5 values)
+	assert.Equal(t, 0, len(result.Data)%5, "Token data should be groups of 5 values")
 }

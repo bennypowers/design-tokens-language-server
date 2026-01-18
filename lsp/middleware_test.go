@@ -8,6 +8,7 @@ import (
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/tokens"
+	semantictokens "bennypowers.dev/dtls/lsp/methods/textDocument/semanticTokens"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/tliron/glsp"
@@ -16,8 +17,13 @@ import (
 // Verify compile-time interface satisfaction
 var _ = (*glsp.Context)(nil)
 
-// mockServerContext implements types.ServerContext for testing
-type mockServerContext struct{}
+// mockServerContext implements types.ServerContext for testing.
+// It provides a minimal implementation with stable state across method calls.
+type mockServerContext struct {
+	// cache holds a stable semantic token cache instance, lazily initialized on first access.
+	// This ensures consistent behavior across multiple SemanticTokenCache() calls.
+	cache types.SemanticTokenCacher
+}
 
 func (m *mockServerContext) Document(uri string) *documents.Document      { return nil }
 func (m *mockServerContext) DocumentManager() *documents.Manager          { return nil }
@@ -48,6 +54,15 @@ func (m *mockServerContext) SetUsePullDiagnostics(use bool)   {}
 func (m *mockServerContext) AddWarning(err error)             {}
 func (m *mockServerContext) TakeWarnings() []error            { return nil }
 func (m *mockServerContext) ShouldProcessAsTokenFile(uri string) bool { return true }
+func (m *mockServerContext) LoadTokensFromDocumentContent(uri, languageID, content string) error {
+	return nil
+}
+func (m *mockServerContext) SemanticTokenCache() types.SemanticTokenCacher {
+	if m.cache == nil {
+		m.cache = semantictokens.NewTokenCache()
+	}
+	return m.cache
+}
 
 func TestMethod_PanicRecovery(t *testing.T) {
 	// Capture log output
