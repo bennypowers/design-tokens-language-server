@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	bennypowers.dev/asimonim v0.0.0-00010101000000-000000000000
 	github.com/bmatcuk/doublestar/v4 v4.9.1
-	github.com/mazznoer/csscolorparser v0.1.6
+	github.com/mazznoer/csscolorparser v0.1.8
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/jsonc v0.3.2
 	github.com/tliron/glsp v0.2.2

@@ -124,8 +124,9 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 	return config
 }
 
-// ReadPackageJsonConfig reads designTokensLanguageServer configuration from package.json
-// Returns nil if package.json doesn't exist or doesn't have the configuration
+// ReadPackageJsonConfig reads designTokensLanguageServer configuration from package.json.
+// Falls back to .config/design-tokens.{yaml,json} if no package.json config is found.
+// Returns nil if no configuration exists (not an error).
 func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 	if rootPath == "" {
 		return nil, nil
@@ -135,18 +136,19 @@ func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pkgJSON == nil {
-		return nil, nil // File doesn't exist
+
+	if pkgJSON != nil {
+		configMap, err := extractConfigMap(pkgJSON)
+		if err != nil {
+			return nil, err
+		}
+		if configMap != nil {
+			// Found package.json config
+			config := buildServerConfig(configMap)
+			return config, nil
+		}
 	}
 
-	configMap, err := extractConfigMap(pkgJSON)
-	if err != nil {
-		return nil, err
-	}
-	if configMap == nil {
-		return nil, nil // No config field
-	}
-
-	config := buildServerConfig(configMap)
-	return config, nil
+	// Fallback to asimonim config (.config/design-tokens.{yaml,json})
+	return ReadAsimonimConfig(rootPath)
 }
