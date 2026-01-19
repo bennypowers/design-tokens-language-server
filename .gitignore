@@ -17,3 +17,4 @@ report.xml
 tools/lsp-bench/lsp-bench
 *.test
 /design-tokens-language-server
+benchmark_results/
