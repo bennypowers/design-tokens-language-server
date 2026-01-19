@@ -1,65 +1,24 @@
+// Package schema provides design token schema version types.
+// This package re-exports types from asimonim for compatibility.
 package schema
 
-import "fmt"
-
-// SchemaVersion represents a design tokens schema version
-type SchemaVersion int
-
-const (
-	// Unknown represents an undetected or unrecognized schema version
-	Unknown SchemaVersion = iota
-
-	// Draft represents the editor's draft schema
-	Draft
-
-	// V2025_10 represents the stable 2025.10 schema
-	V2025_10
+import (
+	asimonimSchema "bennypowers.dev/asimonim/schema"
 )
 
-// String returns the string representation of the schema version
-func (v SchemaVersion) String() string {
-	switch v {
-	case Draft:
-		return "draft"
-	case V2025_10:
-		return "v2025_10"
-	default:
-		return "unknown"
-	}
-}
+// SchemaVersion is a type alias for asimonim's Version type.
+// This maintains backward compatibility with existing dtls code.
+type SchemaVersion = asimonimSchema.Version
 
-// URL returns the JSON Schema URL for this version
-func (v SchemaVersion) URL() string {
-	switch v {
-	case Draft:
-		return "https://www.designtokens.org/schemas/draft.json"
-	case V2025_10:
-		return "https://www.designtokens.org/schemas/2025.10.json"
-	default:
-		return ""
-	}
-}
+// Re-export constants from asimonim schema
+const (
+	Unknown  = asimonimSchema.Unknown
+	Draft    = asimonimSchema.Draft
+	V2025_10 = asimonimSchema.V2025_10
+)
 
-// FromURL returns the schema version from a JSON Schema URL
-func FromURL(url string) (SchemaVersion, error) {
-	switch url {
-	case "https://www.designtokens.org/schemas/draft.json":
-		return Draft, nil
-	case "https://www.designtokens.org/schemas/2025.10.json":
-		return V2025_10, nil
-	default:
-		return Unknown, fmt.Errorf("unrecognized schema URL: %s", url)
-	}
-}
-
-// FromString returns the schema version from a string representation
-func FromString(s string) (SchemaVersion, error) {
-	switch s {
-	case "draft":
-		return Draft, nil
-	case "v2025_10":
-		return V2025_10, nil
-	default:
-		return Unknown, fmt.Errorf("unrecognized schema version string: %s", s)
-	}
-}
+// Re-export functions from asimonim schema
+var (
+	FromURL    = asimonimSchema.FromURL
+	FromString = asimonimSchema.FromString
+)
