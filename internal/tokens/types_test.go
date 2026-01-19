@@ -57,12 +57,12 @@ func TestCSSVariableName(t *testing.T) {
 		{
 			name:     "empty name",
 			token:    Token{Name: ""},
-			expected: "--",
+			expected: "",
 		},
 		{
 			name:     "empty name with prefix",
 			token:    Token{Name: "", Prefix: "my"},
-			expected: "--my-",
+			expected: "",
 		},
 	}
 

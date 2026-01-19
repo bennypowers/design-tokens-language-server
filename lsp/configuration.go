@@ -216,7 +216,6 @@ func (s *Server) loadExplicitTokenFiles() error {
 	cfg := s.GetConfig()
 	state := s.GetState()
 
-
 	var errs []error
 
 	for _, item := range cfg.TokensFiles {

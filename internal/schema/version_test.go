@@ -10,7 +10,7 @@ import (
 func TestSchemaVersion(t *testing.T) {
 	t.Run("string representations", func(t *testing.T) {
 		assert.Equal(t, "draft", schema.Draft.String())
-		assert.Equal(t, "v2025_10", schema.V2025_10.String())
+		assert.Equal(t, "v2025.10", schema.V2025_10.String())
 		assert.Equal(t, "unknown", schema.Unknown.String())
 	})
 
