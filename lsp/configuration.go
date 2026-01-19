@@ -54,7 +54,7 @@ func (s *Server) LoadPackageJsonConfig() error {
 
 	if len(s.config.TokensFiles) == 0 && len(pkgConfig.TokensFiles) > 0 {
 		s.config.TokensFiles = pkgConfig.TokensFiles
-		log.Info("Loaded tokensFiles from package.json: %v\n", pkgConfig.TokensFiles)
+		log.Info("Loaded %d tokensFiles from config", len(pkgConfig.TokensFiles))
 	}
 
 	return nil
@@ -98,9 +98,12 @@ func (s *Server) LoadTokensFromConfig() error {
 
 	// If tokensFiles is explicitly provided and non-empty, load those files
 	if len(cfg.TokensFiles) > 0 {
+		log.Info("Loading %d token files from config", len(cfg.TokensFiles))
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
-		return s.loadExplicitTokenFiles()
+		err := s.loadExplicitTokenFiles()
+		log.Info("Loaded %d tokens total", s.tokens.Count())
+		return err
 	}
 
 	// If tokensFiles is empty or nil, check if we have programmatically loaded files to reload
@@ -212,6 +215,7 @@ func (s *Server) loadExplicitTokenFiles() error {
 	// Snapshot config and state separately for semantic clarity
 	cfg := s.GetConfig()
 	state := s.GetState()
+
 
 	var errs []error
 

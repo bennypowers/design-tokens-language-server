@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/lsp/types"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/tidwall/jsonc"
 )
 
@@ -124,6 +126,69 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 	return config
 }
 
+// expandTokensFileGlobs expands glob patterns in tokensFiles to actual file paths.
+// Non-glob paths are kept as-is. Returns expanded paths.
+func expandTokensFileGlobs(tokensFiles []any, rootPath string) []any {
+	var expanded []any
+
+	for _, item := range tokensFiles {
+		switch v := item.(type) {
+		case string:
+			// Check if it's a glob pattern
+			if containsGlobChars(v) {
+				paths, err := expandGlobPattern(v, rootPath)
+				if err != nil {
+					log.Warn("Failed to expand glob %s: %v", v, err)
+					// Keep the original pattern as fallback
+					expanded = append(expanded, v)
+					continue
+				}
+				for _, p := range paths {
+					expanded = append(expanded, p)
+				}
+			} else {
+				expanded = append(expanded, v)
+			}
+		default:
+			// Keep objects as-is (they have their own path field)
+			expanded = append(expanded, item)
+		}
+	}
+
+	return expanded
+}
+
+// containsGlobChars returns true if the pattern contains glob characters.
+func containsGlobChars(pattern string) bool {
+	for _, c := range pattern {
+		if c == '*' || c == '?' || c == '[' {
+			return true
+		}
+	}
+	return false
+}
+
+// expandGlobPattern expands a glob pattern relative to rootPath.
+func expandGlobPattern(pattern, rootPath string) ([]string, error) {
+	// Make pattern absolute if relative
+	absPattern := pattern
+	if !filepath.IsAbs(pattern) {
+		// Remove leading ./ if present
+		if len(pattern) > 2 && pattern[:2] == "./" {
+			pattern = pattern[2:]
+		}
+		absPattern = filepath.Join(rootPath, pattern)
+	}
+
+	// Use doublestar for glob expansion (supports **)
+	matches, err := doublestar.FilepathGlob(absPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	return matches, nil
+}
+
 // ReadPackageJsonConfig reads designTokensLanguageServer configuration from package.json.
 // Falls back to .config/design-tokens.{yaml,json} if no package.json config is found.
 // Returns nil if no configuration exists (not an error).
@@ -145,6 +210,12 @@ func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 		if configMap != nil {
 			// Found package.json config
 			config := buildServerConfig(configMap)
+
+			// Expand glob patterns in tokensFiles
+			if len(config.TokensFiles) > 0 {
+				config.TokensFiles = expandTokensFileGlobs(config.TokensFiles, rootPath)
+			}
+
 			return config, nil
 		}
 	}
