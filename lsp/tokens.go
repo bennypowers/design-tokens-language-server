@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	asimonimParser "bennypowers.dev/asimonim/parser"
+	"bennypowers.dev/asimonim/schema"
+	"bennypowers.dev/asimonim/validator"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/uriutil"
 )
@@ -83,6 +85,22 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 		return err
 	}
 
+	// Determine schema version from parsed tokens for validation
+	version := schema.Draft
+	for _, t := range parsedTokens {
+		if t.SchemaVersion != schema.Unknown {
+			version = t.SchemaVersion
+			break
+		}
+	}
+
+	// Validate schema consistency
+	if validationErrors := validator.ValidateConsistencyWithPath(data, version, filePath); len(validationErrors) > 0 {
+		for _, ve := range validationErrors {
+			log.Warn("Schema validation: %s", ve.Error())
+		}
+	}
+
 	// Convert filepath to URI
 	fileURI := uriutil.PathToURI(filePath)
 
@@ -132,6 +150,22 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 		return err
 	}
 
+	// Determine schema version from parsed tokens for validation
+	version := schema.Draft
+	for _, t := range parsedTokens {
+		if t.SchemaVersion != schema.Unknown {
+			version = t.SchemaVersion
+			break
+		}
+	}
+
+	// Validate schema consistency
+	if validationErrors := validator.ValidateConsistency(data, version); len(validationErrors) > 0 {
+		for _, ve := range validationErrors {
+			log.Warn("Schema validation: %s", ve.Error())
+		}
+	}
+
 	var errs []error
 	successCount := 0
 	for _, token := range parsedTokens {
@@ -167,13 +201,30 @@ func (s *Server) LoadTokensFromDocumentContent(uri, languageID, content string) 
 
 	// Parse tokens using asimonim (handles both JSON and YAML)
 	parser := asimonimParser.NewJSONParser()
-	parsedTokens, err := parser.Parse([]byte(content), asimonimParser.Options{})
+	contentBytes := []byte(content)
+	parsedTokens, err := parser.Parse(contentBytes, asimonimParser.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to parse tokens from document: %w", err)
 	}
 
 	// Convert URI to file path for FilePath field
 	filePath := uriutil.URIToPath(uri)
+
+	// Determine schema version from parsed tokens for validation
+	version := schema.Draft
+	for _, t := range parsedTokens {
+		if t.SchemaVersion != schema.Unknown {
+			version = t.SchemaVersion
+			break
+		}
+	}
+
+	// Validate schema consistency
+	if validationErrors := validator.ValidateConsistencyWithPath(contentBytes, version, filePath); len(validationErrors) > 0 {
+		for _, ve := range validationErrors {
+			log.Warn("Schema validation: %s", ve.Error())
+		}
+	}
 
 	var errs []error
 	successCount := 0

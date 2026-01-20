@@ -1,8 +1,0 @@
-{
-  "spacing": {
-    "small": {
-      "$type": "dimension",
-      "$value": "8px"
-    }
-  }
-}
