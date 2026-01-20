@@ -17,11 +17,12 @@ import (
 
 // Template for token hover content
 // Note: {{.CSSVariableName}} calls the Token.CSSVariableName() method (not a field)
+// Note: {{.DisplayValue}} calls the Token.DisplayValue() method for resolved value display
 var tokenHoverTemplate = template.Must(template.New("tokenHover").Parse(`# {{.CSSVariableName}}
 {{if .Description}}
 {{.Description}}
 {{end}}
-**Value**: ` + "`{{.Value}}`" + `
+**Value**: ` + "`{{.DisplayValue}}`" + `
 {{if .Type}}**Type**: ` + "`{{.Type}}`" + `
 {{end}}{{if .Deprecated}}
 ⚠️ **DEPRECATED**{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
@@ -39,7 +40,7 @@ var tokenHoverPlaintextTemplate = template.Must(template.New("tokenHoverPlaintex
 {{if .Description}}
 {{.Description}}
 {{end}}
-Value: {{.Value}}
+Value: {{.DisplayValue}}
 {{if .Type}}Type: {{.Type}}
 {{end}}{{if .Deprecated}}
 DEPRECATED{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}

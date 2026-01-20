@@ -1,11 +1,13 @@
 package lsp
 
 import (
-	"bennypowers.dev/dtls/internal/log"
 	"errors"
 	"fmt"
 	"maps"
 
+	"bennypowers.dev/asimonim/resolver"
+	"bennypowers.dev/asimonim/schema"
+	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/lsp/types"
 )
 
@@ -102,8 +104,13 @@ func (s *Server) LoadTokensFromConfig() error {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
 		err := s.loadExplicitTokenFiles()
+		if err != nil {
+			return err
+		}
+		// Resolve all aliases after loading all tokens
+		s.ResolveAllTokens()
 		log.Info("Loaded %d tokens total", s.tokens.Count())
-		return err
+		return nil
 	}
 
 	// If tokensFiles is empty or nil, check if we have programmatically loaded files to reload
@@ -119,6 +126,30 @@ func (s *Server) LoadTokensFromConfig() error {
 	// No configuration and no previously loaded files: do nothing
 	// Users must explicitly configure tokensFiles
 	return nil
+}
+
+// ResolveAllTokens resolves all alias references in the loaded tokens.
+// This should be called after all token files are loaded.
+func (s *Server) ResolveAllTokens() {
+	tokens := s.tokens.GetAll()
+	if len(tokens) == 0 {
+		return
+	}
+
+	// Determine the schema version to use for resolution
+	// Use the first token's schema version as a heuristic
+	// (in practice, all tokens in a file should have the same version)
+	version := schema.Draft
+	for _, t := range tokens {
+		if t.SchemaVersion != schema.Unknown {
+			version = t.SchemaVersion
+			break
+		}
+	}
+
+	if err := resolver.ResolveAliases(tokens, version); err != nil {
+		log.Warn("Failed to resolve token aliases: %v", err)
+	}
 }
 
 // validateTokenFilePath validates that a token file path is not empty.
@@ -283,5 +314,9 @@ func (s *Server) reloadPreviouslyLoadedFiles() error {
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
+
+	// Resolve all aliases after reloading all tokens
+	s.ResolveAllTokens()
+
 	return nil
 }
