@@ -80,13 +80,13 @@ func TestSemanticTokens_2025_JSONPointerReferences(t *testing.T) {
 	mockServer := testutil.NewMockServer()
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 
-	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+	semTokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
 
 	// Should find tokens for "$ref" keyword and JSON Pointer path
 	foundRefKeyword := false
 	foundPointerPath := false
 
-	for _, token := range tokens {
+	for _, token := range semTokens {
 		if token.Line == 12 {
 			// $ref should be highlighted as keyword
 			if token.TokenType == semantictokens.TokenTypeKeyword {
@@ -118,11 +118,11 @@ func TestSemanticTokens_2025_RootKeyword(t *testing.T) {
 	mockServer := testutil.NewMockServer()
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 
-	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+	semTokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
 
 	// Should find token for "$root" keyword on line 3
 	foundRootKeyword := false
-	for _, token := range tokens {
+	for _, token := range semTokens {
 		if token.Line == 3 && token.TokenType == semantictokens.TokenTypeKeyword {
 			foundRootKeyword = true
 		}
@@ -147,10 +147,10 @@ func TestSemanticTokens_Draft_NoJSONPointerHighlighting(t *testing.T) {
 	mockServer := testutil.NewMockServer()
 	doc := documents.NewDocument("file:///test.json", "json", 1, content)
 
-	tokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+	semTokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
 
 	// Should NOT highlight $ref in draft schema
-	for _, token := range tokens {
+	for _, token := range semTokens {
 		if token.Line == 5 {
 			assert.NotEqual(t, semantictokens.TokenTypeKeyword, token.TokenType, "Should not highlight $ref as keyword in draft schema")
 		}

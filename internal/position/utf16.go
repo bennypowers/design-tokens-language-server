@@ -1,6 +1,7 @@
 package position
 
 import (
+	"math"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -83,4 +84,30 @@ func StringLengthUTF16(s string) int {
 		utf16Count += utf16.RuneLen(r)
 	}
 	return utf16Count
+}
+
+// ByteOffsetToUTF16Uint32 is like ByteOffsetToUTF16 but returns uint32 for LSP compatibility.
+// Clamps the result to valid uint32 range.
+func ByteOffsetToUTF16Uint32(s string, byteOffset int) uint32 {
+	result := ByteOffsetToUTF16(s, byteOffset)
+	if result < 0 {
+		return 0
+	}
+	if result > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(result)
+}
+
+// StringLengthUTF16Uint32 is like StringLengthUTF16 but returns uint32 for LSP compatibility.
+// Clamps the result to valid uint32 range.
+func StringLengthUTF16Uint32(s string) uint32 {
+	result := StringLengthUTF16(s)
+	if result < 0 {
+		return 0
+	}
+	if result > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(result)
 }

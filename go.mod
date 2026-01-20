@@ -3,7 +3,7 @@ module bennypowers.dev/dtls
 go 1.25.5
 
 require (
-	bennypowers.dev/asimonim v0.0.0-00010101000000-000000000000
+	bennypowers.dev/asimonim v0.0.1
 	github.com/bmatcuk/doublestar/v4 v4.9.2
 	github.com/mazznoer/csscolorparser v0.1.8
 	github.com/stretchr/testify v1.11.1
@@ -13,8 +13,6 @@ require (
 	github.com/tree-sitter/tree-sitter-css v0.23.2
 	gopkg.in/yaml.v3 v3.0.1
 )
-
-replace bennypowers.dev/asimonim => ../asimonim
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

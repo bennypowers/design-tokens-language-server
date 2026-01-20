@@ -70,7 +70,7 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 	}
 
 	// Read file content
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}

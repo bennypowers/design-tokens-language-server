@@ -43,7 +43,7 @@ func NormalizeLineEndings(content string) string {
 
 // FindReferenceAtPosition finds a token reference at the given position in a JSON/YAML file.
 // Returns the TokenReferenceWithRange if found, nil otherwise.
-func FindReferenceAtPosition(content string, line uint32, character uint32) *TokenReferenceWithRange {
+func FindReferenceAtPosition(content string, line, character uint32) *TokenReferenceWithRange {
 	// Normalize line endings (CRLF -> LF) to handle Windows files correctly
 	content = NormalizeLineEndings(content)
 
@@ -68,7 +68,7 @@ func FindReferenceAtPosition(content string, line uint32, character uint32) *Tok
 }
 
 // findCurlyBraceReferenceAtPositionWithRange finds a curly brace reference at the position
-func findCurlyBraceReferenceAtPositionWithRange(lineText string, line uint32, character uint32) *TokenReferenceWithRange {
+func findCurlyBraceReferenceAtPositionWithRange(lineText string, line, character uint32) *TokenReferenceWithRange {
 	matches := CurlyBraceReferenceRegexp.FindAllStringSubmatchIndex(lineText, -1)
 	if matches == nil {
 		return nil
@@ -79,8 +79,8 @@ func findCurlyBraceReferenceAtPositionWithRange(lineText string, line uint32, ch
 		// match[2], match[3] - captured reference without braces
 
 		// Convert byte offsets to UTF-16 positions
-		matchStartUTF16 := uint32(posutil.ByteOffsetToUTF16(lineText, match[0]))
-		matchEndUTF16 := uint32(posutil.ByteOffsetToUTF16(lineText, match[1]))
+		matchStartUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[0])
+		matchEndUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[1])
 
 		// Check if cursor is within this match
 		if character >= matchStartUTF16 && character <= matchEndUTF16 {
@@ -104,7 +104,7 @@ func findCurlyBraceReferenceAtPositionWithRange(lineText string, line uint32, ch
 }
 
 // findJSONPointerReferenceAtPositionWithRange finds a JSON Pointer reference at the position
-func findJSONPointerReferenceAtPositionWithRange(lineText string, line uint32, character uint32) *TokenReferenceWithRange {
+func findJSONPointerReferenceAtPositionWithRange(lineText string, line, character uint32) *TokenReferenceWithRange {
 	matches := JSONPointerReferenceRegexp.FindAllStringSubmatchIndex(lineText, -1)
 	if matches == nil {
 		return nil
@@ -115,8 +115,8 @@ func findJSONPointerReferenceAtPositionWithRange(lineText string, line uint32, c
 		// match[2], match[3] - JSON Pointer path (e.g., "#/color/primary")
 
 		// Convert byte offsets to UTF-16 positions
-		matchStartUTF16 := uint32(posutil.ByteOffsetToUTF16(lineText, match[0]))
-		matchEndUTF16 := uint32(posutil.ByteOffsetToUTF16(lineText, match[1]))
+		matchStartUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[0])
+		matchEndUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[1])
 
 		// Check if cursor is within this match
 		if character >= matchStartUTF16 && character <= matchEndUTF16 {

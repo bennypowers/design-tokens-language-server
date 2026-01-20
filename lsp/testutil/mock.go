@@ -374,7 +374,7 @@ func (m *MockServerContext) AddDocument(doc *documents.Document) {
 
 // AddToken adds a token to the manager
 func (m *MockServerContext) AddToken(token *tokens.Token) {
-	m.tokens.Add(token)
+	_ = m.tokens.Add(token)
 }
 
 // NewMockServer is an alias for NewMockServerContext for convenience

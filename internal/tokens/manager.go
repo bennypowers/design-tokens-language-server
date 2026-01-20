@@ -105,9 +105,7 @@ func (m *Manager) Get(nameOrVar string) *Token {
 	}
 
 	// Strip -- prefix if present
-	if strings.HasPrefix(searchName, "--") {
-		searchName = strings.TrimPrefix(searchName, "--")
-	}
+	searchName = strings.TrimPrefix(searchName, "--")
 
 	// Search across all files for token with matching name
 	for key, token := range m.tokens {

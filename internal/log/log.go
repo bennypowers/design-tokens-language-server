@@ -9,7 +9,7 @@ import (
 )
 
 // Level represents the severity of a log message
-type Level int
+type Level int32
 
 const (
 	// LevelDebug is for verbose debugging information
@@ -68,26 +68,26 @@ func GetLevel() Level {
 }
 
 // Debug logs a debug message (verbose debugging information)
-func Debug(format string, args ...interface{}) {
+func Debug(format string, args ...any) {
 	log(LevelDebug, format, args...)
 }
 
 // Info logs an info message (important operational events)
-func Info(format string, args ...interface{}) {
+func Info(format string, args ...any) {
 	log(LevelInfo, format, args...)
 }
 
 // Warn logs a warning message (warnings that don't prevent operation)
-func Warn(format string, args ...interface{}) {
+func Warn(format string, args ...any) {
 	log(LevelWarn, format, args...)
 }
 
 // Error logs an error message (errors that may affect functionality)
-func Error(format string, args ...interface{}) {
+func Error(format string, args ...any) {
 	log(LevelError, format, args...)
 }
 
-func log(level Level, format string, args ...interface{}) {
+func log(level Level, format string, args ...any) {
 	// Fast path: check level without lock to avoid contention for filtered messages
 	if int32(level) < minLevel.Load() {
 		return
@@ -121,5 +121,5 @@ func log(level Level, format string, args ...interface{}) {
 
 	// Format: [DTLS] LEVEL: message
 	message := fmt.Sprintf(format, args...)
-	fmt.Fprintf(output, "%s %s: %s\n", prefix, levelLabel, message)
+	_, _ = fmt.Fprintf(output, "%s %s: %s\n", prefix, levelLabel, message)
 }

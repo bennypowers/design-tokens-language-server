@@ -6,8 +6,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// designTokensSchemaPrefix is the required prefix for Design Tokens schema URLs
-const designTokensSchemaPrefix = "https://www.designtokens.org/schemas/"
+// dtcgSchemaURLPrefix is the required prefix for Design Tokens schema URLs
+const dtcgSchemaURLPrefix = "https://www.designtokens.org/schemas/"
 
 // IsDesignTokensSchema checks if the content contains a top-level $schema field
 // pointing to a Design Tokens schema URL (https://www.designtokens.org/schemas/**/*.json).
@@ -33,7 +33,7 @@ func IsDesignTokensSchema(content string) bool {
 	}
 
 	// Check if schema URL starts with the Design Tokens schema prefix
-	if !strings.HasPrefix(schemaURL, designTokensSchemaPrefix) {
+	if !strings.HasPrefix(schemaURL, dtcgSchemaURLPrefix) {
 		return false
 	}
 
