@@ -184,44 +184,8 @@ func processVariableHover(req *types.RequestContext, variable *css.Variable) (*p
 	return createHoverResponse(content, variable.Range, format), nil
 }
 
-// processTokenReferenceHover processes hover for a token reference in JSON/YAML files.
-// Returns hover response or error. Shows "unknown token" message if token is not found.
-func processTokenReferenceHover(req *types.RequestContext, ref *common.TokenReferenceWithRange) (*protocol.Hover, error) {
-	format := req.Server.PreferredHoverFormat()
-
-	// Look up token by the normalized name (dots replaced with dashes)
-	token := req.Server.Token(ref.TokenName)
-
-	if token == nil {
-		// Token not found - render unknown token message
-		content, err := renderUnknownToken(ref.TokenName, format)
-		if err != nil {
-			return nil, fmt.Errorf("failed to render unknown token message: %w", err)
-		}
-		return &protocol.Hover{
-			Contents: protocol.MarkupContent{
-				Kind:  format,
-				Value: content,
-			},
-			Range: &protocol.Range{
-				Start: protocol.Position{
-					Line:      ref.Line,
-					Character: ref.StartChar,
-				},
-				End: protocol.Position{
-					Line:      ref.Line,
-					Character: ref.EndChar,
-				},
-			},
-		}, nil
-	}
-
-	// Render token hover content
-	content, err := renderTokenHover(token, format)
-	if err != nil {
-		return nil, fmt.Errorf("failed to render token hover: %w", err)
-	}
-
+// createTokenRefHoverResponse creates a protocol.Hover response for token references.
+func createTokenRefHoverResponse(content string, ref *common.TokenReferenceWithRange, format protocol.MarkupKind) *protocol.Hover {
 	return &protocol.Hover{
 		Contents: protocol.MarkupContent{
 			Kind:  format,
@@ -237,7 +201,33 @@ func processTokenReferenceHover(req *types.RequestContext, ref *common.TokenRefe
 				Character: ref.EndChar,
 			},
 		},
-	}, nil
+	}
+}
+
+// processTokenReferenceHover processes hover for a token reference in JSON/YAML files.
+// Returns hover response or error. Shows "unknown token" message if token is not found.
+func processTokenReferenceHover(req *types.RequestContext, ref *common.TokenReferenceWithRange) (*protocol.Hover, error) {
+	format := req.Server.PreferredHoverFormat()
+
+	// Look up token by the normalized name (dots replaced with dashes)
+	token := req.Server.Token(ref.TokenName)
+
+	if token == nil {
+		// Token not found - render unknown token message
+		content, err := renderUnknownToken(ref.TokenName, format)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render unknown token message: %w", err)
+		}
+		return createTokenRefHoverResponse(content, ref, format), nil
+	}
+
+	// Render token hover content
+	content, err := renderTokenHover(token, format)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render token hover: %w", err)
+	}
+
+	return createTokenRefHoverResponse(content, ref, format), nil
 }
 
 // isTokenFile checks if the language ID corresponds to a design token file format

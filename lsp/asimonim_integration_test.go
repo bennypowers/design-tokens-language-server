@@ -61,11 +61,12 @@ files:
 		require.NoError(t, os.WriteFile(filepath.Join(configDir, "design-tokens.yaml"), []byte(configContent), 0o644))
 
 		// Create server and simulate the initialization flow
-		server, _ := NewServer()
+		server, err := NewServer()
+		require.NoError(t, err)
 		server.SetRootPath(tmpDir)
 
 		// Load config (this is what initialized.go does)
-		err := server.LoadPackageJsonConfig()
+		err = server.LoadPackageJsonConfig()
 		require.NoError(t, err)
 
 		// Check config was loaded with expanded paths
@@ -123,10 +124,11 @@ files:
 		require.NoError(t, os.WriteFile(filepath.Join(configDir, "design-tokens.yaml"), []byte(configContent), 0o644))
 
 		// Create server and load config
-		server, _ := NewServer()
+		server, err := NewServer()
+		require.NoError(t, err)
 		server.SetRootPath(tmpDir)
 
-		err := server.LoadPackageJsonConfig()
+		err = server.LoadPackageJsonConfig()
 		require.NoError(t, err)
 
 		cfg := server.GetConfig()

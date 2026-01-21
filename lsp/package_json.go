@@ -161,7 +161,7 @@ func expandTokensFileGlobs(tokensFiles []any, rootPath string) []any {
 // containsGlobChars returns true if the pattern contains glob characters.
 func containsGlobChars(pattern string) bool {
 	for _, c := range pattern {
-		if c == '*' || c == '?' || c == '[' {
+		if c == '*' || c == '?' || c == '[' || c == '{' {
 			return true
 		}
 	}

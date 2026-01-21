@@ -82,8 +82,8 @@ func findCurlyBraceReferenceAtPositionWithRange(lineText string, line, character
 		matchStartUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[0])
 		matchEndUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[1])
 
-		// Check if cursor is within this match
-		if character >= matchStartUTF16 && character <= matchEndUTF16 {
+		// Check if cursor is within this match (LSP uses half-open ranges: [start, end))
+		if character >= matchStartUTF16 && character < matchEndUTF16 {
 			// Extract the reference (e.g., "color.primary")
 			rawReference := lineText[match[2]:match[3]]
 			// Convert to token name (e.g., "color-primary")
@@ -118,8 +118,8 @@ func findJSONPointerReferenceAtPositionWithRange(lineText string, line, characte
 		matchStartUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[0])
 		matchEndUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, match[1])
 
-		// Check if cursor is within this match
-		if character >= matchStartUTF16 && character <= matchEndUTF16 {
+		// Check if cursor is within this match (LSP uses half-open ranges: [start, end))
+		if character >= matchStartUTF16 && character < matchEndUTF16 {
 			// Extract the JSON Pointer path (e.g., "#/color/primary")
 			pointerPath := lineText[match[2]:match[3]]
 			// Convert to token name: remove "#/" prefix and replace "/" with "-"

@@ -117,6 +117,7 @@ func getLineText(req *types.RequestContext, uri string, lineNum uint32) (string,
 	}
 
 	// Fall back to reading from disk
+	// Note: filepath.Clean normalizes . and .. segments which URIToPath doesn't guarantee
 	filePath := filepath.Clean(uriutil.URIToPath(uri))
 	data, err := os.ReadFile(filePath)
 	if err != nil {

@@ -83,6 +83,41 @@ func TestFindReferenceAtPosition(t *testing.T) {
 		assert.Equal(t, "color-brand-primary", ref.TokenName)
 		assert.Equal(t, "#/color/brand/primary", ref.RawReference)
 	})
+
+	t.Run("returns nil when cursor is exactly at end of curly brace reference (half-open range)", func(t *testing.T) {
+		// Content: {"$value": "{color.base}"}
+		// Indices:  0123456789...
+		// The reference "{color.base}" is at positions 12-24 (StartChar:12, EndChar:24)
+		// With half-open range semantics, position 24 should NOT match (exclusive end)
+		content := `{"$value": "{color.base}"}`
+		ref := common.FindReferenceAtPosition(content, 0, 24)
+		assert.Nil(t, ref, "cursor at exclusive end boundary (position 24) should return nil")
+	})
+
+	t.Run("returns reference when cursor is at last character of curly brace reference", func(t *testing.T) {
+		// Position 23 is the closing brace "}", which should still be inside the range [12, 24)
+		content := `{"$value": "{color.base}"}`
+		ref := common.FindReferenceAtPosition(content, 0, 23)
+		assert.NotNil(t, ref, "cursor at last character of reference (position 23) should return reference")
+		assert.Equal(t, "color-base", ref.TokenName)
+	})
+
+	t.Run("returns nil when cursor is exactly at end of JSON pointer reference (half-open range)", func(t *testing.T) {
+		// Content: {"$ref": "#/color/base"}
+		// The reference starts at position 1, ends at position 23 (StartChar:1, EndChar:23)
+		// With half-open semantics, position 23 should NOT match
+		content := `{"$ref": "#/color/base"}`
+		ref := common.FindReferenceAtPosition(content, 0, 23)
+		assert.Nil(t, ref, "cursor at exclusive end boundary (position 23) should return nil")
+	})
+
+	t.Run("returns reference when cursor is at last character of JSON pointer reference", func(t *testing.T) {
+		// Position 22 is the 'e' in 'base', which should still be inside the range [1, 23)
+		content := `{"$ref": "#/color/base"}`
+		ref := common.FindReferenceAtPosition(content, 0, 22)
+		assert.NotNil(t, ref, "cursor at last character of reference (position 22) should return reference")
+		assert.Equal(t, "color-base", ref.TokenName)
+	})
 }
 
 func TestNormalizeLineEndings(t *testing.T) {

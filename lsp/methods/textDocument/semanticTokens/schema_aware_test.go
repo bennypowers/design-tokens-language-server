@@ -35,15 +35,15 @@ func TestSemanticTokens_Draft_CurlyBraceReferences(t *testing.T) {
 		Value: "#FF0000",
 	})
 
-	semanticTokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
+	semTokens := semantictokens.GetSemanticTokensForDocument(mockServer, doc)
 
 	// Should find tokens for "color.primary" reference on line 9
-	assert.NotEmpty(t, semanticTokens, "Should find semantic tokens for curly brace reference")
+	assert.NotEmpty(t, semTokens, "Should find semantic tokens for curly brace reference")
 
 	// Verify we have tokens for both parts: "color" and "primary"
 	foundColorPart := false
 	foundPrimaryPart := false
-	for _, token := range semanticTokens {
+	for _, token := range semTokens {
 		if token.Line == 9 {
 			if token.TokenType == semantictokens.TokenTypeVariable {
 				foundColorPart = true

@@ -9,10 +9,29 @@ import (
 
 	asimonimParser "bennypowers.dev/asimonim/parser"
 	"bennypowers.dev/asimonim/schema"
+	asimonimToken "bennypowers.dev/asimonim/token"
 	"bennypowers.dev/asimonim/validator"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/uriutil"
 )
+
+// detectSchemaVersion returns the schema version from the first token that has one set.
+// Falls back to schema.Draft if no token has a schema version.
+func detectSchemaVersion(tokens []*asimonimToken.Token) schema.Version {
+	for _, t := range tokens {
+		if t.SchemaVersion != schema.Unknown {
+			return t.SchemaVersion
+		}
+	}
+	return schema.Draft
+}
+
+// logValidationErrors logs schema validation errors as warnings.
+func logValidationErrors(validationErrors []validator.ValidationError) {
+	for _, ve := range validationErrors {
+		log.Warn("Schema validation: %s", ve.Error())
+	}
+}
 
 // TokenFileOptions holds per-file configuration for token loading
 type TokenFileOptions struct {
@@ -85,20 +104,10 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 		return err
 	}
 
-	// Determine schema version from parsed tokens for validation
-	version := schema.Draft
-	for _, t := range parsedTokens {
-		if t.SchemaVersion != schema.Unknown {
-			version = t.SchemaVersion
-			break
-		}
-	}
-
 	// Validate schema consistency
+	version := detectSchemaVersion(parsedTokens)
 	if validationErrors := validator.ValidateConsistencyWithPath(data, version, filePath); len(validationErrors) > 0 {
-		for _, ve := range validationErrors {
-			log.Warn("Schema validation: %s", ve.Error())
-		}
+		logValidationErrors(validationErrors)
 	}
 
 	// Convert filepath to URI
@@ -150,20 +159,10 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 		return err
 	}
 
-	// Determine schema version from parsed tokens for validation
-	version := schema.Draft
-	for _, t := range parsedTokens {
-		if t.SchemaVersion != schema.Unknown {
-			version = t.SchemaVersion
-			break
-		}
-	}
-
 	// Validate schema consistency
+	version := detectSchemaVersion(parsedTokens)
 	if validationErrors := validator.ValidateConsistency(data, version); len(validationErrors) > 0 {
-		for _, ve := range validationErrors {
-			log.Warn("Schema validation: %s", ve.Error())
-		}
+		logValidationErrors(validationErrors)
 	}
 
 	var errs []error
@@ -210,20 +209,10 @@ func (s *Server) LoadTokensFromDocumentContent(uri, languageID, content string) 
 	// Convert URI to file path for FilePath field
 	filePath := uriutil.URIToPath(uri)
 
-	// Determine schema version from parsed tokens for validation
-	version := schema.Draft
-	for _, t := range parsedTokens {
-		if t.SchemaVersion != schema.Unknown {
-			version = t.SchemaVersion
-			break
-		}
-	}
-
 	// Validate schema consistency
+	version := detectSchemaVersion(parsedTokens)
 	if validationErrors := validator.ValidateConsistencyWithPath(contentBytes, version, filePath); len(validationErrors) > 0 {
-		for _, ve := range validationErrors {
-			log.Warn("Schema validation: %s", ve.Error())
-		}
+		logValidationErrors(validationErrors)
 	}
 
 	var errs []error
