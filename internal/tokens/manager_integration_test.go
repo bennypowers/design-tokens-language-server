@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"bennypowers.dev/dtls/internal/parser/json"
+	asimonimParser "bennypowers.dev/asimonim/parser"
 	"bennypowers.dev/dtls/internal/schema"
 	"bennypowers.dev/dtls/internal/tokens"
 	"github.com/stretchr/testify/assert"
@@ -14,20 +14,20 @@ import (
 // TestMultiSchemaWorkspace_Integration tests loading and managing tokens from multiple schema versions
 func TestMultiSchemaWorkspace_Integration(t *testing.T) {
 	manager := tokens.NewManager()
-	parser := json.NewParser()
+	parser := asimonimParser.NewJSONParser()
 
 	// Load draft schema tokens
 	draftContent, err := os.ReadFile("testdata/multi-schema/mixed-workspace/draft-tokens.json")
 	require.NoError(t, err)
 
-	draftTokens, err := parser.ParseWithSchemaVersion(draftContent, "draft", schema.Draft, []string{"_"})
+	draftTokens, err := parser.Parse(draftContent, asimonimParser.Options{Prefix: "draft", SchemaVersion: schema.Draft, GroupMarkers: []string{"_"}})
 	require.NoError(t, err)
 
 	// Load 2025.10 schema tokens
 	v2025Content, err := os.ReadFile("testdata/multi-schema/mixed-workspace/2025-tokens.json")
 	require.NoError(t, err)
 
-	v2025Tokens, err := parser.ParseWithSchemaVersion(v2025Content, "2025", schema.V2025_10, nil)
+	v2025Tokens, err := parser.Parse(v2025Content, asimonimParser.Options{Prefix: "2025", SchemaVersion: schema.V2025_10})
 	require.NoError(t, err)
 
 	// Add tokens to manager
@@ -72,20 +72,20 @@ func TestMultiSchemaWorkspace_Integration(t *testing.T) {
 // TestMultiSchemaWorkspace_TokenIsolation tests that tokens from different schemas don't interfere
 func TestMultiSchemaWorkspace_TokenIsolation(t *testing.T) {
 	manager := tokens.NewManager()
-	parser := json.NewParser()
+	parser := asimonimParser.NewJSONParser()
 
 	// Load draft schema tokens
 	draftContent, err := os.ReadFile("testdata/multi-schema/mixed-workspace/draft-tokens.json")
 	require.NoError(t, err)
 
-	draftTokens, err := parser.ParseWithSchemaVersion(draftContent, "draft", schema.Draft, []string{"_"})
+	draftTokens, err := parser.Parse(draftContent, asimonimParser.Options{Prefix: "draft", SchemaVersion: schema.Draft, GroupMarkers: []string{"_"}})
 	require.NoError(t, err)
 
 	// Load 2025.10 schema tokens
 	v2025Content, err := os.ReadFile("testdata/multi-schema/mixed-workspace/2025-tokens.json")
 	require.NoError(t, err)
 
-	v2025Tokens, err := parser.ParseWithSchemaVersion(v2025Content, "2025", schema.V2025_10, nil)
+	v2025Tokens, err := parser.Parse(v2025Content, asimonimParser.Options{Prefix: "2025", SchemaVersion: schema.V2025_10})
 	require.NoError(t, err)
 
 	// Add tokens with file paths

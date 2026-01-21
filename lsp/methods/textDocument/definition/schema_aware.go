@@ -2,6 +2,7 @@ package definition
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
@@ -58,11 +59,11 @@ func findCurlyBraceReferenceAtPosition(line string, pos protocol.Position) strin
 		// match[2], match[3] - captured reference without braces
 
 		// Convert byte offsets to UTF-16 positions
-		matchStartUTF16 := posutil.ByteOffsetToUTF16(line, match[0])
-		matchEndUTF16 := posutil.ByteOffsetToUTF16(line, match[1])
+		matchStartUTF16 := posutil.ByteOffsetToUTF16Uint32(line, match[0])
+		matchEndUTF16 := posutil.ByteOffsetToUTF16Uint32(line, match[1])
 
 		// Check if cursor is within this match
-		if pos.Character >= uint32(matchStartUTF16) && pos.Character <= uint32(matchEndUTF16) {
+		if pos.Character >= matchStartUTF16 && pos.Character <= matchEndUTF16 {
 			// Extract the reference (e.g., "color.primary")
 			reference := line[match[2]:match[3]]
 			// Convert to token name (e.g., "color-primary")
@@ -85,11 +86,11 @@ func findJSONPointerReferenceAtPosition(line string, pos protocol.Position) stri
 		// match[2], match[3] - JSON Pointer path (e.g., "#/color/primary")
 
 		// Convert byte offsets to UTF-16 positions
-		matchStartUTF16 := posutil.ByteOffsetToUTF16(line, match[0])
-		matchEndUTF16 := posutil.ByteOffsetToUTF16(line, match[1])
+		matchStartUTF16 := posutil.ByteOffsetToUTF16Uint32(line, match[0])
+		matchEndUTF16 := posutil.ByteOffsetToUTF16Uint32(line, match[1])
 
 		// Check if cursor is within this match
-		if pos.Character >= uint32(matchStartUTF16) && pos.Character <= uint32(matchEndUTF16) {
+		if pos.Character >= matchStartUTF16 && pos.Character <= matchEndUTF16 {
 			// Extract the JSON Pointer path (e.g., "#/color/primary")
 			pointerPath := line[match[2]:match[3]]
 			// Convert to token name: remove "#/" prefix and replace "/" with "-"
@@ -116,7 +117,8 @@ func getLineText(req *types.RequestContext, uri string, lineNum uint32) (string,
 	}
 
 	// Fall back to reading from disk
-	filePath := uriutil.URIToPath(uri)
+	// Note: filepath.Clean normalizes . and .. segments which URIToPath doesn't guarantee
+	filePath := filepath.Clean(uriutil.URIToPath(uri))
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", err
@@ -163,10 +165,10 @@ func DefinitionForTokenFile(req *types.RequestContext, doc *documents.Document, 
 		}
 
 		// Convert byte offset to UTF-16 position
-		startCharUTF16 := uint32(posutil.ByteOffsetToUTF16(lineText, int(token.Character)))
+		startCharUTF16 := posutil.ByteOffsetToUTF16Uint32(lineText, int(token.Character))
 
 		// Calculate end position: start + token name length in UTF-16
-		tokenNameLenUTF16 := uint32(posutil.StringLengthUTF16(token.Name))
+		tokenNameLenUTF16 := posutil.StringLengthUTF16Uint32(token.Name)
 		endCharUTF16 := startCharUTF16 + tokenNameLenUTF16
 
 		location := protocol.Location{

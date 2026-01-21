@@ -1,17 +1,37 @@
 package lsp
 
 import (
-	"bennypowers.dev/dtls/internal/log"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
-	"bennypowers.dev/dtls/internal/parser/json"
-	"bennypowers.dev/dtls/internal/parser/yaml"
-	"bennypowers.dev/dtls/internal/tokens"
+	asimonimParser "bennypowers.dev/asimonim/parser"
+	"bennypowers.dev/asimonim/schema"
+	asimonimToken "bennypowers.dev/asimonim/token"
+	"bennypowers.dev/asimonim/validator"
+	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/uriutil"
 )
+
+// detectSchemaVersion returns the schema version from the first token that has one set.
+// Falls back to schema.Draft if no token has a schema version.
+func detectSchemaVersion(tokens []*asimonimToken.Token) schema.Version {
+	for _, t := range tokens {
+		if t.SchemaVersion != schema.Unknown {
+			return t.SchemaVersion
+		}
+	}
+	return schema.Draft
+}
+
+// logValidationErrors logs schema validation errors as warnings.
+func logValidationErrors(validationErrors []validator.ValidationError) {
+	for _, ve := range validationErrors {
+		log.Warn("Schema validation: %s", ve.Error())
+	}
+}
 
 // TokenFileOptions holds per-file configuration for token loading
 type TokenFileOptions struct {
@@ -59,24 +79,35 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 		opts = &TokenFileOptions{}
 	}
 
-	var parsedTokens []*tokens.Token
-	var err error
-
-	// Determine parser based on file extension
+	// Validate file extension
 	ext := strings.ToLower(filepath.Ext(filePath))
 	switch ext {
-	case ".json":
-		parser := json.NewParser()
-		parsedTokens, err = parser.ParseFileWithGroupMarkers(filePath, opts.Prefix, opts.GroupMarkers)
-	case ".yaml", ".yml":
-		parser := yaml.NewParser()
-		parsedTokens, err = parser.ParseFileWithGroupMarkers(filePath, opts.Prefix, opts.GroupMarkers)
+	case ".json", ".yaml", ".yml":
+		// Supported
 	default:
 		return fmt.Errorf("unsupported file type %s: %s", ext, filePath)
 	}
 
+	// Read file content
+	data, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
-		return err // Error already wrapped by parser
+		return fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+
+	// Parse tokens using asimonim (handles both JSON and YAML)
+	parser := asimonimParser.NewJSONParser()
+	parsedTokens, err := parser.Parse(data, asimonimParser.Options{
+		Prefix:       opts.Prefix,
+		GroupMarkers: opts.GroupMarkers,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Validate schema consistency
+	version := detectSchemaVersion(parsedTokens)
+	if validationErrors := validator.ValidateConsistencyWithPath(data, version, filePath); len(validationErrors) > 0 {
+		logValidationErrors(validationErrors)
 	}
 
 	// Convert filepath to URI
@@ -120,10 +151,18 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 // errors from this function should be presented to the user via window/logMessage
 // further up the call stack
 func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
-	parser := json.NewParser()
-	parsedTokens, err := parser.Parse(data, prefix)
+	parser := asimonimParser.NewJSONParser()
+	parsedTokens, err := parser.Parse(data, asimonimParser.Options{
+		Prefix: prefix,
+	})
 	if err != nil {
 		return err
+	}
+
+	// Validate schema consistency
+	version := detectSchemaVersion(parsedTokens)
+	if validationErrors := validator.ValidateConsistency(data, version); len(validationErrors) > 0 {
+		logValidationErrors(validationErrors)
 	}
 
 	var errs []error
@@ -139,6 +178,10 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
+
+	// Resolve all aliases after loading tokens
+	s.ResolveAllTokens()
+
 	return nil
 }
 
@@ -146,27 +189,31 @@ func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
 // This is used when opening a file with Design Tokens schema that isn't configured in tokensFiles.
 // The uri is used to set the DefinitionURI for go-to-definition support.
 func (s *Server) LoadTokensFromDocumentContent(uri, languageID, content string) error {
-	var parsedTokens []*tokens.Token
-	var err error
-
+	// Only parse JSON and YAML files
 	switch languageID {
-	case "json":
-		parser := json.NewParser()
-		parsedTokens, err = parser.Parse([]byte(content), "")
-	case "yaml":
-		parser := yaml.NewParser()
-		parsedTokens, err = parser.Parse([]byte(content), "")
+	case "json", "yaml":
+		// Supported
 	default:
 		// Not a supported token file format
 		return nil
 	}
 
+	// Parse tokens using asimonim (handles both JSON and YAML)
+	parser := asimonimParser.NewJSONParser()
+	contentBytes := []byte(content)
+	parsedTokens, err := parser.Parse(contentBytes, asimonimParser.Options{})
 	if err != nil {
 		return fmt.Errorf("failed to parse tokens from document: %w", err)
 	}
 
 	// Convert URI to file path for FilePath field
 	filePath := uriutil.URIToPath(uri)
+
+	// Validate schema consistency
+	version := detectSchemaVersion(parsedTokens)
+	if validationErrors := validator.ValidateConsistencyWithPath(contentBytes, version, filePath); len(validationErrors) > 0 {
+		logValidationErrors(validationErrors)
+	}
 
 	var errs []error
 	successCount := 0
@@ -182,6 +229,8 @@ func (s *Server) LoadTokensFromDocumentContent(uri, languageID, content string) 
 
 	if successCount > 0 {
 		log.Info("Auto-loaded %d tokens from %s", successCount, uri)
+		// Resolve all aliases after loading tokens
+		s.ResolveAllTokens()
 	}
 
 	if len(errs) > 0 {

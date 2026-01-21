@@ -242,6 +242,101 @@ func TestHoverOnVariableDeclarationUnknown(t *testing.T) {
 	assert.Nil(t, result) // Should return nil for unknown variable declaration
 }
 
+// TestHoverWithResolvedReference tests hover shows resolved value for token references
+func TestHoverWithResolvedReference(t *testing.T) {
+	server := testutil.NewTestServer(t)
+
+	// Load tokens with references
+	tokens := []byte(`{
+		"color": {
+			"$type": "color",
+			"base": {
+				"$value": "#ff0000",
+				"$description": "Base color"
+			},
+			"primary": {
+				"$value": "{color.base}",
+				"$description": "Primary color (references base)"
+			},
+			"action": {
+				"$value": "{color.primary}",
+				"$description": "Action color (chained reference)"
+			}
+		}
+	}`)
+	err := server.LoadTokensFromJSON(tokens, "")
+	require.NoError(t, err)
+
+	// Resolve all aliases (normally done by LoadTokensFromConfig)
+	server.ResolveAllTokens()
+
+	// Open CSS file using the referenced token
+	content := `.button {
+    color: var(--color-primary);
+    background: var(--color-action);
+}`
+	req := types.NewRequestContext(server, nil)
+	err = textDocument.DidOpen(req, &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI:        "file:///test.css",
+			LanguageID: "css",
+			Version:    1,
+			Text:       content,
+		},
+	})
+	require.NoError(t, err)
+
+	t.Run("direct reference shows resolved value", func(t *testing.T) {
+		// Request hover on --color-primary (which references color.base)
+		req = types.NewRequestContext(server, nil)
+		result, err := hover.Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{
+					URI: "file:///test.css",
+				},
+				Position: protocol.Position{
+					Line:      1,
+					Character: 18,
+				},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		content_hover, ok := result.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+		// Should show resolved value #ff0000, not the reference {color.base}
+		assert.Contains(t, content_hover.Value, "#ff0000", "Should show resolved value")
+		assert.NotContains(t, content_hover.Value, "{color.base}", "Should not show unresolved reference")
+	})
+
+	t.Run("chained reference shows resolved value", func(t *testing.T) {
+		// Request hover on --color-action (which references color.primary which references color.base)
+		req = types.NewRequestContext(server, nil)
+		result, err := hover.Hover(req, &protocol.HoverParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{
+					URI: "file:///test.css",
+				},
+				Position: protocol.Position{
+					Line:      2,
+					Character: 20,
+				},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		content_hover, ok := result.Contents.(protocol.MarkupContent)
+		require.True(t, ok)
+		// Should show resolved value #ff0000, not any reference
+		assert.Contains(t, content_hover.Value, "#ff0000", "Should show resolved value")
+		assert.NotContains(t, content_hover.Value, "{color", "Should not show any unresolved reference")
+	})
+}
+
 // TestHoverWithDeprecated tests hover on deprecated token
 func TestHoverWithDeprecated(t *testing.T) {
 	server := testutil.NewTestServer(t)

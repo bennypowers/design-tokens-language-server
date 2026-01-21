@@ -271,6 +271,83 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+func TestByteOffsetToUTF16Uint32(t *testing.T) {
+	tests := []struct {
+		name        string
+		s           string
+		byteOffset  int
+		expectUTF16 uint32
+	}{
+		{
+			name:        "empty string",
+			s:           "",
+			byteOffset:  0,
+			expectUTF16: 0,
+		},
+		{
+			name:        "ASCII only",
+			s:           "hello world",
+			byteOffset:  5,
+			expectUTF16: 5,
+		},
+		{
+			name:        "emoji at start",
+			s:           "👍 hello",
+			byteOffset:  4,
+			expectUTF16: 2,
+		},
+		{
+			name:        "negative offset returns 0",
+			s:           "hello",
+			byteOffset:  -1,
+			expectUTF16: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ByteOffsetToUTF16Uint32(tt.s, tt.byteOffset)
+			assert.Equal(t, tt.expectUTF16, result)
+		})
+	}
+}
+
+func TestStringLengthUTF16Uint32(t *testing.T) {
+	tests := []struct {
+		name      string
+		s         string
+		expectLen uint32
+	}{
+		{
+			name:      "empty string",
+			s:         "",
+			expectLen: 0,
+		},
+		{
+			name:      "ASCII only",
+			s:         "hello world",
+			expectLen: 11,
+		},
+		{
+			name:      "single emoji",
+			s:         "👍",
+			expectLen: 2,
+		},
+		{
+			name:      "CJK characters",
+			s:         "颜色",
+			expectLen: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := StringLengthUTF16Uint32(tt.s)
+			assert.Equal(t, tt.expectLen, result)
+		})
+	}
+}
+
 // BenchmarkUTF16ToByteOffset benchmarks the UTF-16 conversion
 func BenchmarkUTF16ToByteOffset(b *testing.B) {
 	tests := []struct {

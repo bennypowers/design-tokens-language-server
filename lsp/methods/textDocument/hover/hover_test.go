@@ -741,3 +741,244 @@ func TestHover_ContentFormat(t *testing.T) {
 		assert.Equal(t, protocol.MarkupKindMarkdown, content.Kind)
 	})
 }
+
+// ============================================================================
+// JSON/YAML Token Reference Hover Tests
+// ============================================================================
+
+func TestHover_CurlyBraceReference_JSON(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add tokens
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:        "color-primary",
+		Value:       "#ff0000",
+		Type:        "color",
+		Description: "Primary brand color",
+		FilePath:    "tokens.json",
+	})
+
+	// Open a JSON document with curly brace reference
+	uri := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "secondary": {
+      "$value": "{color.primary}"
+    }
+  }
+}`
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+
+	// Hover over {color.primary} - position inside the reference
+	// Line 3: `      "$value": "{color.primary}"`
+	// Character 20 is inside "color.primary"
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 3, Character: 20},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+
+	// Assert hover content
+	content, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok, "Contents should be MarkupContent")
+	assert.Contains(t, content.Value, "--color-primary")
+	assert.Contains(t, content.Value, "#ff0000")
+	assert.Contains(t, content.Value, "Primary brand color")
+
+	// Assert Range is present
+	require.NotNil(t, hover.Range, "Range should be present for token reference")
+}
+
+func TestHover_CurlyBraceReference_YAML(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add tokens
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:        "color-accent-base",
+		Value:       "#0066cc",
+		Type:        "color",
+		Description: "Base accent color",
+	})
+
+	// Open a YAML document with curly brace reference
+	uri := "file:///tokens.yaml"
+	yamlContent := `color:
+  button:
+    background:
+      $value: "{color.accent.base}"`
+	_ = ctx.DocumentManager().DidOpen(uri, "yaml", 1, yamlContent)
+
+	// Hover over {color.accent.base}
+	// Line 3: `      $value: "{color.accent.base}"`
+	// Character 20 is inside "color.accent.base"
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 3, Character: 20},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+
+	// Assert hover content
+	content, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok, "Contents should be MarkupContent")
+	assert.Contains(t, content.Value, "--color-accent-base")
+	assert.Contains(t, content.Value, "#0066cc")
+	assert.Contains(t, content.Value, "Base accent color")
+}
+
+func TestHover_JSONPointerReference(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add tokens
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:        "spacing-large",
+		Value:       "2rem",
+		Type:        "dimension",
+		Description: "Large spacing unit",
+	})
+
+	// Open a JSON document with $ref (JSON Pointer reference)
+	uri := "file:///tokens.json"
+	jsonContent := `{
+  "padding": {
+    "card": {
+      "$ref": "#/spacing/large"
+    }
+  }
+}`
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+
+	// Hover over "#/spacing/large"
+	// Line 3: `      "$ref": "#/spacing/large"`
+	// Character 20 is inside "spacing/large"
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 3, Character: 20},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+
+	// Assert hover content
+	content, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok, "Contents should be MarkupContent")
+	assert.Contains(t, content.Value, "--spacing-large")
+	assert.Contains(t, content.Value, "2rem")
+	assert.Contains(t, content.Value, "Large spacing unit")
+}
+
+func TestHover_TokenReference_UnknownToken(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Open a JSON document with reference to unknown token
+	uri := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "alias": {
+      "$value": "{unknown.token}"
+    }
+  }
+}`
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+
+	// Hover over {unknown.token}
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 3, Character: 20},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover, "Should show 'unknown token' message")
+
+	// Assert unknown token message
+	content, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, content.Value, "Unknown token")
+}
+
+func TestHover_TokenReference_NoReferenceAtPosition(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Open a JSON document
+	uri := "file:///tokens.json"
+	jsonContent := `{
+  "color": {
+    "primary": {
+      "$value": "#ff0000"
+    }
+  }
+}`
+	_ = ctx.DocumentManager().DidOpen(uri, "json", 1, jsonContent)
+
+	// Hover over a position without a token reference
+	// Line 3: `      "$value": "#ff0000"`
+	// Position on "$value" key, not on a reference
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 3, Character: 10},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, hover, "Should not show hover when not on a reference")
+}
+
+func TestHover_TokenReference_DeprecatedToken(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	// Add deprecated token
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:               "color-old-primary",
+		Value:              "#cc0000",
+		Type:               "color",
+		Deprecated:         true,
+		DeprecationMessage: "Use color.primary instead",
+	})
+
+	uri := "file:///tokens.yaml"
+	yamlContent := `color:
+  alias:
+    $value: "{color.old.primary}"`
+	_ = ctx.DocumentManager().DidOpen(uri, "yaml", 1, yamlContent)
+
+	// Hover over the deprecated token reference
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 2, Character: 18},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+
+	// Assert deprecation warning
+	content, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, content.Value, "DEPRECATED")
+	assert.Contains(t, content.Value, "Use color.primary instead")
+}

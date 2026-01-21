@@ -1,10 +1,11 @@
 module bennypowers.dev/dtls
 
-go 1.25.3
+go 1.25.5
 
 require (
-	github.com/bmatcuk/doublestar/v4 v4.9.1
-	github.com/mazznoer/csscolorparser v0.1.6
+	bennypowers.dev/asimonim v0.0.1
+	github.com/bmatcuk/doublestar/v4 v4.9.2
+	github.com/mazznoer/csscolorparser v0.1.8
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/jsonc v0.3.2
 	github.com/tliron/glsp v0.2.2

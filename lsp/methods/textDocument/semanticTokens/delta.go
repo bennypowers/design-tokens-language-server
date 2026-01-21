@@ -18,8 +18,8 @@ func ComputeDelta(oldData, newData []uint32) []protocol.SemanticTokensEdit {
 		prefixLen++
 	}
 
-	// If both are identical
-	if prefixLen == oldLen && prefixLen == newLen {
+	// If both are identical (prefix covers all of oldData and lengths match)
+	if prefixLen == oldLen && oldLen == newLen {
 		return nil
 	}
 

@@ -1,11 +1,14 @@
 package hover
 
 import (
-	"bennypowers.dev/dtls/internal/log"
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
+	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/log"
+	"bennypowers.dev/dtls/internal/parser/common"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
@@ -14,11 +17,12 @@ import (
 
 // Template for token hover content
 // Note: {{.CSSVariableName}} calls the Token.CSSVariableName() method (not a field)
+// Note: {{.DisplayValue}} calls the Token.DisplayValue() method for resolved value display
 var tokenHoverTemplate = template.Must(template.New("tokenHover").Parse(`# {{.CSSVariableName}}
 {{if .Description}}
 {{.Description}}
 {{end}}
-**Value**: ` + "`{{.Value}}`" + `
+**Value**: ` + "`{{.DisplayValue}}`" + `
 {{if .Type}}**Type**: ` + "`{{.Type}}`" + `
 {{end}}{{if .Deprecated}}
 ⚠️ **DEPRECATED**{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
@@ -36,7 +40,7 @@ var tokenHoverPlaintextTemplate = template.Must(template.New("tokenHoverPlaintex
 {{if .Description}}
 {{.Description}}
 {{end}}
-Value: {{.Value}}
+Value: {{.DisplayValue}}
 {{if .Type}}Type: {{.Type}}
 {{end}}{{if .Deprecated}}
 DEPRECATED{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
@@ -180,6 +184,62 @@ func processVariableHover(req *types.RequestContext, variable *css.Variable) (*p
 	return createHoverResponse(content, variable.Range, format), nil
 }
 
+// createTokenRefHoverResponse creates a protocol.Hover response for token references.
+func createTokenRefHoverResponse(content string, ref *common.TokenReferenceWithRange, format protocol.MarkupKind) *protocol.Hover {
+	return &protocol.Hover{
+		Contents: protocol.MarkupContent{
+			Kind:  format,
+			Value: content,
+		},
+		Range: &protocol.Range{
+			Start: protocol.Position{
+				Line:      ref.Line,
+				Character: ref.StartChar,
+			},
+			End: protocol.Position{
+				Line:      ref.Line,
+				Character: ref.EndChar,
+			},
+		},
+	}
+}
+
+// processTokenReferenceHover processes hover for a token reference in JSON/YAML files.
+// Returns hover response or error. Shows "unknown token" message if token is not found.
+func processTokenReferenceHover(req *types.RequestContext, ref *common.TokenReferenceWithRange) (*protocol.Hover, error) {
+	format := req.Server.PreferredHoverFormat()
+
+	// Look up token by the normalized name (dots replaced with dashes)
+	token := req.Server.Token(ref.TokenName)
+
+	if token == nil {
+		// Token not found - render unknown token message
+		content, err := renderUnknownToken(ref.TokenName, format)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render unknown token message: %w", err)
+		}
+		return createTokenRefHoverResponse(content, ref, format), nil
+	}
+
+	// Render token hover content
+	content, err := renderTokenHover(token, format)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render token hover: %w", err)
+	}
+
+	return createTokenRefHoverResponse(content, ref, format), nil
+}
+
+// isTokenFile checks if the language ID corresponds to a design token file format
+func isTokenFile(languageID string) bool {
+	switch languageID {
+	case "json", "jsonc", "yaml":
+		return true
+	default:
+		return false
+	}
+}
+
 // Hover handles the textDocument/hover request
 func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.Hover, error) {
 	uri := params.TextDocument.URI
@@ -193,11 +253,23 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 		return nil, nil
 	}
 
-	// Only process CSS files
-	if doc.LanguageID() != "css" {
-		return nil, nil
+	languageID := doc.LanguageID()
+
+	// Handle CSS files
+	if languageID == "css" {
+		return handleCSSHover(req, doc, position)
 	}
 
+	// Handle JSON/YAML token files (design token references)
+	if isTokenFile(languageID) || strings.HasSuffix(string(uri), ".json") || strings.HasSuffix(string(uri), ".yaml") || strings.HasSuffix(string(uri), ".yml") {
+		return handleTokenFileHover(req, doc, position)
+	}
+
+	return nil, nil
+}
+
+// handleCSSHover processes hover for CSS files
+func handleCSSHover(req *types.RequestContext, doc *documents.Document, position protocol.Position) (*protocol.Hover, error) {
 	// Parse CSS to find var() calls and variable declarations
 	parser := css.AcquireParser()
 	defer css.ReleaseParser(parser)
@@ -217,6 +289,19 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 	}
 
 	return nil, nil
+}
+
+// handleTokenFileHover processes hover for JSON/YAML token files
+func handleTokenFileHover(req *types.RequestContext, doc *documents.Document, position protocol.Position) (*protocol.Hover, error) {
+	// Find token reference at cursor position
+	ref := common.FindReferenceAtPosition(doc.Content(), position.Line, position.Character)
+	if ref == nil {
+		return nil, nil
+	}
+
+	log.Info("Found token reference: %s (type=%d) at line %d", ref.TokenName, ref.Type, ref.Line)
+
+	return processTokenReferenceHover(req, ref)
 }
 
 // isPositionInRange checks if a position is within a range

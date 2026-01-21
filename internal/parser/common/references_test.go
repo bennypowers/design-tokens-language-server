@@ -1,225 +1,146 @@
 package common_test
 
 import (
-	"encoding/json"
-	"os"
 	"testing"
 
 	"bennypowers.dev/dtls/internal/parser/common"
-	"bennypowers.dev/dtls/internal/schema"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestExtractReferences(t *testing.T) {
-	t.Run("extract curly brace references", func(t *testing.T) {
-		content := `{color.base}`
-
-		refs, err := common.ExtractReferences(content, schema.Draft)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-
-		assert.Equal(t, common.CurlyBraceReference, refs[0].Type)
-		assert.Equal(t, "color.base", refs[0].Path)
+func TestFindReferenceAtPosition(t *testing.T) {
+	t.Run("finds curly brace reference at position", func(t *testing.T) {
+		content := `{
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "{color.base}"
+    }
+  }
+}`
+		// Line 4 (0-indexed), character position within "{color.base}"
+		ref := common.FindReferenceAtPosition(content, 4, 18)
+		assert.NotNil(t, ref)
+		assert.Equal(t, "color-base", ref.TokenName)
+		assert.Equal(t, "color.base", ref.RawReference)
+		assert.Equal(t, common.CurlyBraceReference, ref.Type)
 	})
 
-	t.Run("extract multiple curly brace references", func(t *testing.T) {
-		content := `rgb({color.r}, {color.g}, {color.b})`
-
-		refs, err := common.ExtractReferences(content, schema.Draft)
-		require.NoError(t, err)
-		require.Len(t, refs, 3)
-
-		assert.Equal(t, "color.r", refs[0].Path)
-		assert.Equal(t, "color.g", refs[1].Path)
-		assert.Equal(t, "color.b", refs[2].Path)
+	t.Run("finds JSON pointer reference at position", func(t *testing.T) {
+		content := `{
+  "color": {
+    "primary": {
+      "$ref": "#/color/base"
+    }
+  }
+}`
+		// Line 3, within the $ref value
+		ref := common.FindReferenceAtPosition(content, 3, 18)
+		assert.NotNil(t, ref)
+		assert.Equal(t, "color-base", ref.TokenName)
+		assert.Equal(t, "#/color/base", ref.RawReference)
+		assert.Equal(t, common.JSONPointerReference, ref.Type)
 	})
 
-	t.Run("extract JSON pointer reference", func(t *testing.T) {
-		// JSON Pointer references use $ref field, not string interpolation
-		// So this tests parsing a structured $ref
-		refObj := map[string]any{
-			"$ref": "#/color/base",
-		}
-
-		refs, err := common.ExtractReferencesFromValue(refObj, schema.V2025_10)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-
-		assert.Equal(t, common.JSONPointerReference, refs[0].Type)
-		assert.Equal(t, "color/base", refs[0].Path)
+	t.Run("returns nil when no reference at position", func(t *testing.T) {
+		content := `{
+  "color": {
+    "primary": {
+      "$type": "color",
+      "$value": "#FF6B35"
+    }
+  }
+}`
+		// Line 4, within the hex value (not a reference)
+		ref := common.FindReferenceAtPosition(content, 4, 18)
+		assert.Nil(t, ref)
 	})
 
-	t.Run("no references in plain value", func(t *testing.T) {
-		content := `#FF6B35`
-
-		refs, err := common.ExtractReferences(content, schema.Draft)
-		require.NoError(t, err)
-		assert.Empty(t, refs)
+	t.Run("returns nil for out of bounds line", func(t *testing.T) {
+		content := `{"color": {"$value": "{color.base}"}}`
+		ref := common.FindReferenceAtPosition(content, 100, 0)
+		assert.Nil(t, ref)
 	})
 
-	t.Run("error on JSON pointer in draft schema", func(t *testing.T) {
-		refObj := map[string]any{
-			"$ref": "#/color/base",
-		}
-
-		_, err := common.ExtractReferencesFromValue(refObj, schema.Draft)
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, schema.ErrMixedSchemaFeatures)
-	})
-}
-
-func TestExtractReferencesFromFixture(t *testing.T) {
-	t.Run("extract curly brace references from fixture", func(t *testing.T) {
-		content, err := os.ReadFile("testdata/references/curly-braces.json")
-		require.NoError(t, err)
-
-		var data map[string]any
-		require.NoError(t, json.Unmarshal(content, &data))
-
-		colorsRaw, ok := data["color"]
-		require.True(t, ok, "fixture should have 'color' key")
-		colors, ok := colorsRaw.(map[string]any)
-		require.True(t, ok, "color should be a map")
-
-		// Check "primary" token which references "base"
-		primaryTokenRaw, ok := colors["primary"]
-		require.True(t, ok, "fixture should have 'primary' token")
-		primaryToken, ok := primaryTokenRaw.(map[string]any)
-		require.True(t, ok, "primary should be a map")
-		primaryValueRaw, ok := primaryToken["$value"]
-		require.True(t, ok, "primary should have '$value' field")
-		primaryValue, ok := primaryValueRaw.(string)
-		require.True(t, ok, "primary $value should be a string")
-
-		refs, err := common.ExtractReferences(primaryValue, schema.Draft)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-		assert.Equal(t, "color.base", refs[0].Path)
-
-		// Check "secondary" token which references "primary"
-		secondaryTokenRaw, ok := colors["secondary"]
-		require.True(t, ok, "fixture should have 'secondary' token")
-		secondaryToken, ok := secondaryTokenRaw.(map[string]any)
-		require.True(t, ok, "secondary should be a map")
-		secondaryValueRaw, ok := secondaryToken["$value"]
-		require.True(t, ok, "secondary should have '$value' field")
-		secondaryValue, ok := secondaryValueRaw.(string)
-		require.True(t, ok, "secondary $value should be a string")
-
-		refs, err = common.ExtractReferences(secondaryValue, schema.Draft)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-		assert.Equal(t, "color.primary", refs[0].Path)
+	t.Run("handles CRLF line endings", func(t *testing.T) {
+		content := "{\r\n  \"$value\": \"{color.base}\"\r\n}"
+		ref := common.FindReferenceAtPosition(content, 1, 18)
+		assert.NotNil(t, ref)
+		assert.Equal(t, "color-base", ref.TokenName)
 	})
 
-	t.Run("extract JSON pointer references from fixture", func(t *testing.T) {
-		content, err := os.ReadFile("testdata/references/json-pointers.json")
-		require.NoError(t, err)
+	t.Run("handles nested path reference", func(t *testing.T) {
+		content := `{"$value": "{color.brand.primary.base}"}`
+		ref := common.FindReferenceAtPosition(content, 0, 20)
+		assert.NotNil(t, ref)
+		assert.Equal(t, "color-brand-primary-base", ref.TokenName)
+		assert.Equal(t, "color.brand.primary.base", ref.RawReference)
+	})
 
-		var data map[string]any
-		require.NoError(t, json.Unmarshal(content, &data))
+	t.Run("handles JSON pointer with nested path", func(t *testing.T) {
+		content := `{"$ref": "#/color/brand/primary"}`
+		ref := common.FindReferenceAtPosition(content, 0, 15)
+		assert.NotNil(t, ref)
+		assert.Equal(t, "color-brand-primary", ref.TokenName)
+		assert.Equal(t, "#/color/brand/primary", ref.RawReference)
+	})
 
-		colorsRaw, ok := data["color"]
-		require.True(t, ok, "fixture should have 'color' key")
-		colors, ok := colorsRaw.(map[string]any)
-		require.True(t, ok, "color should be a map")
+	t.Run("returns nil when cursor is exactly at end of curly brace reference (half-open range)", func(t *testing.T) {
+		// Content: {"$value": "{color.base}"}
+		// Indices:  0123456789...
+		// The reference "{color.base}" is at positions 12-24 (StartChar:12, EndChar:24)
+		// With half-open range semantics, position 24 should NOT match (exclusive end)
+		content := `{"$value": "{color.base}"}`
+		ref := common.FindReferenceAtPosition(content, 0, 24)
+		assert.Nil(t, ref, "cursor at exclusive end boundary (position 24) should return nil")
+	})
 
-		// Check "primary" token which references "base"
-		primaryTokenRaw, ok := colors["primary"]
-		require.True(t, ok, "fixture should have 'primary' token")
-		primaryToken, ok := primaryTokenRaw.(map[string]any)
-		require.True(t, ok, "primary should be a map")
+	t.Run("returns reference when cursor is at last character of curly brace reference", func(t *testing.T) {
+		// Position 23 is the closing brace "}", which should still be inside the range [12, 24)
+		content := `{"$value": "{color.base}"}`
+		ref := common.FindReferenceAtPosition(content, 0, 23)
+		assert.NotNil(t, ref, "cursor at last character of reference (position 23) should return reference")
+		assert.Equal(t, "color-base", ref.TokenName)
+	})
 
-		refs, err := common.ExtractReferencesFromValue(primaryToken, schema.V2025_10)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-		assert.Equal(t, common.JSONPointerReference, refs[0].Type)
-		assert.Equal(t, "color/base", refs[0].Path)
+	t.Run("returns nil when cursor is exactly at end of JSON pointer reference (half-open range)", func(t *testing.T) {
+		// Content: {"$ref": "#/color/base"}
+		// The reference starts at position 1, ends at position 23 (StartChar:1, EndChar:23)
+		// With half-open semantics, position 23 should NOT match
+		content := `{"$ref": "#/color/base"}`
+		ref := common.FindReferenceAtPosition(content, 0, 23)
+		assert.Nil(t, ref, "cursor at exclusive end boundary (position 23) should return nil")
+	})
+
+	t.Run("returns reference when cursor is at last character of JSON pointer reference", func(t *testing.T) {
+		// Position 22 is the 'e' in 'base', which should still be inside the range [1, 23)
+		content := `{"$ref": "#/color/base"}`
+		ref := common.FindReferenceAtPosition(content, 0, 22)
+		assert.NotNil(t, ref, "cursor at last character of reference (position 22) should return reference")
+		assert.Equal(t, "color-base", ref.TokenName)
 	})
 }
 
-func TestReferencePathConversion(t *testing.T) {
-	t.Run("convert curly brace path to token name", func(t *testing.T) {
-		refs, err := common.ExtractReferences("{color.brand.primary}", schema.Draft)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-
-		// Path should be dot-separated
-		assert.Equal(t, "color.brand.primary", refs[0].Path)
+func TestNormalizeLineEndings(t *testing.T) {
+	t.Run("normalizes CRLF to LF", func(t *testing.T) {
+		input := "line1\r\nline2\r\nline3"
+		expected := "line1\nline2\nline3"
+		assert.Equal(t, expected, common.NormalizeLineEndings(input))
 	})
 
-	t.Run("convert JSON pointer to token path", func(t *testing.T) {
-		refObj := map[string]any{
-			"$ref": "#/color/brand/primary",
-		}
-
-		refs, err := common.ExtractReferencesFromValue(refObj, schema.V2025_10)
-		require.NoError(t, err)
-		require.Len(t, refs, 1)
-
-		// Path should be slash-separated (JSON Pointer format)
-		assert.Equal(t, "color/brand/primary", refs[0].Path)
-	})
-}
-
-func TestConvertJSONPointerToTokenPath(t *testing.T) {
-	t.Run("converts with hash prefix", func(t *testing.T) {
-		result := common.ConvertJSONPointerToTokenPath("#/color/brand/primary")
-		assert.Equal(t, "color.brand.primary", result)
+	t.Run("normalizes CR to LF", func(t *testing.T) {
+		input := "line1\rline2\rline3"
+		expected := "line1\nline2\nline3"
+		assert.Equal(t, expected, common.NormalizeLineEndings(input))
 	})
 
-	t.Run("converts without hash prefix", func(t *testing.T) {
-		result := common.ConvertJSONPointerToTokenPath("color/brand/primary")
-		assert.Equal(t, "color.brand.primary", result)
+	t.Run("preserves LF", func(t *testing.T) {
+		input := "line1\nline2\nline3"
+		assert.Equal(t, input, common.NormalizeLineEndings(input))
 	})
 
-	t.Run("handles single segment", func(t *testing.T) {
-		result := common.ConvertJSONPointerToTokenPath("#/color")
-		assert.Equal(t, "color", result)
-	})
-
-	t.Run("handles deeply nested path", func(t *testing.T) {
-		result := common.ConvertJSONPointerToTokenPath("#/a/b/c/d/e")
-		assert.Equal(t, "a.b.c.d.e", result)
-	})
-
-	t.Run("handles empty string", func(t *testing.T) {
-		result := common.ConvertJSONPointerToTokenPath("")
-		assert.Equal(t, "", result)
-	})
-
-	t.Run("handles just hash", func(t *testing.T) {
-		result := common.ConvertJSONPointerToTokenPath("#/")
-		assert.Equal(t, "", result)
-	})
-}
-
-func TestConvertTokenPathToJSONPointer(t *testing.T) {
-	t.Run("converts simple path", func(t *testing.T) {
-		result := common.ConvertTokenPathToJSONPointer("color.brand.primary")
-		assert.Equal(t, "#/color/brand/primary", result)
-	})
-
-	t.Run("handles single segment", func(t *testing.T) {
-		result := common.ConvertTokenPathToJSONPointer("color")
-		assert.Equal(t, "#/color", result)
-	})
-
-	t.Run("handles deeply nested path", func(t *testing.T) {
-		result := common.ConvertTokenPathToJSONPointer("a.b.c.d.e")
-		assert.Equal(t, "#/a/b/c/d/e", result)
-	})
-
-	t.Run("handles empty string", func(t *testing.T) {
-		result := common.ConvertTokenPathToJSONPointer("")
-		assert.Equal(t, "#/", result)
-	})
-
-	t.Run("roundtrip conversion", func(t *testing.T) {
-		original := "color.brand.primary"
-		jsonPointer := common.ConvertTokenPathToJSONPointer(original)
-		result := common.ConvertJSONPointerToTokenPath(jsonPointer)
-		assert.Equal(t, original, result)
+	t.Run("handles mixed line endings", func(t *testing.T) {
+		input := "line1\r\nline2\rline3\nline4"
+		expected := "line1\nline2\nline3\nline4"
+		assert.Equal(t, expected, common.NormalizeLineEndings(input))
 	})
 }
