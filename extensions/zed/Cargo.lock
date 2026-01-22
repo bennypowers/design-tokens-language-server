@@ -312,7 +312,7 @@ dependencies = [
 
 [[package]]
 name = "zed_design_tokens_language_server"
-version = "0.0.29"
+version = "0.0.30"
 dependencies = [
  "zed_extension_api",
 ]

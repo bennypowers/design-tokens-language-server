@@ -37,45 +37,27 @@ impl DesignTokensExtension {
 
         let (platform, arch) = zed::current_platform();
         // Binary names for the design tokens language server:
-        //  * - design-tokens-language-server-aarch64-apple-darwin
-        //  * - design-tokens-language-server-aarch64-unknown-linux-gnu
-        //  * - design-tokens-language-server-x86_64-apple-darwin
-        //  * - design-tokens-language-server-x86_64-unknown-linux-gnu
-        //  * - design-tokens-language-server-win-x64.exe
-        //  * - design-tokens-language-server-win-arm64.exe
-        let asset_name = match platform {
-            // Windows uses simplified naming
-            zed::Os::Windows => {
-                let arch_name = match arch {
-                    zed::Architecture::Aarch64 => "arm64",
-                    zed::Architecture::X8664 => "x64",
-                    zed::Architecture::X86 => {
-                        return Err(format!(
-                            "Unsupported architecture: 32-bit x86 is not supported. Please use a 64-bit system."
-                        ))
-                    }
-                };
-                format!("design-tokens-language-server-win-{}.exe", arch_name)
-            }
-            // Unix platforms use target triples
-            _ => {
-                let arch_name = match arch {
-                    zed::Architecture::Aarch64 => "aarch64",
-                    zed::Architecture::X8664 => "x86_64",
-                    zed::Architecture::X86 => {
-                        return Err(format!(
-                            "Unsupported architecture: 32-bit x86 is not supported. Please use a 64-bit system."
-                        ))
-                    }
-                };
-                let os_name = match platform {
-                    zed::Os::Mac => "apple-darwin",
-                    zed::Os::Linux => "unknown-linux-gnu",
-                    zed::Os::Windows => unreachable!(),
-                };
-                format!("design-tokens-language-server-{}-{}", arch_name, os_name)
+        //  * - design-tokens-language-server-darwin-arm64
+        //  * - design-tokens-language-server-darwin-x64
+        //  * - design-tokens-language-server-linux-arm64
+        //  * - design-tokens-language-server-linux-x64
+        //  * - design-tokens-language-server-win32-arm64.exe
+        //  * - design-tokens-language-server-win32-x64.exe
+        let arch_name = match arch {
+            zed::Architecture::Aarch64 => "arm64",
+            zed::Architecture::X8664 => "x64",
+            zed::Architecture::X86 => {
+                return Err(format!(
+                    "Unsupported architecture: 32-bit x86 is not supported."
+                ))
             }
         };
+        let (os_name, ext) = match platform {
+            zed::Os::Mac => ("darwin", ""),
+            zed::Os::Linux => ("linux", ""),
+            zed::Os::Windows => ("win32", ".exe"),
+        };
+        let asset_name = format!("design-tokens-language-server-{}-{}{}", os_name, arch_name, ext);
 
         let asset = release
             .assets
