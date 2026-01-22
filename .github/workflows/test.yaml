@@ -34,3 +34,63 @@ jobs:
     uses: bennypowers/go-release-workflows/.github/workflows/build-binaries.yml@main
     with:
       binary-name: design-tokens-language-server
+
+  zed-extension:
+    name: Zed Extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-wasip1
+
+      - name: Check Zed extension compiles
+        working-directory: extensions/zed
+        run: cargo check --target wasm32-wasip1 --release
+
+  test-binary-runtime:
+    name: Test Binary Runtime
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: design-tokens-language-server-linux-x64
+          path: /tmp
+
+      - name: Make binary executable
+        run: chmod +x /tmp/design-tokens-language-server-linux-x64
+
+      - name: Test LSP server starts and responds
+        run: |
+          # Send LSP initialize request with proper Content-Length header
+          REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":null,"capabilities":{}}}'
+          printf "Content-Length: %d\r\n\r\n%s" ${#REQUEST} "$REQUEST" | \
+            timeout 5 /tmp/design-tokens-language-server-linux-x64 2>/dev/null | \
+            grep -q '"result"'
+          echo "LSP server responded to initialize request"
+
+  test-binary-availability:
+    name: Verify Binary Availability
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - darwin-arm64
+          - darwin-x64
+          - linux-arm64
+          - linux-x64
+          - win32-arm64
+          - win32-x64
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: design-tokens-language-server-${{ matrix.platform }}
+          path: /tmp
+
+      - name: Verify binary was downloaded
+        run: |
+          ls -la /tmp/
+          echo "Binary design-tokens-language-server-${{ matrix.platform }} downloaded successfully"
