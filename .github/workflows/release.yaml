@@ -32,6 +32,9 @@ jobs:
             --pattern "design-tokens-language-server-*" \
             --dir extensions/vscode/dist/bin
 
+      - name: Make binaries executable
+        run: chmod +x extensions/vscode/dist/bin/design-tokens-language-server-*
+
       - name: List downloaded binaries
         run: ls -lh extensions/vscode/dist/bin/
 
