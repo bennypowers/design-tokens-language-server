@@ -42,7 +42,14 @@ async function main() {
       console.log(
         `[vscode-build] Found ${binaries.length} language server binaries:`
       );
-      binaries.forEach((b) => console.log(`  - ${b}`));
+      binaries.forEach((b) => {
+        console.log(`  - ${b}`);
+        // Ensure binaries are executable (gh release download doesn't preserve permissions)
+        const binPath = path.join(binDir, b);
+        if (!b.endsWith(".exe")) {
+          fs.chmodSync(binPath, 0o755);
+        }
+      });
     } else {
       console.warn(
         "[vscode-build] Warning: No language server binaries found in dist/bin/"
