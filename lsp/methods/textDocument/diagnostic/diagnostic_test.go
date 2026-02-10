@@ -258,6 +258,25 @@ func TestIsCSSValueSemanticallyEquivalent(t *testing.T) {
 	}
 }
 
+func TestGetDiagnostics_NumericFallbackNoFalsePositive(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+
+	// Token with numeric-origin value (e.g. fontWeight parsed from $value: 500)
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:  "rh.font-weight.body-text-medium",
+		Value: "500",
+		Type:  "fontWeight",
+	})
+
+	uri := "file:///test.css"
+	cssContent := `#header-text { font-weight: var(--rh-font-weight-body-text-medium, 500); }`
+	_ = ctx.DocumentManager().DidOpen(uri, "css", 1, cssContent)
+
+	diagnostics, err := GetDiagnostics(ctx, uri)
+	require.NoError(t, err)
+	assert.Empty(t, diagnostics, "Numeric fallback matching token value should not produce diagnostic")
+}
+
 func TestGetDiagnostics_FallbackSemanticEquivalence(t *testing.T) {
 	ctx := testutil.NewMockServerContext()
 

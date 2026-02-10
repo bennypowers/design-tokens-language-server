@@ -3,7 +3,7 @@ module bennypowers.dev/dtls
 go 1.25.5
 
 require (
-	bennypowers.dev/asimonim v0.0.1
+	bennypowers.dev/asimonim v0.0.3
 	github.com/bmatcuk/doublestar/v4 v4.9.2
 	github.com/mazznoer/csscolorparser v0.1.8
 	github.com/stretchr/testify v1.11.1
@@ -19,6 +19,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
@@ -36,4 +37,5 @@ require (
 	golang.org/x/net v0.45.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
