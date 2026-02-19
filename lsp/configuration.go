@@ -1,12 +1,16 @@
 package lsp
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
+	"time"
 
+	"bennypowers.dev/asimonim/load"
 	"bennypowers.dev/asimonim/resolver"
 	"bennypowers.dev/asimonim/schema"
+	"bennypowers.dev/asimonim/specifier"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/lsp/types"
 )
@@ -241,11 +245,26 @@ func (s *Server) loadTokenFileAndLog(path string, opts *TokenFileOptions) error 
 	return nil
 }
 
+// networkTimeout returns the configured timeout duration for CDN requests,
+// falling back to load.DefaultTimeout if not configured.
+func networkTimeout(cfg types.ServerConfig) time.Duration {
+	if cfg.NetworkTimeout > 0 {
+		return time.Duration(cfg.NetworkTimeout) * time.Second
+	}
+	return load.DefaultTimeout
+}
+
 // loadExplicitTokenFiles loads tokens from explicitly configured files
 func (s *Server) loadExplicitTokenFiles() error {
 	// Snapshot config and state separately for semantic clarity
 	cfg := s.GetConfig()
 	state := s.GetState()
+
+	// Create fetcher once if network fallback is enabled
+	var fetcher load.Fetcher
+	if cfg.NetworkFallback {
+		fetcher = load.NewHTTPFetcher(load.DefaultMaxSize)
+	}
 
 	var errs []error
 
@@ -261,18 +280,26 @@ func (s *Server) loadExplicitTokenFiles() error {
 			continue
 		}
 
+		opts := &TokenFileOptions{
+			Prefix:       prefix,
+			GroupMarkers: groupMarkers,
+		}
+
 		// Normalize path (handles relative, ~/, npm:, and absolute paths)
 		normalizedPath, err := normalizePath(path, state.RootPath)
 		if err != nil {
+			// Try CDN fallback for package specifiers when local resolution fails
+			if fetcher != nil && specifier.IsPackageSpecifier(path) {
+				if cdnErr := s.loadFromCDN(fetcher, path, opts, cfg); cdnErr != nil {
+					errs = append(errs, fmt.Errorf("failed to resolve path %s: %w (CDN fallback also failed: %v)", path, err, cdnErr))
+				}
+				continue
+			}
 			errs = append(errs, fmt.Errorf("failed to resolve path %s: %w", path, err))
 			continue
 		}
 
 		// Load the file with per-file options and log results
-		opts := &TokenFileOptions{
-			Prefix:       prefix,
-			GroupMarkers: groupMarkers,
-		}
 		if err := s.loadTokenFileAndLog(normalizedPath, opts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to load %s: %w", normalizedPath, err))
 			continue
@@ -282,6 +309,30 @@ func (s *Server) loadExplicitTokenFiles() error {
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
+	return nil
+}
+
+// loadFromCDN fetches token data from a CDN for a package specifier and adds the tokens.
+func (s *Server) loadFromCDN(fetcher load.Fetcher, specPath string, opts *TokenFileOptions, cfg types.ServerConfig) error {
+	cdnURL, ok := specifier.CDNURL(specPath, specifier.CDN(cfg.CDN))
+	if !ok {
+		return fmt.Errorf("cannot determine CDN URL for %s", specPath)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), networkTimeout(cfg))
+	defer cancel()
+
+	content, err := fetcher.Fetch(ctx, cdnURL)
+	if err != nil {
+		return fmt.Errorf("CDN fetch failed for %s: %w", cdnURL, err)
+	}
+
+	_, err = s.parseAndAddTokens(content, "", cdnURL, opts)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Loaded tokens from CDN: %s", cdnURL)
 	return nil
 }
 

@@ -256,6 +256,61 @@ relative path or a deno-style npm specifier.
 }
 ```
 
+### Network Fallback
+
+When using `npm:` specifiers for token packages, DTLS normally resolves them
+from `node_modules`. If the package isn't installed locally, you can enable
+**network fallback** to fetch tokens from [unpkg.com](https://unpkg.com)
+instead.
+
+This is opt-in and disabled by default.
+
+#### Enable in package.json
+
+```json
+{
+  "designTokensLanguageServer": {
+    "networkFallback": true,
+    "networkTimeout": 30,
+    "cdn": "unpkg",
+    "tokensFiles": [
+      "npm:@my-design-system/tokens/tokens.json"
+    ]
+  }
+}
+```
+
+#### Enable in VS Code
+
+Set `designTokensLanguageServer.networkFallback` to `true` in your VS Code
+settings.
+
+#### Enable in `.config/design-tokens.yaml`
+
+```yaml
+networkFallback: true
+networkTimeout: 30
+cdn: unpkg
+files:
+  - npm:@my-design-system/tokens/tokens.json
+```
+
+#### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `networkFallback` | `boolean` | `false` | Enable CDN fallback for package specifiers |
+| `networkTimeout` | `number` | `30` | Max seconds to wait for CDN requests |
+| `cdn` | `string` | `"unpkg"` | CDN provider: `unpkg`, `esm.sh`, `esm.run`, `jspm`, `jsdelivr` |
+
+#### Security
+
+- Network fallback is **opt-in** -- it never fetches from the network unless
+  explicitly enabled
+- Responses are limited to 10 MB to prevent resource exhaustion
+- Requests have a configurable timeout (default 30 seconds)
+- Only `npm:` specifiers with a file component trigger CDN lookups
+
 ### Global configuration
 
 You can set up global configuration in your editor's LSP settings for DTLS. This

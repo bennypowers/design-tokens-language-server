@@ -1,10 +1,14 @@
 package lsp
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"bennypowers.dev/asimonim/load"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -351,4 +355,271 @@ func TestSetRootPath(t *testing.T) {
 	server.SetRootPath("/test/path")
 	assert.Equal(t, "/test/path", server.GetState().RootPath)
 	assert.Equal(t, "/test/path", server.RootPath())
+}
+
+// mockFetcher implements load.Fetcher for testing
+type mockFetcher struct {
+	data map[string][]byte
+	err  error
+}
+
+func (m *mockFetcher) Fetch(_ context.Context, url string) ([]byte, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	data, ok := m.data[url]
+	if !ok {
+		return nil, fmt.Errorf("not found: %s", url)
+	}
+	return data, nil
+}
+
+func TestLoadFromCDN(t *testing.T) {
+	tokenJSON := []byte(`{
+		"color": {
+			"brand": {
+				"$value": "#0000ff",
+				"$type": "color"
+			}
+		}
+	}`)
+
+	t.Run("successful CDN fallback", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		fetcher := &mockFetcher{
+			data: map[string][]byte{
+				"https://unpkg.com/@design/tokens/tokens.json": tokenJSON,
+			},
+		}
+
+		cfg := types.ServerConfig{NetworkTimeout: 30}
+		opts := &TokenFileOptions{}
+		err = server.loadFromCDN(fetcher, "npm:@design/tokens/tokens.json", opts, cfg)
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, server.TokenCount())
+		assert.NotNil(t, server.Token("color-brand"))
+	})
+
+	t.Run("CDN fetch error", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		fetcher := &mockFetcher{
+			err: fmt.Errorf("network error"),
+		}
+
+		cfg := types.ServerConfig{NetworkTimeout: 30}
+		opts := &TokenFileOptions{}
+		err = server.loadFromCDN(fetcher, "npm:@design/tokens/tokens.json", opts, cfg)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "CDN fetch failed")
+	})
+
+	t.Run("invalid npm specifier for CDN", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		fetcher := &mockFetcher{}
+		cfg := types.ServerConfig{}
+		opts := &TokenFileOptions{}
+		// npm:package without a file component can't map to CDN
+		err = server.loadFromCDN(fetcher, "npm:@design/tokens", opts, cfg)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot determine CDN URL")
+	})
+
+	t.Run("CDN fallback with prefix", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		fetcher := &mockFetcher{
+			data: map[string][]byte{
+				"https://unpkg.com/@design/tokens/tokens.json": tokenJSON,
+			},
+		}
+
+		cfg := types.ServerConfig{NetworkTimeout: 30}
+		opts := &TokenFileOptions{Prefix: "ds"}
+		err = server.loadFromCDN(fetcher, "npm:@design/tokens/tokens.json", opts, cfg)
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, server.TokenCount())
+	})
+
+	t.Run("configurable CDN provider", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		fetcher := &mockFetcher{
+			data: map[string][]byte{
+				"https://cdn.jsdelivr.net/npm/@design/tokens/tokens.json": tokenJSON,
+			},
+		}
+
+		cfg := types.ServerConfig{NetworkTimeout: 30, CDN: "jsdelivr"}
+		opts := &TokenFileOptions{}
+		err = server.loadFromCDN(fetcher, "npm:@design/tokens/tokens.json", opts, cfg)
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, server.TokenCount())
+		assert.NotNil(t, server.Token("color-brand"))
+	})
+
+	t.Run("defaults to unpkg when CDN is empty", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		fetcher := &mockFetcher{
+			data: map[string][]byte{
+				"https://unpkg.com/@design/tokens/tokens.json": tokenJSON,
+			},
+		}
+
+		cfg := types.ServerConfig{NetworkTimeout: 30, CDN: ""}
+		opts := &TokenFileOptions{}
+		err = server.loadFromCDN(fetcher, "npm:@design/tokens/tokens.json", opts, cfg)
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, server.TokenCount())
+	})
+}
+
+func TestNetworkFallbackInLoadExplicitTokenFiles(t *testing.T) {
+	t.Run("fallback disabled - npm error propagates", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		// No node_modules, networkFallback disabled
+		server.SetRootPath(tmpDir)
+		server.SetConfig(types.ServerConfig{
+			TokensFiles:     []any{"npm:@missing/tokens/tokens.json"},
+			NetworkFallback: false,
+		})
+
+		err = server.LoadTokensFromConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to resolve path")
+		assert.Equal(t, 0, server.TokenCount())
+	})
+
+	t.Run("non-npm path - no fallback attempted", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetRootPath(tmpDir)
+		server.SetConfig(types.ServerConfig{
+			TokensFiles:     []any{"/nonexistent/tokens.json"},
+			NetworkFallback: true,
+		})
+
+		err = server.LoadTokensFromConfig()
+		require.Error(t, err)
+		// Should fail with a regular file error, not a CDN error
+		assert.NotContains(t, err.Error(), "CDN")
+	})
+}
+
+func TestNetworkTimeout(t *testing.T) {
+	t.Run("uses configured timeout", func(t *testing.T) {
+		cfg := types.ServerConfig{NetworkTimeout: 60}
+		d := networkTimeout(cfg)
+		assert.Equal(t, 60*time.Second, d)
+	})
+
+	t.Run("falls back to default when zero", func(t *testing.T) {
+		cfg := types.ServerConfig{NetworkTimeout: 0}
+		d := networkTimeout(cfg)
+		assert.Equal(t, load.DefaultTimeout, d)
+	})
+
+	t.Run("falls back to default when negative", func(t *testing.T) {
+		cfg := types.ServerConfig{NetworkTimeout: -1}
+		d := networkTimeout(cfg)
+		assert.Equal(t, load.DefaultTimeout, d)
+	})
+}
+
+func TestParseAndAddTokens(t *testing.T) {
+	tokenJSON := []byte(`{
+		"color": {
+			"primary": {
+				"$value": "#ff0000",
+				"$type": "color"
+			}
+		}
+	}`)
+
+	t.Run("adds tokens with file path and URI", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		count, err := server.parseAndAddTokens(tokenJSON, "/tmp/tokens.json", "file:///tmp/tokens.json", &TokenFileOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+
+		tok := server.Token("color-primary")
+		require.NotNil(t, tok)
+		assert.Equal(t, "/tmp/tokens.json", tok.FilePath)
+		assert.Equal(t, "file:///tmp/tokens.json", tok.DefinitionURI)
+	})
+
+	t.Run("adds tokens with empty file path (CDN source)", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		count, err := server.parseAndAddTokens(tokenJSON, "", "https://unpkg.com/@design/tokens/tokens.json", &TokenFileOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+
+		tok := server.Token("color-primary")
+		require.NotNil(t, tok)
+		assert.Empty(t, tok.FilePath)
+		assert.Equal(t, "https://unpkg.com/@design/tokens/tokens.json", tok.DefinitionURI)
+	})
+
+	t.Run("applies prefix", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		count, err := server.parseAndAddTokens(tokenJSON, "", "", &TokenFileOptions{Prefix: "ds"})
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("returns error for invalid JSON", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		_, err = server.parseAndAddTokens([]byte(`{invalid`), "", "", &TokenFileOptions{})
+		require.Error(t, err)
+	})
+
+	t.Run("nil opts defaults to empty", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		count, err := server.parseAndAddTokens(tokenJSON, "", "", nil)
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
+	})
 }

@@ -195,3 +195,43 @@ func TestParseConfiguration_InvalidJSON(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "marshal")
 }
+
+func TestParseConfiguration_NetworkFallback(t *testing.T) {
+	settings := map[string]any{
+		"designTokensLanguageServer": map[string]any{
+			"networkFallback": true,
+			"networkTimeout":  float64(60),
+		},
+	}
+
+	config, err := parseConfiguration(settings)
+	require.NoError(t, err)
+	assert.True(t, config.NetworkFallback)
+	assert.Equal(t, 60, config.NetworkTimeout)
+}
+
+func TestParseConfiguration_CDNProvider(t *testing.T) {
+	settings := map[string]any{
+		"designTokensLanguageServer": map[string]any{
+			"networkFallback": true,
+			"cdn":             "jsdelivr",
+		},
+	}
+
+	config, err := parseConfiguration(settings)
+	require.NoError(t, err)
+	assert.Equal(t, "jsdelivr", config.CDN)
+}
+
+func TestParseConfiguration_NetworkFallbackDefaults(t *testing.T) {
+	settings := map[string]any{
+		"designTokensLanguageServer": map[string]any{
+			"prefix": "ds",
+		},
+	}
+
+	config, err := parseConfiguration(settings)
+	require.NoError(t, err)
+	assert.False(t, config.NetworkFallback)
+	assert.Equal(t, 0, config.NetworkTimeout)
+}

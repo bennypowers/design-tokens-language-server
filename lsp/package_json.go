@@ -123,6 +123,21 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 	// Parse tokensFiles
 	config.TokensFiles = parseTokensFilesField(configMap)
 
+	// Parse networkFallback
+	if nf, ok := configMap["networkFallback"].(bool); ok {
+		config.NetworkFallback = nf
+	}
+
+	// Parse networkTimeout
+	if nt, ok := configMap["networkTimeout"].(float64); ok {
+		config.NetworkTimeout = int(nt)
+	}
+
+	// Parse cdn
+	if cdn, ok := configMap["cdn"].(string); ok {
+		config.CDN = cdn
+	}
+
 	return config
 }
 
