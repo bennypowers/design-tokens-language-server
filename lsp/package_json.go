@@ -137,10 +137,11 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 
 	// Parse cdn
 	if cdn, ok := configMap["cdn"].(string); ok {
-		if slices.Contains(specifier.ValidCDNs(), cdn) {
+		validCDNs := specifier.ValidCDNs()
+		if slices.Contains(validCDNs, cdn) {
 			config.CDN = cdn
 		} else {
-			log.Warn("Invalid CDN provider %q, valid values: %v", cdn, specifier.ValidCDNs())
+			log.Warn("Invalid CDN provider %q, valid values: %v", cdn, validCDNs)
 		}
 	}
 

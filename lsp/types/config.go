@@ -35,7 +35,7 @@ type ServerConfig struct {
 	NetworkFallback bool `json:"networkFallback"`
 
 	// NetworkTimeout is the max time in seconds for CDN requests.
-	// Zero means use default (30s). Has no effect if NetworkFallback is false.
+	// Non-positive values (<= 0) use the default (30s). Has no effect if NetworkFallback is false.
 	NetworkTimeout int `json:"networkTimeout,omitempty"`
 
 	// CDN selects the CDN provider for network fallback of package specifiers.

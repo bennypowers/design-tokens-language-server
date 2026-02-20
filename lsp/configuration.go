@@ -63,6 +63,21 @@ func (s *Server) LoadPackageJsonConfig() error {
 		log.Info("Loaded %d tokensFiles from config", len(pkgConfig.TokensFiles))
 	}
 
+	if !s.config.NetworkFallback && pkgConfig.NetworkFallback {
+		s.config.NetworkFallback = true
+		log.Info("Loaded networkFallback from package.json: %v", pkgConfig.NetworkFallback)
+	}
+
+	if s.config.NetworkTimeout == 0 && pkgConfig.NetworkTimeout != 0 {
+		s.config.NetworkTimeout = pkgConfig.NetworkTimeout
+		log.Info("Loaded networkTimeout from package.json: %d", pkgConfig.NetworkTimeout)
+	}
+
+	if s.config.CDN == "" && pkgConfig.CDN != "" {
+		s.config.CDN = pkgConfig.CDN
+		log.Info("Loaded cdn from package.json: %s", pkgConfig.CDN)
+	}
+
 	return nil
 }
 
