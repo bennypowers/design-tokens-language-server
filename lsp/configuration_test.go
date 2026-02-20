@@ -545,16 +545,13 @@ func TestNetworkFallbackInLoadExplicitTokenFiles(t *testing.T) {
 		assert.Equal(t, 0, server.TokenCount())
 	})
 
-	t.Run("CDN fallback enabled for npm path", func(t *testing.T) {
+	t.Run("fallback disabled - package specifier error propagates", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		server, err := NewServer()
 		require.NoError(t, err)
 		defer func() { _ = server.Close() }()
 
-		// NetworkFallback is false here so no real HTTP request is made.
-		// We only exercise the specifier.IsPackageSpecifier guard:
-		// since fallback is disabled, the error propagates without a CDN attempt.
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
 			TokensFiles:     []any{"npm:@test/tokens/tokens.json"},
@@ -815,7 +812,7 @@ func TestParseAndAddTokens(t *testing.T) {
 		assert.Equal(t, 1, count)
 	})
 
-	t.Run("partial failure with duplicate tokens", func(t *testing.T) {
+	t.Run("duplicate tokens are overwritten", func(t *testing.T) {
 		server, err := NewServer()
 		require.NoError(t, err)
 		defer func() { _ = server.Close() }()
@@ -825,11 +822,9 @@ func TestParseAndAddTokens(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, count)
 
-		// Load same tokens again - should cause duplicate errors
+		// Load same tokens again from a different file - manager overwrites without error
 		count, err = server.parseAndAddTokens(colorPrimaryJSON, "/b.json", "file:///b.json", &TokenFileOptions{})
-		// The behavior depends on whether the token manager rejects duplicates.
-		// Either way, at least one token is loaded or the error is returned.
-		_ = count
-		_ = err
+		require.NoError(t, err)
+		assert.Equal(t, 1, count)
 	})
 }

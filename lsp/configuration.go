@@ -299,6 +299,8 @@ func (s *Server) loadExplicitTokenFiles() error {
 				count, cdnErr := s.loadFromCDN(fetcher, path, opts, cfg)
 				if cdnErr != nil && count == 0 {
 					errs = append(errs, fmt.Errorf("failed to resolve path %s: %w (CDN fallback also failed: %v)", path, err, cdnErr))
+				} else if cdnErr != nil {
+					log.Warn("CDN fallback for %s loaded %d tokens but had errors: %v", path, count, cdnErr)
 				}
 				continue
 			}
