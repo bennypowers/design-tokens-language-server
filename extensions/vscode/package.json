@@ -85,6 +85,28 @@
             "@",
             "DEFAULT"
           ]
+        },
+        "designTokensLanguageServer.networkFallback": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable CDN fallback for npm: token specifiers when the package is not installed locally. Uses the configured CDN provider (see designTokensLanguageServer.cdn)."
+        },
+        "designTokensLanguageServer.networkTimeout": {
+          "type": "number",
+          "default": 30,
+          "description": "Maximum time in seconds to wait for CDN requests when networkFallback is enabled."
+        },
+        "designTokensLanguageServer.cdn": {
+          "type": "string",
+          "default": "unpkg",
+          "enum": [
+            "unpkg",
+            "esm.sh",
+            "esm.run",
+            "jspm",
+            "jsdelivr"
+          ],
+          "description": "CDN provider for network fallback of package specifiers. Only used when networkFallback is enabled."
         }
       }
     }

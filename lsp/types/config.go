@@ -29,6 +29,19 @@ type ServerConfig struct {
 	// GroupMarkers are token names which will be treated as group names as well
 	// Default: ["_", "@", "DEFAULT"]
 	GroupMarkers []string `json:"groupMarkers"`
+
+	// NetworkFallback enables CDN fallback for npm: specifiers
+	// when local node_modules resolution fails.
+	NetworkFallback bool `json:"networkFallback"`
+
+	// NetworkTimeout is the max time in seconds for CDN requests.
+	// Non-positive values (<= 0) use the default (30s). Has no effect if NetworkFallback is false.
+	NetworkTimeout int `json:"networkTimeout,omitempty"`
+
+	// CDN selects the CDN provider for network fallback of package specifiers.
+	// Valid values: "unpkg", "esm.sh", "esm.run", "jspm", "jsdelivr".
+	// Defaults to "unpkg" if empty. Has no effect if NetworkFallback is false.
+	CDN string `json:"cdn,omitempty"`
 }
 
 // ServerState represents a snapshot of runtime state (NOT configuration)
@@ -49,5 +62,8 @@ func DefaultConfig() ServerConfig {
 			"@",
 			"DEFAULT",
 		},
+		NetworkFallback: false,
+		NetworkTimeout:  0,
+		CDN:             "",
 	}
 }

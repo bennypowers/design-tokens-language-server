@@ -371,6 +371,87 @@ func TestParseTokensFilesField(t *testing.T) {
 	})
 }
 
+func TestReadPackageJsonConfig_NetworkFallback(t *testing.T) {
+	t.Run("parses networkFallback and networkTimeout", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		packageJSON := map[string]any{
+			"name": "test-project",
+			"designTokensLanguageServer": map[string]any{
+				"tokensFiles":     []any{"tokens.json"},
+				"networkFallback": true,
+				"networkTimeout":  60,
+			},
+		}
+
+		data, err := json.Marshal(packageJSON)
+		require.NoError(t, err)
+
+		packageJSONPath := filepath.Join(tmpDir, "package.json")
+		err = os.WriteFile(packageJSONPath, data, 0o644)
+		require.NoError(t, err)
+
+		config, err := ReadPackageJsonConfig(tmpDir)
+		require.NoError(t, err)
+		require.NotNil(t, config)
+
+		assert.True(t, config.NetworkFallback)
+		assert.Equal(t, 60, config.NetworkTimeout)
+	})
+
+	t.Run("parses cdn provider", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		packageJSON := map[string]any{
+			"name": "test-project",
+			"designTokensLanguageServer": map[string]any{
+				"tokensFiles":     []any{"tokens.json"},
+				"networkFallback": true,
+				"cdn":             "jsdelivr",
+			},
+		}
+
+		data, err := json.Marshal(packageJSON)
+		require.NoError(t, err)
+
+		packageJSONPath := filepath.Join(tmpDir, "package.json")
+		err = os.WriteFile(packageJSONPath, data, 0o644)
+		require.NoError(t, err)
+
+		config, err := ReadPackageJsonConfig(tmpDir)
+		require.NoError(t, err)
+		require.NotNil(t, config)
+
+		assert.Equal(t, "jsdelivr", config.CDN)
+	})
+
+	t.Run("defaults to false when not specified", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		packageJSON := map[string]any{
+			"name": "test-project",
+			"designTokensLanguageServer": map[string]any{
+				"tokensFiles": []any{"tokens.json"},
+			},
+		}
+
+		data, err := json.Marshal(packageJSON)
+		require.NoError(t, err)
+
+		packageJSONPath := filepath.Join(tmpDir, "package.json")
+		err = os.WriteFile(packageJSONPath, data, 0o644)
+		require.NoError(t, err)
+
+		config, err := ReadPackageJsonConfig(tmpDir)
+		require.NoError(t, err)
+		require.NotNil(t, config)
+
+		assert.False(t, config.NetworkFallback)
+		assert.Equal(t, 0, config.NetworkTimeout)
+		assert.Equal(t, "", config.CDN)
+	})
+}
+
 func TestParseGroupMarkersField(t *testing.T) {
 	t.Run("handles []string type", func(t *testing.T) {
 		configMap := map[string]any{

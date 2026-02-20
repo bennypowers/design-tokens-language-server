@@ -94,6 +94,21 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 		return fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
 
+	// Convert filepath to URI
+	fileURI := uriutil.PathToURI(filePath)
+
+	_, err = s.parseAndAddTokens(data, filePath, fileURI, opts)
+	return err
+}
+
+// parseAndAddTokens parses token data, validates it, and adds the tokens to the manager.
+// filePath and fileURI are set on each token for definition tracking.
+// Returns the number of successfully added tokens.
+func (s *Server) parseAndAddTokens(data []byte, filePath, fileURI string, opts *TokenFileOptions) (int, error) {
+	if opts == nil {
+		opts = &TokenFileOptions{}
+	}
+
 	// Parse tokens using asimonim (handles both JSON and YAML)
 	parser := asimonimParser.NewJSONParser()
 	parsedTokens, err := parser.Parse(data, asimonimParser.Options{
@@ -101,21 +116,31 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 		GroupMarkers: opts.GroupMarkers,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Validate schema consistency
 	version := detectSchemaVersion(parsedTokens)
-	if validationErrors := validator.ValidateConsistencyWithPath(data, version, filePath); len(validationErrors) > 0 {
-		logValidationErrors(validationErrors)
+	if filePath != "" {
+		if validationErrors := validator.ValidateConsistencyWithPath(data, version, filePath); len(validationErrors) > 0 {
+			logValidationErrors(validationErrors)
+		}
+	} else {
+		if validationErrors := validator.ValidateConsistency(data, version); len(validationErrors) > 0 {
+			logValidationErrors(validationErrors)
+		}
 	}
-
-	// Convert filepath to URI
-	fileURI := uriutil.PathToURI(filePath)
 
 	// Add all tokens to the manager
 	var errs []error
 	successCount := 0
+	source := filePath
+	if source == "" {
+		source = fileURI
+	}
+	if source == "" {
+		source = "<memory>"
+	}
 	for _, token := range parsedTokens {
 		token.FilePath = filePath
 		token.DefinitionURI = fileURI
@@ -129,60 +154,35 @@ func (s *Server) loadTokenFileInternal(filePath string, opts *TokenFileOptions) 
 	if len(errs) > 0 {
 		// Report partial success if some tokens loaded
 		if successCount > 0 {
-			log.Info("Loaded %d/%d tokens from %s (%d failed)",
-				successCount, len(parsedTokens), filePath, len(errs))
+			log.Warn("Loaded %d/%d tokens from %s (%d failed)",
+				successCount, len(parsedTokens), source, len(errs))
 		} else {
-			log.Info("Failed to load any tokens from %s", filePath)
+			log.Warn("Failed to load any tokens from %s", source)
 		}
-		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
+		return successCount, fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
 
 	// Log groupMarkers if provided (for future use when parsers support them)
 	if len(opts.GroupMarkers) > 0 {
 		log.Info("Loaded %d tokens from %s (prefix: %s, groupMarkers: %v)",
-			successCount, filePath, opts.Prefix, opts.GroupMarkers)
+			successCount, source, opts.Prefix, opts.GroupMarkers)
 	} else {
-		log.Info("Loaded %d tokens from %s", successCount, filePath)
+		log.Info("Loaded %d tokens from %s", successCount, source)
 	}
-	return nil
+	return successCount, nil
 }
 
 // LoadTokensFromJSON loads tokens from JSON data (for testing)
 // errors from this function should be presented to the user via window/logMessage
 // further up the call stack
 func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
-	parser := asimonimParser.NewJSONParser()
-	parsedTokens, err := parser.Parse(data, asimonimParser.Options{
-		Prefix: prefix,
-	})
-	if err != nil {
-		return err
+	successCount, err := s.parseAndAddTokens(data, "", "", &TokenFileOptions{Prefix: prefix})
+	if successCount > 0 {
+		// Resolve all aliases after loading tokens, even on partial success
+		s.ResolveAllTokens()
 	}
 
-	// Validate schema consistency
-	version := detectSchemaVersion(parsedTokens)
-	if validationErrors := validator.ValidateConsistency(data, version); len(validationErrors) > 0 {
-		logValidationErrors(validationErrors)
-	}
-
-	var errs []error
-	successCount := 0
-	for _, token := range parsedTokens {
-		if err := s.tokens.Add(token); err != nil {
-			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
-		} else {
-			successCount++
-		}
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
-	}
-
-	// Resolve all aliases after loading tokens
-	s.ResolveAllTokens()
-
-	return nil
+	return err
 }
 
 // LoadTokensFromDocumentContent loads tokens from a document's content into the token manager.
@@ -198,43 +198,14 @@ func (s *Server) LoadTokensFromDocumentContent(uri, languageID, content string) 
 		return nil
 	}
 
-	// Parse tokens using asimonim (handles both JSON and YAML)
-	parser := asimonimParser.NewJSONParser()
-	contentBytes := []byte(content)
-	parsedTokens, err := parser.Parse(contentBytes, asimonimParser.Options{})
-	if err != nil {
-		return fmt.Errorf("failed to parse tokens from document: %w", err)
-	}
-
 	// Convert URI to file path for FilePath field
 	filePath := uriutil.URIToPath(uri)
 
-	// Validate schema consistency
-	version := detectSchemaVersion(parsedTokens)
-	if validationErrors := validator.ValidateConsistencyWithPath(contentBytes, version, filePath); len(validationErrors) > 0 {
-		logValidationErrors(validationErrors)
-	}
-
-	var errs []error
-	successCount := 0
-	for _, token := range parsedTokens {
-		token.FilePath = filePath
-		token.DefinitionURI = uri
-		if err := s.tokens.Add(token); err != nil {
-			errs = append(errs, fmt.Errorf("failed to add token %s: %w", token.Name, err))
-		} else {
-			successCount++
-		}
-	}
-
+	successCount, err := s.parseAndAddTokens([]byte(content), filePath, uri, &TokenFileOptions{})
 	if successCount > 0 {
-		log.Info("Auto-loaded %d tokens from %s", successCount, uri)
 		// Resolve all aliases after loading tokens
 		s.ResolveAllTokens()
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
-	}
-	return nil
+	return err
 }
