@@ -138,6 +138,9 @@ func (s *Server) parseAndAddTokens(data []byte, filePath, fileURI string, opts *
 	if source == "" {
 		source = fileURI
 	}
+	if source == "" {
+		source = "<memory>"
+	}
 	for _, token := range parsedTokens {
 		token.FilePath = filePath
 		token.DefinitionURI = fileURI
@@ -151,10 +154,10 @@ func (s *Server) parseAndAddTokens(data []byte, filePath, fileURI string, opts *
 	if len(errs) > 0 {
 		// Report partial success if some tokens loaded
 		if successCount > 0 {
-			log.Info("Loaded %d/%d tokens from %s (%d failed)",
+			log.Warn("Loaded %d/%d tokens from %s (%d failed)",
 				successCount, len(parsedTokens), source, len(errs))
 		} else {
-			log.Info("Failed to load any tokens from %s", source)
+			log.Warn("Failed to load any tokens from %s", source)
 		}
 		return successCount, fmt.Errorf("failed to add %d/%d tokens: %w", len(errs), len(parsedTokens), errors.Join(errs...))
 	}
@@ -173,15 +176,13 @@ func (s *Server) parseAndAddTokens(data []byte, filePath, fileURI string, opts *
 // errors from this function should be presented to the user via window/logMessage
 // further up the call stack
 func (s *Server) LoadTokensFromJSON(data []byte, prefix string) error {
-	_, err := s.parseAndAddTokens(data, "", "", &TokenFileOptions{Prefix: prefix})
-	if err != nil {
-		return err
+	successCount, err := s.parseAndAddTokens(data, "", "", &TokenFileOptions{Prefix: prefix})
+	if successCount > 0 {
+		// Resolve all aliases after loading tokens, even on partial success
+		s.ResolveAllTokens()
 	}
 
-	// Resolve all aliases after loading tokens
-	s.ResolveAllTokens()
-
-	return nil
+	return err
 }
 
 // LoadTokensFromDocumentContent loads tokens from a document's content into the token manager.

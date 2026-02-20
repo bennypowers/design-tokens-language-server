@@ -230,19 +230,10 @@ func parseTokenFileItem(item any, defaultPrefix string, defaultGroupMarkers []st
 	}
 }
 
-// loadTokenFileAndLog loads a token file with options and logs the result.
-// Returns an error if loading fails.
+// loadTokenFileAndLog loads a token file with options.
+// Returns an error if loading fails. Success is logged by parseAndAddTokens.
 func (s *Server) loadTokenFileAndLog(path string, opts *TokenFileOptions) error {
-	if err := s.LoadTokenFileWithOptions(path, opts); err != nil {
-		return err
-	}
-
-	if len(opts.GroupMarkers) > 0 {
-		log.Info("Loaded %s (prefix: %s, groupMarkers: %v)\n", path, opts.Prefix, opts.GroupMarkers)
-	} else {
-		log.Info("Loaded %s (prefix: %s)\n", path, opts.Prefix)
-	}
-	return nil
+	return s.LoadTokenFileWithOptions(path, opts)
 }
 
 // networkTimeout returns the configured timeout duration for CDN requests,
@@ -290,7 +281,8 @@ func (s *Server) loadExplicitTokenFiles() error {
 		if err != nil {
 			// Try CDN fallback for package specifiers when local resolution fails
 			if fetcher != nil && specifier.IsPackageSpecifier(path) {
-				if cdnErr := s.loadFromCDN(fetcher, path, opts, cfg); cdnErr != nil {
+				count, cdnErr := s.loadFromCDN(fetcher, path, opts, cfg)
+				if cdnErr != nil && count == 0 {
 					errs = append(errs, fmt.Errorf("failed to resolve path %s: %w (CDN fallback also failed: %v)", path, err, cdnErr))
 				}
 				continue
@@ -313,10 +305,11 @@ func (s *Server) loadExplicitTokenFiles() error {
 }
 
 // loadFromCDN fetches token data from a CDN for a package specifier and adds the tokens.
-func (s *Server) loadFromCDN(fetcher load.Fetcher, specPath string, opts *TokenFileOptions, cfg types.ServerConfig) error {
+// Returns the number of tokens successfully added and any error.
+func (s *Server) loadFromCDN(fetcher load.Fetcher, specPath string, opts *TokenFileOptions, cfg types.ServerConfig) (int, error) {
 	cdnURL, ok := specifier.CDNURL(specPath, specifier.CDN(cfg.CDN))
 	if !ok {
-		return fmt.Errorf("cannot determine CDN URL for %s", specPath)
+		return 0, fmt.Errorf("cannot determine CDN URL for %s", specPath)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), networkTimeout(cfg))
@@ -324,16 +317,10 @@ func (s *Server) loadFromCDN(fetcher load.Fetcher, specPath string, opts *TokenF
 
 	content, err := fetcher.Fetch(ctx, cdnURL)
 	if err != nil {
-		return fmt.Errorf("CDN fetch failed for %s: %w", cdnURL, err)
+		return 0, fmt.Errorf("CDN fetch failed for %s: %w", cdnURL, err)
 	}
 
-	_, err = s.parseAndAddTokens(content, "", cdnURL, opts)
-	if err != nil {
-		return err
-	}
-
-	log.Info("Loaded tokens from CDN: %s", cdnURL)
-	return nil
+	return s.parseAndAddTokens(content, "", cdnURL, opts)
 }
 
 // reloadPreviouslyLoadedFiles reloads all files that were previously loaded

@@ -89,7 +89,7 @@
         "designTokensLanguageServer.networkFallback": {
           "type": "boolean",
           "default": false,
-          "description": "Enable CDN fallback for npm: token specifiers when the package is not installed locally. Fetches from unpkg.com."
+          "description": "Enable CDN fallback for npm: token specifiers when the package is not installed locally. Uses the configured CDN provider (see designTokensLanguageServer.cdn)."
         },
         "designTokensLanguageServer.networkTimeout": {
           "type": "number",

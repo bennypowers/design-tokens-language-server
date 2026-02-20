@@ -234,4 +234,5 @@ func TestParseConfiguration_NetworkFallbackDefaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, config.NetworkFallback)
 	assert.Equal(t, 0, config.NetworkTimeout)
+	assert.Equal(t, "", config.CDN)
 }

@@ -62,5 +62,8 @@ func DefaultConfig() ServerConfig {
 			"@",
 			"DEFAULT",
 		},
+		NetworkFallback: false,
+		NetworkTimeout:  0,
+		CDN:             "",
 	}
 }

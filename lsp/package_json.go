@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
+	"bennypowers.dev/asimonim/specifier"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/bmatcuk/doublestar/v4"
@@ -135,7 +137,11 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 
 	// Parse cdn
 	if cdn, ok := configMap["cdn"].(string); ok {
-		config.CDN = cdn
+		if slices.Contains(specifier.ValidCDNs(), cdn) {
+			config.CDN = cdn
+		} else {
+			log.Warn("Invalid CDN provider %q, valid values: %v", cdn, specifier.ValidCDNs())
+		}
 	}
 
 	return config

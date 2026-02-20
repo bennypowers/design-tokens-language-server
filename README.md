@@ -260,8 +260,8 @@ relative path or a deno-style npm specifier.
 
 When using `npm:` specifiers for token packages, DTLS normally resolves them
 from `node_modules`. If the package isn't installed locally, you can enable
-**network fallback** to fetch tokens from [unpkg.com](https://unpkg.com)
-instead.
+**network fallback** to fetch tokens from a CDN (default:
+[unpkg.com](https://unpkg.com), configurable via the `cdn` option).
 
 This is opt-in and disabled by default.
 
@@ -288,12 +288,14 @@ settings.
 #### Enable in `.config/design-tokens.yaml`
 
 ```yaml
-networkFallback: true
-networkTimeout: 30
 cdn: unpkg
 files:
   - npm:@my-design-system/tokens/tokens.json
 ```
+
+Note: The `.config/design-tokens.yaml` format supports the `cdn` option, but
+`networkFallback` and `networkTimeout` must be set via package.json or VS Code
+settings.
 
 #### Options
 
