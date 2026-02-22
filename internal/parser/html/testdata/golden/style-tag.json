@@ -1,0 +1,51 @@
+{
+  "Variables": [
+    {
+      "Name": "--color-primary",
+      "Value": "#0000ff",
+      "Type": 0,
+      "Range": {
+        "Start": {
+          "Line": 5,
+          "Character": 6
+        },
+        "End": {
+          "Line": 5,
+          "Character": 21
+        }
+      }
+    }
+  ],
+  "VarCalls": [
+    {
+      "Fallback": null,
+      "TokenName": "--color-primary",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 8,
+          "Character": 13
+        },
+        "End": {
+          "Line": 8,
+          "Character": 33
+        }
+      }
+    },
+    {
+      "Fallback": "#fff",
+      "TokenName": "--bg-color",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 9,
+          "Character": 18
+        },
+        "End": {
+          "Line": 9,
+          "Character": 39
+        }
+      }
+    }
+  ]
+}

@@ -546,3 +546,42 @@ func TestParseColor(t *testing.T) {
 		})
 	}
 }
+
+func TestDocumentColor_HTMLDocument(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.primary",
+		Value: "#ff0000",
+		Type:  "color",
+	})
+
+	uri := "file:///test.html"
+	content := `<style>.btn { color: var(--color-primary); }</style>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	colors, err := DocumentColor(req, &protocol.DocumentColorParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+	require.NoError(t, err)
+	require.Len(t, colors, 1)
+	assert.InDelta(t, 1.0, colors[0].Color.Red, 0.01)
+}
+
+func TestDocumentColor_HTMLNoCSS(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	uri := "file:///test.html"
+	content := `<p>Hello</p>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	colors, err := DocumentColor(req, &protocol.DocumentColorParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+	})
+	require.NoError(t, err)
+	assert.Empty(t, colors)
+}

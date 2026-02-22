@@ -1,0 +1,35 @@
+{
+  "Variables": [],
+  "VarCalls": [
+    {
+      "Fallback": null,
+      "TokenName": "--color-before",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 6,
+          "Character": 11
+        },
+        "End": {
+          "Line": 6,
+          "Character": 30
+        }
+      }
+    },
+    {
+      "Fallback": null,
+      "TokenName": "--color-after",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 10,
+          "Character": 16
+        },
+        "End": {
+          "Line": 10,
+          "Character": 34
+        }
+      }
+    }
+  ]
+}

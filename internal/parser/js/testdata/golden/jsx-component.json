@@ -1,0 +1,35 @@
+{
+  "Variables": [],
+  "VarCalls": [
+    {
+      "Fallback": null,
+      "TokenName": "--text-color",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 4,
+          "Character": 11
+        },
+        "End": {
+          "Line": 4,
+          "Character": 28
+        }
+      }
+    },
+    {
+      "Fallback": "#fff",
+      "TokenName": "--card-bg",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 5,
+          "Character": 16
+        },
+        "End": {
+          "Line": 5,
+          "Character": 36
+        }
+      }
+    }
+  ]
+}

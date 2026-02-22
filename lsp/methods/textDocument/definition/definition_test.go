@@ -391,3 +391,56 @@ func TestDefinition_LinkSupport(t *testing.T) {
 		require.Len(t, locations, 1)
 	})
 }
+
+func TestDefinition_HTMLDocument(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:          "color.primary",
+		Value:         "#ff0000",
+		DefinitionURI: "file:///tokens.json",
+		Path:          []string{"color", "primary"},
+		Line:          5,
+		Character:     4,
+	})
+
+	uri := "file:///test.html"
+	content := `<style>.btn { color: var(--color-primary); }</style>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	// Character 30 is inside var(--color-primary) in the <style> tag
+	result, err := Definition(req, &protocol.DefinitionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 30},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	locations, ok := result.([]protocol.Location)
+	require.True(t, ok)
+	require.Len(t, locations, 1)
+	assert.Equal(t, "file:///tokens.json", locations[0].URI)
+}
+
+func TestDefinition_HTMLNoCSS(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	uri := "file:///test.html"
+	content := `<p>Hello</p>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	result, err := Definition(req, &protocol.DefinitionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 5},
+		},
+	})
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}

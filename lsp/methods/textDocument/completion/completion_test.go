@@ -459,10 +459,82 @@ func TestIsInCompletionContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isInCompletionContext(tt.content, tt.position)
+			result := isInCompletionContext(tt.content, "css", tt.position)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestCompletion_HTMLDocument(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	ctx.SetSupportsSnippets(false)
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.primary",
+		Value: "#ff0000",
+		Type:  "color",
+	})
+
+	uri := "file:///test.html"
+	content := `<style>.btn { color: --color }</style>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	result, err := Completion(req, &protocol.CompletionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 27},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	list, ok := result.(*protocol.CompletionList)
+	require.True(t, ok)
+	assert.GreaterOrEqual(t, len(list.Items), 1)
+}
+
+func TestCompletion_UnsupportedLanguage(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	uri := "file:///test.go"
+	_ = ctx.DocumentManager().DidOpen(uri, "go", 1, "package main")
+
+	result, err := Completion(req, &protocol.CompletionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 5},
+		},
+	})
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestIsInCompletionContext_HTML(t *testing.T) {
+	// HTML with a style tag containing an open block — should be in context
+	htmlContent := `<style>.button { color: red; }</style>`
+	result := isInCompletionContext(htmlContent, "html", protocol.Position{Line: 0, Character: 20})
+	assert.True(t, result, "should be in completion context inside style tag block")
+
+	// HTML with no style tags — should not be in context
+	noCSS := `<p>Hello</p>`
+	result = isInCompletionContext(noCSS, "html", protocol.Position{Line: 0, Character: 5})
+	assert.False(t, result, "should not be in completion context with no CSS")
+}
+
+func TestIsInCompletionContext_JS(t *testing.T) {
+	// JS with css tagged template containing an open block
+	jsContent := "const s = css`\n  .card {\n    color: red;\n  }\n`;"
+	result := isInCompletionContext(jsContent, "javascript", protocol.Position{Line: 2, Character: 5})
+	assert.True(t, result, "should be in completion context inside css template block")
+
+	// JS with no tagged templates — should not be in context
+	noCSS := "const x = 42;\nfunction foo() { return x; }"
+	result = isInCompletionContext(noCSS, "javascript", protocol.Position{Line: 1, Character: 20})
+	assert.False(t, result, "should not be in completion context with no CSS")
 }
 
 func TestCompletion_SnippetSupport(t *testing.T) {

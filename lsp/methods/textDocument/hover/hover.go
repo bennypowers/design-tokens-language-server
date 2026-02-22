@@ -8,6 +8,7 @@ import (
 
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/log"
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/internal/parser/common"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
@@ -255,8 +256,8 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 
 	languageID := doc.LanguageID()
 
-	// Handle CSS files
-	if languageID == "css" {
+	// Handle CSS and CSS-embedded languages (HTML, JS/TS)
+	if parser.IsCSSSupportedLanguage(languageID) {
 		return handleCSSHover(req, doc, position)
 	}
 
@@ -268,14 +269,15 @@ func Hover(req *types.RequestContext, params *protocol.HoverParams) (*protocol.H
 	return nil, nil
 }
 
-// handleCSSHover processes hover for CSS files
+// handleCSSHover processes hover for CSS and CSS-embedded files
 func handleCSSHover(req *types.RequestContext, doc *documents.Document, position protocol.Position) (*protocol.Hover, error) {
 	// Parse CSS to find var() calls and variable declarations
-	parser := css.AcquireParser()
-	defer css.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+	if result == nil {
+		return nil, nil
 	}
 
 	// Check for var() calls first (priority for nested cases)

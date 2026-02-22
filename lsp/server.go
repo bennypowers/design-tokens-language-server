@@ -8,6 +8,8 @@ import (
 	"bennypowers.dev/dtls/internal/documents"
 	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/parser/css"
+	htmlparser "bennypowers.dev/dtls/internal/parser/html"
+	jsparser "bennypowers.dev/dtls/internal/parser/js"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/internal/uriutil"
 	"bennypowers.dev/dtls/lsp/methods/lifecycle"
@@ -101,13 +103,15 @@ func (s *Server) RunStdio() error {
 	return s.glspServer.RunStdio()
 }
 
-// Close releases server resources including the CSS parser pool.
+// Close releases server resources including the CSS, HTML, and JS parser pools.
 // It is safe to call Close multiple times.
 // This method should be called when the server is no longer needed,
 // typically in test cleanup via defer server.Close().
 func (s *Server) Close() error {
-	// Clean up the CSS parser pool
+	// Clean up parser pools
 	css.ClosePool()
+	htmlparser.ClosePool()
+	jsparser.ClosePool()
 	return nil
 }
 

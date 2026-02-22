@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
@@ -15,13 +16,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// handleCSSReferences finds the token definition for a var() call in CSS
+// handleCSSReferences finds the token definition for a var() call in CSS or CSS-embedded files
 func handleCSSReferences(req *types.RequestContext, doc *documents.Document, position protocol.Position) ([]protocol.Location, error) {
-	parser := css.AcquireParser()
-	defer css.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+	if result == nil {
+		return nil, nil
 	}
 
 	for _, varCall := range result.VarCalls {
@@ -115,7 +117,7 @@ func isValidCSSReference(content string, endPos protocol.Position) bool {
 // Adds valid references to the locationMap for deduplication.
 func findCSSReferences(docs []*documents.Document, cssVarName string, locationMap map[string]protocol.Location) {
 	for _, document := range docs {
-		if document.LanguageID() != "css" {
+		if !parser.IsCSSSupportedLanguage(document.LanguageID()) {
 			continue
 		}
 
@@ -141,7 +143,7 @@ func findJSONReferences(docs []*documents.Document, tokenReference string, locat
 	}
 
 	for _, document := range docs {
-		if document.LanguageID() == "css" {
+		if parser.IsCSSSupportedLanguage(document.LanguageID()) {
 			continue
 		}
 
@@ -192,8 +194,8 @@ func References(req *types.RequestContext, params *protocol.ReferenceParams) ([]
 		return nil, nil
 	}
 
-	// Handle CSS files - return token definition location
-	if doc.LanguageID() == "css" {
+	// Handle CSS and CSS-embedded files - return token definition location
+	if parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return handleCSSReferences(req, doc, position)
 	}
 

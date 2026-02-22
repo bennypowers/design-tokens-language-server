@@ -3,7 +3,7 @@
 [![build](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg)](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml)
 [![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
 
-Editor tools for working with [DTCG formatted design tokens](https://tr.designtokens.org/format/) in CSS, JSON, and YAML files.
+Editor tools for working with [DTCG-formatted design tokens](https://tr.designtokens.org/format/) in CSS, HTML, JavaScript/TypeScript (lit-element), JSON, and YAML files.
 
 > [!NOTE]
 > This is pre-release software. If you encounter bugs or unexpected behavior, please file a detailed [issue](https://github.com/bennypowers/design-tokens-language-server/issues/new).
@@ -55,7 +55,7 @@ Locate all references to a token in open files, whether in CSS or in the token d
 
 1. **Install this extension** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=pwrs.design-tokens-language-server-vscode)
 2. **Configure token files** in your project's `package.json` (see Configuration below)
-3. **Start coding** - you'll get autocomplete, hover info, and diagnostics for design tokens in CSS, JSON, and YAML files
+3. **Start coding** - you'll get autocomplete, hover info, and diagnostics for design tokens in CSS, HTML, JS/TS, JSON, and YAML files
 
 **That's it!** The extension includes the Design Tokens Language Server binary, so no additional installation is required.
 
@@ -143,6 +143,8 @@ Then set the `groupMarkers` property to `["GROUP"]` in your `package.json`:
 ## Supported File Types
 
 - **CSS** (`.css`) - Full design token support with `var()` functions
+- **HTML** (`.html`) - CSS in `<style>` tags and `style` attributes
+- **JavaScript/TypeScript** (`.js`, `.ts`, `.jsx`, `.tsx`) - CSS in `css` and `html` tagged template literals (lit-element)
 - **JSON** (`.json`) - Token definition files
 - **YAML** (`.yaml`, `.yml`) - Token definition files
 

@@ -14,8 +14,8 @@ func TestParseSimpleCSSVariable(t *testing.T) {
   --color-primary: #0000ff;
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err, "Parsing should not error")
 	require.NotNil(t, result, "Parse result should not be nil")
@@ -42,8 +42,8 @@ func TestParseMultipleCSSVariables(t *testing.T) {
   --spacing-small: 8px;
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -70,8 +70,8 @@ func TestParseVarFunctionCall(t *testing.T) {
   color: var(--color-primary);
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -90,8 +90,8 @@ func TestParseVarFunctionWithFallback(t *testing.T) {
   color: var(--color-primary, #000);
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -110,8 +110,8 @@ func TestParseNestedVarCalls(t *testing.T) {
   color: var(--color-primary, var(--color-base));
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -151,8 +151,8 @@ func TestParseMixedContent(t *testing.T) {
   background: var(--color-secondary);
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -168,8 +168,8 @@ func TestParseMixedContent(t *testing.T) {
 func TestParseInvalidCSS(t *testing.T) {
 	cssCode := `this is not valid css {{{`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 
 	// Parser should not crash, but may return an error or empty result
@@ -187,8 +187,8 @@ func TestParseInvalidCSS(t *testing.T) {
 func TestParseEmptyCSS(t *testing.T) {
 	cssCode := ``
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -204,8 +204,8 @@ func TestParseVarFunctionWithCommaSeparatedFallback(t *testing.T) {
   font-family: var(--font-family, FooFont, 'Bar Font', BazFont, QuxFont, sans-serif);
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -224,8 +224,8 @@ func TestParseVarFunctionWithNestedCommasInFallback(t *testing.T) {
   box-shadow: var(--shadow, 1px 2px rgba(0, 0, 0, 0.5));
 }`
 
-	parser := css.NewParser()
-	defer parser.Close()
+	parser := css.AcquireParser()
+	defer css.ReleaseParser(parser)
 	result, err := parser.Parse(cssCode)
 	require.NoError(t, err)
 
@@ -270,8 +270,8 @@ func TestParseVarFunctionWithComplexFontFallback(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cssCode := `.element { ` + tc.css + ` }`
 
-			parser := css.NewParser()
-			defer parser.Close()
+			parser := css.AcquireParser()
+			defer css.ReleaseParser(parser)
 			result, err := parser.Parse(cssCode)
 			require.NoError(t, err)
 

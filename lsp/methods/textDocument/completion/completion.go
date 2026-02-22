@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
@@ -51,8 +52,8 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 		return nil, nil
 	}
 
-	// Only process CSS files
-	if doc.LanguageID() != "css" {
+	// Only process CSS-supported files
+	if !parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return nil, nil
 	}
 
@@ -65,7 +66,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 	log.Info("Completion word: '%s'", word)
 
 	// Check if we're in a valid completion context (inside a block or property value)
-	if !isInCompletionContext(doc.Content(), pos) {
+	if !isInCompletionContext(doc.Content(), doc.LanguageID(), pos) {
 		return nil, nil
 	}
 
@@ -200,10 +201,25 @@ func isWordChar(c byte) bool {
 		c == '-' || c == '_'
 }
 
-// isInCompletionContext checks if the position is in a valid completion req.GLSP.
-// Completions are valid inside CSS blocks (between { and }) where var() calls can be used.
-// This implementation counts braces up to the cursor position to determine if we're inside a block.
-func isInCompletionContext(content string, pos protocol.Position) bool {
+// isInCompletionContext checks if the position is in a valid completion context.
+// For CSS files: checks brace counting up to cursor position (inside a block).
+// For non-CSS languages (HTML, JS/TS): checks whether the document contains any
+// CSS regions at all. The word matching in getWordAtPosition already scopes
+// completions to CSS identifier characters, so additional brace counting within
+// embedded CSS is unnecessary.
+func isInCompletionContext(content, languageID string, pos protocol.Position) bool {
+	if languageID == "css" {
+		return isInCSSBlock(content, pos)
+	}
+
+	// For non-CSS languages, check if any CSS content exists in the document.
+	// Word matching handles position-level filtering.
+	spans := parser.CSSContentSpans(content, languageID)
+	return len(spans) > 0
+}
+
+// isInCSSBlock counts braces in CSS content up to the cursor position
+func isInCSSBlock(content string, pos protocol.Position) bool {
 	lines := strings.Split(content, "\n")
 	if int(pos.Line) >= len(lines) {
 		return false
@@ -228,16 +244,13 @@ func isInCompletionContext(content string, pos protocol.Position) bool {
 		}
 	}
 
-	// Count opening and closing braces
-	// If we have more opening braces than closing braces, we're inside a block
+	return countUnclosedBraces(textUpToCursor.String()) > 0
+}
+
+// countUnclosedBraces returns the number of unclosed braces in a CSS text fragment
+func countUnclosedBraces(text string) int {
 	openBraces := 0
 	closeBraces := 0
-	text := textUpToCursor.String()
-
-	// Simple character-by-character scan
-	// Note: This doesn't handle strings or comments, but it's good enough
-	// for most cases. A more sophisticated implementation would skip
-	// content inside strings and comments.
 	for _, ch := range text {
 		switch ch {
 		case '{':
@@ -246,9 +259,7 @@ func isInCompletionContext(content string, pos protocol.Position) bool {
 			closeBraces++
 		}
 	}
-
-	// We're inside a block if we have unclosed braces
-	return openBraces > closeBraces
+	return openBraces - closeBraces
 }
 
 // normalizeTokenName normalizes a token name for comparison

@@ -4,6 +4,7 @@ import (
 	"bennypowers.dev/dtls/internal/log"
 	"fmt"
 
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -32,17 +33,18 @@ func Definition(req *types.RequestContext, params *protocol.DefinitionParams) (a
 		return DefinitionForTokenFile(req, doc, position)
 	}
 
-	// Only process CSS files beyond this point
-	if doc.LanguageID() != "css" {
+	// Only process CSS-supported files beyond this point
+	if !parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return nil, nil
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.AcquireParser()
-	defer css.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+	if result == nil {
+		return nil, nil
 	}
 
 	// Find var() call at the cursor position

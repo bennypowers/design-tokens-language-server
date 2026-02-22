@@ -47,8 +47,8 @@ func TestUTF16Positions(t *testing.T) {
 		},
 	}
 
-	parser := NewParser()
-	defer parser.Close()
+	parser := AcquireParser()
+	defer ReleaseParser(parser)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
