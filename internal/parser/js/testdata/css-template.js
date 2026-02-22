@@ -1,3 +1,4 @@
+// NOTE: Line/column-based tests depend on exact layout. Do not reformat.
 import { css } from 'lit';
 
 export const styles = css`

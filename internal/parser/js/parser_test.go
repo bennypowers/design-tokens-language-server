@@ -284,10 +284,10 @@ func TestMultilineCSSTemplatePositionMapping(t *testing.T) {
 	// The template has var calls on multiple lines
 	require.GreaterOrEqual(t, len(result.VarCalls), 2)
 
-	// Second var call is var(--bg-color, #fff) on line 8 (0-indexed)
+	// Fixture line 10 (0-indexed 9): "    background: var(--bg-color, #fff);"
 	vc := result.VarCalls[1]
 	assert.Equal(t, "--bg-color", vc.TokenName)
-	assert.Equal(t, uint32(8), vc.Range.Start.Line, "second var call line")
+	assert.Equal(t, uint32(9), vc.Range.Start.Line, "second var call line")
 	assert.Greater(t, vc.Range.Start.Character, uint32(0), "should have nonzero column")
 }
 
@@ -315,7 +315,7 @@ func TestHTMLTemplateWithStyleAttribute(t *testing.T) {
 }
 
 func TestCSSTemplatePositionMapping(t *testing.T) {
-	// Use the css-template.js fixture to verify position mapping
+	// Uses testdata/css-template.js — do not reformat that fixture.
 	source, err := os.ReadFile("testdata/css-template.js")
 	require.NoError(t, err)
 
@@ -326,10 +326,10 @@ func TestCSSTemplatePositionMapping(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(result.VarCalls), 1)
 
-	// First var call is var(--color-primary) on line 7 (0-indexed)
-	// "    color: var(--color-primary);" — var starts at col 11
+	// Fixture line 9 (0-indexed 8): "    color: var(--color-primary);"
+	// var( starts at column 11
 	vc := result.VarCalls[0]
 	assert.Equal(t, "--color-primary", vc.TokenName)
-	assert.Equal(t, uint32(7), vc.Range.Start.Line, "var call line")
+	assert.Equal(t, uint32(8), vc.Range.Start.Line, "var call line")
 	assert.Equal(t, uint32(11), vc.Range.Start.Character, "var call character")
 }

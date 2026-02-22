@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/parser/css"
 	sitter "github.com/tree-sitter/go-tree-sitter"
 	tree_sitter_html "github.com/tree-sitter/tree-sitter-html/bindings/go"
@@ -76,7 +77,10 @@ func (p *Parser) Close() {
 	}
 }
 
-// ClosePool closes all parsers in the pool
+// ClosePool drains the parser pool and closes up to 100 cached parsers.
+// sync.Pool does not expose its size, so we use a fixed iteration limit
+// that exceeds the expected pool size under normal concurrency. This is a
+// best-effort cleanup for server shutdown.
 func ClosePool() {
 	for range 100 {
 		if p, ok := parserPool.Get().(*Parser); ok && p != nil {
@@ -163,6 +167,7 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 		case StyleTag:
 			parsed, err := cssParser.Parse(region.Content)
 			if err != nil {
+				log.Debug("Failed to parse CSS in style tag at %d:%d: %v", region.StartLine, region.StartCol, err)
 				continue
 			}
 			offsetStyleTagResults(parsed, region)
@@ -172,6 +177,7 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 		case StyleAttribute:
 			parsed, err := parseStyleAttribute(cssParser, region)
 			if err != nil {
+				log.Debug("Failed to parse CSS in style attribute at %d:%d: %v", region.StartLine, region.StartCol, err)
 				continue
 			}
 			result.Variables = append(result.Variables, parsed.Variables...)
