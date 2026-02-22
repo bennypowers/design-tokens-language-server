@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bennypowers.dev/dtls/internal/parser/css"
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/lsp/types"
 	"github.com/mazznoer/csscolorparser"
 	protocol "github.com/tliron/glsp/protocol_3_16"
@@ -23,17 +23,18 @@ func DocumentColor(req *types.RequestContext, params *protocol.DocumentColorPara
 		return nil, nil
 	}
 
-	// Only process CSS files
-	if doc.LanguageID() != "css" {
+	// Only process CSS-supported files
+	if !parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return nil, nil
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.AcquireParser()
-	defer css.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+	if result == nil {
+		return nil, nil
 	}
 
 	var colors []protocol.ColorInformation

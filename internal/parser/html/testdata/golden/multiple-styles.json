@@ -1,0 +1,66 @@
+{
+  "Variables": [
+    {
+      "Name": "--color-primary",
+      "Value": "#0000ff",
+      "Type": 0,
+      "Range": {
+        "Start": {
+          "Line": 5,
+          "Character": 6
+        },
+        "End": {
+          "Line": 5,
+          "Character": 21
+        }
+      }
+    }
+  ],
+  "VarCalls": [
+    {
+      "Fallback": null,
+      "TokenName": "--card-bg",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 13,
+          "Character": 18
+        },
+        "End": {
+          "Line": 13,
+          "Character": 32
+        }
+      }
+    },
+    {
+      "Fallback": null,
+      "TokenName": "--text-color",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 10,
+          "Character": 21
+        },
+        "End": {
+          "Line": 10,
+          "Character": 38
+        }
+      }
+    },
+    {
+      "Fallback": null,
+      "TokenName": "--spacing",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 16,
+          "Character": 20
+        },
+        "End": {
+          "Line": 16,
+          "Character": 34
+        }
+      }
+    }
+  ]
+}

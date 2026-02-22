@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bennypowers.dev/dtls/internal/parser/css"
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/lsp/types"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -41,17 +41,18 @@ func GetDiagnostics(ctx types.ServerContext, uri string) ([]protocol.Diagnostic,
 		return []protocol.Diagnostic{}, nil
 	}
 
-	// Only process CSS files
-	if doc.LanguageID() != "css" {
+	// Only process CSS-supported files
+	if !parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return []protocol.Diagnostic{}, nil
 	}
 
 	// Parse CSS to find var() calls
-	parser := css.AcquireParser()
-	defer css.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+	if result == nil {
+		return []protocol.Diagnostic{}, nil
 	}
 
 	// Initialize as empty slice, not nil, to ensure proper JSON serialization

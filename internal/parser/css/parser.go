@@ -25,18 +25,6 @@ var parserPool = sync.Pool{
 	},
 }
 
-// NewParser creates a new CSS parser
-// Deprecated: Use AcquireParser/ReleaseParser for better performance
-func NewParser() *Parser {
-	parser := sitter.NewParser()
-	lang := sitter.NewLanguage(tree_sitter_css.Language())
-	_ = parser.SetLanguage(lang) // Error ignored - parser initialization is critical and will panic if it fails
-
-	return &Parser{
-		parser: parser,
-	}
-}
-
 // AcquireParser gets a parser from the pool
 func AcquireParser() *Parser {
 	p := parserPool.Get().(*Parser)

@@ -1,0 +1,50 @@
+{
+  "Variables": [],
+  "VarCalls": [
+    {
+      "Fallback": null,
+      "TokenName": "--host-color",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 6,
+          "Character": 13
+        },
+        "End": {
+          "Line": 6,
+          "Character": 30
+        }
+      }
+    },
+    {
+      "Fallback": "16px",
+      "TokenName": "--content-padding",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 9,
+          "Character": 15
+        },
+        "End": {
+          "Line": 9,
+          "Character": 43
+        }
+      }
+    },
+    {
+      "Fallback": null,
+      "TokenName": "--inner-margin",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 17,
+          "Character": 18
+        },
+        "End": {
+          "Line": 17,
+          "Character": 37
+        }
+      }
+    }
+  ]
+}

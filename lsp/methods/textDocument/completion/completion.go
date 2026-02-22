@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 
+	"bennypowers.dev/dtls/internal/parser"
 	"bennypowers.dev/dtls/internal/position"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/types"
@@ -51,8 +52,8 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 		return nil, nil
 	}
 
-	// Only process CSS files
-	if doc.LanguageID() != "css" {
+	// Only process CSS-supported files
+	if !parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return nil, nil
 	}
 

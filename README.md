@@ -4,8 +4,9 @@
 [![coverage][coverage]][coveragereport]
 
 Editor tools for working with <abbr title="design tokens community
-  group">[DTCG][dtcg]</abbr> formatted design tokens in CSS, and
-for token definitions in JSON or YAML files.
+  group">[DTCG][dtcg]</abbr> formatted design tokens in CSS, HTML,
+JavaScript/TypeScript (lit-element), and for token definitions in
+JSON or YAML files.
 
 Supports both **Editor's Draft** and **DTCG 2025.10 stable** schema versions,
 including multi-schema workspaces where different token files use different schema versions.
@@ -132,7 +133,7 @@ Create a file like `~/.config/nvim/lsp/design_tokens_ls.lua`:
 return {
   cmd = { 'design-tokens-language-server' },
   root_markers = { '.git', 'package.json' },
-  filetypes = { 'css', 'json', 'yaml' },
+  filetypes = { 'css', 'html', 'javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'json', 'yaml' },
   settings = {
     dtls = {
       -- Optional: configure global token files
@@ -326,7 +327,7 @@ For example, in your lsp config for neovim:
 return {
   cmd = { 'design-tokens-language-server' },
   root_markers = { 'package.json', '.git' },
-  filetypes = { 'css' },
+  filetypes = { 'css', 'html', 'javascript', 'javascriptreact', 'typescript', 'typescriptreact' },
   settings = {
     dtls = {
       tokensFiles = {

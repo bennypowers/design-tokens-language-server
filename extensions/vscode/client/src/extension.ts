@@ -50,6 +50,11 @@ export async function activate(context: ExtensionContext) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { scheme: "file", language: "css" },
+      { scheme: "file", language: "html" },
+      { scheme: "file", language: "javascript" },
+      { scheme: "file", language: "javascriptreact" },
+      { scheme: "file", language: "typescript" },
+      { scheme: "file", language: "typescriptreact" },
       { scheme: "file", language: "json" },
       { scheme: "file", language: "yaml" },
     ],

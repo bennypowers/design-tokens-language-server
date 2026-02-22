@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"bennypowers.dev/dtls/internal/documents"
+	"bennypowers.dev/dtls/internal/parser"
 	cssparser "bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/lsp/helpers"
 	"bennypowers.dev/dtls/lsp/helpers/css"
@@ -13,14 +14,14 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-// validateCSSDocument validates that the document exists and is a CSS file.
+// validateCSSDocument validates that the document exists and supports CSS extraction.
 // Returns the document and true if valid, or nil and false otherwise.
 func validateCSSDocument(req *types.RequestContext, uri string) (*documents.Document, bool) {
 	doc := req.Server.Document(uri)
 	if doc == nil {
 		return nil, false
 	}
-	if doc.LanguageID() != "css" {
+	if !parser.IsCSSSupportedLanguage(doc.LanguageID()) {
 		return nil, false
 	}
 	return doc, true
@@ -29,11 +30,12 @@ func validateCSSDocument(req *types.RequestContext, uri string) (*documents.Docu
 // parseVarCalls parses CSS content and extracts all var() calls.
 // Returns the list of var calls and any parsing error.
 func parseVarCalls(doc *documents.Document) ([]*cssparser.VarCall, error) {
-	parser := cssparser.AcquireParser()
-	defer cssparser.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSS: %w", err)
+	}
+	if result == nil {
+		return nil, nil
 	}
 	return result.VarCalls, nil
 }
@@ -143,10 +145,8 @@ func resolveFixAllFallbacks(req *types.RequestContext, action *protocol.CodeActi
 	}
 
 	// Parse CSS to find all var() calls
-	parser := cssparser.AcquireParser()
-	defer cssparser.ReleaseParser(parser)
-	result, err := parser.Parse(doc.Content())
-	if err != nil {
+	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
+	if err != nil || result == nil {
 		return action, nil
 	}
 

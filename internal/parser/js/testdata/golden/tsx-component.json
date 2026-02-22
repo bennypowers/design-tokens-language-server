@@ -1,0 +1,35 @@
+{
+  "Variables": [],
+  "VarCalls": [
+    {
+      "Fallback": null,
+      "TokenName": "--host-color",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 5,
+          "Character": 11
+        },
+        "End": {
+          "Line": 5,
+          "Character": 28
+        }
+      }
+    },
+    {
+      "Fallback": "16px",
+      "TokenName": "--content-padding",
+      "Type": 1,
+      "Range": {
+        "Start": {
+          "Line": 8,
+          "Character": 13
+        },
+        "End": {
+          "Line": 8,
+          "Character": 41
+        }
+      }
+    }
+  ]
+}
