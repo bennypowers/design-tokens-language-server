@@ -62,12 +62,7 @@ func CSSContentSpans(content, languageID string) []string {
 		regions := p.ParseCSSRegions(content)
 		spans := make([]string, 0, len(regions))
 		for _, r := range regions {
-			if r.Type == html.StyleTag {
-				spans = append(spans, r.Content)
-			} else {
-				// Style attributes are declaration-level CSS (always in a block)
-				spans = append(spans, "x{"+r.Content+"}")
-			}
+			spans = append(spans, cssRegionSpan(r))
 		}
 		return spans
 
@@ -93,6 +88,16 @@ func CSSContentSpans(content, languageID string) []string {
 	}
 }
 
+// cssRegionSpan converts a CSS region to its text span.
+// Style tags return raw content; style attributes are wrapped in "x{...}"
+// to form valid CSS for brace counting.
+func cssRegionSpan(r html.CSSRegion) string {
+	if r.Type == html.StyleTag {
+		return r.Content
+	}
+	return "x{" + r.Content + "}"
+}
+
 // htmlCSSSpans extracts CSS text spans from html tagged template segments.
 func htmlCSSSpans(segments []js.Segment) []string {
 	hp := html.AcquireParser()
@@ -102,11 +107,7 @@ func htmlCSSSpans(segments []js.Segment) []string {
 	for _, seg := range segments {
 		regions := hp.ParseCSSRegions(seg.Content)
 		for _, r := range regions {
-			if r.Type == html.StyleTag {
-				spans = append(spans, r.Content)
-			} else {
-				spans = append(spans, "x{"+r.Content+"}")
-			}
+			spans = append(spans, cssRegionSpan(r))
 		}
 	}
 	return spans

@@ -410,6 +410,7 @@ func TestDefinition_HTMLDocument(t *testing.T) {
 	content := `<style>.btn { color: var(--color-primary); }</style>`
 	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
 
+	// Character 30 is inside var(--color-primary) in the <style> tag
 	result, err := Definition(req, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},

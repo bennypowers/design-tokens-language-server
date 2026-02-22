@@ -130,14 +130,14 @@ func TestCSSContentSpansJSHTMLTemplate(t *testing.T) {
 	content := "const t = html`\n  <style>.b { color: blue; }</style>\n  <div style=\"margin: 0\"></div>\n`;"
 	spans := parser.CSSContentSpans(content, "javascript")
 	require.GreaterOrEqual(t, len(spans), 1)
-	// Should find the style tag content
+	// Should find the style tag CSS content
 	found := false
 	for _, s := range spans {
-		if assert.ObjectsAreEqual(".b { color: blue; }", s) || len(s) > 0 {
+		if s == ".b { color: blue; }" {
 			found = true
 		}
 	}
-	assert.True(t, found, "should have extracted CSS spans from html template")
+	assert.True(t, found, "should have extracted CSS span '.b { color: blue; }' from html template")
 }
 
 func TestCSSContentSpansUnsupported(t *testing.T) {

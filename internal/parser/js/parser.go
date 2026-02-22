@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"bennypowers.dev/dtls/internal/log"
 	"bennypowers.dev/dtls/internal/parser/css"
 	htmlparser "bennypowers.dev/dtls/internal/parser/html"
 	sitter "github.com/tree-sitter/go-tree-sitter"
@@ -23,7 +24,9 @@ var jsLang = sitter.NewLanguage(tree_sitter_javascript.Language())
 var parserPool = sync.Pool{
 	New: func() any {
 		parser := sitter.NewParser()
-		_ = parser.SetLanguage(jsLang)
+		if err := parser.SetLanguage(jsLang); err != nil {
+			panic(fmt.Sprintf("failed to set JS language: %v", err))
+		}
 
 		templateQuery, qerr := sitter.NewQuery(jsLang, `
 			(call_expression
@@ -107,41 +110,50 @@ func (p *Parser) ParseTemplates(source string) []TemplateRegion {
 
 	// Run both queries: standard tagged templates and generic form
 	for _, query := range []*sitter.Query{p.templateQuery, p.genericQuery} {
-		cursor := sitter.NewQueryCursor()
-		matches := cursor.Matches(query, root, sourceBytes)
-		for match := matches.Next(); match != nil; match = matches.Next() {
-			var tagName string
-			var templateNode sitter.Node
-			foundTemplate := false
+		regions = p.runTemplateQuery(query, root, sourceBytes, regions)
+	}
 
-			for _, capture := range match.Captures {
-				captureName := query.CaptureNames()[capture.Index]
-				switch captureName {
-				case "tag":
-					tagName = string(sourceBytes[capture.Node.StartByte():capture.Node.EndByte()])
-				case "template":
-					templateNode = capture.Node
-					foundTemplate = true
-				}
-			}
+	return regions
+}
 
-			if tagName != "css" && tagName != "html" {
-				continue
-			}
+// runTemplateQuery executes a single tree-sitter query against the parsed tree,
+// extracting matching css/html tagged template regions and appending them to regions.
+func (p *Parser) runTemplateQuery(query *sitter.Query, root *sitter.Node, sourceBytes []byte, regions []TemplateRegion) []TemplateRegion {
+	cursor := sitter.NewQueryCursor()
+	defer cursor.Close()
 
-			if !foundTemplate {
-				continue
-			}
+	matches := cursor.Matches(query, root, sourceBytes)
+	for match := matches.Next(); match != nil; match = matches.Next() {
+		var tagName string
+		var templateNode sitter.Node
+		foundTemplate := false
 
-			segments := extractSegments(&templateNode, sourceBytes)
-			if len(segments) > 0 {
-				regions = append(regions, TemplateRegion{
-					Segments: segments,
-					Tag:      tagName,
-				})
+		for _, capture := range match.Captures {
+			captureName := query.CaptureNames()[capture.Index]
+			switch captureName {
+			case "tag":
+				tagName = string(sourceBytes[capture.Node.StartByte():capture.Node.EndByte()])
+			case "template":
+				templateNode = capture.Node
+				foundTemplate = true
 			}
 		}
-		cursor.Close()
+
+		if tagName != "css" && tagName != "html" {
+			continue
+		}
+
+		if !foundTemplate {
+			continue
+		}
+
+		segments := extractSegments(&templateNode, sourceBytes)
+		if len(segments) > 0 {
+			regions = append(regions, TemplateRegion{
+				Segments: segments,
+				Tag:      tagName,
+			})
+		}
 	}
 
 	return regions
@@ -202,6 +214,7 @@ func parseCSSSegments(cssParser *css.Parser, segments []Segment, result *css.Par
 	for _, seg := range segments {
 		parsed, err := cssParser.Parse(seg.Content)
 		if err != nil {
+			log.Debug("Failed to parse CSS segment at %d:%d: %v", seg.StartLine, seg.StartCol, err)
 			continue
 		}
 		offsetSegmentResults(parsed, seg)
@@ -218,6 +231,7 @@ func parseHTMLSegments(segments []Segment, result *css.ParseResult) {
 	for _, seg := range segments {
 		parsed, err := htmlParser.ParseCSS(seg.Content)
 		if err != nil {
+			log.Debug("Failed to parse HTML segment at %d:%d: %v", seg.StartLine, seg.StartCol, err)
 			continue
 		}
 		offsetSegmentResults(parsed, seg)

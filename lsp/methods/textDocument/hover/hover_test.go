@@ -758,9 +758,13 @@ func TestHover_HTMLStyleTag(t *testing.T) {
 	})
 
 	uri := "file:///test.html"
+	// <style>.button { color: var(--color-primary); }</style>
+	//        0         1         2         3         4
+	//        0123456789012345678901234567890123456789012345678
 	content := `<style>.button { color: var(--color-primary); }</style>`
 	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
 
+	// Character 30 is inside var(--color-primary)
 	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -773,6 +777,9 @@ func TestHover_HTMLStyleTag(t *testing.T) {
 	mc, ok := hover.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 	assert.Contains(t, mc.Value, "--color-primary")
+
+	require.NotNil(t, hover.Range, "Range should be present for var() call in HTML")
+	assert.Equal(t, uint32(0), hover.Range.Start.Line)
 }
 
 func TestHover_JSCSSTemplate(t *testing.T) {
@@ -790,6 +797,7 @@ func TestHover_JSCSSTemplate(t *testing.T) {
 	content := "const s = css`\n  .card { padding: var(--spacing-small); }\n`;"
 	_ = ctx.DocumentManager().DidOpen(uri, "javascript", 1, content)
 
+	// Character 30 is inside var(--spacing-small) on line 1
 	hover, err := Hover(req, &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
@@ -802,6 +810,42 @@ func TestHover_JSCSSTemplate(t *testing.T) {
 	mc, ok := hover.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 	assert.Contains(t, mc.Value, "--spacing-small")
+
+	require.NotNil(t, hover.Range, "Range should be present for var() call in JS template")
+	assert.Equal(t, uint32(1), hover.Range.Start.Line)
+}
+
+func TestHover_TSXCSSTemplate(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:  "spacing.small",
+		Value: "8px",
+		Type:  "dimension",
+	})
+
+	uri := "file:///test.tsx"
+	content := "const s = css`\n  .card { padding: var(--spacing-small); }\n`;"
+	_ = ctx.DocumentManager().DidOpen(uri, "typescriptreact", 1, content)
+
+	// Character 30 is inside var(--spacing-small) on line 1
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 1, Character: 30},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+	mc, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, mc.Value, "--spacing-small")
+
+	require.NotNil(t, hover.Range, "Range should be present for var() call in TSX template")
+	assert.Equal(t, uint32(1), hover.Range.Start.Line)
 }
 
 // ============================================================================

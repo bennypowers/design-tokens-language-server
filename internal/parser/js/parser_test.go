@@ -177,13 +177,11 @@ func TestParseCSS(t *testing.T) {
 			require.Equal(t, len(expected.VarCalls), len(result.VarCalls), "var call count")
 
 			for i, v := range result.Variables {
-				assert.Equal(t, expected.Variables[i].Name, v.Name, "variable %d name", i)
-				assert.Equal(t, expected.Variables[i].Range, v.Range, "variable %d range", i)
+				assert.Equal(t, *expected.Variables[i], *v, "variable %d", i)
 			}
 
 			for i, vc := range result.VarCalls {
-				assert.Equal(t, expected.VarCalls[i].TokenName, vc.TokenName, "var call %d token name", i)
-				assert.Equal(t, expected.VarCalls[i].Range, vc.Range, "var call %d range", i)
+				assert.Equal(t, *expected.VarCalls[i], *vc, "var call %d", i)
 			}
 		})
 	}

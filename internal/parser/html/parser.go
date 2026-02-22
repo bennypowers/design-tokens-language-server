@@ -22,7 +22,9 @@ var htmlLang = sitter.NewLanguage(tree_sitter_html.Language())
 var parserPool = sync.Pool{
 	New: func() any {
 		parser := sitter.NewParser()
-		_ = parser.SetLanguage(htmlLang)
+		if err := parser.SetLanguage(htmlLang); err != nil {
+			panic(fmt.Sprintf("failed to set HTML language: %v", err))
+		}
 
 		styleQuery, qerr := sitter.NewQuery(htmlLang, `(style_element (raw_text) @css)`)
 		if qerr != nil {
