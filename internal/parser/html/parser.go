@@ -77,13 +77,20 @@ func (p *Parser) Close() {
 	}
 }
 
-// ClosePool drains the parser pool and closes up to 100 cached parsers.
-// sync.Pool does not expose its size, so we use a fixed iteration limit
-// that exceeds the expected pool size under normal concurrency. This is a
-// best-effort cleanup for server shutdown.
+// ClosePool drains the parser pool and closes all cached parsers.
+// It temporarily nils the pool's New function to avoid allocating
+// fresh parsers while draining.
 func ClosePool() {
-	for range 100 {
-		if p, ok := parserPool.Get().(*Parser); ok && p != nil {
+	oldNew := parserPool.New
+	parserPool.New = nil
+	defer func() { parserPool.New = oldNew }()
+
+	for {
+		v := parserPool.Get()
+		if v == nil {
+			break
+		}
+		if p, ok := v.(*Parser); ok {
 			p.Close()
 		}
 	}

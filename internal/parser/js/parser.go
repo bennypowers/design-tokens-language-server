@@ -86,13 +86,20 @@ func (p *Parser) Close() {
 	}
 }
 
-// ClosePool drains the parser pool and closes up to 100 cached parsers.
-// sync.Pool does not expose its size, so we use a fixed iteration limit
-// that exceeds the expected pool size under normal concurrency. This is a
-// best-effort cleanup for server shutdown.
+// ClosePool drains the parser pool and closes all cached parsers.
+// It temporarily nils the pool's New function to avoid allocating
+// fresh parsers while draining.
 func ClosePool() {
-	for range 100 {
-		if p, ok := parserPool.Get().(*Parser); ok && p != nil {
+	oldNew := parserPool.New
+	parserPool.New = nil
+	defer func() { parserPool.New = oldNew }()
+
+	for {
+		v := parserPool.Get()
+		if v == nil {
+			break
+		}
+		if p, ok := v.(*Parser); ok {
 			p.Close()
 		}
 	}
@@ -197,13 +204,10 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 		VarCalls:  []*css.VarCall{},
 	}
 
-	cssParser := css.AcquireParser()
-	defer css.ReleaseParser(cssParser)
-
 	for _, tmpl := range templates {
 		switch tmpl.Tag {
 		case "css":
-			parseCSSSegments(cssParser, tmpl.Segments, result)
+			parseCSSSegments(tmpl.Segments, result)
 		case "html":
 			parseHTMLSegments(tmpl.Segments, result)
 		}
@@ -213,7 +217,10 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 }
 
 // parseCSSSegments parses each segment of a css tagged template as CSS
-func parseCSSSegments(cssParser *css.Parser, segments []Segment, result *css.ParseResult) {
+func parseCSSSegments(segments []Segment, result *css.ParseResult) {
+	cssParser := css.AcquireParser()
+	defer css.ReleaseParser(cssParser)
+
 	for _, seg := range segments {
 		parsed, err := cssParser.Parse(seg.Content)
 		if err != nil {
