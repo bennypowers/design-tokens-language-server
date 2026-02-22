@@ -14,8 +14,12 @@ const (
 
 // CSSRegion represents a region of CSS content found in an HTML document
 type CSSRegion struct {
-	Content   string
+	// Content is the raw CSS text extracted from the region
+	Content string
+	// StartLine is the 0-indexed line in the HTML document where the CSS content begins
 	StartLine uint
-	StartCol  uint
-	Type      RegionType
+	// StartCol is the 0-indexed column in the HTML document where the CSS content begins
+	StartCol uint
+	// Type identifies whether this region comes from a <style> tag or a style attribute
+	Type RegionType
 }
