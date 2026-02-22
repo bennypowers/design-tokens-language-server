@@ -128,17 +128,13 @@ func TestParseCSS(t *testing.T) {
 			require.Equal(t, len(expected.VarCalls), len(result.VarCalls), "var call count")
 
 			for i, v := range result.Variables {
-				if i < len(expected.Variables) {
-					assert.Equal(t, expected.Variables[i].Name, v.Name, "variable %d name", i)
-					assert.Equal(t, expected.Variables[i].Range, v.Range, "variable %d range", i)
-				}
+				assert.Equal(t, expected.Variables[i].Name, v.Name, "variable %d name", i)
+				assert.Equal(t, expected.Variables[i].Range, v.Range, "variable %d range", i)
 			}
 
 			for i, vc := range result.VarCalls {
-				if i < len(expected.VarCalls) {
-					assert.Equal(t, expected.VarCalls[i].TokenName, vc.TokenName, "var call %d token name", i)
-					assert.Equal(t, expected.VarCalls[i].Range, vc.Range, "var call %d range", i)
-				}
+				assert.Equal(t, expected.VarCalls[i].TokenName, vc.TokenName, "var call %d token name", i)
+				assert.Equal(t, expected.VarCalls[i].Range, vc.Range, "var call %d range", i)
 			}
 		})
 	}
@@ -232,4 +228,108 @@ func TestStyleAttributePositionMapping(t *testing.T) {
 	// So in the HTML document, var() starts at col 12 + 7 = 19
 	assert.Equal(t, uint32(0), vc.Range.Start.Line, "var call should be on line 0")
 	assert.Equal(t, uint32(19), vc.Range.Start.Character, "var call should start at char 19")
+}
+
+func TestMultilineStyleTagPositionMapping(t *testing.T) {
+	// Verify that CSS on lines after the first line of a style tag
+	// gets only line offset (not column offset)
+	source := `<html>
+<head>
+  <style>
+    :root {
+      --color-primary: #00f;
+    }
+    .card {
+      color: var(--color-primary);
+    }
+  </style>
+</head>
+</html>`
+
+	parser := html.AcquireParser()
+	defer html.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(source)
+	require.NoError(t, err)
+	require.Len(t, result.VarCalls, 1)
+
+	vc := result.VarCalls[0]
+	assert.Equal(t, "--color-primary", vc.TokenName)
+	// The var() is on line 7 (0-indexed), and its column should match
+	// the indentation in the CSS content itself (not offset by style tag indent)
+	assert.Equal(t, uint32(7), vc.Range.Start.Line)
+	assert.Greater(t, vc.Range.Start.Character, uint32(0))
+}
+
+func TestMultilineStyleAttributePositionMapping(t *testing.T) {
+	// Style attribute where CSS parsing produces positions on line 0
+	source := `<div style="color: var(--a); background: var(--b, #fff)">x</div>`
+
+	parser := html.AcquireParser()
+	defer html.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(source)
+	require.NoError(t, err)
+	require.Len(t, result.VarCalls, 2)
+
+	assert.Equal(t, "--a", result.VarCalls[0].TokenName)
+	assert.Equal(t, "--b", result.VarCalls[1].TokenName)
+	// Both on line 0
+	assert.Equal(t, uint32(0), result.VarCalls[0].Range.Start.Line)
+	assert.Equal(t, uint32(0), result.VarCalls[1].Range.Start.Line)
+	// Second var call should be after the first
+	assert.Greater(t, result.VarCalls[1].Range.Start.Character, result.VarCalls[0].Range.Start.Character)
+}
+
+func TestAdjustAttributePositionUnderflow(t *testing.T) {
+	// When the wrapped CSS "x{...}" produces a position with Character < 2,
+	// the underflow guard should clamp to region.StartCol.
+	// Use a short property name so positions near the start are tested.
+	source := `<div style="a:var(--x)">y</div>`
+
+	parser := html.AcquireParser()
+	defer html.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(source)
+	require.NoError(t, err)
+	require.Len(t, result.VarCalls, 1)
+
+	vc := result.VarCalls[0]
+	assert.Equal(t, "--x", vc.TokenName)
+	assert.Equal(t, uint32(0), vc.Range.Start.Line)
+	// "a:var(--x)" — var starts at offset 2 in the attribute value
+	// attribute value starts at col 12 in the HTML → 12 + 2 = 14
+	assert.Equal(t, uint32(14), vc.Range.Start.Character)
+}
+
+func TestClosePool(t *testing.T) {
+	// Exercise ClosePool — should not panic
+	// First, put a parser into the pool
+	p := html.AcquireParser()
+	html.ReleaseParser(p)
+	html.ClosePool()
+	// Pool is drained; acquiring again should still work (creates new parser)
+	p2 := html.AcquireParser()
+	defer html.ReleaseParser(p2)
+	regions := p2.ParseCSSRegions(`<style>.a{}</style>`)
+	assert.Len(t, regions, 1)
+}
+
+func TestStyleTagWithVariableDeclaration(t *testing.T) {
+	source := `<style>
+:root {
+  --my-color: blue;
+}
+</style>`
+
+	parser := html.AcquireParser()
+	defer html.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(source)
+	require.NoError(t, err)
+	require.Len(t, result.Variables, 1)
+
+	v := result.Variables[0]
+	assert.Equal(t, "--my-color", v.Name)
+	assert.Equal(t, "blue", v.Value)
 }

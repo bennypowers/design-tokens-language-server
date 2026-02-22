@@ -83,19 +83,7 @@ func CSSContentSpans(content, languageID string) []string {
 					spans = append(spans, seg.Content)
 				}
 			case "html":
-				// For html templates, extract CSS from each segment
-				hp := html.AcquireParser()
-				for _, seg := range tmpl.Segments {
-					regions := hp.ParseCSSRegions(seg.Content)
-					for _, r := range regions {
-						if r.Type == html.StyleTag {
-							spans = append(spans, r.Content)
-						} else {
-							spans = append(spans, "x{"+r.Content+"}")
-						}
-					}
-				}
-				html.ReleaseParser(hp)
+				spans = append(spans, htmlCSSSpans(tmpl.Segments)...)
 			}
 		}
 		return spans
@@ -103,4 +91,23 @@ func CSSContentSpans(content, languageID string) []string {
 	default:
 		return nil
 	}
+}
+
+// htmlCSSSpans extracts CSS text spans from html tagged template segments.
+func htmlCSSSpans(segments []js.Segment) []string {
+	hp := html.AcquireParser()
+	defer html.ReleaseParser(hp)
+
+	var spans []string
+	for _, seg := range segments {
+		regions := hp.ParseCSSRegions(seg.Content)
+		for _, r := range regions {
+			if r.Type == html.StyleTag {
+				spans = append(spans, r.Content)
+			} else {
+				spans = append(spans, "x{"+r.Content+"}")
+			}
+		}
+	}
+	return spans
 }

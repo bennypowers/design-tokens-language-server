@@ -14,6 +14,7 @@ import (
 type Parser struct {
 	parser        *sitter.Parser
 	templateQuery *sitter.Query
+	genericQuery  *sitter.Query // matches css<Type>`...` (generic form parsed by JS grammar as binary_expression)
 }
 
 var jsLang = sitter.NewLanguage(tree_sitter_javascript.Language())
@@ -33,9 +34,24 @@ var parserPool = sync.Pool{
 			panic(fmt.Sprintf("failed to compile template query: %v", qerr))
 		}
 
+		// Generic form: css<Type>`...` is valid TypeScript (since TS 2.9) but both
+		// tree-sitter-javascript and tree-sitter-typescript misparse it as binary
+		// expressions instead of a call_expression with type_arguments.
+		// See: https://github.com/tree-sitter/tree-sitter-typescript/issues/341
+		genericQuery, qerr := sitter.NewQuery(jsLang, `
+			(binary_expression
+				left: (binary_expression
+					left: (identifier) @tag)
+				right: (template_string) @template)
+		`)
+		if qerr != nil {
+			panic(fmt.Sprintf("failed to compile generic query: %v", qerr))
+		}
+
 		return &Parser{
 			parser:        parser,
 			templateQuery: templateQuery,
+			genericQuery:  genericQuery,
 		}
 	},
 }
@@ -62,6 +78,9 @@ func (p *Parser) Close() {
 	if p.templateQuery != nil {
 		p.templateQuery.Close()
 	}
+	if p.genericQuery != nil {
+		p.genericQuery.Close()
+	}
 }
 
 // ClosePool closes all parsers in the pool
@@ -73,7 +92,8 @@ func ClosePool() {
 	}
 }
 
-// ParseTemplates finds css/html tagged template literals and splits them at ${...} boundaries
+// ParseTemplates finds css/html tagged template literals and splits them at ${...} boundaries.
+// Handles both standard form (css`...`) and generic form (css<Type>`...`).
 func (p *Parser) ParseTemplates(source string) []TemplateRegion {
 	sourceBytes := []byte(source)
 	tree := p.parser.Parse(sourceBytes, nil)
@@ -85,39 +105,43 @@ func (p *Parser) ParseTemplates(source string) []TemplateRegion {
 	root := tree.RootNode()
 	var regions []TemplateRegion
 
-	cursor := sitter.NewQueryCursor()
-	defer cursor.Close()
+	// Run both queries: standard tagged templates and generic form
+	for _, query := range []*sitter.Query{p.templateQuery, p.genericQuery} {
+		cursor := sitter.NewQueryCursor()
+		matches := cursor.Matches(query, root, sourceBytes)
+		for match := matches.Next(); match != nil; match = matches.Next() {
+			var tagName string
+			var templateNode sitter.Node
+			foundTemplate := false
 
-	matches := cursor.Matches(p.templateQuery, root, sourceBytes)
-	for match := matches.Next(); match != nil; match = matches.Next() {
-		var tagName string
-		var templateNode *sitter.Node
+			for _, capture := range match.Captures {
+				captureName := query.CaptureNames()[capture.Index]
+				switch captureName {
+				case "tag":
+					tagName = string(sourceBytes[capture.Node.StartByte():capture.Node.EndByte()])
+				case "template":
+					templateNode = capture.Node
+					foundTemplate = true
+				}
+			}
 
-		for _, capture := range match.Captures {
-			captureName := p.templateQuery.CaptureNames()[capture.Index]
-			switch captureName {
-			case "tag":
-				tagName = string(sourceBytes[capture.Node.StartByte():capture.Node.EndByte()])
-			case "template":
-				templateNode = &capture.Node
+			if tagName != "css" && tagName != "html" {
+				continue
+			}
+
+			if !foundTemplate {
+				continue
+			}
+
+			segments := extractSegments(&templateNode, sourceBytes)
+			if len(segments) > 0 {
+				regions = append(regions, TemplateRegion{
+					Segments: segments,
+					Tag:      tagName,
+				})
 			}
 		}
-
-		if tagName != "css" && tagName != "html" {
-			continue
-		}
-
-		if templateNode == nil {
-			continue
-		}
-
-		segments := extractSegments(templateNode, sourceBytes)
-		if len(segments) > 0 {
-			regions = append(regions, TemplateRegion{
-				Segments: segments,
-				Tag:      tagName,
-			})
-		}
+		cursor.Close()
 	}
 
 	return regions

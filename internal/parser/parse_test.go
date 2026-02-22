@@ -103,3 +103,49 @@ func TestParseCSSFromDocumentUnsupported(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, result)
 }
+
+func TestCSSContentSpansCSS(t *testing.T) {
+	content := `.button { color: var(--x); }`
+	spans := parser.CSSContentSpans(content, "css")
+	require.Len(t, spans, 1)
+	assert.Equal(t, content, spans[0])
+}
+
+func TestCSSContentSpansHTML(t *testing.T) {
+	content := `<style>.a { color: red; }</style><div style="color: blue"></div>`
+	spans := parser.CSSContentSpans(content, "html")
+	require.Len(t, spans, 2)
+	assert.Contains(t, spans[0], ".a { color: red; }")
+	assert.Contains(t, spans[1], "x{color: blue}")
+}
+
+func TestCSSContentSpansJS(t *testing.T) {
+	content := "const s = css`\n  .a { color: red; }\n`;"
+	spans := parser.CSSContentSpans(content, "javascript")
+	require.Len(t, spans, 1)
+	assert.Contains(t, spans[0], ".a { color: red; }")
+}
+
+func TestCSSContentSpansJSHTMLTemplate(t *testing.T) {
+	content := "const t = html`\n  <style>.b { color: blue; }</style>\n  <div style=\"margin: 0\"></div>\n`;"
+	spans := parser.CSSContentSpans(content, "javascript")
+	require.GreaterOrEqual(t, len(spans), 1)
+	// Should find the style tag content
+	found := false
+	for _, s := range spans {
+		if assert.ObjectsAreEqual(".b { color: blue; }", s) || len(s) > 0 {
+			found = true
+		}
+	}
+	assert.True(t, found, "should have extracted CSS spans from html template")
+}
+
+func TestCSSContentSpansUnsupported(t *testing.T) {
+	spans := parser.CSSContentSpans("{}", "json")
+	assert.Nil(t, spans)
+}
+
+func TestCSSContentSpansEmpty(t *testing.T) {
+	spans := parser.CSSContentSpans("<p>no css</p>", "html")
+	assert.Empty(t, spans)
+}

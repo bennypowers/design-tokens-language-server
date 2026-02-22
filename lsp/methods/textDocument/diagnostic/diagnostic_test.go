@@ -429,3 +429,53 @@ func TestGetDiagnostics_RelatedInformation(t *testing.T) {
 		assert.Nil(t, diag.RelatedInformation, "Should not have related information by default")
 	})
 }
+
+func TestGetDiagnostics_HTMLDocument(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:               "color.old",
+		Value:              "#ff0000",
+		Deprecated:         true,
+		DeprecationMessage: "Use color.primary instead",
+	})
+
+	uri := "file:///test.html"
+	content := `<style>.button { color: var(--color-old); }</style>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	diagnostics, err := GetDiagnostics(ctx, uri)
+	require.NoError(t, err)
+	require.Len(t, diagnostics, 1)
+	assert.Contains(t, diagnostics[0].Message, "deprecated")
+}
+
+func TestGetDiagnostics_JSDocument(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:       "color.primary",
+		Value:      "#0000ff",
+	})
+
+	uri := "file:///test.js"
+	content := "const s = css`\n  .btn { color: var(--color-primary, #ff0000); }\n`;"
+	_ = ctx.DocumentManager().DidOpen(uri, "javascript", 1, content)
+
+	diagnostics, err := GetDiagnostics(ctx, uri)
+	require.NoError(t, err)
+	require.Len(t, diagnostics, 1)
+	assert.Contains(t, diagnostics[0].Message, "fallback does not match")
+}
+
+func TestGetDiagnostics_HTMLNoCSS(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+
+	uri := "file:///test.html"
+	content := `<p>Hello</p>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	diagnostics, err := GetDiagnostics(ctx, uri)
+	require.NoError(t, err)
+	assert.Empty(t, diagnostics)
+}

@@ -743,6 +743,68 @@ func TestHover_ContentFormat(t *testing.T) {
 }
 
 // ============================================================================
+// HTML/JS Hover Tests
+// ============================================================================
+
+func TestHover_HTMLStyleTag(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:  "color.primary",
+		Value: "#ff0000",
+		Type:  "color",
+	})
+
+	uri := "file:///test.html"
+	content := `<style>.button { color: var(--color-primary); }</style>`
+	_ = ctx.DocumentManager().DidOpen(uri, "html", 1, content)
+
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 0, Character: 30},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+	mc, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, mc.Value, "--color-primary")
+}
+
+func TestHover_JSCSSTemplate(t *testing.T) {
+	ctx := testutil.NewMockServerContext()
+	glspCtx := &glsp.Context{}
+	req := types.NewRequestContext(ctx, glspCtx)
+
+	_ = ctx.TokenManager().Add(&tokens.Token{
+		Name:  "spacing.small",
+		Value: "8px",
+		Type:  "dimension",
+	})
+
+	uri := "file:///test.js"
+	content := "const s = css`\n  .card { padding: var(--spacing-small); }\n`;"
+	_ = ctx.DocumentManager().DidOpen(uri, "javascript", 1, content)
+
+	hover, err := Hover(req, &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+			Position:     protocol.Position{Line: 1, Character: 30},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+	mc, ok := hover.Contents.(protocol.MarkupContent)
+	require.True(t, ok)
+	assert.Contains(t, mc.Value, "--spacing-small")
+}
+
+// ============================================================================
 // JSON/YAML Token Reference Hover Tests
 // ============================================================================
 

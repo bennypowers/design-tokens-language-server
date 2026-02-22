@@ -202,22 +202,20 @@ func isWordChar(c byte) bool {
 }
 
 // isInCompletionContext checks if the position is in a valid completion context.
-// Completions are valid inside CSS blocks (between { and }) where var() calls can be used.
-// For non-CSS languages (HTML, JS/TS), brace counting is scoped to extracted CSS regions
-// to avoid misinterpreting braces from JS/HTML code as CSS block boundaries.
+// For CSS files: checks brace counting up to cursor position (inside a block).
+// For non-CSS languages (HTML, JS/TS): checks whether the document contains any
+// CSS regions at all. The word matching in getWordAtPosition already scopes
+// completions to CSS identifier characters, so additional brace counting within
+// embedded CSS is unnecessary.
 func isInCompletionContext(content, languageID string, pos protocol.Position) bool {
 	if languageID == "css" {
 		return isInCSSBlock(content, pos)
 	}
 
-	// For non-CSS languages, count braces only within extracted CSS spans
+	// For non-CSS languages, check if any CSS content exists in the document.
+	// Word matching handles position-level filtering.
 	spans := parser.CSSContentSpans(content, languageID)
-	for _, span := range spans {
-		if countUnclosedBraces(span) > 0 {
-			return true
-		}
-	}
-	return false
+	return len(spans) > 0
 }
 
 // isInCSSBlock counts braces in CSS content up to the cursor position

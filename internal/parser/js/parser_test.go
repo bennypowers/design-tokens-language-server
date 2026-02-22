@@ -173,21 +173,17 @@ func TestParseCSS(t *testing.T) {
 			err = json.Unmarshal(golden, &expected)
 			require.NoError(t, err)
 
-			assert.Equal(t, len(expected.Variables), len(result.Variables), "variable count")
-			assert.Equal(t, len(expected.VarCalls), len(result.VarCalls), "var call count")
+			require.Equal(t, len(expected.Variables), len(result.Variables), "variable count")
+			require.Equal(t, len(expected.VarCalls), len(result.VarCalls), "var call count")
 
 			for i, v := range result.Variables {
-				if i < len(expected.Variables) {
-					assert.Equal(t, expected.Variables[i].Name, v.Name, "variable %d name", i)
-					assert.Equal(t, expected.Variables[i].Range, v.Range, "variable %d range", i)
-				}
+				assert.Equal(t, expected.Variables[i].Name, v.Name, "variable %d name", i)
+				assert.Equal(t, expected.Variables[i].Range, v.Range, "variable %d range", i)
 			}
 
 			for i, vc := range result.VarCalls {
-				if i < len(expected.VarCalls) {
-					assert.Equal(t, expected.VarCalls[i].TokenName, vc.TokenName, "var call %d token name", i)
-					assert.Equal(t, expected.VarCalls[i].Range, vc.Range, "var call %d range", i)
-				}
+				assert.Equal(t, expected.VarCalls[i].TokenName, vc.TokenName, "var call %d token name", i)
+				assert.Equal(t, expected.VarCalls[i].Range, vc.Range, "var call %d range", i)
 			}
 		})
 	}
@@ -206,6 +202,118 @@ func TestParseCSSNoTemplates(t *testing.T) {
 
 	assert.Empty(t, result.Variables)
 	assert.Empty(t, result.VarCalls)
+}
+
+func TestParseTemplatesGenericCSSTag(t *testing.T) {
+	source, err := os.ReadFile("testdata/generic-css-tag.ts")
+	require.NoError(t, err)
+
+	parser := js.AcquireParser()
+	defer js.ReleaseParser(parser)
+
+	templates := parser.ParseTemplates(string(source))
+
+	cssCount := 0
+	for _, tmpl := range templates {
+		if tmpl.Tag == "css" {
+			cssCount++
+		}
+	}
+	assert.Equal(t, 1, cssCount, "should find css tagged template with generic type parameter")
+
+	// Also verify we can extract var calls
+	result, err := parser.ParseCSS(string(source))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.GreaterOrEqual(t, len(result.VarCalls), 2, "should find var calls from generic css template")
+
+	tokenNames := make(map[string]bool)
+	for _, vc := range result.VarCalls {
+		tokenNames[vc.TokenName] = true
+	}
+	assert.True(t, tokenNames["--host-color"], "should find --host-color")
+	assert.True(t, tokenNames["--content-padding"], "should find --content-padding")
+}
+
+func TestClosePool(t *testing.T) {
+	// Exercise ClosePool — should not panic
+	p := js.AcquireParser()
+	js.ReleaseParser(p)
+	js.ClosePool()
+	// Pool is drained; acquiring again should still work
+	p2 := js.AcquireParser()
+	defer js.ReleaseParser(p2)
+	templates := p2.ParseTemplates("const s = css`a{}`")
+	assert.Len(t, templates, 1)
+}
+
+func TestParseTemplatesIgnoresNonCSSHTMLTags(t *testing.T) {
+	// Tagged templates with names other than css/html should be ignored
+	source := "const s = foo`some template`;\nconst t = bar`another one`;"
+
+	parser := js.AcquireParser()
+	defer js.ReleaseParser(parser)
+
+	templates := parser.ParseTemplates(source)
+	assert.Empty(t, templates, "should ignore non-css/html tagged templates")
+}
+
+func TestParseCSSWithHTMLTemplateStyleAttribute(t *testing.T) {
+	// html template with a style attribute should extract var calls
+	source := "const t = html`<div style=\"color: var(--x)\"></div>`;"
+
+	parser := js.AcquireParser()
+	defer js.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(source)
+	require.NoError(t, err)
+	require.Len(t, result.VarCalls, 1)
+	assert.Equal(t, "--x", result.VarCalls[0].TokenName)
+}
+
+func TestMultilineCSSTemplatePositionMapping(t *testing.T) {
+	// Verify that CSS on lines after the first line of a template
+	// gets only line offset (not column offset)
+	source, err := os.ReadFile("testdata/css-template.js")
+	require.NoError(t, err)
+
+	parser := js.AcquireParser()
+	defer js.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(string(source))
+	require.NoError(t, err)
+
+	// The template has var calls on multiple lines
+	require.GreaterOrEqual(t, len(result.VarCalls), 2)
+
+	// Second var call is var(--bg-color, #fff) on line 8 (0-indexed)
+	vc := result.VarCalls[1]
+	assert.Equal(t, "--bg-color", vc.TokenName)
+	assert.Equal(t, uint32(8), vc.Range.Start.Line, "second var call line")
+	assert.Greater(t, vc.Range.Start.Character, uint32(0), "should have nonzero column")
+}
+
+func TestHTMLTemplateWithStyleAttribute(t *testing.T) {
+	// Verify that html template with style attributes also works
+	source, err := os.ReadFile("testdata/html-template.js")
+	require.NoError(t, err)
+
+	parser := js.AcquireParser()
+	defer js.ReleaseParser(parser)
+
+	result, err := parser.ParseCSS(string(source))
+	require.NoError(t, err)
+
+	// Should find var calls from both <style> tag and style attribute
+	require.GreaterOrEqual(t, len(result.VarCalls), 2)
+
+	// Check that we got both --text-color and --card-bg from the style tag
+	tokenNames := make(map[string]bool)
+	for _, vc := range result.VarCalls {
+		tokenNames[vc.TokenName] = true
+	}
+	assert.True(t, tokenNames["--text-color"], "should find --text-color")
+	assert.True(t, tokenNames["--card-bg"], "should find --card-bg")
 }
 
 func TestCSSTemplatePositionMapping(t *testing.T) {
