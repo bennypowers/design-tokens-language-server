@@ -124,8 +124,8 @@ func TestParseCSS(t *testing.T) {
 			err = json.Unmarshal(golden, &expected)
 			require.NoError(t, err)
 
-			assert.Equal(t, len(expected.Variables), len(result.Variables), "variable count")
-			assert.Equal(t, len(expected.VarCalls), len(result.VarCalls), "var call count")
+			require.Equal(t, len(expected.Variables), len(result.Variables), "variable count")
+			require.Equal(t, len(expected.VarCalls), len(result.VarCalls), "var call count")
 
 			for i, v := range result.Variables {
 				if i < len(expected.Variables) {

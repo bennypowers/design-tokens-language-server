@@ -146,7 +146,11 @@ func resolveFixAllFallbacks(req *types.RequestContext, action *protocol.CodeActi
 
 	// Parse CSS to find all var() calls
 	result, err := parser.ParseCSSFromDocument(doc.Content(), doc.LanguageID())
-	if err != nil || result == nil {
+	if err != nil {
+		log.Error("Failed to parse %s (%s) for fix-all resolution: %v", uri, doc.LanguageID(), err)
+		return action, nil
+	}
+	if result == nil {
 		return action, nil
 	}
 

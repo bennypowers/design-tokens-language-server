@@ -2,7 +2,6 @@ package html
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"bennypowers.dev/dtls/internal/parser/css"
@@ -183,27 +182,25 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 
 // offsetStyleTagResults adjusts CSS parse results to account for the style tag's position in the HTML
 func offsetStyleTagResults(parsed *css.ParseResult, region CSSRegion) {
-	sourceLines := strings.Split(region.Content, "\n")
-
 	for _, v := range parsed.Variables {
-		v.Range = offsetRange(v.Range, region, sourceLines)
+		v.Range = offsetRange(v.Range, region)
 	}
 	for _, vc := range parsed.VarCalls {
-		vc.Range = offsetRange(vc.Range, region, sourceLines)
+		vc.Range = offsetRange(vc.Range, region)
 	}
 }
 
 // offsetRange adjusts a CSS range to account for the region's position in the HTML document
-func offsetRange(r css.Range, region CSSRegion, sourceLines []string) css.Range {
-	r.Start = offsetPosition(r.Start, region, sourceLines)
-	r.End = offsetPosition(r.End, region, sourceLines)
+func offsetRange(r css.Range, region CSSRegion) css.Range {
+	r.Start = offsetPosition(r.Start, region)
+	r.End = offsetPosition(r.End, region)
 	return r
 }
 
 // offsetPosition adjusts a CSS position to account for the region's position in the HTML document.
 // For the first line of CSS content, both line and column are offset.
 // For subsequent lines, only the line is offset (columns are absolute within the CSS content).
-func offsetPosition(pos css.Position, region CSSRegion, _ []string) css.Position {
+func offsetPosition(pos css.Position, region CSSRegion) css.Position {
 	if pos.Line == 0 {
 		pos.Character += uint32(region.StartCol) //nolint:gosec // G115: region positions from tree-sitter are bounded by file size
 	}
@@ -244,7 +241,11 @@ func adjustAttributeRange(r css.Range, region CSSRegion) css.Range {
 func adjustAttributePosition(pos css.Position, region CSSRegion) css.Position {
 	if pos.Line == 0 {
 		// Subtract the "x{" wrapper prefix, add the attribute value's column
-		pos.Character = pos.Character - 2 + uint32(region.StartCol) //nolint:gosec // G115: region positions from tree-sitter are bounded by file size
+		col := uint32(region.StartCol) //nolint:gosec // G115: region positions from tree-sitter are bounded by file size
+		if pos.Character >= 2 {
+			col += pos.Character - 2
+		}
+		pos.Character = col
 	}
 	pos.Line += uint32(region.StartLine) //nolint:gosec // G115: region positions from tree-sitter are bounded by file size
 	return pos

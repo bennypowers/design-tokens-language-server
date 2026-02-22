@@ -103,7 +103,7 @@ func (s *Server) RunStdio() error {
 	return s.glspServer.RunStdio()
 }
 
-// Close releases server resources including the CSS parser pool.
+// Close releases server resources including the CSS, HTML, and JS parser pools.
 // It is safe to call Close multiple times.
 // This method should be called when the server is no longer needed,
 // typically in test cleanup via defer server.Close().

@@ -46,8 +46,8 @@ func TestParseTemplates(t *testing.T) {
 			wantHTML: 0,
 		},
 		{
-			name:     "typescript class",
-			fixture:  "testdata/typescript-class.js",
+			name:     "lit-element class",
+			fixture:  "testdata/lit-element-class.js",
 			wantCSS:  1,
 			wantHTML: 1,
 		},
@@ -130,9 +130,9 @@ func TestParseCSS(t *testing.T) {
 			golden:  "testdata/golden/template-with-expressions.json",
 		},
 		{
-			name:    "typescript class",
-			fixture: "testdata/typescript-class.js",
-			golden:  "testdata/golden/typescript-class.json",
+			name:    "lit-element class",
+			fixture: "testdata/lit-element-class.js",
+			golden:  "testdata/golden/lit-element-class.json",
 		},
 		{
 			name:    "jsx component",

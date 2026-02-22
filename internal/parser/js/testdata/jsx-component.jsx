@@ -1,4 +1,4 @@
-import { css, html } from 'lit';
+import { css } from 'lit';
 
 const styles = css`
   .card {

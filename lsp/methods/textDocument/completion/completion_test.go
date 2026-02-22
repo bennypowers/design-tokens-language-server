@@ -459,7 +459,7 @@ func TestIsInCompletionContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isInCompletionContext(tt.content, tt.position)
+			result := isInCompletionContext(tt.content, "css", tt.position)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

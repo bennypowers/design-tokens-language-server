@@ -4,8 +4,10 @@ package html
 type RegionType int
 
 const (
+	// UnknownRegion is the zero value, indicating an uninitialized region type
+	UnknownRegion RegionType = iota
 	// StyleTag represents CSS inside a <style> element
-	StyleTag RegionType = iota
+	StyleTag
 	// StyleAttribute represents CSS inside a style="..." attribute
 	StyleAttribute
 )

@@ -3,7 +3,7 @@
 [![build](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml/badge.svg)](https://github.com/bennypowers/design-tokens-language-server/actions/workflows/build.yaml)
 [![coverage](https://codecov.io/gh/bennypowers/design-tokens-language-server/graph/badge.svg?token=9VOMFXI5GQ)](https://codecov.io/gh/bennypowers/design-tokens-language-server)
 
-Editor tools for working with [DTCG formatted design tokens](https://tr.designtokens.org/format/) in CSS, HTML, JavaScript/TypeScript (lit-element), JSON, and YAML files.
+Editor tools for working with [DTCG-formatted design tokens](https://tr.designtokens.org/format/) in CSS, HTML, JavaScript/TypeScript (lit-element), JSON, and YAML files.
 
 > [!NOTE]
 > This is pre-release software. If you encounter bugs or unexpected behavior, please file a detailed [issue](https://github.com/bennypowers/design-tokens-language-server/issues/new).

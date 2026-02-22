@@ -164,13 +164,9 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 	for _, tmpl := range templates {
 		switch tmpl.Tag {
 		case "css":
-			if err := parseCSSSegments(cssParser, tmpl.Segments, result); err != nil {
-				continue
-			}
+			parseCSSSegments(cssParser, tmpl.Segments, result)
 		case "html":
-			if err := parseHTMLSegments(tmpl.Segments, result); err != nil {
-				continue
-			}
+			parseHTMLSegments(tmpl.Segments, result)
 		}
 	}
 
@@ -178,7 +174,7 @@ func (p *Parser) ParseCSS(source string) (*css.ParseResult, error) {
 }
 
 // parseCSSSegments parses each segment of a css tagged template as CSS
-func parseCSSSegments(cssParser *css.Parser, segments []Segment, result *css.ParseResult) error {
+func parseCSSSegments(cssParser *css.Parser, segments []Segment, result *css.ParseResult) {
 	for _, seg := range segments {
 		parsed, err := cssParser.Parse(seg.Content)
 		if err != nil {
@@ -188,11 +184,10 @@ func parseCSSSegments(cssParser *css.Parser, segments []Segment, result *css.Par
 		result.Variables = append(result.Variables, parsed.Variables...)
 		result.VarCalls = append(result.VarCalls, parsed.VarCalls...)
 	}
-	return nil
 }
 
 // parseHTMLSegments parses each segment of an html tagged template as HTML, then extracts CSS
-func parseHTMLSegments(segments []Segment, result *css.ParseResult) error {
+func parseHTMLSegments(segments []Segment, result *css.ParseResult) {
 	htmlParser := htmlparser.AcquireParser()
 	defer htmlparser.ReleaseParser(htmlParser)
 
@@ -205,7 +200,6 @@ func parseHTMLSegments(segments []Segment, result *css.ParseResult) error {
 		result.Variables = append(result.Variables, parsed.Variables...)
 		result.VarCalls = append(result.VarCalls, parsed.VarCalls...)
 	}
-	return nil
 }
 
 // offsetSegmentResults adjusts CSS parse results positions to account for the segment's

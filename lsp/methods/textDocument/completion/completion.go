@@ -66,7 +66,7 @@ func Completion(req *types.RequestContext, params *protocol.CompletionParams) (a
 	log.Info("Completion word: '%s'", word)
 
 	// Check if we're in a valid completion context (inside a block or property value)
-	if !isInCompletionContext(doc.Content(), pos) {
+	if !isInCompletionContext(doc.Content(), doc.LanguageID(), pos) {
 		return nil, nil
 	}
 
@@ -201,10 +201,27 @@ func isWordChar(c byte) bool {
 		c == '-' || c == '_'
 }
 
-// isInCompletionContext checks if the position is in a valid completion req.GLSP.
+// isInCompletionContext checks if the position is in a valid completion context.
 // Completions are valid inside CSS blocks (between { and }) where var() calls can be used.
-// This implementation counts braces up to the cursor position to determine if we're inside a block.
-func isInCompletionContext(content string, pos protocol.Position) bool {
+// For non-CSS languages (HTML, JS/TS), brace counting is scoped to extracted CSS regions
+// to avoid misinterpreting braces from JS/HTML code as CSS block boundaries.
+func isInCompletionContext(content, languageID string, pos protocol.Position) bool {
+	if languageID == "css" {
+		return isInCSSBlock(content, pos)
+	}
+
+	// For non-CSS languages, count braces only within extracted CSS spans
+	spans := parser.CSSContentSpans(content, languageID)
+	for _, span := range spans {
+		if countUnclosedBraces(span) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// isInCSSBlock counts braces in CSS content up to the cursor position
+func isInCSSBlock(content string, pos protocol.Position) bool {
 	lines := strings.Split(content, "\n")
 	if int(pos.Line) >= len(lines) {
 		return false
@@ -229,16 +246,13 @@ func isInCompletionContext(content string, pos protocol.Position) bool {
 		}
 	}
 
-	// Count opening and closing braces
-	// If we have more opening braces than closing braces, we're inside a block
+	return countUnclosedBraces(textUpToCursor.String()) > 0
+}
+
+// countUnclosedBraces returns the number of unclosed braces in a CSS text fragment
+func countUnclosedBraces(text string) int {
 	openBraces := 0
 	closeBraces := 0
-	text := textUpToCursor.String()
-
-	// Simple character-by-character scan
-	// Note: This doesn't handle strings or comments, but it's good enough
-	// for most cases. A more sophisticated implementation would skip
-	// content inside strings and comments.
 	for _, ch := range text {
 		switch ch {
 		case '{':
@@ -247,9 +261,7 @@ func isInCompletionContext(content string, pos protocol.Position) bool {
 			closeBraces++
 		}
 	}
-
-	// We're inside a block if we have unclosed braces
-	return openBraces > closeBraces
+	return openBraces - closeBraces
 }
 
 // normalizeTokenName normalizes a token name for comparison

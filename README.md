@@ -327,7 +327,7 @@ For example, in your lsp config for neovim:
 return {
   cmd = { 'design-tokens-language-server' },
   root_markers = { 'package.json', '.git' },
-  filetypes = { 'css', 'html', 'javascript', 'javascriptreact', 'typescript', 'typescriptreact' },
+  filetypes = { 'css', 'html', 'javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'json', 'yaml' },
   settings = {
     dtls = {
       tokensFiles = {
