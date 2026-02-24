@@ -18,3 +18,4 @@ tools/lsp-bench/lsp-bench
 *.test
 /design-tokens-language-server
 benchmark_results/
+RELEASE_NOTES.md
