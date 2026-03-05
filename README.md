@@ -121,6 +121,16 @@ Download the latest release for your platform and place the binary in your
 
 ### 🛻 Installation
 
+#### Gentoo Linux
+
+Enable the `bennypowers` overlay, then install:
+
+```bash
+eselect repository enable bennypowers
+emaint sync -r bennypowers
+emerge dev-util/design-tokens-language-server
+```
+
 #### Neovim
 
 Using native Neovim LSP (see [`:help lsp`][neovimlspdocs] for more
