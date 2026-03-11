@@ -47,6 +47,7 @@ func AsimonimConfigToServerConfig(cfg *config.Config) *types.ServerConfig {
 		Prefix:       cfg.Prefix,
 		GroupMarkers: cfg.GroupMarkers,
 		CDN:          cfg.CDN,
+		Resolvers:    cfg.Resolvers,
 	}
 
 	// Convert asimonim FileSpecs to dtls TokensFiles
@@ -80,6 +81,7 @@ func asimonimConfigToServerConfigWithPaths(cfg *config.Config, expandedPaths []s
 		Prefix:       cfg.Prefix,
 		GroupMarkers: cfg.GroupMarkers,
 		CDN:          cfg.CDN,
+		Resolvers:    cfg.Resolvers,
 	}
 
 	// For each expanded path, find the matching FileSpec to preserve per-file overrides

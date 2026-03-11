@@ -42,41 +42,7 @@ func (s *Server) LoadPackageJsonConfig() error {
 	// Merge with existing config (client config takes precedence)
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
-
-	// Only set fields if not already configured by client
-	// For fields with defaults, we check if they're still at default values
-	defaults := types.DefaultConfig()
-
-	if s.config.Prefix == "" && pkgConfig.Prefix != "" {
-		s.config.Prefix = pkgConfig.Prefix
-		log.Info("Loaded prefix from package.json: %s\n", pkgConfig.Prefix)
-	}
-
-	// Allow package.json to override if groupMarkers are still at defaults
-	if isGroupMarkersDefault(s.config.GroupMarkers, defaults.GroupMarkers) && len(pkgConfig.GroupMarkers) > 0 {
-		s.config.GroupMarkers = pkgConfig.GroupMarkers
-		log.Info("Loaded groupMarkers from package.json: %v\n", pkgConfig.GroupMarkers)
-	}
-
-	if len(s.config.TokensFiles) == 0 && len(pkgConfig.TokensFiles) > 0 {
-		s.config.TokensFiles = pkgConfig.TokensFiles
-		log.Info("Loaded %d tokensFiles from config", len(pkgConfig.TokensFiles))
-	}
-
-	if !s.config.NetworkFallback && pkgConfig.NetworkFallback {
-		s.config.NetworkFallback = true
-		log.Info("Loaded networkFallback from package.json: %v", pkgConfig.NetworkFallback)
-	}
-
-	if s.config.NetworkTimeout == 0 && pkgConfig.NetworkTimeout != 0 {
-		s.config.NetworkTimeout = pkgConfig.NetworkTimeout
-		log.Info("Loaded networkTimeout from package.json: %d", pkgConfig.NetworkTimeout)
-	}
-
-	if s.config.CDN == "" && pkgConfig.CDN != "" {
-		s.config.CDN = pkgConfig.CDN
-		log.Info("Loaded cdn from package.json: %s", pkgConfig.CDN)
-	}
+	mergePackageJsonConfig(&s.config, pkgConfig)
 
 	return nil
 }
@@ -92,6 +58,47 @@ func isGroupMarkersDefault(current, defaults []string) bool {
 		}
 	}
 	return true
+}
+
+// mergePackageJsonConfig merges package.json config into the current config.
+// Only sets fields if not already configured by client.
+func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
+	defaults := types.DefaultConfig()
+
+	if current.Prefix == "" && pkg.Prefix != "" {
+		current.Prefix = pkg.Prefix
+		log.Info("Loaded prefix from package.json: %s\n", pkg.Prefix)
+	}
+
+	if isGroupMarkersDefault(current.GroupMarkers, defaults.GroupMarkers) && len(pkg.GroupMarkers) > 0 {
+		current.GroupMarkers = pkg.GroupMarkers
+		log.Info("Loaded groupMarkers from package.json: %v\n", pkg.GroupMarkers)
+	}
+
+	if len(current.TokensFiles) == 0 && len(pkg.TokensFiles) > 0 {
+		current.TokensFiles = pkg.TokensFiles
+		log.Info("Loaded %d tokensFiles from config", len(pkg.TokensFiles))
+	}
+
+	if !current.NetworkFallback && pkg.NetworkFallback {
+		current.NetworkFallback = true
+		log.Info("Loaded networkFallback from package.json: %v", pkg.NetworkFallback)
+	}
+
+	if current.NetworkTimeout == 0 && pkg.NetworkTimeout != 0 {
+		current.NetworkTimeout = pkg.NetworkTimeout
+		log.Info("Loaded networkTimeout from package.json: %d", pkg.NetworkTimeout)
+	}
+
+	if current.CDN == "" && pkg.CDN != "" {
+		current.CDN = pkg.CDN
+		log.Info("Loaded cdn from package.json: %s", pkg.CDN)
+	}
+
+	if len(current.Resolvers) == 0 && len(pkg.Resolvers) > 0 {
+		current.Resolvers = pkg.Resolvers
+		log.Info("Loaded %d resolvers from config", len(pkg.Resolvers))
+	}
 }
 
 // GetState returns a snapshot of runtime state (NOT configuration)

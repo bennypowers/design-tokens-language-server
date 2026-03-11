@@ -109,6 +109,30 @@ func parseTokensFilesField(configMap map[string]any) []any {
 	return nil
 }
 
+// parseResolversField parses the resolvers field from configuration.
+// Handles []any and []string types, returning nil if not present.
+func parseResolversField(configMap map[string]any) []string {
+	r, ok := configMap["resolvers"]
+	if !ok {
+		return nil
+	}
+
+	switch v := r.(type) {
+	case []any:
+		var resolvers []string
+		for _, item := range v {
+			if str, ok := item.(string); ok {
+				resolvers = append(resolvers, str)
+			}
+		}
+		return resolvers
+	case []string:
+		return v
+	}
+
+	return nil
+}
+
 // buildServerConfig constructs a ServerConfig from the parsed configuration map.
 // Extracts and parses all fields (prefix, groupMarkers, tokensFiles).
 func buildServerConfig(configMap map[string]any) *types.ServerConfig {
@@ -134,6 +158,9 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 	if nt, ok := configMap["networkTimeout"].(float64); ok {
 		config.NetworkTimeout = int(nt)
 	}
+
+	// Parse resolvers
+	config.Resolvers = parseResolversField(configMap)
 
 	// Parse cdn
 	if cdn, ok := configMap["cdn"].(string); ok {

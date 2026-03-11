@@ -22,6 +22,10 @@ type ServerConfig struct {
 	// If empty, falls back to searching for common patterns
 	TokensFiles []any `json:"tokensFiles"`
 
+	// Resolvers specifies DTCG resolver documents to load.
+	// Each entry is a path (relative, absolute, or npm:/jsr: specifier).
+	Resolvers []string `json:"resolvers,omitempty"`
+
 	// Prefix is the global CSS variable prefix (can be overridden per-file)
 	// Example: "ds" will generate "--ds-color-primary"
 	Prefix string `json:"prefix"`
