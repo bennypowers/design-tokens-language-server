@@ -452,6 +452,98 @@ func TestReadPackageJsonConfig_NetworkFallback(t *testing.T) {
 	})
 }
 
+func TestParseResolversField(t *testing.T) {
+	t.Run("parses []any with strings", func(t *testing.T) {
+		configMap := map[string]any{
+			"resolvers": []any{"npm:@foo/tokens/resolver.json", "./local.resolver.json"},
+		}
+		result := parseResolversField(configMap)
+		assert.Equal(t, []string{"npm:@foo/tokens/resolver.json", "./local.resolver.json"}, result)
+	})
+
+	t.Run("handles []string type", func(t *testing.T) {
+		configMap := map[string]any{
+			"resolvers": []string{"a.resolver.json", "b.resolver.json"},
+		}
+		result := parseResolversField(configMap)
+		assert.Equal(t, []string{"a.resolver.json", "b.resolver.json"}, result)
+	})
+
+	t.Run("returns nil when field is missing", func(t *testing.T) {
+		configMap := map[string]any{}
+		result := parseResolversField(configMap)
+		assert.Nil(t, result)
+	})
+
+	t.Run("skips non-string items in []any", func(t *testing.T) {
+		configMap := map[string]any{
+			"resolvers": []any{"valid.resolver.json", 42, true},
+		}
+		result := parseResolversField(configMap)
+		assert.Equal(t, []string{"valid.resolver.json"}, result)
+	})
+
+	t.Run("handles unexpected type gracefully", func(t *testing.T) {
+		configMap := map[string]any{
+			"resolvers": 12345,
+		}
+		result := parseResolversField(configMap)
+		assert.Nil(t, result)
+	})
+
+	t.Run("handles empty array", func(t *testing.T) {
+		configMap := map[string]any{
+			"resolvers": []any{},
+		}
+		result := parseResolversField(configMap)
+		assert.Nil(t, result)
+	})
+}
+
+func TestBuildServerConfig_Resolvers(t *testing.T) {
+	t.Run("parses resolvers from config map", func(t *testing.T) {
+		configMap := map[string]any{
+			"resolvers": []any{"npm:@foo/tokens/resolver.json"},
+		}
+		config := buildServerConfig(configMap)
+		assert.Equal(t, []string{"npm:@foo/tokens/resolver.json"}, config.Resolvers)
+	})
+
+	t.Run("resolvers nil when not present", func(t *testing.T) {
+		configMap := map[string]any{
+			"prefix": "ds",
+		}
+		config := buildServerConfig(configMap)
+		assert.Nil(t, config.Resolvers)
+	})
+}
+
+func TestReadPackageJsonConfig_Resolvers(t *testing.T) {
+	t.Run("parses resolvers from package.json", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		packageJSON := map[string]any{
+			"name": "test-project",
+			"designTokensLanguageServer": map[string]any{
+				"tokensFiles": []any{"tokens.json"},
+				"resolvers":   []any{"npm:@foo/tokens/resolver.json"},
+			},
+		}
+
+		data, err := json.Marshal(packageJSON)
+		require.NoError(t, err)
+
+		err = os.WriteFile(filepath.Join(tmpDir, "package.json"), data, 0o644)
+		require.NoError(t, err)
+
+		config, err := ReadPackageJsonConfig(tmpDir)
+		require.NoError(t, err)
+		require.NotNil(t, config)
+
+		assert.Equal(t, []string{"npm:@foo/tokens/resolver.json"}, config.Resolvers)
+	})
+}
+
 func TestParseGroupMarkersField(t *testing.T) {
 	t.Run("handles []string type", func(t *testing.T) {
 		configMap := map[string]any{

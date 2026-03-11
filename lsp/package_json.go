@@ -123,14 +123,17 @@ func parseResolversField(configMap map[string]any) []string {
 		for _, item := range v {
 			if str, ok := item.(string); ok {
 				resolvers = append(resolvers, str)
+			} else {
+				log.Warn("Ignoring non-string resolver entry: %v", item)
 			}
 		}
 		return resolvers
 	case []string:
 		return v
+	default:
+		log.Warn("Ignoring resolvers field with unexpected type %T", r)
+		return nil
 	}
-
-	return nil
 }
 
 // buildServerConfig constructs a ServerConfig from the parsed configuration map.

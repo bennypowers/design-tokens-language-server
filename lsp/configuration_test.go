@@ -343,6 +343,77 @@ color:
 	})
 }
 
+func TestMergePackageJsonConfig(t *testing.T) {
+	t.Run("merges resolvers when current is nil", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: []string{"resolver.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, []string{"resolver.json"}, current.Resolvers)
+	})
+
+	t.Run("preserves explicit empty resolvers", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+			Resolvers:    []string{}, // explicitly set to empty
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: []string{"resolver.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Empty(t, current.Resolvers, "explicit empty slice should not be overridden")
+	})
+
+	t.Run("does not override existing resolvers", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+			Resolvers:    []string{"existing.json"},
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: []string{"new.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, []string{"existing.json"}, current.Resolvers)
+	})
+
+	t.Run("skips when pkg resolvers is empty", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: nil,
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Nil(t, current.Resolvers)
+	})
+
+	t.Run("merges all fields from package.json", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			Prefix:          "ds",
+			GroupMarkers:    []string{"CUSTOM"},
+			TokensFiles:     []any{"tokens.json"},
+			NetworkFallback: true,
+			NetworkTimeout:  45,
+			CDN:             "jsdelivr",
+			Resolvers:       []string{"resolver.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, "ds", current.Prefix)
+		assert.Equal(t, []string{"CUSTOM"}, current.GroupMarkers)
+		assert.Len(t, current.TokensFiles, 1)
+		assert.True(t, current.NetworkFallback)
+		assert.Equal(t, 45, current.NetworkTimeout)
+		assert.Equal(t, "jsdelivr", current.CDN)
+		assert.Equal(t, []string{"resolver.json"}, current.Resolvers)
+	})
+}
+
 func TestSetRootPath(t *testing.T) {
 	server, err := NewServer()
 	require.NoError(t, err)

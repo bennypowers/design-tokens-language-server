@@ -95,7 +95,7 @@ func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
 		log.Info("Loaded cdn from package.json: %s", pkg.CDN)
 	}
 
-	if len(current.Resolvers) == 0 && len(pkg.Resolvers) > 0 {
+	if current.Resolvers == nil && len(pkg.Resolvers) > 0 {
 		current.Resolvers = pkg.Resolvers
 		log.Info("Loaded %d resolvers from config", len(pkg.Resolvers))
 	}
@@ -180,9 +180,9 @@ func (s *Server) ResolveAllTokens() {
 
 // validateTokenFilePath validates that a token file path is not empty.
 // Returns an error if the path is empty, nil otherwise.
-func validateTokenFilePath(path, context string) error {
+func validateTokenFilePath(path, label string) error {
 	if path == "" {
-		return fmt.Errorf("%s must not be empty", context)
+		return fmt.Errorf("%s must not be empty", label)
 	}
 	return nil
 }
