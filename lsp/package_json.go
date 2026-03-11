@@ -119,7 +119,7 @@ func parseResolversField(configMap map[string]any) []string {
 
 	switch v := r.(type) {
 	case []any:
-		var resolvers []string
+		resolvers := make([]string, 0, len(v))
 		for _, item := range v {
 			if str, ok := item.(string); ok {
 				resolvers = append(resolvers, str)

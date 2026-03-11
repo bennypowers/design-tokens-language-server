@@ -75,7 +75,7 @@ func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
 		log.Info("Loaded groupMarkers from package.json: %v\n", pkg.GroupMarkers)
 	}
 
-	if len(current.TokensFiles) == 0 && len(pkg.TokensFiles) > 0 {
+	if current.TokensFiles == nil && len(pkg.TokensFiles) > 0 {
 		current.TokensFiles = pkg.TokensFiles
 		log.Info("Loaded %d tokensFiles from config", len(pkg.TokensFiles))
 	}

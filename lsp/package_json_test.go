@@ -491,12 +491,13 @@ func TestParseResolversField(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("handles empty array", func(t *testing.T) {
+	t.Run("returns empty slice for empty array", func(t *testing.T) {
 		configMap := map[string]any{
 			"resolvers": []any{},
 		}
 		result := parseResolversField(configMap)
-		assert.Nil(t, result)
+		assert.NotNil(t, result, "explicit empty array should return non-nil slice")
+		assert.Empty(t, result)
 	})
 }
 

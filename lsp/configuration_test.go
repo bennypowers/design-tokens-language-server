@@ -390,6 +390,29 @@ func TestMergePackageJsonConfig(t *testing.T) {
 		assert.Nil(t, current.Resolvers)
 	})
 
+	t.Run("preserves explicit empty tokensFiles", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+			TokensFiles:  []any{}, // explicitly set to empty
+		}
+		pkg := &types.ServerConfig{
+			TokensFiles: []any{"tokens.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Empty(t, current.TokensFiles, "explicit empty slice should not be overridden")
+	})
+
+	t.Run("merges tokensFiles when current is nil", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			TokensFiles: []any{"tokens.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Len(t, current.TokensFiles, 1)
+	})
+
 	t.Run("merges all fields from package.json", func(t *testing.T) {
 		current := &types.ServerConfig{
 			GroupMarkers: types.DefaultConfig().GroupMarkers,
