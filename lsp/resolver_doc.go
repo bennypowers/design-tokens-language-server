@@ -58,11 +58,10 @@ func extractResolverSourcePaths(data []byte, resolverDir string) ([]string, erro
 		return nil, fmt.Errorf("failed to parse resolutionOrder: %w", err)
 	}
 
-	for _, entry := range resolutionOrder {
+	for i, entry := range resolutionOrder {
 		entryPaths, err := extractSourcesFromEntry(entry, doc.Sets)
 		if err != nil {
-			log.Warn("Failed to extract sources from resolution order entry: %v", err)
-			continue
+			return nil, fmt.Errorf("invalid resolutionOrder entry %d: %w", i, err)
 		}
 		for _, p := range entryPaths {
 			absPath := resolveRefPath(p, resolverDir)
@@ -134,7 +133,11 @@ func unescapeJSONPointer(s string) string {
 }
 
 // resolveRefPath resolves a $ref path relative to the resolver document's directory.
+// URI-scheme refs (npm:, jsr:, http://, etc.) are returned unchanged.
 func resolveRefPath(refPath, resolverDir string) string {
+	if strings.Contains(refPath, "://") || strings.HasPrefix(refPath, "npm:") || strings.HasPrefix(refPath, "jsr:") {
+		return refPath
+	}
 	if filepath.IsAbs(refPath) {
 		return filepath.Clean(refPath)
 	}

@@ -154,7 +154,7 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("handles missing set reference gracefully", func(t *testing.T) {
+	t.Run("returns error for missing set reference", func(t *testing.T) {
 		data := []byte(`{
 			"version": "2025.10",
 			"sets": {},
@@ -162,9 +162,9 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 				{"$ref": "#/sets/nonexistent"}
 			]
 		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
-		require.NoError(t, err)
-		assert.Empty(t, paths)
+		_, err := extractResolverSourcePaths(data, "/project")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nonexistent")
 	})
 }
 

@@ -55,7 +55,7 @@ func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
 		log.Info("Loaded prefix from package.json: %s\n", pkg.Prefix)
 	}
 
-	if !current.GroupMarkersSet && len(pkg.GroupMarkers) > 0 {
+	if !current.GroupMarkersSet && pkg.GroupMarkersSet {
 		current.GroupMarkers = pkg.GroupMarkers
 		current.GroupMarkersSet = true
 		log.Info("Loaded groupMarkers from package.json: %v\n", pkg.GroupMarkers)
@@ -110,8 +110,8 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 func (s *Server) LoadTokensFromConfig() error {
 	cfg := s.GetConfig()
 
-	hasTokensFiles := len(cfg.TokensFiles) > 0
-	hasResolvers := len(cfg.Resolvers) > 0
+	hasTokensFiles := cfg.TokensFiles != nil
+	hasResolvers := cfg.Resolvers != nil
 
 	if hasTokensFiles || hasResolvers {
 		// Clear existing tokens before loading configured files
