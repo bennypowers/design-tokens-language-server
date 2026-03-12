@@ -11,6 +11,9 @@ SHARED_WINDOWS_CC_IMAGE := dtls-shared-windows-cc
 # Extract version from goals if present (e.g., "make release v0.1.1" or "make release patch")
 VERSION ?= $(filter v% patch minor major,$(MAKECMDGOALS))
 
+# Optional path to release notes file for gh release create
+RELEASE_NOTES ?=
+
 # Go build flags with version injection
 GO_BUILD_FLAGS := -ldflags="$(shell ./scripts/ldflags.sh) -s -w"
 
@@ -205,7 +208,7 @@ release:
 		echo "  make release major    - Bump major version (x.0.0)"; \
 		exit 1; \
 	fi
-	@./scripts/release.sh $(VERSION)
+	@RELEASE_NOTES="$(RELEASE_NOTES)" ./scripts/release.sh $(VERSION)
 
 ## Help
 help:
