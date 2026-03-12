@@ -109,6 +109,33 @@ func parseTokensFilesField(configMap map[string]any) []any {
 	return nil
 }
 
+// parseResolversField parses the resolvers field from configuration.
+// Handles []any and []string types, returning nil if not present.
+func parseResolversField(configMap map[string]any) []string {
+	r, ok := configMap["resolvers"]
+	if !ok {
+		return nil
+	}
+
+	switch v := r.(type) {
+	case []any:
+		resolvers := make([]string, 0, len(v))
+		for _, item := range v {
+			if str, ok := item.(string); ok {
+				resolvers = append(resolvers, str)
+			} else {
+				log.Warn("Ignoring non-string resolver entry: %v", item)
+			}
+		}
+		return resolvers
+	case []string:
+		return v
+	default:
+		log.Warn("Ignoring resolvers field with unexpected type %T", r)
+		return nil
+	}
+}
+
 // buildServerConfig constructs a ServerConfig from the parsed configuration map.
 // Extracts and parses all fields (prefix, groupMarkers, tokensFiles).
 func buildServerConfig(configMap map[string]any) *types.ServerConfig {
@@ -121,6 +148,9 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 
 	// Parse groupMarkers
 	config.GroupMarkers = parseGroupMarkersField(configMap)
+	if config.GroupMarkers != nil {
+		config.GroupMarkersSet = true
+	}
 
 	// Parse tokensFiles
 	config.TokensFiles = parseTokensFilesField(configMap)
@@ -134,6 +164,9 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 	if nt, ok := configMap["networkTimeout"].(float64); ok {
 		config.NetworkTimeout = int(nt)
 	}
+
+	// Parse resolvers
+	config.Resolvers = parseResolversField(configMap)
 
 	// Parse cdn
 	if cdn, ok := configMap["cdn"].(string); ok {
@@ -213,6 +246,8 @@ func expandGlobPattern(pattern, rootPath string) ([]string, error) {
 
 // ReadPackageJsonConfig reads designTokensLanguageServer configuration from package.json.
 // Falls back to .config/design-tokens.{yaml,json} if no package.json config is found.
+// When package.json config exists, also reads asimonim config to fill in
+// fields not present in package.json (e.g., resolvers).
 // Returns nil if no configuration exists (not an error).
 func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 	if rootPath == "" {
@@ -236,6 +271,14 @@ func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 			// Expand glob patterns in tokensFiles
 			if len(config.TokensFiles) > 0 {
 				config.TokensFiles = expandTokensFileGlobs(config.TokensFiles, rootPath)
+			}
+
+			// Also read asimonim config and merge fields not set in package.json
+			asimonimConfig, err := ReadAsimonimConfig(rootPath)
+			if err != nil {
+				log.Warn("Failed to read asimonim config: %v", err)
+			} else if asimonimConfig != nil {
+				mergePackageJsonConfig(config, asimonimConfig)
 			}
 
 			return config, nil

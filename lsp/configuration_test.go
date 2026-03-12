@@ -343,6 +343,143 @@ color:
 	})
 }
 
+func TestMergePackageJsonConfig(t *testing.T) {
+	t.Run("merges resolvers when current is nil", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: []string{"resolver.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, []string{"resolver.json"}, current.Resolvers)
+	})
+
+	t.Run("preserves explicit empty resolvers", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+			Resolvers:    []string{}, // explicitly set to empty
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: []string{"resolver.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Empty(t, current.Resolvers, "explicit empty slice should not be overridden")
+	})
+
+	t.Run("does not override existing resolvers", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+			Resolvers:    []string{"existing.json"},
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: []string{"new.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, []string{"existing.json"}, current.Resolvers)
+	})
+
+	t.Run("skips when pkg resolvers is empty", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			Resolvers: nil,
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Nil(t, current.Resolvers)
+	})
+
+	t.Run("preserves explicit empty tokensFiles", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+			TokensFiles:  []any{}, // explicitly set to empty
+		}
+		pkg := &types.ServerConfig{
+			TokensFiles: []any{"tokens.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Empty(t, current.TokensFiles, "explicit empty slice should not be overridden")
+	})
+
+	t.Run("merges tokensFiles when current is nil", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			TokensFiles: []any{"tokens.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Len(t, current.TokensFiles, 1)
+	})
+
+	t.Run("merges all fields from package.json", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers: types.DefaultConfig().GroupMarkers,
+		}
+		pkg := &types.ServerConfig{
+			Prefix:          "ds",
+			GroupMarkers:    []string{"CUSTOM"},
+			GroupMarkersSet: true,
+			TokensFiles:     []any{"tokens.json"},
+			NetworkFallback: true,
+			NetworkTimeout:  45,
+			CDN:             "jsdelivr",
+			Resolvers:       []string{"resolver.json"},
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, "ds", current.Prefix)
+		assert.Equal(t, []string{"CUSTOM"}, current.GroupMarkers)
+		assert.Len(t, current.TokensFiles, 1)
+		assert.True(t, current.NetworkFallback)
+		assert.Equal(t, 45, current.NetworkTimeout)
+		assert.Equal(t, "jsdelivr", current.CDN)
+		assert.Equal(t, []string{"resolver.json"}, current.Resolvers)
+	})
+
+	t.Run("explicit empty TokensFiles clears existing values", func(t *testing.T) {
+		current := &types.ServerConfig{
+			TokensFiles: []any{"existing.json"},
+			Resolvers:   []string{"existing-resolver.json"},
+		}
+		pkg := &types.ServerConfig{
+			TokensFiles: []any{},   // explicit empty
+			Resolvers:   []string{}, // explicit empty
+		}
+		mergePackageJsonConfig(current, pkg)
+		// current already has values, so pkg shouldn't override
+		assert.Len(t, current.TokensFiles, 1, "existing TokensFiles should not be overridden")
+		assert.Len(t, current.Resolvers, 1, "existing Resolvers should not be overridden")
+	})
+
+	t.Run("explicit empty pkg overrides nil current", func(t *testing.T) {
+		current := &types.ServerConfig{}
+		pkg := &types.ServerConfig{
+			TokensFiles: []any{},   // explicit empty
+			Resolvers:   []string{}, // explicit empty
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.NotNil(t, current.TokensFiles, "explicit empty TokensFiles should be set")
+		assert.Empty(t, current.TokensFiles)
+		assert.NotNil(t, current.Resolvers, "explicit empty Resolvers should be set")
+		assert.Empty(t, current.Resolvers)
+	})
+
+	t.Run("does not override explicitly set GroupMarkers", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers:    types.DefaultConfig().GroupMarkers,
+			GroupMarkersSet: true, // Client explicitly set these
+		}
+		pkg := &types.ServerConfig{
+			GroupMarkers:    []string{"CUSTOM"},
+			GroupMarkersSet: true,
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, types.DefaultConfig().GroupMarkers, current.GroupMarkers,
+			"explicitly set GroupMarkers should not be overridden by package.json")
+	})
+}
+
 func TestSetRootPath(t *testing.T) {
 	server, err := NewServer()
 	require.NoError(t, err)

@@ -1,0 +1,15 @@
+{
+  "color": {
+    "$type": "color",
+    "neutral": {
+      "100": {
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.97, 0, 0],
+          "alpha": 1,
+          "hex": "#f5f5f5"
+        }
+      }
+    }
+  }
+}

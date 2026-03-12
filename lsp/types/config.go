@@ -22,6 +22,10 @@ type ServerConfig struct {
 	// If empty, falls back to searching for common patterns
 	TokensFiles []any `json:"tokensFiles"`
 
+	// Resolvers specifies DTCG resolver documents to load.
+	// Each entry is a path (relative, absolute, or npm:/jsr: specifier).
+	Resolvers []string `json:"resolvers,omitempty"`
+
 	// Prefix is the global CSS variable prefix (can be overridden per-file)
 	// Example: "ds" will generate "--ds-color-primary"
 	Prefix string `json:"prefix"`
@@ -29,6 +33,11 @@ type ServerConfig struct {
 	// GroupMarkers are token names which will be treated as group names as well
 	// Default: ["_", "@", "DEFAULT"]
 	GroupMarkers []string `json:"groupMarkers"`
+
+	// GroupMarkersSet tracks whether GroupMarkers was explicitly provided,
+	// distinguishing "not set" (use package.json/config defaults) from
+	// "explicitly set to default values".
+	GroupMarkersSet bool `json:"-"`
 
 	// NetworkFallback enables CDN fallback for npm: specifiers
 	// when local node_modules resolution fails.

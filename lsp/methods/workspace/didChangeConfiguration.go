@@ -81,5 +81,12 @@ func parseConfiguration(settings any) (types.ServerConfig, error) {
 		return config, fmt.Errorf("failed to unmarshal settings: %w", err)
 	}
 
+	// Track whether groupMarkers was explicitly provided
+	if settingsObj, ok := ourSettings.(map[string]any); ok {
+		if _, hasGM := settingsObj["groupMarkers"]; hasGM {
+			config.GroupMarkersSet = true
+		}
+	}
+
 	return config, nil
 }

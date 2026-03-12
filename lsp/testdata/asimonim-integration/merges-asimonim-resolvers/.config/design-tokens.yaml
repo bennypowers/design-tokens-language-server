@@ -1,0 +1,2 @@
+resolvers:
+  - ./src/design-tokens/tokens.resolver.json

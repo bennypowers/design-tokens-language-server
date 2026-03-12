@@ -42,56 +42,49 @@ func (s *Server) LoadPackageJsonConfig() error {
 	// Merge with existing config (client config takes precedence)
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
-
-	// Only set fields if not already configured by client
-	// For fields with defaults, we check if they're still at default values
-	defaults := types.DefaultConfig()
-
-	if s.config.Prefix == "" && pkgConfig.Prefix != "" {
-		s.config.Prefix = pkgConfig.Prefix
-		log.Info("Loaded prefix from package.json: %s\n", pkgConfig.Prefix)
-	}
-
-	// Allow package.json to override if groupMarkers are still at defaults
-	if isGroupMarkersDefault(s.config.GroupMarkers, defaults.GroupMarkers) && len(pkgConfig.GroupMarkers) > 0 {
-		s.config.GroupMarkers = pkgConfig.GroupMarkers
-		log.Info("Loaded groupMarkers from package.json: %v\n", pkgConfig.GroupMarkers)
-	}
-
-	if len(s.config.TokensFiles) == 0 && len(pkgConfig.TokensFiles) > 0 {
-		s.config.TokensFiles = pkgConfig.TokensFiles
-		log.Info("Loaded %d tokensFiles from config", len(pkgConfig.TokensFiles))
-	}
-
-	if !s.config.NetworkFallback && pkgConfig.NetworkFallback {
-		s.config.NetworkFallback = true
-		log.Info("Loaded networkFallback from package.json: %v", pkgConfig.NetworkFallback)
-	}
-
-	if s.config.NetworkTimeout == 0 && pkgConfig.NetworkTimeout != 0 {
-		s.config.NetworkTimeout = pkgConfig.NetworkTimeout
-		log.Info("Loaded networkTimeout from package.json: %d", pkgConfig.NetworkTimeout)
-	}
-
-	if s.config.CDN == "" && pkgConfig.CDN != "" {
-		s.config.CDN = pkgConfig.CDN
-		log.Info("Loaded cdn from package.json: %s", pkgConfig.CDN)
-	}
+	mergePackageJsonConfig(&s.config, pkgConfig)
 
 	return nil
 }
 
-// isGroupMarkersDefault checks if group markers are equal to the default values
-func isGroupMarkersDefault(current, defaults []string) bool {
-	if len(current) != len(defaults) {
-		return false
+// mergePackageJsonConfig merges package.json config into the current config.
+// Only sets fields if not already configured by client.
+func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
+	if current.Prefix == "" && pkg.Prefix != "" {
+		current.Prefix = pkg.Prefix
+		log.Info("Loaded prefix from package.json: %s\n", pkg.Prefix)
 	}
-	for i := range current {
-		if current[i] != defaults[i] {
-			return false
-		}
+
+	if !current.GroupMarkersSet && pkg.GroupMarkersSet {
+		current.GroupMarkers = pkg.GroupMarkers
+		current.GroupMarkersSet = true
+		log.Info("Loaded groupMarkers from package.json: %v\n", pkg.GroupMarkers)
 	}
-	return true
+
+	if current.TokensFiles == nil && pkg.TokensFiles != nil {
+		current.TokensFiles = pkg.TokensFiles
+		log.Info("Loaded %d tokensFiles from config", len(pkg.TokensFiles))
+	}
+
+	if !current.NetworkFallback && pkg.NetworkFallback {
+		current.NetworkFallback = true
+		log.Info("Loaded networkFallback from package.json: %v", pkg.NetworkFallback)
+	}
+
+	if current.NetworkTimeout == 0 && pkg.NetworkTimeout != 0 {
+		current.NetworkTimeout = pkg.NetworkTimeout
+		log.Info("Loaded networkTimeout from package.json: %d", pkg.NetworkTimeout)
+	}
+
+	if current.CDN == "" && pkg.CDN != "" {
+		current.CDN = pkg.CDN
+		log.Info("Loaded cdn from package.json: %s", pkg.CDN)
+	}
+
+	if current.Resolvers == nil && pkg.Resolvers != nil {
+		current.Resolvers = pkg.Resolvers
+		log.Info("Loaded %d resolvers from config", len(pkg.Resolvers))
+	}
 }
 
 // GetState returns a snapshot of runtime state (NOT configuration)
@@ -117,19 +110,33 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 func (s *Server) LoadTokensFromConfig() error {
 	cfg := s.GetConfig()
 
-	// If tokensFiles is explicitly provided and non-empty, load those files
-	if len(cfg.TokensFiles) > 0 {
-		log.Info("Loading %d token files from config", len(cfg.TokensFiles))
+	hasTokensFiles := cfg.TokensFiles != nil
+	hasResolvers := cfg.Resolvers != nil
+
+	if hasTokensFiles || hasResolvers {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
-		err := s.loadExplicitTokenFiles()
-		if err != nil {
-			return err
+
+		var errs []error
+
+		if hasTokensFiles {
+			log.Info("Loading %d token files from config", len(cfg.TokensFiles))
+			if err := s.loadExplicitTokenFiles(); err != nil {
+				errs = append(errs, err)
+			}
 		}
+
+		if hasResolvers {
+			log.Info("Loading %d resolver documents from config", len(cfg.Resolvers))
+			if err := s.loadResolverDocuments(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+
 		// Resolve all aliases after loading all tokens
 		s.ResolveAllTokens()
 		log.Info("Loaded %d tokens total", s.tokens.Count())
-		return nil
+		return errors.Join(errs...)
 	}
 
 	// If tokensFiles is empty or nil, check if we have programmatically loaded files to reload
@@ -173,9 +180,9 @@ func (s *Server) ResolveAllTokens() {
 
 // validateTokenFilePath validates that a token file path is not empty.
 // Returns an error if the path is empty, nil otherwise.
-func validateTokenFilePath(path, context string) error {
+func validateTokenFilePath(path, label string) error {
 	if path == "" {
-		return fmt.Errorf("%s must not be empty", context)
+		return fmt.Errorf("%s must not be empty", label)
 	}
 	return nil
 }
@@ -258,6 +265,37 @@ func networkTimeout(cfg types.ServerConfig) time.Duration {
 		return time.Duration(cfg.NetworkTimeout) * time.Second
 	}
 	return load.DefaultTimeout
+}
+
+// loadResolverDocuments loads tokens from resolver documents specified in config.
+// Each resolver document is parsed to extract source file $ref paths,
+// and those source files are loaded as token files.
+func (s *Server) loadResolverDocuments() error {
+	cfg := s.GetConfig()
+	state := s.GetState()
+
+	var errs []error
+	for _, resolverPath := range cfg.Resolvers {
+		normalizedPath, err := normalizePath(resolverPath, state.RootPath)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to resolve resolver path %s: %w", resolverPath, err))
+			continue
+		}
+
+		opts := &TokenFileOptions{
+			Prefix:       cfg.Prefix,
+			GroupMarkers: cfg.GroupMarkers,
+		}
+
+		if err := s.loadResolverDocument(normalizedPath, opts); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 // loadExplicitTokenFiles loads tokens from explicitly configured files

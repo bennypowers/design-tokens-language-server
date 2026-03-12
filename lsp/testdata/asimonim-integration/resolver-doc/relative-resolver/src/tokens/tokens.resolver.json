@@ -1,0 +1,6 @@
+{
+  "version": "2025.10",
+  "resolutionOrder": [
+    { "sources": [{ "$ref": "./palette.json" }] }
+  ]
+}
