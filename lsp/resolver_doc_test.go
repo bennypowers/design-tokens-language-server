@@ -52,8 +52,8 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		paths, err := extractResolverSourcePaths(data, "/project/tokens")
 		require.NoError(t, err)
 		assert.Equal(t, []string{
-			"/project/tokens/palette.json",
-			"/project/tokens/colors.json",
+			filepath.FromSlash("/project/tokens/palette.json"),
+			filepath.FromSlash("/project/tokens/colors.json"),
 		}, paths)
 	})
 
@@ -73,7 +73,7 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		}`)
 		paths, err := extractResolverSourcePaths(data, "/project/tokens")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"/project/tokens/palette.json"}, paths)
+		assert.Equal(t, []string{filepath.FromSlash("/project/tokens/palette.json")}, paths)
 	})
 
 	t.Run("deduplicates paths", func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		}`)
 		paths, err := extractResolverSourcePaths(data, "/project")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"/project/palette.json"}, paths)
+		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("handles multiple sets in order", func(t *testing.T) {
@@ -99,7 +99,10 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		}`)
 		paths, err := extractResolverSourcePaths(data, "/project")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"/project/palette.json", "/project/overrides.json"}, paths)
+		assert.Equal(t, []string{
+			filepath.FromSlash("/project/palette.json"),
+			filepath.FromSlash("/project/overrides.json"),
+		}, paths)
 	})
 
 	t.Run("ignores JSON pointer refs in sources", func(t *testing.T) {
@@ -114,7 +117,7 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		}`)
 		paths, err := extractResolverSourcePaths(data, "/project")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"/project/palette.json"}, paths)
+		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("decodes JSON Pointer escaping in set names", func(t *testing.T) {
@@ -131,7 +134,7 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		}`)
 		paths, err := extractResolverSourcePaths(data, "/project")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"/project/palette.json"}, paths)
+		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("strips fragment identifiers from source refs", func(t *testing.T) {
@@ -143,7 +146,7 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		}`)
 		paths, err := extractResolverSourcePaths(data, "/project")
 		require.NoError(t, err)
-		assert.Equal(t, []string{"/project/palette.json"}, paths)
+		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("returns error for invalid JSON", func(t *testing.T) {

@@ -117,24 +117,26 @@ func (s *Server) LoadTokensFromConfig() error {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
 
+		var errs []error
+
 		if hasTokensFiles {
 			log.Info("Loading %d token files from config", len(cfg.TokensFiles))
 			if err := s.loadExplicitTokenFiles(); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 
 		if hasResolvers {
 			log.Info("Loading %d resolver documents from config", len(cfg.Resolvers))
 			if err := s.loadResolverDocuments(); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 
 		// Resolve all aliases after loading all tokens
 		s.ResolveAllTokens()
 		log.Info("Loaded %d tokens total", s.tokens.Count())
-		return nil
+		return errors.Join(errs...)
 	}
 
 	// If tokensFiles is empty or nil, check if we have programmatically loaded files to reload

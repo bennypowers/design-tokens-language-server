@@ -46,7 +46,7 @@ func AsimonimConfigToServerConfig(cfg *config.Config) *types.ServerConfig {
 	serverConfig := &types.ServerConfig{
 		Prefix:          cfg.Prefix,
 		GroupMarkers:    cfg.GroupMarkers,
-		GroupMarkersSet: len(cfg.GroupMarkers) > 0,
+		GroupMarkersSet: cfg.GroupMarkers != nil,
 		CDN:             cfg.CDN,
 		Resolvers:       cfg.Resolvers,
 	}
@@ -81,7 +81,7 @@ func asimonimConfigToServerConfigWithPaths(cfg *config.Config, expandedPaths []s
 	serverConfig := &types.ServerConfig{
 		Prefix:          cfg.Prefix,
 		GroupMarkers:    cfg.GroupMarkers,
-		GroupMarkersSet: len(cfg.GroupMarkers) > 0,
+		GroupMarkersSet: cfg.GroupMarkers != nil,
 		CDN:             cfg.CDN,
 		Resolvers:       cfg.Resolvers,
 	}
