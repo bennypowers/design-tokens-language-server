@@ -1,8 +1,11 @@
 package hover
 
 import (
+	"flag"
+	"os"
 	"testing"
 
+	asimonimParser "bennypowers.dev/asimonim/parser"
 	"bennypowers.dev/dtls/internal/parser/css"
 	"bennypowers.dev/dtls/internal/tokens"
 	"bennypowers.dev/dtls/lsp/testutil"
@@ -674,7 +677,7 @@ func TestHover_ContentFormat(t *testing.T) {
 		content, ok := hover.Contents.(protocol.MarkupContent)
 		require.True(t, ok)
 		assert.Equal(t, protocol.MarkupKindMarkdown, content.Kind)
-		assert.Contains(t, content.Value, "**Value**") // Markdown formatting
+		assert.Contains(t, content.Value, "**Value (CSS)**") // Markdown formatting
 	})
 
 	t.Run("returns plaintext when client only supports plaintext", func(t *testing.T) {
@@ -708,7 +711,7 @@ func TestHover_ContentFormat(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, protocol.MarkupKindPlainText, content.Kind)
 		assert.NotContains(t, content.Value, "**") // No markdown formatting
-		assert.Contains(t, content.Value, "Value:") // Plaintext formatting
+		assert.Contains(t, content.Value, "Value (CSS):") // Plaintext formatting
 	})
 
 	t.Run("defaults to markdown when no preference", func(t *testing.T) {
@@ -1082,9 +1085,114 @@ func TestHover_TokenReference_DeprecatedToken(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, hover)
 
-	// Assert deprecation warning
+	// Assert deprecation warning for token reference
 	content, ok := hover.Contents.(protocol.MarkupContent)
 	require.True(t, ok)
 	assert.Contains(t, content.Value, "DEPRECATED")
 	assert.Contains(t, content.Value, "Use color.primary instead")
+}
+
+// ============================================================================
+// Structured Color Value Hover Tests (DTCG 2025.10)
+// ============================================================================
+
+var update = flag.Bool("update", false, "update golden files")
+
+func parseTokensFile(t *testing.T, path string) map[string]*tokens.Token {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	p := asimonimParser.NewJSONParser()
+	toks, err := p.Parse(data, asimonimParser.Options{SkipPositions: true})
+	require.NoError(t, err)
+
+	byName := make(map[string]*tokens.Token, len(toks))
+	for _, tok := range toks {
+		byName[tok.Name] = tok
+	}
+	return byName
+}
+
+func TestRenderTokenHover_StructuredColor(t *testing.T) {
+	tokens2025 := parseTokensFile(t, "testdata/tokens-2025.json")
+	tokensDraft := parseTokensFile(t, "testdata/tokens-draft.json")
+
+	tests := []struct {
+		name      string
+		tokenName string
+		tokens    map[string]*tokens.Token
+		golden    string
+		format    protocol.MarkupKind
+	}{
+		{
+			name:      "srgb color markdown",
+			tokenName: "color-primary",
+			tokens:    tokens2025,
+			golden:    "testdata/golden/color-primary.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+		{
+			name:      "display-p3 color",
+			tokenName: "color-accent",
+			tokens:    tokens2025,
+			golden:    "testdata/golden/color-accent.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+		{
+			name:      "color with hex field",
+			tokenName: "color-brand",
+			tokens:    tokens2025,
+			golden:    "testdata/golden/color-brand.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+		{
+			name:      "color with none component",
+			tokenName: "color-achromatic",
+			tokens:    tokens2025,
+			golden:    "testdata/golden/color-achromatic.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+		{
+			name:      "color without alpha",
+			tokenName: "color-no-alpha",
+			tokens:    tokens2025,
+			golden:    "testdata/golden/color-no-alpha.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+		{
+			name:      "string color (draft schema)",
+			tokenName: "color-simple",
+			tokens:    tokensDraft,
+			golden:    "testdata/golden/color-simple.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+		{
+			name:      "non-color token",
+			tokenName: "spacing-large",
+			tokens:    tokens2025,
+			golden:    "testdata/golden/spacing-large.md",
+			format:    protocol.MarkupKindMarkdown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token, ok := tt.tokens[tt.tokenName]
+			require.True(t, ok, "token %q not found in fixture", tt.tokenName)
+
+			content, err := renderTokenHover(token, tt.format)
+			require.NoError(t, err)
+
+			if *update {
+				err := os.WriteFile(tt.golden, []byte(content), 0o644)
+				require.NoError(t, err)
+				return
+			}
+
+			golden, err := os.ReadFile(tt.golden)
+			require.NoError(t, err)
+			assert.Equal(t, string(golden), content)
+		})
+	}
 }

@@ -16,16 +16,32 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
+// hoverData wraps a Token with additional structured fields for hover rendering.
+type hoverData struct {
+	*tokens.Token
+	Color *colorDetails
+}
+
+// colorDetails holds structured color information for 2025.10 color tokens.
+type colorDetails struct {
+	ColorSpace string
+	Components string
+	Alpha      string
+	Hex        string
+}
+
 // Template for token hover content
-// Note: {{.CSSVariableName}} calls the Token.CSSVariableName() method (not a field)
-// Note: {{.DisplayValue}} calls the Token.DisplayValue() method for resolved value display
 var tokenHoverTemplate = template.Must(template.New("tokenHover").Parse(`# {{.CSSVariableName}}
 {{if .Description}}
 {{.Description}}
 {{end}}
-**Value**: ` + "`{{.DisplayValue}}`" + `
+**Value (CSS)**: ` + "`{{.DisplayValue}}`" + `
 {{if .Type}}**Type**: ` + "`{{.Type}}`" + `
-{{end}}{{if .Deprecated}}
+{{end}}{{if .Color}}**Color Space**: ` + "`{{.Color.ColorSpace}}`" + `
+**Components**: ` + "`{{.Color.Components}}`" + `
+{{if .Color.Alpha}}**Alpha**: ` + "`{{.Color.Alpha}}`" + `
+{{end}}{{if .Color.Hex}}**Hex**: ` + "`{{.Color.Hex}}`" + `
+{{end}}{{end}}{{if .Deprecated}}
 ⚠️ **DEPRECATED**{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
 {{end}}{{if .FilePath}}
 *Defined in: {{.FilePath}}*
@@ -41,9 +57,13 @@ var tokenHoverPlaintextTemplate = template.Must(template.New("tokenHoverPlaintex
 {{if .Description}}
 {{.Description}}
 {{end}}
-Value: {{.DisplayValue}}
+Value (CSS): {{.DisplayValue}}
 {{if .Type}}Type: {{.Type}}
-{{end}}{{if .Deprecated}}
+{{end}}{{if .Color}}Color Space: {{.Color.ColorSpace}}
+Components: {{.Color.Components}}
+{{if .Color.Alpha}}Alpha: {{.Color.Alpha}}
+{{end}}{{if .Color.Hex}}Hex: {{.Color.Hex}}
+{{end}}{{end}}{{if .Deprecated}}
 DEPRECATED{{if .DeprecationMessage}}: {{.DeprecationMessage}}{{end}}
 {{end}}{{if .FilePath}}
 Defined in: {{.FilePath}}
@@ -54,8 +74,74 @@ var unknownTokenPlaintextTemplate = template.Must(template.New("unknownTokenPlai
 
 This token is not defined in any loaded token files.`))
 
+// extractColorDetails extracts structured color information from a token's
+// raw or resolved value. Returns nil if the value is not a structured color object.
+func extractColorDetails(token *tokens.Token) *colorDetails {
+	if token.Type != "color" {
+		return nil
+	}
+
+	var val any
+	if token.IsResolved && token.ResolvedValue != nil {
+		val = token.ResolvedValue
+	} else {
+		val = token.RawValue
+	}
+
+	obj, ok := val.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	colorSpace, ok := obj["colorSpace"].(string)
+	if !ok {
+		return nil
+	}
+
+	components, ok := obj["components"].([]any)
+	if !ok {
+		return nil
+	}
+
+	cd := &colorDetails{
+		ColorSpace: colorSpace,
+		Components: formatComponents(components),
+	}
+
+	if alpha, ok := obj["alpha"].(float64); ok {
+		cd.Alpha = fmt.Sprintf("%g", alpha)
+	}
+
+	if hex, ok := obj["hex"].(string); ok {
+		cd.Hex = hex
+	}
+
+	return cd
+}
+
+// formatComponents formats a slice of color components for display.
+func formatComponents(components []any) string {
+	parts := make([]string, len(components))
+	for i, c := range components {
+		switch v := c.(type) {
+		case float64:
+			parts[i] = fmt.Sprintf("%g", v)
+		case string:
+			parts[i] = v
+		default:
+			parts[i] = fmt.Sprintf("%v", v)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
 // renderTokenHover renders the hover content for a token in the specified format
 func renderTokenHover(token *tokens.Token, format protocol.MarkupKind) (string, error) {
+	data := hoverData{
+		Token: token,
+		Color: extractColorDetails(token),
+	}
+
 	var buf bytes.Buffer
 	var tmpl *template.Template
 	if format == protocol.MarkupKindPlainText {
@@ -63,7 +149,7 @@ func renderTokenHover(token *tokens.Token, format protocol.MarkupKind) (string, 
 	} else {
 		tmpl = tokenHoverTemplate
 	}
-	if err := tmpl.Execute(&buf, token); err != nil {
+	if err := tmpl.Execute(&buf, &data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
