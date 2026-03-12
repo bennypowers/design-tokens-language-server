@@ -1,0 +1,8 @@
+{
+  "color": {
+    "simple": {
+      "$type": "color",
+      "$value": "#ff0000"
+    }
+  }
+}
