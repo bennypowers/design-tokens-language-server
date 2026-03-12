@@ -1,0 +1,8 @@
+# --color-primary
+
+Primary brand color
+
+**Value (CSS)**: `#ff0000`
+**Type**: `color`
+
+*Defined in: tokens.json*
