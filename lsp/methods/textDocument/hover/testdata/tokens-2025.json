@@ -35,6 +35,9 @@
         "colorSpace": "srgb",
         "components": [1, 1, 1]
       }
+    },
+    "alias": {
+      "$value": "{color.primary}"
     }
   },
   "spacing": {
