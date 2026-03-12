@@ -101,6 +101,162 @@ files:
 		assert.NotNil(t, brandToken, "color.brand.red should exist (from brand.yml)")
 	})
 
+	t.Run("merges resolvers from both package.json and asimonim config", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		configDir := filepath.Join(tmpDir, ".config")
+		require.NoError(t, os.MkdirAll(configDir, 0o755))
+
+		// First resolver: design tokens (from package.json)
+		colorsDir := filepath.Join(tmpDir, "src", "design-tokens")
+		require.NoError(t, os.MkdirAll(colorsDir, 0o755))
+
+		require.NoError(t, os.WriteFile(filepath.Join(colorsDir, "palette.json"), []byte(`{
+			"color": {
+				"$type": "color",
+				"neutral": {"100": {"$value": "#f5f5f5"}}
+			}
+		}`), 0o644))
+
+		require.NoError(t, os.WriteFile(filepath.Join(colorsDir, "colors.json"), []byte(`{
+			"color": {
+				"surface": {"lowered": {"$value": "{color.neutral.100}"}}
+			}
+		}`), 0o644))
+
+		require.NoError(t, os.WriteFile(filepath.Join(colorsDir, "tokens.resolver.json"), []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [{
+				"type": "set", "name": "base",
+				"sources": [
+					{"$ref": "./palette.json"},
+					{"$ref": "./colors.json"}
+				]
+			}]
+		}`), 0o644))
+
+		// Second resolver: typography (from asimonim config)
+		typoDir := filepath.Join(tmpDir, "src", "typography")
+		require.NoError(t, os.MkdirAll(typoDir, 0o755))
+
+		require.NoError(t, os.WriteFile(filepath.Join(typoDir, "fonts.json"), []byte(`{
+			"font": {
+				"$type": "fontFamily",
+				"body": {"$value": "Inter, sans-serif"}
+			}
+		}`), 0o644))
+
+		require.NoError(t, os.WriteFile(filepath.Join(typoDir, "typography.resolver.json"), []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [{
+				"type": "set", "name": "base",
+				"sources": [{"$ref": "./fonts.json"}]
+			}]
+		}`), 0o644))
+
+		// package.json has one resolver
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(`{
+			"designTokensLanguageServer": {
+				"resolvers": [
+					"./src/design-tokens/tokens.resolver.json"
+				]
+			}
+		}`), 0o644))
+
+		// asimonim config has a different resolver
+		require.NoError(t, os.WriteFile(filepath.Join(configDir, "design-tokens.yaml"),
+			[]byte("resolvers:\n  - ./src/typography/typography.resolver.json\n"), 0o644))
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetRootPath(tmpDir)
+		err = server.LoadPackageJsonConfig()
+		require.NoError(t, err)
+
+		cfg := server.GetConfig()
+		// package.json resolver wins; asimonim resolver is not merged because
+		// package.json already has resolvers set
+		require.Len(t, cfg.Resolvers, 1, "package.json resolvers should take precedence")
+
+		err = server.LoadTokensFromConfig()
+		require.NoError(t, err)
+
+		// Only color tokens from the package.json resolver should be loaded
+		assert.NotNil(t, server.Token("color-neutral-100"), "palette token should be loaded")
+		assert.NotNil(t, server.Token("color-surface-lowered"), "colors token should be loaded")
+		assert.Nil(t, server.Token("font-body"), "typography token should NOT be loaded (asimonim resolver not merged)")
+	})
+
+	t.Run("merges asimonim resolvers when package.json has no resolvers", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Create .config directory with resolvers config
+		configDir := filepath.Join(tmpDir, ".config")
+		require.NoError(t, os.MkdirAll(configDir, 0o755))
+
+		tokensDir := filepath.Join(tmpDir, "src", "design-tokens")
+		require.NoError(t, os.MkdirAll(tokensDir, 0o755))
+
+		// Create source token files
+		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "palette.json"), []byte(`{
+			"color": {
+				"$type": "color",
+				"neutral": {"100": {"$value": "#f5f5f5"}}
+			}
+		}`), 0o644))
+
+		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "colors.json"), []byte(`{
+			"color": {
+				"surface": {"lowered": {"$value": "{color.neutral.100}"}}
+			}
+		}`), 0o644))
+
+		// Create resolver document
+		resolverPath := filepath.Join(tokensDir, "tokens.resolver.json")
+		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [{
+				"type": "set",
+				"name": "base",
+				"sources": [
+					{"$ref": "./palette.json"},
+					{"$ref": "./colors.json"}
+				]
+			}]
+		}`), 0o644))
+
+		// package.json has designTokensLanguageServer but no resolvers
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(`{
+			"designTokensLanguageServer": {
+				"tokensFiles": []
+			}
+		}`), 0o644))
+
+		// asimonim config has resolvers
+		configContent := "resolvers:\n  - ./src/design-tokens/tokens.resolver.json\n"
+		require.NoError(t, os.WriteFile(filepath.Join(configDir, "design-tokens.yaml"), []byte(configContent), 0o644))
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetRootPath(tmpDir)
+		err = server.LoadPackageJsonConfig()
+		require.NoError(t, err)
+
+		cfg := server.GetConfig()
+		require.Len(t, cfg.Resolvers, 1, "resolvers from asimonim config should be merged")
+
+		// Load tokens
+		err = server.LoadTokensFromConfig()
+		require.NoError(t, err)
+
+		assert.NotNil(t, server.Token("color-neutral-100"), "palette token should be loaded")
+		assert.NotNil(t, server.Token("color-surface-lowered"), "colors token should be loaded")
+	})
+
 	t.Run("SetConfig does not clear tokensFiles from asimonim config", func(t *testing.T) {
 		tmpDir := t.TempDir()
 

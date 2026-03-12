@@ -124,15 +124,27 @@ func (s *Server) SetConfig(config types.ServerConfig) {
 func (s *Server) LoadTokensFromConfig() error {
 	cfg := s.GetConfig()
 
-	// If tokensFiles is explicitly provided and non-empty, load those files
-	if len(cfg.TokensFiles) > 0 {
-		log.Info("Loading %d token files from config", len(cfg.TokensFiles))
+	hasTokensFiles := len(cfg.TokensFiles) > 0
+	hasResolvers := len(cfg.Resolvers) > 0
+
+	if hasTokensFiles || hasResolvers {
 		// Clear existing tokens before loading configured files
 		s.tokens.Clear()
-		err := s.loadExplicitTokenFiles()
-		if err != nil {
-			return err
+
+		if hasTokensFiles {
+			log.Info("Loading %d token files from config", len(cfg.TokensFiles))
+			if err := s.loadExplicitTokenFiles(); err != nil {
+				return err
+			}
 		}
+
+		if hasResolvers {
+			log.Info("Loading %d resolver documents from config", len(cfg.Resolvers))
+			if err := s.loadResolverDocuments(); err != nil {
+				return err
+			}
+		}
+
 		// Resolve all aliases after loading all tokens
 		s.ResolveAllTokens()
 		log.Info("Loaded %d tokens total", s.tokens.Count())
@@ -265,6 +277,37 @@ func networkTimeout(cfg types.ServerConfig) time.Duration {
 		return time.Duration(cfg.NetworkTimeout) * time.Second
 	}
 	return load.DefaultTimeout
+}
+
+// loadResolverDocuments loads tokens from resolver documents specified in config.
+// Each resolver document is parsed to extract source file $ref paths,
+// and those source files are loaded as token files.
+func (s *Server) loadResolverDocuments() error {
+	cfg := s.GetConfig()
+	state := s.GetState()
+
+	var errs []error
+	for _, resolverPath := range cfg.Resolvers {
+		normalizedPath, err := normalizePath(resolverPath, state.RootPath)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to resolve resolver path %s: %w", resolverPath, err))
+			continue
+		}
+
+		opts := &TokenFileOptions{
+			Prefix:       cfg.Prefix,
+			GroupMarkers: cfg.GroupMarkers,
+		}
+
+		if err := s.loadResolverDocument(normalizedPath, opts); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 // loadExplicitTokenFiles loads tokens from explicitly configured files

@@ -243,6 +243,8 @@ func expandGlobPattern(pattern, rootPath string) ([]string, error) {
 
 // ReadPackageJsonConfig reads designTokensLanguageServer configuration from package.json.
 // Falls back to .config/design-tokens.{yaml,json} if no package.json config is found.
+// When package.json config exists, also reads asimonim config to fill in
+// fields not present in package.json (e.g., resolvers).
 // Returns nil if no configuration exists (not an error).
 func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 	if rootPath == "" {
@@ -266,6 +268,14 @@ func ReadPackageJsonConfig(rootPath string) (*types.ServerConfig, error) {
 			// Expand glob patterns in tokensFiles
 			if len(config.TokensFiles) > 0 {
 				config.TokensFiles = expandTokensFileGlobs(config.TokensFiles, rootPath)
+			}
+
+			// Also read asimonim config and merge fields not set in package.json
+			asimonimConfig, err := ReadAsimonimConfig(rootPath)
+			if err != nil {
+				log.Warn("Failed to read asimonim config: %v", err)
+			} else if asimonimConfig != nil {
+				mergePackageJsonConfig(config, asimonimConfig)
 			}
 
 			return config, nil
