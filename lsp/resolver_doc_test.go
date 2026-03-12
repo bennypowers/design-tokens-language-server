@@ -123,6 +123,35 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("decodes JSON Pointer escaping in set names", func(t *testing.T) {
+		data := []byte(`{
+			"version": "2025.10",
+			"sets": {
+				"brand/core": {
+					"sources": [{"$ref": "./palette.json"}]
+				}
+			},
+			"resolutionOrder": [
+				{"$ref": "#/sets/brand~1core"}
+			]
+		}`)
+		paths, err := extractResolverSourcePaths(data, "/project")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"/project/palette.json"}, paths)
+	})
+
+	t.Run("strips fragment identifiers from source refs", func(t *testing.T) {
+		data := []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [
+				{"sources": [{"$ref": "./palette.json#/brand"}]}
+			]
+		}`)
+		paths, err := extractResolverSourcePaths(data, "/project")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"/project/palette.json"}, paths)
+	})
+
 	t.Run("handles missing set reference gracefully", func(t *testing.T) {
 		data := []byte(`{
 			"version": "2025.10",

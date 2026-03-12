@@ -2,7 +2,9 @@ package lsp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,7 +84,8 @@ func extractSourcesFromEntry(entry json.RawMessage, sets map[string]setDef) ([]s
 	var ref sourceRef
 	if err := json.Unmarshal(entry, &ref); err == nil && ref.Ref != "" {
 		// Check if it's a JSON pointer reference to a named set
-		if setName, ok := strings.CutPrefix(ref.Ref, "#/sets/"); ok {
+		if rawName, ok := strings.CutPrefix(ref.Ref, "#/sets/"); ok {
+			setName := unescapeJSONPointer(rawName)
 			set, ok := sets[setName]
 			if !ok {
 				return nil, fmt.Errorf("referenced set %q not found", setName)
@@ -107,11 +110,27 @@ func extractSourcesFromEntry(entry json.RawMessage, sets map[string]setDef) ([]s
 func extractFileRefsFromSources(sources []sourceRef) []string {
 	var paths []string
 	for _, src := range sources {
-		if src.Ref != "" && !strings.HasPrefix(src.Ref, "#") {
-			paths = append(paths, src.Ref)
+		if src.Ref == "" || strings.HasPrefix(src.Ref, "#") {
+			continue
+		}
+		// Strip any fragment identifier (e.g., "palette.json#/brand" → "palette.json")
+		path, _, _ := strings.Cut(src.Ref, "#")
+		if path != "" {
+			paths = append(paths, path)
 		}
 	}
 	return paths
+}
+
+// unescapeJSONPointer decodes a JSON Pointer token per RFC 6901:
+// percent-decoding first, then replacing ~1 with / and ~0 with ~.
+func unescapeJSONPointer(s string) string {
+	if unescaped, err := url.PathUnescape(s); err == nil {
+		s = unescaped
+	}
+	s = strings.ReplaceAll(s, "~1", "/")
+	s = strings.ReplaceAll(s, "~0", "~")
+	return s
 }
 
 // resolveRefPath resolves a $ref path relative to the resolver document's directory.
@@ -145,7 +164,7 @@ func (s *Server) loadResolverDocument(resolverPath string, opts *TokenFileOption
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("errors loading resolver sources: %w", errs[0])
+		return errors.Join(errs...)
 	}
 	return nil
 }
