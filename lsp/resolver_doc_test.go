@@ -154,6 +154,18 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("returns error for unrecognized entry shape", func(t *testing.T) {
+		data := []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [
+				{"unknown": "field"}
+			]
+		}`)
+		_, err := extractResolverSourcePaths(data, "/project")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unrecognized")
+	})
+
 	t.Run("returns error for missing set reference", func(t *testing.T) {
 		data := []byte(`{
 			"version": "2025.10",

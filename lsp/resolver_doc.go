@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"bennypowers.dev/asimonim/load"
+	"bennypowers.dev/asimonim/specifier"
 	"bennypowers.dev/dtls/internal/log"
 )
 
@@ -101,7 +103,7 @@ func extractSourcesFromEntry(entry json.RawMessage, sets map[string]setDef) ([]s
 		return extractFileRefsFromSources(inlineSet.Sources), nil
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("unrecognized resolution order entry: %s", string(entry))
 }
 
 // extractFileRefsFromSources extracts file paths from source $ref entries,
@@ -159,10 +161,35 @@ func (s *Server) loadResolverDocument(resolverPath string, opts *TokenFileOption
 
 	log.Info("Resolver %s has %d source files", resolverPath, len(sourcePaths))
 
+	cfg := s.GetConfig()
+	state := s.GetState()
+
+	// Create fetcher once if network fallback is enabled
+	var fetcher load.Fetcher
+	if cfg.NetworkFallback {
+		fetcher = load.NewHTTPFetcher(load.DefaultMaxSize)
+	}
+
 	var errs []error
 	for _, srcPath := range sourcePaths {
-		if err := s.loadTokenFileAndLog(srcPath, opts); err != nil {
-			errs = append(errs, fmt.Errorf("failed to load resolver source %s: %w", srcPath, err))
+		normalizedPath, err := normalizePath(srcPath, state.RootPath)
+		if err != nil {
+			// Try CDN fallback for package specifiers
+			if fetcher != nil && specifier.IsPackageSpecifier(srcPath) {
+				count, cdnErr := s.loadFromCDN(fetcher, srcPath, opts, cfg)
+				if cdnErr != nil && count == 0 {
+					errs = append(errs, fmt.Errorf("failed to resolve resolver source %s: %w (CDN fallback also failed: %v)", srcPath, err, cdnErr))
+				} else if cdnErr != nil {
+					log.Warn("CDN fallback for resolver source %s loaded %d tokens but had errors: %v", srcPath, count, cdnErr)
+				}
+				continue
+			}
+			errs = append(errs, fmt.Errorf("failed to resolve resolver source %s: %w", srcPath, err))
+			continue
+		}
+
+		if err := s.loadTokenFileAndLog(normalizedPath, opts); err != nil {
+			errs = append(errs, fmt.Errorf("failed to load resolver source %s: %w", normalizedPath, err))
 		}
 	}
 

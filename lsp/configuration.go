@@ -61,7 +61,7 @@ func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
 		log.Info("Loaded groupMarkers from package.json: %v\n", pkg.GroupMarkers)
 	}
 
-	if current.TokensFiles == nil && len(pkg.TokensFiles) > 0 {
+	if current.TokensFiles == nil && pkg.TokensFiles != nil {
 		current.TokensFiles = pkg.TokensFiles
 		log.Info("Loaded %d tokensFiles from config", len(pkg.TokensFiles))
 	}
@@ -81,7 +81,7 @@ func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
 		log.Info("Loaded cdn from package.json: %s", pkg.CDN)
 	}
 
-	if current.Resolvers == nil && len(pkg.Resolvers) > 0 {
+	if current.Resolvers == nil && pkg.Resolvers != nil {
 		current.Resolvers = pkg.Resolvers
 		log.Info("Loaded %d resolvers from config", len(pkg.Resolvers))
 	}
