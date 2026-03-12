@@ -34,6 +34,11 @@ type ServerConfig struct {
 	// Default: ["_", "@", "DEFAULT"]
 	GroupMarkers []string `json:"groupMarkers"`
 
+	// GroupMarkersSet tracks whether GroupMarkers was explicitly provided,
+	// distinguishing "not set" (use package.json/config defaults) from
+	// "explicitly set to default values".
+	GroupMarkersSet bool `json:"-"`
+
 	// NetworkFallback enables CDN fallback for npm: specifiers
 	// when local node_modules resolution fails.
 	NetworkFallback bool `json:"networkFallback"`

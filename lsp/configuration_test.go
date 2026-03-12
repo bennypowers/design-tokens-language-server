@@ -420,6 +420,7 @@ func TestMergePackageJsonConfig(t *testing.T) {
 		pkg := &types.ServerConfig{
 			Prefix:          "ds",
 			GroupMarkers:    []string{"CUSTOM"},
+			GroupMarkersSet: true,
 			TokensFiles:     []any{"tokens.json"},
 			NetworkFallback: true,
 			NetworkTimeout:  45,
@@ -434,6 +435,20 @@ func TestMergePackageJsonConfig(t *testing.T) {
 		assert.Equal(t, 45, current.NetworkTimeout)
 		assert.Equal(t, "jsdelivr", current.CDN)
 		assert.Equal(t, []string{"resolver.json"}, current.Resolvers)
+	})
+
+	t.Run("does not override explicitly set GroupMarkers", func(t *testing.T) {
+		current := &types.ServerConfig{
+			GroupMarkers:    types.DefaultConfig().GroupMarkers,
+			GroupMarkersSet: true, // Client explicitly set these
+		}
+		pkg := &types.ServerConfig{
+			GroupMarkers:    []string{"CUSTOM"},
+			GroupMarkersSet: true,
+		}
+		mergePackageJsonConfig(current, pkg)
+		assert.Equal(t, types.DefaultConfig().GroupMarkers, current.GroupMarkers,
+			"explicitly set GroupMarkers should not be overridden by package.json")
 	})
 }
 

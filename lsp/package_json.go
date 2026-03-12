@@ -148,6 +148,9 @@ func buildServerConfig(configMap map[string]any) *types.ServerConfig {
 
 	// Parse groupMarkers
 	config.GroupMarkers = parseGroupMarkersField(configMap)
+	if config.GroupMarkers != nil {
+		config.GroupMarkersSet = true
+	}
 
 	// Parse tokensFiles
 	config.TokensFiles = parseTokensFilesField(configMap)

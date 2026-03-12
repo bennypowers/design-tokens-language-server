@@ -47,31 +47,17 @@ func (s *Server) LoadPackageJsonConfig() error {
 	return nil
 }
 
-// isGroupMarkersDefault checks if group markers are equal to the default values
-func isGroupMarkersDefault(current, defaults []string) bool {
-	if len(current) != len(defaults) {
-		return false
-	}
-	for i := range current {
-		if current[i] != defaults[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // mergePackageJsonConfig merges package.json config into the current config.
 // Only sets fields if not already configured by client.
 func mergePackageJsonConfig(current, pkg *types.ServerConfig) {
-	defaults := types.DefaultConfig()
-
 	if current.Prefix == "" && pkg.Prefix != "" {
 		current.Prefix = pkg.Prefix
 		log.Info("Loaded prefix from package.json: %s\n", pkg.Prefix)
 	}
 
-	if isGroupMarkersDefault(current.GroupMarkers, defaults.GroupMarkers) && len(pkg.GroupMarkers) > 0 {
+	if !current.GroupMarkersSet && len(pkg.GroupMarkers) > 0 {
 		current.GroupMarkers = pkg.GroupMarkers
+		current.GroupMarkersSet = true
 		log.Info("Loaded groupMarkers from package.json: %v\n", pkg.GroupMarkers)
 	}
 
