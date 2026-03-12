@@ -1,0 +1,5 @@
+{
+  "color": {
+    "surface": { "lowered": { "$value": "{color.neutral.100}" } }
+  }
+}

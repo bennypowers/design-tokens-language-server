@@ -1,0 +1,4 @@
+color:
+  brand:
+    red:
+      $value: "#ee0000"

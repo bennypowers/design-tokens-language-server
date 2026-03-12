@@ -1,0 +1,6 @@
+color:
+  blue:
+    "10":
+      $value: "#e6f1ff"
+    "20":
+      $value: "#cce3ff"

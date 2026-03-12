@@ -1,7 +1,6 @@
 package lsp
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -118,11 +117,6 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		assert.Equal(t, []string{"/project/palette.json"}, paths)
 	})
 
-	t.Run("returns error for invalid JSON", func(t *testing.T) {
-		_, err := extractResolverSourcePaths([]byte(`{invalid`), "/project")
-		require.Error(t, err)
-	})
-
 	t.Run("decodes JSON Pointer escaping in set names", func(t *testing.T) {
 		data := []byte(`{
 			"version": "2025.10",
@@ -152,6 +146,11 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 		assert.Equal(t, []string{"/project/palette.json"}, paths)
 	})
 
+	t.Run("returns error for invalid JSON", func(t *testing.T) {
+		_, err := extractResolverSourcePaths([]byte(`{invalid`), "/project")
+		require.Error(t, err)
+	})
+
 	t.Run("handles missing set reference gracefully", func(t *testing.T) {
 		data := []byte(`{
 			"version": "2025.10",
@@ -168,48 +167,13 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 
 func TestLoadResolverDocument(t *testing.T) {
 	t.Run("loads sources from resolver document", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tokensDir := filepath.Join(tmpDir, "tokens")
-		require.NoError(t, os.MkdirAll(tokensDir, 0o755))
-
-		// Create source token files
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "palette.json"), []byte(`{
-			"color": {
-				"$type": "color",
-				"neutral": {
-					"100": {"$value": "#f5f5f5"}
-				}
-			}
-		}`), 0o644))
-
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "colors.json"), []byte(`{
-			"color": {
-				"surface": {
-					"lowered": {"$value": "{color.neutral.100}"}
-				}
-			}
-		}`), 0o644))
-
-		// Create resolver document
-		resolverPath := filepath.Join(tokensDir, "tokens.resolver.json")
-		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{
-					"type": "set",
-					"name": "base",
-					"sources": [
-						{"$ref": "./palette.json"},
-						{"$ref": "./colors.json"}
-					]
-				}
-			]
-		}`), 0o644))
+		tmpDir := copyFixture(t, "resolver-doc/inline-sources")
 
 		server, err := NewServer()
 		require.NoError(t, err)
 		defer func() { _ = server.Close() }()
 
+		resolverPath := filepath.Join(tmpDir, "tokens.resolver.json")
 		err = server.loadResolverDocument(resolverPath, &TokenFileOptions{})
 		require.NoError(t, err)
 
@@ -218,31 +182,13 @@ func TestLoadResolverDocument(t *testing.T) {
 	})
 
 	t.Run("loads from named sets with refs", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "palette.json"), []byte(`{
-			"color": {
-				"primary": {"$value": "#ff0000", "$type": "color"}
-			}
-		}`), 0o644))
-
-		resolverPath := filepath.Join(tmpDir, "resolver.json")
-		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
-			"version": "2025.10",
-			"sets": {
-				"base": {
-					"sources": [{"$ref": "./palette.json"}]
-				}
-			},
-			"resolutionOrder": [
-				{"$ref": "#/sets/base"}
-			]
-		}`), 0o644))
+		tmpDir := copyFixture(t, "resolver-doc/named-sets")
 
 		server, err := NewServer()
 		require.NoError(t, err)
 		defer func() { _ = server.Close() }()
 
+		resolverPath := filepath.Join(tmpDir, "resolver.json")
 		err = server.loadResolverDocument(resolverPath, &TokenFileOptions{})
 		require.NoError(t, err)
 
@@ -252,57 +198,7 @@ func TestLoadResolverDocument(t *testing.T) {
 
 func TestLoadTokensFromConfig_ResolversFromPackageJson(t *testing.T) {
 	t.Run("loads resolvers from package.json config", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tokensDir := filepath.Join(tmpDir, "src", "design-tokens")
-		require.NoError(t, os.MkdirAll(tokensDir, 0o755))
-
-		// Create source files matching the repro
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "palette.json"), []byte(`{
-			"color": {
-				"$type": "color",
-				"neutral": {
-					"100": {
-						"$value": {
-							"colorSpace": "oklch",
-							"components": [0.97, 0, 0],
-							"alpha": 1,
-							"hex": "#f5f5f5"
-						}
-					}
-				}
-			}
-		}`), 0o644))
-
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "colors.json"), []byte(`{
-			"color": {
-				"surface": {
-					"lowered": {
-						"$value": "{color.neutral.100}"
-					}
-				}
-			}
-		}`), 0o644))
-
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "tokens.resolver.json"), []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [{
-				"type": "set",
-				"name": "base",
-				"sources": [
-					{"$ref": "./palette.json"},
-					{"$ref": "./colors.json"}
-				]
-			}]
-		}`), 0o644))
-
-		// Create package.json with resolvers
-		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(`{
-			"designTokensLanguageServer": {
-				"resolvers": [
-					"./src/design-tokens/tokens.resolver.json"
-				]
-			}
-		}`), 0o644))
+		tmpDir := copyFixture(t, "resolver-doc/from-package-json")
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -318,11 +214,9 @@ func TestLoadTokensFromConfig_ResolversFromPackageJson(t *testing.T) {
 		err = server.LoadTokensFromConfig()
 		require.NoError(t, err)
 
-		// Both tokens should be loaded
 		assert.NotNil(t, server.Token("color-neutral-100"), "palette token should be loaded")
 		assert.NotNil(t, server.Token("color-surface-lowered"), "semantic token should be loaded")
 
-		// The alias should resolve
 		tok := server.Token("color-surface-lowered")
 		require.NotNil(t, tok)
 		assert.True(t, tok.IsResolved, "alias should be resolved across resolver sources")
@@ -331,43 +225,7 @@ func TestLoadTokensFromConfig_ResolversFromPackageJson(t *testing.T) {
 
 func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 	t.Run("loads tokens from resolver documents", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tokensDir := filepath.Join(tmpDir, "tokens")
-		require.NoError(t, os.MkdirAll(tokensDir, 0o755))
-
-		// Create source token files
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "palette.json"), []byte(`{
-			"color": {
-				"$type": "color",
-				"neutral": {
-					"100": {"$value": "#f5f5f5"}
-				}
-			}
-		}`), 0o644))
-
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "colors.json"), []byte(`{
-			"color": {
-				"surface": {
-					"lowered": {"$value": "{color.neutral.100}"}
-				}
-			}
-		}`), 0o644))
-
-		// Create resolver document
-		resolverPath := filepath.Join(tokensDir, "tokens.resolver.json")
-		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{
-					"type": "set",
-					"name": "base",
-					"sources": [
-						{"$ref": "./palette.json"},
-						{"$ref": "./colors.json"}
-					]
-				}
-			]
-		}`), 0o644))
+		tmpDir := copyFixture(t, "resolver-doc/inline-sources")
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -375,7 +233,7 @@ func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
-			Resolvers: []string{resolverPath},
+			Resolvers: []string{filepath.Join(tmpDir, "tokens.resolver.json")},
 		})
 
 		err = server.LoadTokensFromConfig()
@@ -386,23 +244,7 @@ func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 	})
 
 	t.Run("resolves relative resolver paths", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tokensDir := filepath.Join(tmpDir, "src", "tokens")
-		require.NoError(t, os.MkdirAll(tokensDir, 0o755))
-
-		require.NoError(t, os.WriteFile(filepath.Join(tokensDir, "palette.json"), []byte(`{
-			"color": {
-				"primary": {"$value": "#ff0000", "$type": "color"}
-			}
-		}`), 0o644))
-
-		resolverPath := filepath.Join(tokensDir, "tokens.resolver.json")
-		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json"}]}
-			]
-		}`), 0o644))
+		tmpDir := copyFixture(t, "resolver-doc/relative-resolver")
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -420,31 +262,7 @@ func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 	})
 
 	t.Run("resolves aliases across resolver sources", func(t *testing.T) {
-		tmpDir := t.TempDir()
-
-		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "palette.json"), []byte(`{
-			"color": {
-				"$type": "color",
-				"neutral": {"100": {"$value": "#f5f5f5"}}
-			}
-		}`), 0o644))
-
-		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "semantic.json"), []byte(`{
-			"color": {
-				"surface": {"lowered": {"$value": "{color.neutral.100}"}}
-			}
-		}`), 0o644))
-
-		resolverPath := filepath.Join(tmpDir, "resolver.json")
-		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [
-					{"$ref": "./palette.json"},
-					{"$ref": "./semantic.json"}
-				]}
-			]
-		}`), 0o644))
+		tmpDir := copyFixture(t, "resolver-doc/resolver-aliases")
 
 		server, err := NewServer()
 		require.NoError(t, err)
@@ -452,7 +270,7 @@ func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 
 		server.SetRootPath(tmpDir)
 		server.SetConfig(types.ServerConfig{
-			Resolvers: []string{resolverPath},
+			Resolvers: []string{filepath.Join(tmpDir, "resolver.json")},
 		})
 
 		err = server.LoadTokensFromConfig()
@@ -460,7 +278,6 @@ func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 
 		tok := server.Token("color-surface-lowered")
 		require.NotNil(t, tok)
-		// After alias resolution, the token should have a resolved value
 		assert.True(t, tok.IsResolved, "alias should be resolved across resolver sources")
 	})
 }
