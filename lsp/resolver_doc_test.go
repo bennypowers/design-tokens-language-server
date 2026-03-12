@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -180,6 +181,33 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 	})
 }
 
+func TestResolveRefPath(t *testing.T) {
+	t.Run("resolves relative path against resolver dir", func(t *testing.T) {
+		result := resolveRefPath("./palette.json", "/project/tokens")
+		assert.Equal(t, filepath.FromSlash("/project/tokens/palette.json"), result)
+	})
+
+	t.Run("cleans absolute path", func(t *testing.T) {
+		result := resolveRefPath("/abs/path/tokens.json", "/project/tokens")
+		assert.Equal(t, filepath.FromSlash("/abs/path/tokens.json"), result)
+	})
+
+	t.Run("passes through npm: URI unchanged", func(t *testing.T) {
+		result := resolveRefPath("npm:@scope/tokens/tokens.json", "/project")
+		assert.Equal(t, "npm:@scope/tokens/tokens.json", result)
+	})
+
+	t.Run("passes through jsr: URI unchanged", func(t *testing.T) {
+		result := resolveRefPath("jsr:@scope/tokens/tokens.json", "/project")
+		assert.Equal(t, "jsr:@scope/tokens/tokens.json", result)
+	})
+
+	t.Run("passes through https:// URI unchanged", func(t *testing.T) {
+		result := resolveRefPath("https://cdn.example.com/tokens.json", "/project")
+		assert.Equal(t, "https://cdn.example.com/tokens.json", result)
+	})
+}
+
 func TestLoadResolverDocument(t *testing.T) {
 	t.Run("loads sources from resolver document", func(t *testing.T) {
 		tmpDir := copyFixture(t, "resolver-doc/inline-sources")
@@ -208,6 +236,50 @@ func TestLoadResolverDocument(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotNil(t, server.Token("color-primary"))
+	})
+
+	t.Run("returns error for nonexistent resolver file", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		err = server.loadResolverDocument("/nonexistent/resolver.json", &TokenFileOptions{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to read resolver document")
+	})
+
+	t.Run("returns error for invalid resolver JSON", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		resolverPath := filepath.Join(tmpDir, "bad.json")
+		require.NoError(t, os.WriteFile(resolverPath, []byte(`{not valid`), 0o644))
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		err = server.loadResolverDocument(resolverPath, &TokenFileOptions{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to extract sources")
+	})
+
+	t.Run("returns error when source file is missing", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		resolverPath := filepath.Join(tmpDir, "resolver.json")
+		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [{
+				"sources": [{"$ref": "./missing.json"}]
+			}]
+		}`), 0o644))
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetRootPath(tmpDir)
+		err = server.loadResolverDocument(resolverPath, &TokenFileOptions{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "missing.json")
 	})
 }
 
@@ -294,5 +366,44 @@ func TestLoadTokensFromConfig_Resolvers(t *testing.T) {
 		tok := server.Token("color-surface-lowered")
 		require.NotNil(t, tok)
 		assert.True(t, tok.IsResolved, "alias should be resolved across resolver sources")
+	})
+
+	t.Run("returns error for nonexistent resolver path", func(t *testing.T) {
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetRootPath(t.TempDir())
+		server.SetConfig(types.ServerConfig{
+			Resolvers: []string{"/nonexistent/resolver.json"},
+		})
+
+		err = server.LoadTokensFromConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nonexistent")
+	})
+
+	t.Run("returns error for resolver with missing sources", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		resolverPath := filepath.Join(tmpDir, "resolver.json")
+		require.NoError(t, os.WriteFile(resolverPath, []byte(`{
+			"version": "2025.10",
+			"resolutionOrder": [{
+				"sources": [{"$ref": "./missing.json"}]
+			}]
+		}`), 0o644))
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		server.SetRootPath(tmpDir)
+		server.SetConfig(types.ServerConfig{
+			Resolvers: []string{resolverPath},
+		})
+
+		err = server.LoadTokensFromConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "missing.json")
 	})
 }
