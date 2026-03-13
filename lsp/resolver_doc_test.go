@@ -10,16 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func loadFixture(t *testing.T, name string) []byte {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join("testdata", "resolver-doc-extract", name, "resolver.json"))
-	require.NoError(t, err)
-	return data
-}
-
 func TestIsResolverDocument(t *testing.T) {
 	t.Run("detects resolver document with resolutionOrder", func(t *testing.T) {
-		assert.True(t, isResolverDocument(loadFixture(t, "inline-sources")))
+		data, err := os.ReadFile("testdata/asimonim-integration/resolver-doc/inline-sources/tokens.resolver.json")
+		require.NoError(t, err)
+		assert.True(t, isResolverDocument(data))
 	})
 
 	t.Run("rejects regular token file", func(t *testing.T) {
@@ -33,145 +28,6 @@ func TestIsResolverDocument(t *testing.T) {
 
 	t.Run("rejects invalid JSON", func(t *testing.T) {
 		assert.False(t, isResolverDocument([]byte(`{invalid`)))
-	})
-}
-
-func TestExtractResolverSourcePaths(t *testing.T) {
-	t.Run("extracts inline sources", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "inline-sources"), "/project/tokens")
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			filepath.FromSlash("/project/tokens/palette.json"),
-			filepath.FromSlash("/project/tokens/colors.json"),
-		}, paths)
-	})
-
-	t.Run("extracts named set references", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "named-sets"), "/project/tokens")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/tokens/palette.json")}, paths)
-	})
-
-	t.Run("deduplicates paths", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "dedup"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("handles multiple sets in order", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "multiple-sets"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			filepath.FromSlash("/project/palette.json"),
-			filepath.FromSlash("/project/overrides.json"),
-		}, paths)
-	})
-
-	t.Run("ignores JSON pointer refs in sources", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "pointer-refs"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("decodes JSON Pointer escaping in set names", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "json-pointer-escaping"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("strips fragment identifiers from source refs", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "fragment-stripping"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("extracts sources from inline modifier contexts", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "inline-modifier"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			filepath.FromSlash("/project/palette.json"),
-			filepath.FromSlash("/project/dark.json"),
-		}, paths)
-	})
-
-	t.Run("extracts sources from named modifier ref", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "named-modifier"), "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			filepath.FromSlash("/project/palette.json"),
-			filepath.FromSlash("/project/dark.json"),
-		}, paths)
-	})
-
-	t.Run("extracts sources from multiple modifier contexts", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "multi-contexts"), "/project")
-		require.NoError(t, err)
-		assert.Contains(t, paths, filepath.FromSlash("/project/light.json"))
-		assert.Contains(t, paths, filepath.FromSlash("/project/dark.json"))
-	})
-
-	t.Run("deduplicates across set and modifier sources", func(t *testing.T) {
-		paths, err := extractResolverSourcePaths(loadFixture(t, "dedup-across-types"), "/project")
-		require.NoError(t, err)
-		assert.Contains(t, paths, filepath.FromSlash("/project/palette.json"))
-		assert.Contains(t, paths, filepath.FromSlash("/project/dark.json"))
-		count := 0
-		for _, p := range paths {
-			if p == filepath.FromSlash("/project/palette.json") {
-				count++
-			}
-		}
-		assert.Equal(t, 1, count, "palette.json should be deduplicated")
-	})
-
-	t.Run("returns error for missing modifier reference", func(t *testing.T) {
-		_, err := extractResolverSourcePaths(loadFixture(t, "missing-modifier"), "/project")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nonexistent")
-	})
-
-	t.Run("returns error for invalid JSON", func(t *testing.T) {
-		_, err := extractResolverSourcePaths([]byte(`{invalid`), "/project")
-		require.Error(t, err)
-	})
-
-	t.Run("returns error for unrecognized entry shape", func(t *testing.T) {
-		_, err := extractResolverSourcePaths(loadFixture(t, "unrecognized-entry"), "/project")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unrecognized")
-	})
-
-	t.Run("returns error for missing set reference", func(t *testing.T) {
-		_, err := extractResolverSourcePaths(loadFixture(t, "missing-set"), "/project")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nonexistent")
-	})
-}
-
-func TestResolveRefPath(t *testing.T) {
-	t.Run("resolves relative path against resolver dir", func(t *testing.T) {
-		result := resolveRefPath("./palette.json", "/project/tokens")
-		assert.Equal(t, filepath.FromSlash("/project/tokens/palette.json"), result)
-	})
-
-	t.Run("cleans absolute path", func(t *testing.T) {
-		result := resolveRefPath("/abs/path/tokens.json", "/project/tokens")
-		assert.Equal(t, filepath.FromSlash("/abs/path/tokens.json"), result)
-	})
-
-	t.Run("passes through npm: URI unchanged", func(t *testing.T) {
-		result := resolveRefPath("npm:@scope/tokens/tokens.json", "/project")
-		assert.Equal(t, "npm:@scope/tokens/tokens.json", result)
-	})
-
-	t.Run("passes through jsr: URI unchanged", func(t *testing.T) {
-		result := resolveRefPath("jsr:@scope/tokens/tokens.json", "/project")
-		assert.Equal(t, "jsr:@scope/tokens/tokens.json", result)
-	})
-
-	t.Run("passes through https:// URI unchanged", func(t *testing.T) {
-		result := resolveRefPath("https://cdn.example.com/tokens.json", "/project")
-		assert.Equal(t, "https://cdn.example.com/tokens.json", result)
 	})
 }
 
