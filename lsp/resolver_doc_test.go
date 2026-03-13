@@ -74,6 +74,7 @@ func TestLoadResolverDocument(t *testing.T) {
 
 		assert.NotNil(t, server.Token("color-neutral-100"), "palette token should be loaded")
 		assert.NotNil(t, server.Token("color-surface-lowered"), "colors token should be loaded")
+		assert.NotNil(t, server.Token("color-dark-only"), "dark-only token from modifier context should be loaded")
 	})
 
 	t.Run("returns error for nonexistent resolver file", func(t *testing.T) {
