@@ -12,12 +12,8 @@ import (
 
 func TestIsResolverDocument(t *testing.T) {
 	t.Run("detects resolver document with resolutionOrder", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"type": "set", "name": "base", "sources": [{"$ref": "./palette.json"}]}
-			]
-		}`)
+		data, err := os.ReadFile("testdata/asimonim-integration/resolver-doc/inline-sources/tokens.resolver.json")
+		require.NoError(t, err)
 		assert.True(t, isResolverDocument(data))
 	})
 
@@ -32,179 +28,6 @@ func TestIsResolverDocument(t *testing.T) {
 
 	t.Run("rejects invalid JSON", func(t *testing.T) {
 		assert.False(t, isResolverDocument([]byte(`{invalid`)))
-	})
-}
-
-func TestExtractResolverSourcePaths(t *testing.T) {
-	t.Run("extracts inline sources", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{
-					"type": "set",
-					"name": "base",
-					"sources": [
-						{"$ref": "./palette.json"},
-						{"$ref": "./colors.json"}
-					]
-				}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project/tokens")
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			filepath.FromSlash("/project/tokens/palette.json"),
-			filepath.FromSlash("/project/tokens/colors.json"),
-		}, paths)
-	})
-
-	t.Run("extracts named set references", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"sets": {
-				"base": {
-					"sources": [
-						{"$ref": "./palette.json"}
-					]
-				}
-			},
-			"resolutionOrder": [
-				{"$ref": "#/sets/base"}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project/tokens")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/tokens/palette.json")}, paths)
-	})
-
-	t.Run("deduplicates paths", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json"}]},
-				{"sources": [{"$ref": "./palette.json"}]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("handles multiple sets in order", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json"}]},
-				{"sources": [{"$ref": "./overrides.json"}]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{
-			filepath.FromSlash("/project/palette.json"),
-			filepath.FromSlash("/project/overrides.json"),
-		}, paths)
-	})
-
-	t.Run("ignores JSON pointer refs in sources", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [
-					{"$ref": "./palette.json"},
-					{"$ref": "#/some/internal/ref"}
-				]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("decodes JSON Pointer escaping in set names", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"sets": {
-				"brand/core": {
-					"sources": [{"$ref": "./palette.json"}]
-				}
-			},
-			"resolutionOrder": [
-				{"$ref": "#/sets/brand~1core"}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("strips fragment identifiers from source refs", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json#/brand"}]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
-		require.NoError(t, err)
-		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
-	})
-
-	t.Run("returns error for invalid JSON", func(t *testing.T) {
-		_, err := extractResolverSourcePaths([]byte(`{invalid`), "/project")
-		require.Error(t, err)
-	})
-
-	t.Run("returns error for unrecognized entry shape", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"unknown": "field"}
-			]
-		}`)
-		_, err := extractResolverSourcePaths(data, "/project")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unrecognized")
-	})
-
-	t.Run("returns error for missing set reference", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"sets": {},
-			"resolutionOrder": [
-				{"$ref": "#/sets/nonexistent"}
-			]
-		}`)
-		_, err := extractResolverSourcePaths(data, "/project")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nonexistent")
-	})
-}
-
-func TestResolveRefPath(t *testing.T) {
-	t.Run("resolves relative path against resolver dir", func(t *testing.T) {
-		result := resolveRefPath("./palette.json", "/project/tokens")
-		assert.Equal(t, filepath.FromSlash("/project/tokens/palette.json"), result)
-	})
-
-	t.Run("cleans absolute path", func(t *testing.T) {
-		result := resolveRefPath("/abs/path/tokens.json", "/project/tokens")
-		assert.Equal(t, filepath.FromSlash("/abs/path/tokens.json"), result)
-	})
-
-	t.Run("passes through npm: URI unchanged", func(t *testing.T) {
-		result := resolveRefPath("npm:@scope/tokens/tokens.json", "/project")
-		assert.Equal(t, "npm:@scope/tokens/tokens.json", result)
-	})
-
-	t.Run("passes through jsr: URI unchanged", func(t *testing.T) {
-		result := resolveRefPath("jsr:@scope/tokens/tokens.json", "/project")
-		assert.Equal(t, "jsr:@scope/tokens/tokens.json", result)
-	})
-
-	t.Run("passes through https:// URI unchanged", func(t *testing.T) {
-		result := resolveRefPath("https://cdn.example.com/tokens.json", "/project")
-		assert.Equal(t, "https://cdn.example.com/tokens.json", result)
 	})
 }
 
@@ -236,6 +59,22 @@ func TestLoadResolverDocument(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotNil(t, server.Token("color-primary"))
+	})
+
+	t.Run("loads sources from modifier contexts", func(t *testing.T) {
+		tmpDir := copyFixture(t, "resolver-doc/modifier-contexts")
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		resolverPath := filepath.Join(tmpDir, "tokens.resolver.json")
+		err = server.loadResolverDocument(resolverPath, &TokenFileOptions{})
+		require.NoError(t, err)
+
+		assert.NotNil(t, server.Token("color-neutral-100"), "palette token should be loaded")
+		assert.NotNil(t, server.Token("color-surface-lowered"), "colors token should be loaded")
+		assert.NotNil(t, server.Token("color-dark-only"), "dark-only token from modifier context should be loaded")
 	})
 
 	t.Run("returns error for nonexistent resolver file", func(t *testing.T) {

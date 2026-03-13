@@ -1,0 +1,8 @@
+{
+  "color": {
+    "$type": "color",
+    "neutral": {
+      "100": { "$value": "#f5f5f5" }
+    }
+  }
+}

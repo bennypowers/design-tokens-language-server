@@ -1,0 +1,8 @@
+{
+  "color": {
+    "neutral": {
+      "100": { "$value": "#1a1a1a" }
+    },
+    "dark-only": { "$value": "#000000", "$type": "color" }
+  }
+}
