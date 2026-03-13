@@ -1,0 +1,7 @@
+{
+  "version": "2025.10",
+  "modifiers": {},
+  "resolutionOrder": [
+    { "$ref": "#/modifiers/nonexistent" }
+  ]
+}

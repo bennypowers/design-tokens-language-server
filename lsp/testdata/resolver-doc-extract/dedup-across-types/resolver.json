@@ -1,0 +1,18 @@
+{
+  "version": "2025.10",
+  "resolutionOrder": [
+    {
+      "type": "set",
+      "name": "base",
+      "sources": [{ "$ref": "./palette.json" }]
+    },
+    {
+      "type": "modifier",
+      "name": "mode",
+      "contexts": {
+        "light": [{ "$ref": "./palette.json" }],
+        "dark": [{ "$ref": "./dark.json" }]
+      }
+    }
+  ]
+}

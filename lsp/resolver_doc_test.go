@@ -10,15 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func loadFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", "resolver-doc-extract", name, "resolver.json"))
+	require.NoError(t, err)
+	return data
+}
+
 func TestIsResolverDocument(t *testing.T) {
 	t.Run("detects resolver document with resolutionOrder", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"type": "set", "name": "base", "sources": [{"$ref": "./palette.json"}]}
-			]
-		}`)
-		assert.True(t, isResolverDocument(data))
+		assert.True(t, isResolverDocument(loadFixture(t, "inline-sources")))
 	})
 
 	t.Run("rejects regular token file", func(t *testing.T) {
@@ -37,20 +38,7 @@ func TestIsResolverDocument(t *testing.T) {
 
 func TestExtractResolverSourcePaths(t *testing.T) {
 	t.Run("extracts inline sources", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{
-					"type": "set",
-					"name": "base",
-					"sources": [
-						{"$ref": "./palette.json"},
-						{"$ref": "./colors.json"}
-					]
-				}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project/tokens")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "inline-sources"), "/project/tokens")
 		require.NoError(t, err)
 		assert.Equal(t, []string{
 			filepath.FromSlash("/project/tokens/palette.json"),
@@ -59,46 +47,19 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 	})
 
 	t.Run("extracts named set references", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"sets": {
-				"base": {
-					"sources": [
-						{"$ref": "./palette.json"}
-					]
-				}
-			},
-			"resolutionOrder": [
-				{"$ref": "#/sets/base"}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project/tokens")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "named-sets"), "/project/tokens")
 		require.NoError(t, err)
 		assert.Equal(t, []string{filepath.FromSlash("/project/tokens/palette.json")}, paths)
 	})
 
 	t.Run("deduplicates paths", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json"}]},
-				{"sources": [{"$ref": "./palette.json"}]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "dedup"), "/project")
 		require.NoError(t, err)
 		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("handles multiple sets in order", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json"}]},
-				{"sources": [{"$ref": "./overrides.json"}]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "multiple-sets"), "/project")
 		require.NoError(t, err)
 		assert.Equal(t, []string{
 			filepath.FromSlash("/project/palette.json"),
@@ -107,47 +68,66 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 	})
 
 	t.Run("ignores JSON pointer refs in sources", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [
-					{"$ref": "./palette.json"},
-					{"$ref": "#/some/internal/ref"}
-				]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "pointer-refs"), "/project")
 		require.NoError(t, err)
 		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("decodes JSON Pointer escaping in set names", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"sets": {
-				"brand/core": {
-					"sources": [{"$ref": "./palette.json"}]
-				}
-			},
-			"resolutionOrder": [
-				{"$ref": "#/sets/brand~1core"}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "json-pointer-escaping"), "/project")
 		require.NoError(t, err)
 		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
 	})
 
 	t.Run("strips fragment identifiers from source refs", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"sources": [{"$ref": "./palette.json#/brand"}]}
-			]
-		}`)
-		paths, err := extractResolverSourcePaths(data, "/project")
+		paths, err := extractResolverSourcePaths(loadFixture(t, "fragment-stripping"), "/project")
 		require.NoError(t, err)
 		assert.Equal(t, []string{filepath.FromSlash("/project/palette.json")}, paths)
+	})
+
+	t.Run("extracts sources from inline modifier contexts", func(t *testing.T) {
+		paths, err := extractResolverSourcePaths(loadFixture(t, "inline-modifier"), "/project")
+		require.NoError(t, err)
+		assert.Equal(t, []string{
+			filepath.FromSlash("/project/palette.json"),
+			filepath.FromSlash("/project/dark.json"),
+		}, paths)
+	})
+
+	t.Run("extracts sources from named modifier ref", func(t *testing.T) {
+		paths, err := extractResolverSourcePaths(loadFixture(t, "named-modifier"), "/project")
+		require.NoError(t, err)
+		assert.Equal(t, []string{
+			filepath.FromSlash("/project/palette.json"),
+			filepath.FromSlash("/project/dark.json"),
+		}, paths)
+	})
+
+	t.Run("extracts sources from multiple modifier contexts", func(t *testing.T) {
+		paths, err := extractResolverSourcePaths(loadFixture(t, "multi-contexts"), "/project")
+		require.NoError(t, err)
+		assert.Contains(t, paths, filepath.FromSlash("/project/light.json"))
+		assert.Contains(t, paths, filepath.FromSlash("/project/dark.json"))
+	})
+
+	t.Run("deduplicates across set and modifier sources", func(t *testing.T) {
+		paths, err := extractResolverSourcePaths(loadFixture(t, "dedup-across-types"), "/project")
+		require.NoError(t, err)
+		assert.Contains(t, paths, filepath.FromSlash("/project/palette.json"))
+		assert.Contains(t, paths, filepath.FromSlash("/project/dark.json"))
+		count := 0
+		for _, p := range paths {
+			if p == filepath.FromSlash("/project/palette.json") {
+				count++
+			}
+		}
+		assert.Equal(t, 1, count, "palette.json should be deduplicated")
+	})
+
+	t.Run("returns error for missing modifier reference", func(t *testing.T) {
+		_, err := extractResolverSourcePaths(loadFixture(t, "missing-modifier"), "/project")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nonexistent")
 	})
 
 	t.Run("returns error for invalid JSON", func(t *testing.T) {
@@ -156,26 +136,13 @@ func TestExtractResolverSourcePaths(t *testing.T) {
 	})
 
 	t.Run("returns error for unrecognized entry shape", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"resolutionOrder": [
-				{"unknown": "field"}
-			]
-		}`)
-		_, err := extractResolverSourcePaths(data, "/project")
+		_, err := extractResolverSourcePaths(loadFixture(t, "unrecognized-entry"), "/project")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unrecognized")
 	})
 
 	t.Run("returns error for missing set reference", func(t *testing.T) {
-		data := []byte(`{
-			"version": "2025.10",
-			"sets": {},
-			"resolutionOrder": [
-				{"$ref": "#/sets/nonexistent"}
-			]
-		}`)
-		_, err := extractResolverSourcePaths(data, "/project")
+		_, err := extractResolverSourcePaths(loadFixture(t, "missing-set"), "/project")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nonexistent")
 	})
@@ -236,6 +203,21 @@ func TestLoadResolverDocument(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.NotNil(t, server.Token("color-primary"))
+	})
+
+	t.Run("loads sources from modifier contexts", func(t *testing.T) {
+		tmpDir := copyFixture(t, "resolver-doc/modifier-contexts")
+
+		server, err := NewServer()
+		require.NoError(t, err)
+		defer func() { _ = server.Close() }()
+
+		resolverPath := filepath.Join(tmpDir, "tokens.resolver.json")
+		err = server.loadResolverDocument(resolverPath, &TokenFileOptions{})
+		require.NoError(t, err)
+
+		assert.NotNil(t, server.Token("color-neutral-100"), "palette token should be loaded")
+		assert.NotNil(t, server.Token("color-surface-lowered"), "colors token should be loaded")
 	})
 
 	t.Run("returns error for nonexistent resolver file", func(t *testing.T) {

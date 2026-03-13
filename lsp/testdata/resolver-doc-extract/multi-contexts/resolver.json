@@ -1,0 +1,13 @@
+{
+  "version": "2025.10",
+  "resolutionOrder": [
+    {
+      "type": "modifier",
+      "name": "mode",
+      "contexts": {
+        "light": [{ "$ref": "./light.json" }],
+        "dark": [{ "$ref": "./dark.json" }]
+      }
+    }
+  ]
+}

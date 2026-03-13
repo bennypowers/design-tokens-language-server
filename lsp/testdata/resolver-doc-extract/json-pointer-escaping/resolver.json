@@ -1,0 +1,11 @@
+{
+  "version": "2025.10",
+  "sets": {
+    "brand/core": {
+      "sources": [{ "$ref": "./palette.json" }]
+    }
+  },
+  "resolutionOrder": [
+    { "$ref": "#/sets/brand~1core" }
+  ]
+}
