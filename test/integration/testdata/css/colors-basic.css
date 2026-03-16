@@ -1,5 +1,0 @@
-.button {
-  /* Test that color tokens show color decorators */
-  color: var(--color-primary);
-  background: var(--color-secondary);
-}

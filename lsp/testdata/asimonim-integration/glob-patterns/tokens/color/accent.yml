@@ -1,5 +1,0 @@
-color:
-  accent:
-    base:
-      on-light:
-        $value: "#0066cc"

@@ -1,4 +1,0 @@
-.button {
-  /*          ↓ completion at "--col" (should filter to only color tokens) */
-  color: --col
-}

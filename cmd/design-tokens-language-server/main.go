@@ -1,23 +1,33 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"runtime/debug"
 
-	"bennypowers.dev/dtls/internal/log"
-	"bennypowers.dev/dtls/lsp"
+	"bennypowers.dev/asimonim/lsp"
 )
 
+func version() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == "bennypowers.dev/asimonim" {
+				return dep.Version
+			}
+		}
+	}
+	return "dev"
+}
+
 func main() {
-	// Create and run the LSP server
-	server, err := lsp.NewServer()
+	server, err := lsp.NewServer(lsp.WithVersion(version()))
 	if err != nil {
-		log.Error("Failed to create LSP server: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to create LSP server: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Run with stdio transport (for VSCode and other editors)
 	if err := server.RunStdio(); err != nil {
-		log.Error("Server error: %v", err)
+		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 		os.Exit(1)
 	}
 }

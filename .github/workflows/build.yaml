@@ -3,51 +3,9 @@ on:
   push:
     tags:
       - "v*.*.*"
-  workflow_dispatch:
 
 jobs:
-  test:
-    name: Test & Validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate version matches tag
-        run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          VSCODE_VERSION=$(jq -r .version extensions/vscode/package.json)
-          ZED_VERSION=$(grep '^version = ' extensions/zed/extension.toml | cut -d'"' -f2)
-
-          echo "Checking version consistency:"
-          echo "  Git tag:  v$TAG_VERSION"
-          echo "  VSCode:   $VSCODE_VERSION"
-          echo "  Zed:      $ZED_VERSION"
-          echo ""
-
-          if [ "$TAG_VERSION" != "$VSCODE_VERSION" ] || [ "$TAG_VERSION" != "$ZED_VERSION" ]; then
-            echo "❌ ERROR: Version mismatch detected!"
-            echo ""
-            echo "The git tag version does not match the extension versions."
-            echo "This usually means you forgot to run the version script before creating the release."
-            echo ""
-            echo "To fix this:"
-            echo "  1. Delete this release and tag"
-            echo "  2. Run: make release v$TAG_VERSION"
-            echo ""
-            exit 1
-          fi
-
-          echo "✓ Version check passed"
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-
-      - name: Run tests with coverage
-        run: make test-coverage
-
-      - uses: codecov/codecov-action@v5
-        with:
-          files: coverage.out
-          token: ${{ secrets.CODECOV_PAT }}
+  build:
+    uses: bennypowers/go-release-workflows/.github/workflows/build-binaries.yml@main
+    with:
+      binary-name: design-tokens-language-server

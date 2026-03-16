@@ -1,4 +1,0 @@
-.button {
-  /* Correct fallback value - matches token value */
-  color: var(--color-primary, #0000ff);
-}

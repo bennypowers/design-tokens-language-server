@@ -1,4 +1,0 @@
-prefix: rh
-files:
-  - tokens/**/*.yaml
-  - tokens/**/*.yml

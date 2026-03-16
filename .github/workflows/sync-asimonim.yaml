@@ -1,0 +1,48 @@
+name: Sync Asimonim Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      asimonim_version:
+        description: 'Asimonim version tag (e.g., v0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Update and Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Update asimonim dependency
+        run: |
+          go get bennypowers.dev/asimonim@${{ inputs.asimonim_version }}
+          go mod tidy
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add go.mod go.sum
+          if git diff --staged --quiet; then
+            echo "No changes — already at ${{ inputs.asimonim_version }}"
+            exit 0
+          fi
+          git commit -m "chore: update asimonim to ${{ inputs.asimonim_version }}"
+          git push
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ inputs.asimonim_version }} \
+            --title "${{ inputs.asimonim_version }}" \
+            --notes "Synced with [asimonim ${{ inputs.asimonim_version }}](https://github.com/bennypowers/asimonim/releases/tag/${{ inputs.asimonim_version }})."
